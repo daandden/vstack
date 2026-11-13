@@ -15,7 +15,7 @@ Read [STANDARDS.md](STANDARDS.md) before judging motion. It supplies the frequen
 
 A transition can run correctly yet regress responsiveness, continuity, or comfort. Flag genuine defects rather than assuming that working code earns approval. A high craft bar is not permission to manufacture violations from taste.
 
-Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements within Emil's guidance using browser-specific behavior and observed evidence. Preserve blocking motion-review verdicts when the applicable rule and evidence justify them. In particular, the broad transform-and-opacity preference does not by itself prohibit clip-path, blur, layout animation, or a library shorthand. Establish the actual dependency version, rendering path, support, cost, and user impact before making a performance claim. A supported technique is not automatically cheap, and a transform is not automatically composited.
+Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements within Emil's guidance using browser-specific behavior and observed evidence. Preserve blocking motion-review verdicts when the applicable rule and evidence justify them. In particular, the broad transform-and-opacity preference does not by itself prohibit clip-path, blur, layout animation, or a library shorthand. Establish the actual dependency version, rendering path, support, cost, and user impact before making a performance claim. A supported technique is not automatically cheap, and a transform is not automatically composited.
 
 ## Examine the interaction
 
@@ -38,7 +38,7 @@ For busy-page Motion findings, distinguish shorthands before 14.2 from the accel
 
 ## Establish evidence and decide
 
-Use the project's existing Verify workflow and review evidence contract. Observe the ordinary input path, keyboard path, reduced motion, and interruption when relevant. Retain browser identity, actions and outcomes, ARIA, and full-resolution lossless WebP evidence under the owner's Scratch. Every verification browser open uses `app: { tern: false }`; record the returned backend and engine. Claim only the stack, browser, and scenario actually exercised. Missing browser access or an unreadable dependency stays unavailable, not clean.
+Use the project's existing Verify workflow and review evidence contract. Observe the ordinary input path, keyboard path, reduced motion, and interruption when relevant. Retain browser identity, actions and outcomes, ARIA, and full-resolution screenshots under the owner's Scratch. Every verification browser open uses `app: { tern: false }`; record the returned backend and engine. Claim only the stack, browser, and scenario actually exercised. Missing browser access or an unreadable dependency stays unavailable, not clean.
 
 For uncertain feel, inspect slow playback or individual frames. A later fresh look can help, but it is not a prerequisite that postpones the current review. For a rendering claim, use appropriate trace or frame evidence; visual interpolation alone proves neither GPU compositing nor absence of dropped frames.
 

@@ -32,7 +32,10 @@ export function run(cmd: string[], cwd: string): string {
  * and, when the manifest lists extensions, every extension Command is present.
  */
 export function loadGate(root: string, out: string, smokeScript = DEFAULT_SMOKE): LoadSmoke {
-  const smoke: LoadSmoke = JSON.parse(run([smokeScript, join(root, "plugin"), out], root));
+  return checkLoadSmoke(root, JSON.parse(run([smokeScript, join(root, "plugin"), out], root)));
+}
+
+export function checkLoadSmoke(root: string, smoke: LoadSmoke): LoadSmoke {
   const artifacts = loadRegister(root);
   const paths = new Set([...artifacts.originals, ...artifacts.rows.flatMap(r => r.artifacts)]);
   for (const a of paths) {

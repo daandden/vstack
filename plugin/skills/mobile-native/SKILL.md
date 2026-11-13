@@ -27,7 +27,7 @@ Read [platform fixes](references/platform-fixes.md) before implementing any matc
 
 For direct manipulation, interruptibility, materials, or Apple-derived web feedback, read skill://apple-design. For motion choices, use skill://emil-design-eng under ADR 0051. These are conditional references within the existing task, not new workflows or dependency requirements.
 
-Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them.
+Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them.
 
 ## Observe the result
 
@@ -35,7 +35,7 @@ Exercise applicable behavior in all five core areas: touch, viewport, safe areas
 
 Record the actual application's dependencies and versions before relying on library-specific guidance. A vanilla app does not validate Tailwind, Next.js, Motion, or a component library. Consult installed-version documentation only for APIs the task uses.
 
-Retain the project's Verify actions, ARIA snapshots, full-resolution lossless WebP, browser backend and engine, and actual outcomes. Emulation can exercise layout, media queries, and browser input behavior. It does not establish physical touch feel, mobile Safari input zoom, real browser-chrome collapse, a software keyboard, nonzero notch insets, status-bar appearance, or installed-PWA behavior.
+Retain the project's Verify actions, ARIA snapshots, full-resolution screenshots, browser backend and engine, and actual outcomes. Emulation can exercise layout, media queries, and browser input behavior. It does not establish physical touch feel, mobile Safari input zoom, real browser-chrome collapse, a software keyboard, nonzero notch insets, status-bar appearance, or installed-PWA behavior.
 
 Use hardware and remote debugging when available. On iOS, use Safari's device inspector. On Android, use Chrome's device inspection. Open the dev server on the phone only within the user's existing network and permission scope. Test landscape, keyboard-open state, and older hardware where relevant. When hardware is unavailable, identify the observed web scope and leave those checks unavailable. Do not call emulation universal native-device proof or silently require a new installation.
 

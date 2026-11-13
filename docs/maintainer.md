@@ -71,11 +71,17 @@ The reader source lives under `reader/`. Its production bundle ships prebuilt un
 
 When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
 
+After changing Flow runtime scripts or their shipped dependencies, run `bun plugin/skills/flow-page/scripts/generation.ts seal`. Commit `plugin/skills/flow-page/runtime.json` with those changes. The reader shipment command also seals this manifest after copying the complete reader. It records every Flow script, reader file, and shipped Scratch and figure script by hash. Do not seal a partial installation.
+
 The reader uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` loads them, and `theme.css` owns the Catppuccin Latte/Mocha palette, compact sizing, IosevkaTerm font stacks, Nuxt UI semantic colors, and Pele variables. Components use Nuxt UI and Tailwind utilities; no legacy question or Result stylesheet remains. Do not add another palette.
 
 Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
 
-The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
+Each question shows its current outcome under its title. Explicit picks, readings of written answers, and non-consent remain distinct. Choices jumps to the options. Evidence jumps to the question's context and figures, which stay expanded. A re-asked question links directly to its latest attempt. The outcome uses the same effective answer projection as Overview and `show`, including withdrawn readings.
+
+The installed Local Flow host checks the complete runtime manifest before staging a replacement. Its stable listener keeps forwarding requests to the last good generation until the candidate starts and authenticates. Replacement retains the port, credentials, and Flow links. Failed startup or mismatched installed files leave the last good generation active. Explicit isolated development hosts keep exact-byte compatibility and require their owner's authenticated stop after code changes. Agents have no new authority to restart the normal shared host. Committed content stays committed when the host is unavailable.
+
+Open readers detect host replacement separately from authored revisions and refresh content after reconnect. A changed reader generation reloads the page automatically. The reader saves open Reader comment drafts, their original Result revision and target, the fragment, disclosures, and reading position in tab-local session storage before reload. Restoring a draft never submits it. An in-flight comment write or unavailable recovery storage delays reload and keeps the current page and drafts visible. Automatic reload also retains the visit comparison's original baseline; an ordinary later visit still uses the normal browser-local visit marker.
 
 The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge labels keep Pele's background-colored label boxes. Cluster labels use a background-colored outline. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.
 
@@ -139,7 +145,7 @@ Each entry's `items:` list says which tree entries at the Pin are Upstream items
 
 The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c`. Its `skills/*` pattern discovers eighteen items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. The original ten retain their companion references and existing implementation, review, verification, and evidence owners. `choreograph` adds coordinated-motion guidance and recipes; `gestures` adds direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
 
-`code-review` conditionally reaches motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md), as amended by [ADR 0074](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md), governs applicability.
+`code-review` conditionally reaches motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md), as amended by [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md), governs applicability.
 
 All twelve selected items ship as adaptations. None remains deferred.
 
@@ -147,7 +153,7 @@ The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonne
 
 The initial registration is a consistent direct Hand edit, including the Pin, object identities, artifact associations, catalog, version, and changelog. `prepare` and target `check` read the register from HEAD. Before the bootstrap is committed, `check --take emil:skills/emil-design-eng` previews the source item, while `check-register` and `plan emil@<initial Pin>` inspect the working registration. Do not run `prepare` against the pre-bootstrap HEAD: it cannot preserve the new source. After that initial commit, use the existing Hand edit and Update commands normally. No bootstrap API or UI-specific runtime is involved.
 
-The twelve UI skills load by description in any session or by name. They appear in the Decision register's utility list without Addon catalog questions or sample-prompt labels. They do not broaden principle-only build or subagent selection. [ADR 0074](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md) records Emil precedence for CSS and animation. Good-css retains unique CSS techniques without hand-offs to or from these skills. Its seven caller instructions cover CSS only. Native description selection and instruction following remain unproven until explicitly approved remote evaluations run.
+The twelve UI skills load by description in any session or by name. They appear in the Decision register's utility list without Addon catalog questions or sample-prompt labels. They do not broaden principle-only build or subagent selection. [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md) records Emil precedence for CSS and animation. Good-css retains unique CSS techniques without hand-offs to or from these skills. Its seven caller instructions cover CSS only. Native description selection and instruction following remain unproven until explicitly approved remote evaluations run.
 
 Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md) for native main and delegated runs, an unrelated-task control, packaged-content inspection, and an isolated future-source planning check. Stub load proof does not establish instruction following or UI quality.
 
@@ -199,7 +205,7 @@ rm plugin/skills/grill-me/agents/openai.yaml && rmdir plugin/skills/grill-me/age
 bun scripts/check-register.ts
 ```
 
-It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree. Options:
+It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree, and checks new ADR filenames. Options:
 
 | Option | Env | Default |
 |---|---|---|
@@ -237,6 +243,8 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 | `invalid-manifest` | `plugin/package.json` lacks `name: vstack`, an `x.y.z` version, or the `omp` field |
 | `missing-change-note` | shipped `plugin/` text changed since the comparison base without a Change note added by the branch |
 | `invalid-plugin-release` | a version change or consumed note lacks a new Plugin release receipt, the version is not exactly the highest prepared level, a prepared note remains, an unrelated note is removed, or CHANGELOG does not keep every prepared entry under the dated heading |
+| `invalid-adr-name` | a file added under `docs/adr/` since the comparison base lacks a real `YYYYMMDD` date or a lowercase, hyphen-separated slug in `YYYYMMDD-slug.md` |
+| `duplicate-adr-number` | legacy numbered ADRs share a number, except the exact existing 0065 and 0074 pairs |
 | `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
 | `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
 | `migration-house-style` | setup-vstack is present but its `references/house-style.yaml` copy is missing, has invalid row fields, or differs from the root `uses: migration` rows in content or order |
@@ -258,6 +266,14 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 
 A House style failure names the register row behind the artifact, or the artifact path when several rows or `originals:` name it. Its message lists the first file lines that break the row or rule.
+
+### ADR filenames
+
+New ADRs use `YYYYMMDD-slug.md`, with a real local creation date and a lowercase slug of letters and digits separated by single hyphens. Cite the full filename stem without `.md`. The date does not change when the branch lands later. If two branches choose the same date and slug, the second branch changes its unlanded slug and references before landing. Landed filenames stay stable.
+
+The check reads files under `docs/adr/`, including untracked files. It validates names absent from the same comparison base used by the Change-note check. Existing filenames are not relinted or renamed, and prose citations are not checked. Duplicate legacy numbers are refused except for two existing pairs: `0065-flow-figures-get-color-roles-from-the-shared-role-pass.md` with `0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md`, and `0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md` with `0074-private-mcp-config-is-shared-through-links-and-a-named-hook.md`. A third file with either number is not covered by that exception.
+
+`ADR-name base` reports the comparison commit. The check does not verify an author's clock, enforce listing order, resolve a Git conflict, or certify custom ADR tools in other projects. The authoring convention applies to their new ADRs too, in their existing location, including Private mode. See [ADR 20261111-new-adrs-are-named-by-date-and-slug](adr/20261111-new-adrs-are-named-by-date-and-slug.md).
 
 ### Change-note base
 
@@ -334,7 +350,21 @@ bun scripts/vstack-maintain.ts gates [--scratch <dir>]
 | `merge` | Prints JSON `{rows}` with `id`, `effective_old`, `overlaps`, and `changes` for rows with normalized sides. Each change names its path, binary status, overlapping regions, and local and Upstream edits. It previews overlaps without writing drafts or checkout files. `--decisions` can supply `file_maps: {<row id>: {<Upstream file>: <local suffix>}}`. |
 | `check` | Prints JSON `{targets}` for named artifacts and artifacts in `--plan`. It classifies additions and edits, reports register rows, dispositions, callers, and name clashes, and previews takes. Renames and removals also report adopt callers. Repeat `--take`, `--rename`, or `--remove` for multiple targets. A name clash refuses with the Upstream item and a possible take or another-name remedy. At least one target is required. |
 | `prepare` | Prints JSON `{note, level, rows, targets, taken}`. It rebuilds the register, Pins, Hold fields, House style, adopt copies, and takes from branch HEAD, then writes one Change note. Version and CHANGELOG stay unchanged. implement must write adapt and merge text, move renamed artifacts, remove deleted artifacts, and update callers first. |
-| `gates` | Prints JSON `{ok, stages}`. It runs quick_validate for changed skills, check-register, `bun test`, and the load smoke. Each stage reports its name, result, output, and process exit code when available. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. It does not run the live Addon judge. |
+| `gates` | Prints JSON `{ok, outcome, stages, durationMs, phaseOccupancyMs, identity, evidence}`. It runs quick_validate for changed skills, prepares the required Upstream cache and checks the register, runs the full test command, and runs the load smoke. Every phase records its outcome, duration, producing command, working directory, and timestamps. Register checking includes cache preparation in its duration. Test-runner subphases include non-browser tests, browser tests, and candidate-reader preparation when present. The smoke runs outside the home directory and retains its existing validation requirements. It does not run the live Addon judge. |
+
+Every invocation writes a persistent `maintain/<entry>/report.json` under Scratch. The report includes the invocation, Git head and base, dirty diff hash and status, runtime and platform identity, dependency-file hashes, and an environment hash. It records selected nonsecret environment values rather than their full contents. Command stdout and stderr remain in separate files beside the report and in the phase's `output`. Failed smoke artifacts join that entry, excluding the native-addon cache. The temporary smoke directory is always removed.
+
+Reports begin with `outcome: "running"` before the first phase and update after each phase completes. SIGINT and SIGTERM mark active work interrupted, forward the signal to the command's process group, and retain diagnostics. Failed, interrupted, or incomplete child phases cannot pass because their runner exited zero. An uncatchable process kill can leave a report running, which is incomplete evidence, not a completed runtime. A tool's background acknowledgement is not a gate completion.
+
+`durationMs` is elapsed time for one invocation. `phaseOccupancyMs` sums its top-level measured stages without counting nested phases twice. Summing occupancy across concurrent invocations measures consumed command time, not elapsed delivery time. Compare the same commands and runtime environment before claiming an improvement. The dominant historical cost is the non-browser suite, not browser scheduling. Timings do not authorize skipping any gate.
+
+Each phase also records a `shadow` receipt with its input hashes, unknown inputs, predicted reuse, fresh result, and reusable-pass eligibility. The comparison uses a conservative dependency superset: the complete checkout, including ignored source, documents, examples, and templates, plus installed dependency and browser trees. Git metadata and the reader's generated working directories are excluded from source discovery. Their relevant identities are recorded separately. Commands, runtime binaries, platform, environment, Git head and base, Upstream commit and tree objects, and prepared candidate-reader bytes participate in the comparison. The output-only `VSTACK_GATE_PHASE_REPORT` destination does not affect the environment hash.
+
+The run hashes inputs before execution and checks their bytes and file-change timestamps again afterward. Unknown identities, command overrides, changed inputs, missing or altered diagnostics, and failed, interrupted, or partial evidence prevent reusable passes. The previous receipt and its evidence must remain complete. The checkout's Git metadata stores only a pointer and hash for the latest Scratch receipt. Deleting Scratch evidence makes a later comparison miss.
+
+Only gates captures shadow inputs. It hands the test runner its capture and the previous run's test subphases through `VSTACK_GATE_SHADOW`, so the runner hashes nothing again and gates evaluates and remembers every subphase. A plain `bun run test` captures nothing and writes no pointer.
+
+Shadow predictions never skip commands or authorize delivery. The final integrated head still requires complete fresh gates and independent Verifier proof. Enabling actual reuse requires a separate decision.
 
 `plan`, `merge`, and `check` are read-only fact-finding for the grill. They make no branch, worktree, or write in any checkout. Scratch and the Upstream cache must stay outside every checkout. The script refuses a `--scratch` dir or an `--upstreams` cache inside a checkout. `prepare` and `gates` serve implement. implement drafts every Update and Hand edit in one isolated drafting worker and applies the gated patch.
 
@@ -422,7 +452,19 @@ Consult the skill instead of maintaining a second copy of its procedure here:
 
 ## Tests
 
-Run `bun run test` for the full suite. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so keep the timeout in the package script.
+Run `bun run test` for the full suite through `scripts/test.ts`. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so the runner passes the timeout to every Bun test command.
+
+The test runner checks the candidate's Nuxt CLI, Playwright, and installed Chromium first. It builds the reader into a temporary directory before running non-browser tests, then runs each browser file in its own process. Missing tools fail early with the required dependency named. A failed preparation or test stops the runner before later phases. When gates sets `VSTACK_GATE_PHASE_REPORT`, the runner records the real candidate-reader readiness, candidate-reader build, non-browser, and browser phases through the same measured report.
+
+Browser tests receive only the temporary candidate assets. The `readerProof` JSON line records source and asset SHA-256 identities alongside the runtime. Temporary build and asset directories are deleted on completion or failure. Neither `reader/.nuxt`, `reader/.output`, nor the shipped bundle is replaced.
+
+Run a focused browser file through the same preparation route:
+
+```sh
+bun scripts/test.ts tests/flow-reader-foundation.browser.test.ts
+```
+
+Direct `bun test` bypasses candidate preparation. It is suitable for focused non-browser tests, not evidence that a reader change works. `FLOW_READER_ASSETS` selects the prepared reader only for isolated `--home` hosts. The final integration still runs `bun run reader:build`, full maintainer gates, and independent verification of the final head.
 
 The script runs every `*.browser.test.ts` file in its own Bun process after the other tests. Bun 1.3.14 closes Playwright's extra Chromium stdio descriptors a second time during garbage collection, and a later test's subprocess can own those numbers by then ([microsoft/playwright#42692](https://github.com/microsoft/playwright/issues/42692)). On Linux this throws `EBADF` in an unrelated test or leaves its subprocess wait hanging.
 
@@ -435,6 +477,24 @@ CI uses the runner image's Git and records its version and actual named-hook dis
 Flow-page tests assert receipts, refusals, `show` snapshots, stored bytes, and element ids, never page wording or markup. Prove browser and native omp behavior through the linked Verify recipes.
 
 The extension tests use `tests/support/extension-host.ts` and `extension-mocks.ts` for controlled host and judge boundaries. They do not replace a fresh omp session. Use the [Verify skill](../.omp/skills/verify-vstack/SKILL.md) and its [feature map](../.omp/skills/verify-vstack/features/README.md) for live proof.
+
+### Non-browser test cost
+
+Profile the non-browser phase with its unchanged command:
+
+```sh
+bun test --timeout 30000 --path-ignore-patterns '**/*.browser.test.ts'
+```
+
+Bun reports each test's duration. Group those durations by file before choosing an optimization. Keep the command, revision, runtime, platform, exit status, and raw output for both versions. Repeat the same selection to report variation. A failed run is diagnostic evidence, not a passing baseline.
+
+The native clean-wt ownership refresh uses one `lsof` query for the union of session-lease files and process working directories. File descriptors distinguish lease records from cwd records. Every pre-removal refresh still executes. Linux retains its procfs path. To compare the affected inventory, removal, and source-fact cases:
+
+```sh
+bun test --timeout 30000 tests/clean-wt.test.ts --test-name-pattern 'unused clean linked|dirty work is removed only|shared prepared source facts'
+```
+
+The gate-timing propagation matrix uses a local compiler fixture so each outcome does not rebuild Nuxt. It still runs readiness, generation, non-browser tests, and each selected browser subprocess through the real runner. `tests/reader-proof.test.ts` retains real Nuxt and Chromium coverage of candidate-source generation and dependency failures. Full gates still execute every required phase.
 
 ## Versions and CHANGELOG
 

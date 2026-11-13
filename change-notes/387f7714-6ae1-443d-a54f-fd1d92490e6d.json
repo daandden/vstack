@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Name new ADRs by local creation date and slug and preserve legacy identities, with project-neutral ADR guidance; vstack's own check validates new filenames and duplicate legacy numbers without linting citations."
+  ]
+}

@@ -1,5 +1,5 @@
-import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { basename, join } from "node:path";
+import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
 
 const args = process.argv.slice(2);
 const root = process.env.FAKE_OVNFS_ROOT!;
@@ -29,7 +29,16 @@ if (basename(process.argv[1]) === "omp") {
     const rest = args.slice(2);
     if (rest[0] === "-b") git(process.cwd(), "worktree", "add", "-b", rest[1], rest[2], rest[3]);
     else git(process.cwd(), "worktree", "add", ...rest);
-    if (process.env.FAKE_OMP_CLONED) console.log(`Cloned from ${process.cwd()} via fixture`);
+    if (process.env.FAKE_OMP_CLONED) {
+      const path = rest[0] === "-b" ? rest[2] : rest[0] === "--detach" ? rest[1] : rest[0];
+      const others = Bun.spawnSync([process.env.FAKE_GIT!, "ls-files", "--others", "-z"], { cwd: process.cwd() });
+      if (others.exitCode) throw new Error(others.stderr.toString());
+      for (const name of others.stdout.toString().split("\0").filter(Boolean)) {
+        mkdirSync(dirname(join(path, name)), { recursive: true });
+        cpSync(join(process.cwd(), name), join(path, name), { recursive: true, dereference: false });
+      }
+      console.log(`Cloned from ${process.cwd()} via fixture`);
+    }
   }
 } else {
   const rest = args.filter(a => a !== "--json");

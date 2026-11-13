@@ -24,4 +24,4 @@ Reuse the agreed public seams and existing Verify recipe. Name applicable mechan
 
 For removal, account for hidden initial styles, entry and exit callbacks, delayed unmount, cancellation, exactly-once effects, focus entry and restoration, and selectors that waited for deleted animation. Check these where affected, not as a demand to redesign unrelated components.
 
-Retain browser identity, ARIA, full-resolution lossless WebP, observations, limits, and the evidence-backed motion review under the owner's Scratch. Every browser open uses `app: { tern: false }` and records its returned backend and engine. The existing review owner applies skill://review-animations and retains blocking authority. The implementation owner retains normal delivery and verification gates.
+Retain browser identity, ARIA, full-resolution screenshots, observations, limits, and the evidence-backed motion review under the owner's Scratch. Every browser open uses `app: { tern: false }` and records its returned backend and engine. The existing review owner applies skill://review-animations and retains blocking authority. The implementation owner retains normal delivery and verification gates.

@@ -40,15 +40,17 @@ Break the work into **tracer bullet** tickets.
 
 Give each ticket its **blocking edges**: the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
 
+Trace each acceptance criterion to the decisions, shared fixtures, and consumer capabilities needed to satisfy it. Name what already exists and what a ticket must supply. For each prerequisite supplied by another ticket, declare a direct or transitive blocking path to that ticket. Requirement coverage, parent membership, and body references do not establish that path. Keep unresolved human decisions explicit rather than treating their assignment as an answer.
+
 Write no `skill://<addon>` pointers in tickets, and drop any inherited from the spec. Build sessions pick Addons fresh.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change (rename a column, retype a shared symbol) whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket; green is promised only there.
 
 Before you show the breakdown, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the spec that this run breaks down, with its comments. Covered in names a ticket, and the table Result goes on the to-tickets Stage. Fix a miss by changing a ticket or adding one.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks, the spec, the draft tickets with their blocking edges, and the Checker brief from DRIFT-CHECK.md, the vstack root. Wait for its result. If it cannot be spawned, stop: report the tickets as not published.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks with their provenance, the spec and comments, the draft tickets with their acceptance criteria, prerequisite trace, and blocking edges, any evidence of existing prerequisites, and the Checker brief from DRIFT-CHECK.md including its ticket acceptance check, the vstack root. Wait for its result. If it cannot be spawned, stop: report the tickets as not published.
 
-Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" says.
+Fix the draft and show the coverage and acceptance prerequisite tables as DRIFT-CHECK.md's "Fix and show" says. Recheck the corrected draft before publication. Continue only when every criterion is feasible with the declared blockers and every coverage miss or contradiction is fixed. Resolve a real decision conflict through the existing question procedure, not a separate breakdown-approval stop.
 
 For MCP, read the configured server's live tool list, descriptions, and input schemas. Draft `tracker.binding` in the structured description as [the MCP binding contract](references/publication.md#mcp-binding) specifies. Include argument templates, result paths, issue readback paths, directed blocking semantics, and the readiness field. Keep tool names in this input, not per-operation rows in `issue-tracker.md`.
 

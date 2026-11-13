@@ -19,6 +19,12 @@ The three branches produce very different artifacts, so getting this wrong waste
 
 When the question has more than one plausible answer, build the variants the user did not ask for as well.
 
+## Compare variants
+
+For a comparative prototype, establish a comparable workload or quality target before running the variants. Record each variant's configuration and preparation, including defaults and conversion work that could decide the outcome.
+
+Before recommending a winner, report those differences beside the observed evidence. Distinguish a difference in tool capability from a difference in settings or preparation. If settings remain unmatched or conversion is incomplete, state that as an evidence limitation and limit the recommendation to what the runs establish. Unequal denoising, for example, does not establish an inherent quality difference between renderers.
+
 ## The Flow page
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before producing a Result or asking the branch question. A detour retains the Flow identity in its handoff. A prototype for a wayfinder ticket is a nested result-producing run under that ticket's Stage.

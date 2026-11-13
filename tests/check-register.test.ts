@@ -1248,10 +1248,10 @@ describe("Plugin releases", () => {
   });
 });
 
-test("--list-classes lists every class, and every class has a fixture above", async () => {
+test("--list-classes lists every class, and every class has a behavioral fixture", async () => {
   const p = Bun.spawnSync(["bun", SCRIPT, "--list-classes"], { env: ENV });
   const listed = p.stdout.toString().trim().split("\n");
-  const covered = new Set([...cases.map((c) => c.cls), "missing-change-note", "invalid-plugin-release"]);
+  const covered = new Set([...cases.map((c) => c.cls), "missing-change-note", "invalid-plugin-release", "invalid-adr-name", "duplicate-adr-number"]);
   expect(listed.filter((c) => !covered.has(c))).toEqual([]);
   expect(listed.length).toBeGreaterThan(0);
 });

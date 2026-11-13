@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VISUAL_KINDS } from "#flow/fields.ts";
 import { flow } from "~/composables/reader";
-import { entryTitle, optionLabel, sourceText, type QuestionView } from "~/utils/flow";
+import { askLabel, optionLabel, questionOutcome, sourceText, type QuestionView } from "~/utils/flow";
 
 const props = defineProps<{ q: QuestionView }>();
 const f = computed(() => flow.value!);
@@ -16,6 +16,20 @@ const askedIn = (id: string) => {
 const topics = computed(() => (props.q.topics ?? []).map((id) => f.value.topics.find((t) => t.id === id)).filter((t) => t !== undefined));
 const reopened = computed(() => (props.q.reopens ? f.value.stages.flatMap((s) => s.assumed).find((a) => a.id === props.q.reopens) : undefined));
 const label = (letter: string) => optionLabel(props.q, letter);
+const outcome = computed(() => questionOutcome(props.q));
+const latestAttempt = computed(() => {
+  const attempts = new Set([props.q.id]);
+  let latest: QuestionView | undefined;
+  for (const question of f.value.questions) {
+    if (question.again && attempts.has(question.again)) {
+      attempts.add(question.id);
+      latest = question;
+    }
+  }
+  return latest;
+});
+const latestOutcome = computed(() => latestAttempt.value && questionOutcome(latestAttempt.value));
+const earlierAttempts = computed(() => props.q.asked_again_by.filter(id => id !== latestAttempt.value?.id));
 
 type Line = { label: string; html: string };
 const NOT_ASKED: Record<string, string> = {
@@ -46,60 +60,76 @@ const lines = computed(() => {
     if (rd.maps_to) out.push({ label: "Matches", html: `${inline(label(rd.maps_to))}, which you did not pick` });
   } else if (rd) {
     out.push({ label: NOT_DECIDED[rd.outcome]!, html: "Not a decision." });
-    out.push({ label: "Still to ask", html: inline(rd.unresolved) });
+    out.push({ label: props.q.asked_again_by.length ? "Unresolved at this attempt" : "Still to ask", html: inline(rd.unresolved) });
   }
   if (props.q.retired) out.push({ label: "Retired", html: inline(props.q.retired.reason) });
-  if (!out.length && !a.picks) out.push({ label: props.q.latest ? "Open" : "Not answered", html: props.q.open ? "Waiting for your answer." : "No answer was recorded." });
+  if (!out.length && !a.picks) {
+    if (props.q.asked_again_by.length) out.push({ label: "Re-asked", html: "This attempt was asked again before an answer was recorded." });
+    else out.push({ label: props.q.latest ? "Open" : "Not answered", html: props.q.open ? "Waiting for your answer." : "No answer was recorded." });
+  }
   return out;
 });
 </script>
 
 <template>
   <article :id="q.id" class="question grid gap-2.5" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
-    <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span v-html="inline(q.title)" /></h2>
-    <div class="grid gap-1.5" v-html="prose(q.description)" />
-    <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted [&_a]:no-underline">
-      <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
-      <a v-for="t in topics" :key="t.id" :href="`#${t.id}`">Topic: <span v-html="inline(t.title)" /></a>
-      <a v-for="ref in q.entries ?? []" :key="ref" :href="`#${ref.replace('/', '-')}`">
-        <span v-html="inline(entryTitle(f, ref)?.result ?? ref)" /> <span class="entry-id">{{ entryTitle(f, ref)?.entry }}</span>
-      </a>
-      <a v-if="q.again" :href="`#${q.again}`">Q{{ ask(q.again)?.q }}{{ askedIn(q.again) }}, asked earlier</a>
-      <a v-for="id in q.asked_again_by" :key="id" :href="`#${id}`">Q{{ ask(id)?.q }}{{ askedIn(id) }}, asked again</a>
-      <a v-if="reopened" :href="`#${reopened.id}`">Reopens an Assumed pick: <span v-html="inline(reopened.decision)" /></a>
-      <a v-if="q.decided_in" :href="`#${q.decided_in}`">Decision in the summary</a>
-    </p>
-    <details v-if="q.terms?.length" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
-      <summary>Term notes ({{ q.terms.length }})</summary>
-      <dl class="grid gap-0.5 [&_dt]:font-semibold [&_dt]:text-flow-teal [&_dd+dt]:mbs-1.5">
-        <template v-for="t in q.terms" :key="t.term"><dt v-html="inline(t.term)" /><dd class="ms-0" v-html="inline(t.text)" /></template>
-      </dl>
-    </details>
-    <details v-if="q.needs?.length" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
-      <summary>Reader needs ({{ q.needs.length }})</summary>
-      <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
-        <li v-for="(n, i) in q.needs" :key="i"><span v-html="inline(n.need)" /> <span class="text-small text-muted">{{ VISUAL_KINDS[n.kind] }}</span></li>
-      </ul>
-    </details>
-    <div v-if="q.today?.length" class="grid gap-1.5">
-      <p class="font-semibold text-[var(--pink)]">Today</p>
-      <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
-        <li v-for="(fact, i) in q.today" :key="i"><span v-html="inline(fact.text)" /></li>
-      </ul>
-      <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
-        <summary>Sources ({{ q.today.length }})</summary>
-        <ol class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
-          <li v-for="(fact, i) in q.today" :key="i" v-html="inline(sourceText(f, fact.source))" />
-        </ol>
+    <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
+    <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
+    <section aria-label="Current outcome" class="grid gap-1 text-small">
+      <p :class="outcome.cls" v-html="outcome.html" />
+      <p v-if="outcome.previous" :class="outcome.previous.cls" v-html="outcome.previous.html" />
+      <nav aria-label="Question details" class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5">
+        <a :href="`#${q.id}-choices`">Choices</a>
+        <a :href="`#${q.id}-evidence`">Evidence</a>
+        <a v-if="latestAttempt" :href="`#${latestAttempt.id}`">Latest attempt: {{ askLabel(f, latestAttempt.id) }}{{ askedIn(latestAttempt.id) }}</a>
+        <span v-if="latestOutcome" :class="latestOutcome.cls" v-html="latestOutcome.html" />
+      </nav>
+    </section>
+    <section :id="`${q.id}-evidence`" aria-label="Question evidence" class="grid gap-2.5">
+      <div class="grid gap-1.5" v-html="prose(q.description)" />
+      <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted [&_a]:no-underline">
+        <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
+        <a v-for="t in topics" :key="t.id" :href="`#${t.id}`">Topic: <span v-html="inline(t.title)" /></a>
+        <a v-for="link in q.result_links" :key="link.id" :href="`#${link.anchor}`">
+          <span v-html="inline(link.title)" /> <span v-if="link.entry" class="entry-id">{{ link.entry }}</span>
+        </a>
+        <a v-if="q.again" :href="`#${q.again}`">Q{{ ask(q.again)?.q }}{{ askedIn(q.again) }}, asked earlier</a>
+        <a v-for="id in earlierAttempts" :key="id" :href="`#${id}`">Q{{ ask(id)?.q }}{{ askedIn(id) }}, asked again</a>
+        <a v-if="reopened" :href="`#${reopened.id}`">Reopens an Assumed pick: <span v-html="inline(reopened.decision)" /></a>
+        <a v-if="q.decided_in" :href="`#${q.decided_in}`">Decision in the summary</a>
+      </p>
+      <details v-if="q.terms?.length" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
+        <summary>Term notes ({{ q.terms.length }})</summary>
+        <dl class="grid gap-0.5 [&_dt]:font-semibold [&_dt]:text-flow-teal [&_dd+dt]:mbs-1.5">
+          <template v-for="t in q.terms" :key="t.term"><dt v-html="inline(t.term)" /><dd class="ms-0" v-html="inline(t.text)" /></template>
+        </dl>
       </details>
-    </div>
-    <div v-if="q.example" class="grid gap-1.5">
-      <p class="font-semibold text-[var(--pink)]">Example</p>
-      <p class="whitespace-pre-wrap" v-html="inline(q.example)" />
-    </div>
-    <FigureList :figures="q.figures" />
+      <details v-if="q.needs?.length" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
+        <summary>Reader needs ({{ q.needs.length }})</summary>
+        <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+          <li v-for="(n, i) in q.needs" :key="i"><span v-html="inline(n.need)" /> <span class="text-small text-muted">{{ VISUAL_KINDS[n.kind] }}</span></li>
+        </ul>
+      </details>
+      <div v-if="q.today?.length" class="grid gap-1.5">
+        <p class="font-semibold text-[var(--pink)]">Today</p>
+        <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+          <li v-for="(fact, i) in q.today" :key="i"><span v-html="inline(fact.text)" /></li>
+        </ul>
+        <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
+          <summary>Sources ({{ q.today.length }})</summary>
+          <ol class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+            <li v-for="(fact, i) in q.today" :key="i" v-html="inline(sourceText(f, fact.source))" />
+          </ol>
+        </details>
+      </div>
+      <div v-if="q.example" class="grid gap-1.5">
+        <p class="font-semibold text-[var(--pink)]">Example</p>
+        <p class="whitespace-pre-wrap" v-html="inline(q.example)" />
+      </div>
+      <FigureList :figures="q.figures" />
+    </section>
     <div class="grid gap-4 pbs-1.5">
-      <ol class="options grid list-none gap-4 ps-0">
+      <ol :id="`${q.id}-choices`" aria-label="Choices" class="options grid list-none gap-4 ps-0">
         <li v-for="o in q.options" :key="o.label" class="option group/option grid gap-1" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
           <h3 class="font-semibold text-info group-data-picked/option:font-bold group-data-picked/option:text-flow-yellow">
             <span v-html="inline(o.label)" />
@@ -115,6 +145,17 @@ const lines = computed(() => {
           <p v-if="o.recommended" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
         </li>
       </ol>
+      <section v-if="q.answer.correction || q.answer.corrects.length || q.answer.recorded_reading" :id="`${q.id}-reading`" class="grid gap-1.5">
+        <CorrectionNotice :notice="q.answer" />
+        <details v-if="q.answer.recorded_reading">
+          <summary>Original agent reading, no longer current</summary>
+          <template v-if="q.answer.recorded_reading.outcome === 'resolved'">
+            <p v-html="inline(q.answer.recorded_reading.decision)" />
+            <p v-html="inline(q.answer.recorded_reading.basis)" />
+          </template>
+          <p v-else v-html="inline(q.answer.recorded_reading.unresolved)" />
+        </details>
+      </section>
       <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2">
         <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
       </div>

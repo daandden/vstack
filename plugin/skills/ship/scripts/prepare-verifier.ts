@@ -1,8 +1,9 @@
 import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, unlinkSync } from "node:fs";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { homedir } from "node:os";
+import { declaredInput, readInputs, refuseCommittedOverlap } from "../../vstack-worktree/scripts/inputs.ts";
 
-const record = { verdict: "REFUSED", head_sha: null as string | null, base_sha: null as string | null, patch_id: null as string | null, evidence: [] as string[], notes: [] as string[] };
+const record = { verdict: "REFUSED", head_sha: null as string | null, base_sha: null as string | null, patch_id: null as string | null, evidence: [] as string[], notes: [] as string[], proof_steps: [] };
 const removed: string[] = [];
 function git(repo: string, args: string[], stdin?: Uint8Array): string {
   const p = Bun.spawnSync(["git", "-C", repo, ...args], { stdin, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
@@ -23,15 +24,9 @@ function safeLeaf(root: string, path: string): string {
 try {
   const [command, ...args] = process.argv.slice(2);
   const options = new Map<string, string>();
-  const requiredInputs: string[] = [];
+  let requiredInputs: string[] = [];
   for (let i = 0; i < args.length; i += 2) {
-    if (args[i] === "--require-input" && args[i + 1]) {
-      const input = args[i + 1];
-      if (isAbsolute(input) || input.split("/").some(part => part === ".." || part === ".git") || input === ".") throw new Error("--require-input needs a path relative to the head worktree.");
-      requiredInputs.push(input);
-      continue;
-    }
-    if (!["--repo", "--shared", "--head", "--base", "--record"].includes(args[i]) || !args[i + 1] || options.has(args[i])) throw new Error("Use preflight or clean-head with --repo, --shared, --head, --base, and --record.");
+    if (!["--repo", "--shared", "--head", "--base", "--record", "--inputs"].includes(args[i]) || !args[i + 1] || options.has(args[i])) throw new Error("Use preflight or clean-head with --repo, --shared, --head, --base, --record, and --inputs.");
     options.set(args[i], args[i + 1]);
   }
   const repo = realpathSync(options.get("--repo") ?? process.cwd());
@@ -41,6 +36,7 @@ try {
   const top = realpathSync(git(repo, ["rev-parse", "--show-toplevel"]).trim());
   if (repo !== top || shared === top) throw new Error("Shared checkout must differ from the verifier's own Git toplevel. Use an isolated eval agent and /skill:setup-vstack.");
   if (realpathSync(git(shared, ["rev-parse", "--show-toplevel"]).trim()) !== shared) throw new Error("Shared checkout must name its Git toplevel.");
+  requiredInputs = readInputs(options.get("--inputs"));
   if (command !== "preflight" && command !== "clean-head") throw new Error("Unknown command. Use preflight or clean-head.");
   const recordPath = options.get("--record");
   if (!recordPath || !isAbsolute(recordPath)) throw new Error("Checkout record absolute path is required.");
@@ -56,6 +52,7 @@ try {
     if (!sha || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha) || git(repo, ["rev-parse", "--verify", `${sha}^{commit}`]).trim() !== sha) throw new Error(`A full valid ${key.slice(2)} commit SHA is required.`);
     record[field] = sha;
   }
+  refuseCommittedOverlap(git(repo, ["ls-tree", "-r", "-z", "--name-only", "--full-tree", record.head_sha!]).split("\0").filter(Boolean), requiredInputs);
   const diff = git(repo, ["diff", "--no-ext-diff", "--no-textconv", `${record.base_sha}...${record.head_sha}`]);
   record.patch_id = git(repo, ["patch-id", "--stable"], Buffer.from(diff)).trim().split(/\s+/)[0];
   const common = realpathSync(git(repo, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim());
@@ -72,6 +69,7 @@ try {
       if (headCommon === common || headCommon === sharedCommon) throw new Error("ovnfs head checkout must have a private Git directory.");
     } else throw new Error("Unknown checkout backend.");
     if (git(worktree, ["rev-parse", "HEAD"]).trim() !== record.head_sha || git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"]).trim() !== "HEAD") throw new Error("Head worktree must be detached at the requested head SHA.");
+    if (!Array.isArray(checkout.inputs) || JSON.stringify(checkout.inputs) !== JSON.stringify(requiredInputs)) throw new Error("Head checkout must be constructed with the same declared --inputs through vstack-worktree.");
     function validateTracked(worktree: string) {
       git(worktree, ["diff", "--exit-code", "--no-ext-diff", "--no-textconv", "--cached", record.head_sha!, "--"]);
       for (const entry of git(worktree, ["ls-files", "--stage", "-z"]).split("\0").filter(Boolean)) {
@@ -95,7 +93,11 @@ try {
     const others = () => git(worktree, ["ls-files", "--others", ...excludeArgs, "-z"]).split("\0").filter(Boolean);
     validateTracked(worktree);
     const tracked = new Set(git(worktree, ["ls-files", "-z"]).split("\0").filter(Boolean));
-    const rawOthers = git(worktree, ["ls-files", "--others", "-z"]);
+    for (const input of requiredInputs) {
+      if (!existsSync(resolve(worktree, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
+    }
+    const runtimeExclusions = [".", ...requiredInputs.map(input => `:(exclude,literal)${input}`)];
+    const rawOthers = git(worktree, ["ls-files", "--others", "-z", "--", ...runtimeExclusions]);
     if (rawOthers) {
       const check = Bun.spawnSync(["git", "-C", worktree, "check-ignore", "--verbose", "--non-matching", "-z", "--stdin"], {
         stdin: Buffer.from(rawOthers), env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
@@ -111,19 +113,19 @@ try {
         if (source && !isAbsolute(source) && source !== ".git/info/exclude" && !tracked.has(source)) throw new Error(`Untracked ignore rules in ${JSON.stringify(source)} could hide carried source. Establish a head tree without those rules.`);
       }
     }
-    const unwanted = others();
+    const unwanted = others().filter(name => !declaredInput(name, requiredInputs));
+    const unwantedSet = new Set(unwanted);
+    const ignoredUndeclared = rawOthers.split("\0").filter(name => name && !unwantedSet.has(name));
+    if (ignoredUndeclared.length) throw new Error(`Undeclared ignored input ${JSON.stringify(ignoredUndeclared[0])} could hide carried source. Establish a committed head with only declared runtime inputs.`);
     for (const name of unwanted) {
       const stat = lstatSync(safeLeaf(worktree, name));
       if (!stat.isFile() && !stat.isSymbolicLink()) throw new Error(`Untracked nested repository or directory ${JSON.stringify(name)} cannot be cleaned safely.`);
     }
     for (const name of unwanted) { unlinkSync(safeLeaf(worktree, name)); removed.push(name); }
     validateTracked(worktree);
-    if (others().length) throw new Error("Untracked nonignored inputs remain in the head worktree.");
-    for (const input of requiredInputs) {
-      if (!existsSync(resolve(worktree, input))) throw new Error(`Required head-worktree input ${JSON.stringify(input)} is missing. Check worktree.clone and /skill:setup-vstack; do not install a plain-checkout fallback.`);
-    }
+    if (others().some(name => !declaredInput(name, requiredInputs))) throw new Error("Untracked nonignored inputs remain in the head worktree.");
   }
-  console.log(JSON.stringify({ ok: true, head_sha: record.head_sha, base_sha: record.base_sha, patch_id: record.patch_id, repo, shared, worktree, shared_excludes: excludes, removed }));
+  console.log(JSON.stringify({ ok: true, head_sha: record.head_sha, base_sha: record.base_sha, patch_id: record.patch_id, repo, shared, worktree, shared_excludes: excludes, inputs: requiredInputs, removed }));
 } catch (error) {
   record.notes.push(error instanceof Error ? error.message : String(error));
   if (removed.length) record.notes.push(`Removed untracked paths: ${JSON.stringify(removed)}`);

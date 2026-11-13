@@ -98,6 +98,8 @@ Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion
 
 The script applies all items to the bound Stage, or refuses all of them. Give a new question, Topic note, Result, or Result entry a `ref` (lowercase letters, digits, and hyphens) when another item names it. An item can name a ref from the same contribution, or an id from an earlier receipt. Name a Result entry as `<result ref or id>/<entry ref or id>`.
 
+To correct a finished Stage's Result or entry, publish ordinary replacement content and a `corrects` item together in a later Stage. Read [Correction fields](references/contributions.md) before writing the relation. The original stays in place with a warning and link. A closed Flow must be reopened first.
+
 Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the picker lost or never showed a question and no response is recorded, apply the own-run recovery rule: resubmit the same contribution to recover its receipt, then retry `ask` once with the same generated payload. A recorded cancellation, timeout, or empty response is not an infrastructure failure. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
 
 ## Validate without publishing
@@ -114,11 +116,11 @@ For example, an invalid option's gains can produce:
 
 The codes are `required_field`, `unknown_field`, `invalid_type`, `invalid_enum`, `invalid_union`, `too_few_items`, `too_many_items`, `invalid_length`, `out_of_range`, `invalid_value`, `invalid_reference`, and `invalid_json`. Correct every reported field, validate again, then submit the unchanged contribution. `submit` uses the same validator and returns the same diagnostics if the Flow and files have not changed.
 
-## Discover Result fields
+## Discover contribution fields
 
-Run `catalog` to list every Result shape and its one-line purpose. Run `describe <shape>` for its JSON field contract, or `describe <shape> --compact` for one line per field. These commands need no Flow binding, start no host, and write no Flow content.
+Run `catalog` to list every Result shape with its one-line purpose and every contribution kind. Run `describe <shape>` or `describe <kind>` for its JSON field contract. Add `--compact` for one line per field. For example, `describe round` includes questions and options, and `describe answer` includes responses and readings. These commands need no Flow binding, start no host, and write no Flow content. Without `--home`, `describe` and `catalog` run the installed runtime, so an older install lacks newer kinds until the plugin is updated.
 
-Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
+Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. Conditional contracts include `selection`, which says when each variant applies. Progress kinds with separate creation and update fields expose both variants. String items marked `expected: "non-empty string"` reject empty or whitespace-only values. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
 
 Compact lines show the field path, type, `required=true` or `required=false`, enum values, and applicable bounds. `[]` means an array item, `[*]` a record value, and `<name>` a union variant. A variant's required fields apply when that variant is selected. A field marked `oneOf` belongs to an exclusive required group even if its individual required flag is false.
 

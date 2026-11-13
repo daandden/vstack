@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Record conservative per-phase shadow reuse predictions beside fresh gate outcomes without skipping any validation."
+  ]
+}

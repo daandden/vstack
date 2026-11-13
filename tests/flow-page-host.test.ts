@@ -40,7 +40,7 @@ type Opts = { session?: string; stdin?: unknown; script?: string };
 const argv = (args: string[], w: World, o: Opts) => [process.execPath, o.script ?? SCRIPT, ...args, "--home", w.home];
 const envOf = (w: World, o: Opts) => ({
   ...ENV,
-  HOME: w.home,
+  HOME: join(root, "default-home"),
   PATH: w.path ?? ENV.PATH,
   VSTACK_FLOW_PORT: String(w.port),
   ...(w.idle !== undefined ? { VSTACK_FLOW_IDLE_SECONDS: String(w.idle) } : {}),

@@ -28,7 +28,7 @@ type World = ReturnType<typeof world>;
 
 type Run = { code: number; stdout: string; stderr: string; json: any };
 function run(w: World, args: string[], o: { session?: string; stdin?: unknown } = {}): Run {
-  const env = { ...ENV, HOME: w.home, VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) };
+  const env = { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) };
   const stdin = o.stdin === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(o.stdin));
   const r = Bun.spawnSync([process.execPath, FLOW_PAGE, ...args, "--home", w.home], { cwd: w.project, env, stdin, stdout: "pipe", stderr: "pipe" });
   let json: any;
@@ -211,7 +211,7 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
   const port = socket.port;
   socket.stop(true);
-  const host = (cmd: string[]) => JSON.parse(Bun.spawnSync([process.execPath, FLOW_PAGE, ...cmd, "--home", w.home], { cwd: w.project, env: { ...ENV, HOME: w.home, VSTACK_FLOW_PORT: String(port) }, stdout: "pipe", stderr: "pipe" }).stdout.toString());
+  const host = (cmd: string[]) => JSON.parse(Bun.spawnSync([process.execPath, FLOW_PAGE, ...cmd, "--home", w.home], { cwd: w.project, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) }, stdout: "pipe", stderr: "pipe" }).stdout.toString());
   const url: string = host(["show", "--flow", migrated.flow]).live.url;
   const content = await (await fetch(new URL("content", url))).json();
   host(["host", "stop"]);

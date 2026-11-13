@@ -319,7 +319,7 @@ function registerAddonSelection(pi: ExtensionAPI): void {
       const selection = selectionQueue.then(async () => {
         if (signal?.aborted) return;
         const request = preprocessTinyMessage(intent, INTENT_LIMIT);
-        const selected = request && catalog && ctx.agent.kind === "main"
+        const selected = request && catalog && ctx.agent.kind === "main" && holdsMattRun(ctx.sessionManager.getBranch(), mattSkills)
           ? await withDeadline(JUDGE_DEADLINE_MS, async judgeSignal => {
             if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
             const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
@@ -339,6 +339,16 @@ function registerAddonSelection(pi: ExtensionAPI): void {
       };
     },
   });
+  const activateTools = async (_event: unknown, ctx: ExtensionContext) => {
+    if (ctx.agent.kind !== "main") return;
+    const active = pi.getActiveTools();
+    for (const name of ["inject_principles", "inject_addons"]) {
+      if (!active.includes(name)) active.push(name);
+    }
+    await pi.setActiveTools(active);
+  };
+  pi.on("session_start", activateTools);
+  pi.on("session_switch", activateTools);
   pi.on("before_agent_start", async (event, ctx) => {
     const session = register(ctx);
     const manager = ctx.sessionManager;
@@ -357,9 +367,6 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     }
     const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
     const startsRun = header && mattSkills.has(header[1]!);
-    const active = pi.getActiveTools().filter(name => name !== "inject_principles" && name !== "inject_addons");
-    if (startsRun || holdsMattRun(manager.getBranch(), mattSkills)) active.push("inject_principles", "inject_addons");
-    await pi.setActiveTools(active);
     if (!startsRun) return;
     const build = header[1] === "implement" || header[1] === "implement-spec";
     return { message: {

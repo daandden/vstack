@@ -8,6 +8,7 @@ const ask = (id: string) => flow.value!.question.get(id);
 
 <template>
   <section :id="a.id" class="assumed grid gap-2.5" data-stop>
+    <CorrectionNotice :notice="a" />
     <span v-if="first" :id="`${stage}-assumed`" />
     <h2 v-html="inline(a.decision)" />
     <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-toned">

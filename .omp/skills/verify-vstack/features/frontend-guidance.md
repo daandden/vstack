@@ -34,27 +34,27 @@ Preconditions:
 
 ### Native behavior bracket
 
-1. Before changing the plugin, run a fresh main-session frontend task against a minimal working shipment form with a recipient dialog. Retain its original and resulting app, native reads, actions, and outcome. Record which applicable UI descriptions selected guidance and which references were actually read. A good baseline UI is not evidence of a quality regression.
-2. After changing the plugin, use the same starting app in a different directory and a fresh process. Send an ordinary task through the existing implementation entry, for example:
+1. Step `frontend-guidance-baseline`: Before changing the plugin, run a fresh main-session frontend task against a minimal working shipment form with a recipient dialog. Retain its original and resulting app, native reads, actions, and outcome. Record which applicable UI descriptions selected guidance and which references were actually read. A good baseline UI is not evidence of a quality regression.
+2. Step `frontend-guidance-main`: After changing the plugin, use the same starting app in a different directory and a fresh process. Send an ordinary task through the existing implementation entry, for example:
 
    ```json
    {"type":"prompt","message":"/skill:implement Improve this existing shipment frontend with a polished recipient dialog, useful validation, and clear completion feedback. Keep repeated keyboard use fast and touch use reliable. Use the existing stack and dependencies. This is a throwaway diagnostic with an agreed browser seam observed by the parent. Do the actual edits. No Flow, commit, branch, push, installation, or machine changes. Work in the main session without delegation. The parent owns browser verification and publication."}
    ```
 
-3. In another fresh process and identical starting app, request the same frontend outcome through a delegated vstack-worker. Require the existing role and its single-subagent form, pass the allowed tree, vstack root, and Scratch, and leave UI Utility skill names out of the worker brief. If the worker cannot start, stop that case and report why. Capture the actual worker transcript and file edits, not a coordinator's claim or a stub echo.
-4. In a separate fresh process, ask the existing implementation entry to change a command-line string normalizer to trim and lowercase a string. Retain the module execution and native read trace. Neither good-css nor the new UI guidance should load.
-5. Read actual tool executions and worker history. A loaded pointer alone is not application. Identify the resulting behavior that applies the guidance, such as instant keyboard opening, short pointer-only transitions, press feedback, focus restoration, cancellation, and nonmoving reduced-motion behavior. Preserve unexpected actions and unavailable checks rather than replacing them with a favorable retry.
+3. Step `frontend-guidance-delegated`: In another fresh process and identical starting app, request the same frontend outcome through a delegated vstack-worker. Require the existing role and its single-subagent form, pass the allowed tree, vstack root, and Scratch, and leave UI Utility skill names out of the worker brief. If the worker cannot start, stop that case and report why. Capture the actual worker transcript and file edits, not a coordinator's claim or a stub echo.
+4. Step `frontend-guidance-control`: In a separate fresh process, ask the existing implementation entry to change a command-line string normalizer to trim and lowercase a string. Retain the module execution and native read trace. Neither good-css nor the new UI guidance should load.
+5. Step `frontend-guidance-trace`: Read actual tool executions and worker history. A loaded pointer alone is not application. Identify the resulting behavior that applies the guidance, such as instant keyboard opening, short pointer-only transitions, press feedback, focus restoration, cancellation, and nonmoving reduced-motion behavior. Preserve unexpected actions and unavailable checks rather than replacing them with a favorable retry.
 
 ### Native motion review
 
 Use a separate runnable vanilla frontend with an empty dependency manifest, a pinned fixture baseline, and an uncommitted CSS change. Keep the fixture Git baseline outside the product checkout.
 
-1. Introduce a genuine defect such as a command palette's unconditional `900ms ease-in` entrance moving 80px from opacity zero. The fixture spec requires instant Control+K opening and reduced motion. Include an occasional pointer preview with a `180ms` ease-out inset clip-path transition guarded by `prefers-reduced-motion: no-preference`.
-2. Before changing the plugin, drive a fresh `/skill:code-review` of that fixture and retain its native history and browser observations. Record actual findings even if existing guidance already catches the defect. Missing review-animations coverage is not proof that the baseline approved bad motion.
-3. After the plugin change, start a new native process on the same starting fixture. Send `/skill:code-review Review the uncommitted app.css change against <fixture baseline SHA>. Spec source is <fixture>/spec.md. Be read-only. Skip blast radius by request. Assess keyboard palette entry and the existing pointer clip-path reveal. Use the existing axes, finding format, and delegated reviewers. The parent owns publication. No Flow, tracker, commit, installation, or machine changes. Every browser open uses app:{tern:false}; record backend/engine and retain ARIA and lossless WebP under <proof>.`
-4. Keep the expanded invocation, coordinator reads, actual `task` call, delegated Standards history, and returned findings. Both coordinator and delegated reviewer must reach review-animations and STANDARDS.md through existing review references. A catalog selection alone does not prove the delegated path.
-5. Observe Control+K entry, Escape, and rapid closing, then repeat with verified reduced motion. Retain the time, opacity, displacement, focus, and visible result. The review must issue an explicit blocking finding at the changed CSS location with an applicable standard and observed user impact. An advisory-only warning does not satisfy this case.
-6. With verified no-preference, use the pointer preview control and reverse it during interpolation. Retain the intermediate clip values, endpoints, enabled control, and immediate status/expanded state. Under reduced motion it should toggle instantly. The resulting review must explain why supported clip-path is nonblocking in this browser rather than applying a transform-and-opacity-only ban.
+1. Step `frontend-guidance-review-fixture`: Introduce a genuine defect such as a command palette's unconditional `900ms ease-in` entrance moving 80px from opacity zero. The fixture spec requires instant Control+K opening and reduced motion. Include an occasional pointer preview with a `180ms` ease-out inset clip-path transition guarded by `prefers-reduced-motion: no-preference`.
+2. Step `frontend-guidance-review-baseline`: Before changing the plugin, drive a fresh `/skill:code-review` of that fixture and retain its native history and browser observations. Record actual findings even if existing guidance already catches the defect. Missing review-animations coverage is not proof that the baseline approved bad motion.
+3. Step `frontend-guidance-review-changed`: After the plugin change, start a new native process on the same starting fixture. Send `/skill:code-review Review the uncommitted app.css change against <fixture baseline SHA>. Spec source is <fixture>/spec.md. Be read-only. Skip blast radius by request. Assess keyboard palette entry and the existing pointer clip-path reveal. Use the existing axes, finding format, and delegated reviewers. The parent owns publication. No Flow, tracker, commit, installation, or machine changes. Every browser open uses app: "chromium"; record backend/engine and retain ARIA and lossless WebP under <proof>.`
+4. Step `frontend-guidance-review-trace`: Keep the expanded invocation, coordinator reads, actual `task` call, delegated Standards history, and returned findings. Both coordinator and delegated reviewer must reach review-animations and STANDARDS.md through existing review references. A catalog selection alone does not prove the delegated path.
+5. Step `frontend-guidance-review-palette`: Observe Control+K entry, Escape, and rapid closing, then repeat with verified reduced motion. Retain the time, opacity, displacement, focus, and visible result. The review must issue an explicit blocking finding at the changed CSS location with an applicable standard and observed user impact. An advisory-only warning does not satisfy this case.
+6. Step `frontend-guidance-review-preview`: With verified no-preference, use the pointer preview control and reverse it during interpolation. Retain the intermediate clip values, endpoints, enabled control, and immediate status/expanded state. Under reduced motion it should toggle instantly. The resulting review must explain why supported clip-path is nonblocking in this browser rather than applying a transform-and-opacity-only ban.
 
 Verify media settings with `matchMedia` before each branch. If a convenience emulation call does not apply reduced motion, use the actual browser's media-emulation interface and retain the failed attempt separately. Do not mistake a harness timeout for an application defect. Interpolation and reversal do not prove GPU execution, paint cost, or every engine's support. Read the fixture's actual package manifest before making library claims; a dependency-free fixture validates native CSS behavior, not Motion or Base UI APIs.
 
@@ -63,16 +63,16 @@ Retain the review's existing Standards, Spec, and Blast radius states. The two a
 
 ### Browser observations
 
-Serve each resulting fixture with its existing runtime. Open every verification tab with a unique name, `app: { tern: false }`, and an explicit viewport. Record the returned backend and engine. Apply that option to diagnostics, retries, and delegated opens too.
+Serve each resulting fixture with its existing runtime. Open every verification tab with a unique name, `app: "chromium"`, and an explicit viewport. Record the returned backend and engine. Apply that option to diagnostics, retries, and delegated opens too.
 
-- Observe both baseline and green main-session UIs and the delegated UI. Use real controls to open, validate, submit, cancel, and reopen the form. Check that completion feedback is visible and cancellation does not produce a false completion.
-- Exercise keyboard focus and Escape, rapid open/close reversal, and reduced motion. Record computed timing when it supports the interaction observation, not instead of using the UI.
-- At a narrow viewport, observe overflow, target sizes, and the whole action row. Browser emulation proves that scenario, not physical-touch hardware or another engine.
-- Retain each ARIA snapshot and a full-resolution lossless WebP using the capture procedure in `../SKILL.md`. Close only the tabs and servers this run owns.
+- Step `frontend-guidance-browser-form`: Observe both baseline and green main-session UIs and the delegated UI. Use real controls to open, validate, submit, cancel, and reopen the form. Check that completion feedback is visible and cancellation does not produce a false completion.
+- Step `frontend-guidance-browser-keyboard`: Exercise keyboard focus and Escape, rapid open/close reversal, and reduced motion. Record computed timing when it supports the interaction observation, not instead of using the UI.
+- Step `frontend-guidance-browser-narrow`: At a narrow viewport, observe overflow, target sizes, and the whole action row. Browser emulation proves that scenario, not physical-touch hardware or another engine.
+- Step `frontend-guidance-browser-capture`: Retain each ARIA snapshot and a full-resolution lossless WebP using the capture procedure in `../SKILL.md`. Close only the tabs and servers this run owns.
 
 ### Source and future-source proof
 
-Prepare the normal cache clones named in `pins.yaml`, including `emil`. The helper needs access to `emil`'s configured `origin` to materialize the exact Pin and its blobs without filling the real blobless cache. Run these public interfaces from `$CHECKOUT`:
+Step `frontend-guidance-source`: Prepare the normal cache clones named in `pins.yaml`, including `emil`. The helper needs access to `emil`'s configured `origin` to materialize the exact Pin and its blobs without filling the real blobless cache. Run these public interfaces from `$CHECKOUT`:
 
 ```sh
 bun scripts/check-register.ts --json --upstreams "$CACHE"
@@ -90,7 +90,7 @@ The source bootstrap is now committed. Normal target checks and preparation read
 
 ### Distribution and final gates
 
-Use the public package command from `$CHECKOUT/plugin`, with output and cache under the proof run:
+Step `frontend-guidance-package`: Use the public package command from `$CHECKOUT/plugin`, with output and cache under the proof run:
 
 ```sh
 npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$VERIFY_RUN_DIR/npm-cache"
@@ -98,7 +98,7 @@ npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$
 
 Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
-Run applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all twelve UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; improve-animations/AUDIT.md and PLAN-TEMPLATE.md; and choreograph/RECIPES.md. Include animation-performance, find-animation-opportunities, remove-animations, and gestures in the inventory. Interrogate must also be listed and command-visible, without an Addon catalog key. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native or browser prerequisite stays unavailable or unmet even when mechanical gates pass.
+Step `frontend-guidance-gates`: Run applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all twelve UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; improve-animations/AUDIT.md and PLAN-TEMPLATE.md; and choreograph/RECIPES.md. Include animation-performance, find-animation-opportunities, remove-animations, and gestures in the inventory. Interrogate must also be listed and command-visible, without an Addon catalog key. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native or browser prerequisite stays unavailable or unmet even when mechanical gates pass.
 
 ## Gotchas
 

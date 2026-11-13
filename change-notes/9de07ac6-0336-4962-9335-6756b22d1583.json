@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Reject passing Verdicts when caller-required proof steps are missing, failed, or unavailable. Match structured per-step evidence through the shared implement and ship checker while retaining isolation, identity, notes, open-question, refusal, and cleanup guards. Preserve failed attempts separately from corrective follow-ups and update Verify-skill authoring guidance (#467).",
+    "Keep the required-proof rules in the Verdict record reference, with implement, the Verifier, and Verify-skill setup and maintenance pointing to it."
+  ]
+}

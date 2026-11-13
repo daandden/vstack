@@ -17,8 +17,13 @@ const idle = Number(values.idle) * 1000;
 if (!home || !Number.isInteger(port) || !Number.isFinite(idle) || idle <= 0) throw new Error("host needs --home, --port, and positive --idle");
 const secret = secrets(home);
 const instance = randomBytes(16).toString("hex");
+const managed = process.env.VSTACK_FLOW_WORKER === "1";
 const reader = readerBundle();
 const hostVersion = version(reader);
+const readerGeneration = createHash("sha256");
+for (const [path, bytes] of reader) readerGeneration.update(path).update(bytes);
+const readerVersion = readerGeneration.digest("hex");
+const readerShell = new TextDecoder().decode(reader.get("index.html")).replace("</head>", `<meta name="flow-host-generation" content="${instance}"><meta name="flow-reader-generation" content="${readerVersion}"></head>`);
 const origin = originOf(port);
 let active = 0;
 let last = Date.now();
@@ -202,7 +207,7 @@ async function route(req: Request): Promise<Response> {
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : reader.get("index.html")!, 200, {
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : readerShell, 200, {
     "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
     "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
   });
@@ -213,7 +218,7 @@ async function route(req: Request): Promise<Response> {
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/presence") return response(req.method === "HEAD" ? null : JSON.stringify({ presences: presences(key, id) }), 200, { "Content-Type": "application/json" });
   if (m[4] === "/versions") return response(req.method === "HEAD" ? null : JSON.stringify({
-    revision: s.revision, observationVersion: observationVersion(observations(folder, key, s)),
+    revision: s.revision, observationVersion: observationVersion(observations(folder, key, s)), hostGeneration: instance, readerGeneration: readerVersion,
   }), 200, { "Content-Type": "application/json" });
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
@@ -235,17 +240,17 @@ async function route(req: Request): Promise<Response> {
 function shutdown() {
   if (stopping) return;
   stopping = true;
-  if (record(home)?.instance === instance) rmSync(recordPath(home), { force: true });
-  server.stop(true);
+  if (!managed && record(home)?.instance === instance) rmSync(recordPath(home), { force: true });
+  server?.stop(true);
   viewer.stop(true);
   clearInterval(idleTimer);
   process.exit(0);
 }
-let server: ReturnType<typeof Bun.serve>;
+let server: ReturnType<typeof Bun.serve> | undefined;
 let viewer: ReturnType<typeof Bun.serve>;
 try {
   server = Bun.serve({
-    hostname: "127.0.0.1", port, idleTimeout: 0,
+    hostname: "127.0.0.1", port: managed ? 0 : port, idleTimeout: 0,
     async fetch(req) {
       active++;
       try { return await route(req); }
@@ -268,7 +273,9 @@ try {
   process.exit(1);
 }
 const metadata: HostRecord = { pid: process.pid, port, version: hostVersion, started: new Date().toISOString(), instance, bun: Bun.version };
-writeAtomic(recordPath(home), JSON.stringify(metadata));
+if (managed) process.send?.({ port: server.port, version: hostVersion, instance, readerGeneration: readerVersion });
+else writeAtomic(recordPath(home), JSON.stringify(metadata));
 const idleTimer = setInterval(() => { if (active === 0 && !observing() && Date.now() - last >= idle) shutdown(); }, Math.min(1000, idle / 4));
+if (managed) process.on("disconnect", shutdown);
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
