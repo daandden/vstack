@@ -48,6 +48,8 @@ Finish the occurrence-to-target table before editing. For every occurrence under
 
 Apply the other planned changes without changing unrelated text or user edits. Repair incoming history links even though their old labels stay unchanged. The outgoing links repaired during the archive phase already point at historical destinations; do not redirect those to replacements. Include incoming links from pre-existing run-time archive folders and links between files moved in this run.
 
+Never add, remove, or reword history entries, including CHANGELOG entries, research notes, and archived ADR bodies. In history, change only link destinations.
+
 Resolve every affected link outside report-only paths from its final citing location. Check that the file exists and any fragment reaches its intended provision. Search again for each original path, archived number, and archived dated stem. Account for every remaining occurrence as history, explicit provenance, a reported live citation with no replacement, a report-only row, or an unresolved failure. A live citation with a replacement is complete only when its full stem and link both name the replacement. Record pre-existing broken links separately from failures introduced by this run.
 
 Pass the citation table, report-only rows, live citations with no replacement, unresolved ambiguities, and link-check diagnostics to independent checks and the final report. Citation repair is complete only when every occurrence has an outcome and every affected link outside report-only paths resolves, apart from explicitly recorded pre-existing failures. Keep unresolved rows visible rather than describing the cleanup as complete.

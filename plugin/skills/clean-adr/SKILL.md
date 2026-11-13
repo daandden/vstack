@@ -65,6 +65,8 @@ Validate the plan with read-only file checks before execution. Check that every 
 
 ## 4. Archive and write what holds
 
+Immediately before creating each replacement ADR file, recheck its stem against active ADRs, ADRs anywhere under that directory's `archive/`, and other planned stems in that directory. On a clash, pick a different slug and update the plan and references before writing.
+
 Write the planned replacement ADRs at their real target paths. Create each planned run-time archive folder exclusively, refusing an existing destination before moving files into it. Move each planned original to its own directory's new archive folder. Preserve its historical body, including existing supersession quotes. Add exactly one new archive banner above it, using the folder's run-time stamp:
 
 ```md
@@ -126,6 +128,8 @@ List all remaining problems affecting that ADR in its banner. For a missing prov
 ## 6. Report the run
 
 Account for every inventoried ADR. Report holding ADRs left in place, archived paths and their replacements or retirement reasons, new stems, unresolved verdicts, operation failures, and pre-existing broken links. Include citation repair and independent-check outcomes, with skipped phases and missing proof explicit. Link the saved raw scout results, provision coverage, link map, and command diagnostics. In a Flow, use table Results for ADR outcomes and a Document Result for failures that have no ADR row.
+
+Keep the report in the Flow or chat and Scratch, not in project files.
 
 Report every citation or link under report-only paths with its file, line, and new target. List live citations with no replacement and their archived targets separately. Include applied citation repairs, unresolved source or history classifications, and affected link-check failures. Distinguish protected non-edits from failures and pre-existing broken links.
 

@@ -28,7 +28,7 @@ Cite a new ADR by its full filename stem without `.md`, such as `ADR 20261111-ev
 
 If two branches choose the same date and slug, the branch that lands second chooses a different slug before landing. Update that branch's references to its new stem. Do not rename the landed record or reserve every name with a push.
 
-Choose a stem unused by active ADRs and ADRs anywhere under the source directory's `archive/`. On a clash, pick a different slug.
+Immediately before creating each ADR file, recheck that its stem is unused by active ADRs and ADRs anywhere under the source directory's `archive/`. On a clash, pick a different slug and update planned references before writing.
 
 Existing numbered ADRs keep their filenames and citations.
 
