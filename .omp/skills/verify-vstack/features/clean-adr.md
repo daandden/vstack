@@ -53,6 +53,17 @@ For each fixture, create `C/domain.md` listing all of that case's ADR directorie
 
 Create `$F/docs/protocol.md` containing a `# Protocol` heading. For `contexts`, write `$F/GLOSSARY-MAP.md` linking Orders and Billing glossaries. Each context glossary names its ADR directory and `settings.json` as the shared configuration. The system ADR directory remains separate. For `private`, also write `$F/.git/vstack/domain/GLOSSARY.md` naming its private ADR directory and `$F/GLOSSARY.md` naming the tracked one.
 
+Before the baseline in every shared-seed fixture, write `$F/docs/current-policy.md` as an ordinary project domain document with these accepted current policies:
+
+```md
+# Current cache policy
+
+The fixed ten-entry cache cap is retired. Cache capacity comes from configuration.
+The seven-day retention decision remains accepted so devices can reconnect after a week offline.
+```
+
+Link this document from `C/domain.md` and each seeded glossary, including both Private-mode domain namespaces and every context. Apply this seed to protected, direct, and dated-source citation fixtures as well. It establishes policy acceptance, not runtime enforcement, measured memory limits, physical offline durations, or deployed receiver capabilities. Keep the settings and original ADR bodies and rationales unchanged. The evidence-poor checks must still leave those unsupported claims open.
+
 Seed each selected ADR directory by running this command with `A` set to its absolute path. It writes fixture data only:
 
 ```sh
@@ -164,7 +175,7 @@ Step `clean-adr-citation-protected-evidence`: Compare each protected file with i
 
 Step `clean-adr-citation-direct`: Repeat from fresh Standard and Private fixtures with the `clean-adr report-only paths` line omitted. Do not remove it only after a protected run, because that would test an already-cleaned ADR set. Require direct live-citation repair and historical-link retargeting in `gated/policy.md` and the private `gated.md` as well. Plain historical citations still keep their bytes. Save the fresh baselines and separate real-model transcripts. An empty list has the same direct-edit meaning.
 
-Step `clean-adr-citation-dated-source`: In a separate dated-source case, use a dated filename for one source ADR and seed incoming live and historical citations of its full stem. Require the same replacement, historical-wording, and archived-link rules.
+Step `clean-adr-citation-dated-source`: In a separate fresh Standard citation fixture, rename the cache source `0002-cache.md` to `20261101-cache-policy.md` before the baseline. Use the accepted current policy seed above. Replace every incoming cache source citation with its full stem `20261101-cache-policy` and update its destination, including live Markdown and HTML links, `0006-journal.md`, protected paths, CHANGELOG, and archive provenance. Seed plain and linked historical citations of that full stem too. Require the dated cache source to move into the new run-time archive folder and a replacement to retain seven-day retention without the retired ten-entry cap. Prove that live labels name the replacement by full stem, history keeps the original dated identifier, and CHANGELOG changes only its link destination. Inspect the dated source's archive banner and the replacement's `Replaces` link in both directions. A retained or unsettled dated cache source fails this step because it does not exercise dated-source replacement. Do not report that missing exercise as unavailable.
 
 Step `clean-adr-archived-stem-collision`: At an operational plan checkpoint, seed a historical dated file with a proposed replacement stem anywhere under that directory's archive. Resume and require a different replacement slug without overwriting that history. Retain the collision, refreshed plan, validation diagnostics, and untouched historical bytes.
 
