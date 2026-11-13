@@ -163,13 +163,19 @@ The Update to Matt `v1.3.2`, pstack `c742dd61706fbacc1b95f1a20b7b988cf096ce6c`, 
 
 Selection-only trigger evals across the twelve UI descriptions and interrogate, and live Addon judge checks, remain optional Costly seam tests requiring explicit approval. Unrun evals leave selection overlap unproven without blocking the mechanical Update gates. Do not infer native instruction following from a load smoke.
 
-### Frontend stack Utility
+### Web stack Utility
 
 `web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose Vue and Nuxt library selection and requested setup. It adds no Addon catalog key or automatic judge selection. The Flow reader's Nuxt UI and Tailwind choice remains application-specific under ADR 0072.
 
 The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. Its conditional recipes cover framework and manager choice, copied shadcn-vue controls adapted to UnoCSS, UnoCSS icons, and TanStack Form with omptype. Optional state and query tools stay conditional.
 
-Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native baseline and consumer behavior, generated Nuxt and Vue with Vite applications, actual controls and transformed form output, repeated CSP validation, and public packaging. Prose wording assertions are not a substitute for those observations.
+Fullstack work curates Nuxt server routes on Cloudflare Workers with Static Assets, NuxtHub D1, and conditional Better Auth through `@nuxtjs/better-auth`. KV and R2 stay task-dependent. Setup ends with local D1 and browser proof in Nuxt dev and built workerd, plus a written deploy checklist. It makes no Cloudflare account request.
+
+Only an explicit deploy request enters the [confirmed Cloudflare procedure](../plugin/skills/web-fullstack/references/cloudflare-deploy.md#deploy-only-on-explicit-request). It confirms the account before account discovery, then each login, resource creation, secret write, remote D1 migration, and deploy. The remote migration is separate from and precedes the final app deploy. `wrangler secret put` immediately deploys a Worker version and can create the Worker, so its confirmation names those effects. The user types secret values into a private terminal, outside chat, the Flow, and evidence. Deployment runs from the user's machine to one production Worker, without Workers Builds, CI, staging, or previews.
+
+Sign-in apps set nonsecret Worker runtime `NUXT_PUBLIC_SITE_URL` to the live origin before deploy, including on `workers.dev`. The procedure checks the live site and auth session endpoint afterwards. Production sign-up or sign-in needs separate confirmation. A refused or failed step stops deployment and reports partial outcomes. Remote migration and deploy retries need new confirmation. Missing account access stays a prerequisite, not a host substitution. The [fullstack ADR](adr/20261113-web-fullstack-curates-nuxt-on-cloudflare.md) records the stack and deploy boundary.
+
+Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native consumers, generated frontend and fullstack apps, browser behavior, accountless confirmation stops, and public packaging. Its optional throwaway Worker and D1 deploy requires approval for that verification and confirmed teardown. Without approval, name the account-side proof gap. Prose wording assertions are not a substitute for those observations.
 
 
 ## Decision register

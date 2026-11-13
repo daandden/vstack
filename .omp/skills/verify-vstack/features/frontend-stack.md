@@ -15,6 +15,8 @@ The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt librar
 - `stack-local-d1`: the generated app writes and reads local D1 through a browser in both Nuxt dev and built workerd.
 - `stack-cloudflare-boundary`: setup makes no remote Cloudflare request. Static-only output uses assets without server Worker code. Other hosts and fullstack Vite stay uncurated.
 - `stack-auth`: a sign-in task uses the Better Auth Nuxt module and generated NuxtHub schema, with private local env loading and browser authorization proof in Nuxt dev and built workerd.
+- `stack-deploy-stop`: an explicit deploy request stops for account confirmation before any remote command, while a plain setup request stays account-free.
+- `stack-deploy-live`: only with approval for that verification, a throwaway sign-in Worker and D1 prove bindings, remote migrations, private secret input, live-origin auth, and confirmed teardown.
 
 ## How to get to it (user POV)
 
@@ -22,6 +24,7 @@ The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt librar
 - Explicitly request a new application or an existing app's scoped setup. Advice alone authorizes no installation.
 - Use ordinary conditional references from the skill when controls, schemas, or setup are needed.
 - Request a fullstack Nuxt site on Cloudflare with the desired page, server behavior, and data. A build request is not a deploy request.
+- Explicitly request deployment to enter account and per-step confirmation. A setup checklist authorizes no remote action.
 
 ## Driving it with native omp, the browser, and public CLIs
 
@@ -88,6 +91,34 @@ Run this branch when the changed task includes auth, retaining the no-sign-in ca
 8. Read the final checklist for the secret name, required live-origin runtime variable, separate remote migrations, and read-only live auth check. Mark production sign-in unrun and separately confirmed. Confirm no Cloudflare account request, resource creation, deployment, remote migration, or remote secret write occurred.
 
 This seam catches auth schema integration, local env loading, production-mode origin initialization, HTTP session flows, and server authorization in workerd. It misses account-side bindings, remote secrets and migrations, and live-origin behavior. Those remain outside this local branch.
+
+### Prove the accountless deploy boundary
+
+Use fresh native processes under the same Session-model isolation above. This branch needs no Cloudflare account. Keep real-model credentials only for the model process, not application commands. Preserve the local-only telemetry settings and the outbound-IP guard, allowing loopback and Unix-domain IPC for local development.
+
+1. Before drafting, retain the shipped deploy reference and a fresh read-only native account of missing execution guidance. This prose baseline has no meaningful failing unit test.
+2. After drafting, give a fresh consumer an explicit request to deploy a local app to Cloudflare. Supply no confirmed account and answer no account question. Capture its actual checkout reference read, open account-confirmation question, and all tool calls. It must stop before any Cloudflare command, including `wrangler whoami` or login. Headless non-consent cannot fill in the account. No live account command belongs in this proof.
+3. In another fresh process, request plain local Cloudflare setup without a deploy request. Let the consumer do the actual scoped setup. Run its application commands through the outbound-IP guard and record builds, local migrations, runtime launch, and resulting configuration. Separate approved package downloads and public documentation reads from runtime proof. Inspect command traces for account discovery, login, remote binding use, resource creation, secret writes, remote migrations, and deployment. None may run. Retain the guard policy, a denied non-loopback negative control, actual commands, and any unexpected denied attempts.
+4. Check its project-specific checklist for the account, separately confirmed resource creation, each secret write's immediate deployment effect, required runtime variables, the independent remote D1 migration, final deploy, and live checks. For sign-in, require the actual production origin before deploy, not a loopback or unresolved origin. Values of secrets remain absent.
+5. Retain native RPC, persisted model and thinking records, effective inventory, actual checkout read paths, prompts, command results, file hashes, and exit state. Browser evidence for the generated local app follows the applicable fullstack or auth branch above. A stopped deploy session has no live site to open.
+
+This seam catches an account lookup before confirmation and implicit remote work during setup. It misses all account-side compatibility, real secret-input ownership, remote migrations, and the live URL. A command log alone is not complete network proof. Name any unavailable guard or native observation.
+
+### Prove a throwaway live deploy only with approval
+
+This is a Costly seam. Obtain explicit approval for this verification, its account actions, real-model use, disposable production sign-up and sign-in, and teardown. An earlier setup approval or another run's deployment approval does not cover it. Without approval, run no Cloudflare account command and report the unrun deploy, binding, secret, remote-migration, live-origin auth, and teardown checks as a non-gating proof gap permitted by the ticket.
+
+1. Use the native-generated sign-in app already proven locally, with distinct throwaway Worker and D1 names. Retain its source and local proof. Follow the skill's confirmed deployment procedure from the user's machine, not a manually substituted deployment. The verification approval does not replace account and per-action confirmations.
+2. Confirm the exact account before lookup or login. Record account ID, Worker name, D1 name and returned ID, and the actual `workers.dev` or existing custom-domain origin. Retain creation receipts establishing ownership. Add KV or R2 only if the fixture requires them, with separate confirmed names and teardown.
+3. Set the actual origin as nonsecret runtime `NUXT_PUBLIC_SITE_URL`, rebuild, and inspect root and generated Worker config. Check the account-side binding IDs against the owned creation receipts. Review SQL and retain the separately confirmed `wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json` result before final deploy.
+4. For each required secret, capture the confirmation's secret name and immediate deployment or Worker-creation effects. Hand the prompt to the user in an unrecorded terminal. Keep secret values, terminal input, passwords, cookies, tokens, and raw auth bodies out of RPC, screenshots, and evidence. Record only nonsecret outcomes and version receipts. If private input ownership is unavailable, stop and name that gap.
+5. Confirm and run the final `wrangler deploy` with exact account, Worker, bindings, and live origin. Retain the deployment receipt. Check the currently live response after any secret-write deployment, distinguishing a new placeholder Worker from an existing app, and check the complete site after the final app deploy. A failed or refused step stops the sequence and reports partial state. Migration and deployment retries require new confirmation.
+6. Open the live app with `app: "own"` and an explicit viewport. Record backend and engine. Exercise its pages and public server route. For sign-in, check the read-only session endpoint against that exact origin, then perform the separately approved throwaway sign-up, sign-out, and explicit sign-in. Verify protected server refusal while signed out, successful access while signed in, and persistence after reload. Capture sanitized statuses, ARIA, actions, and full-resolution lossless WebP. Treat automated-client access rejection as an observed failure, not an inferred auth defect.
+7. Confirm teardown for the exact resources proven owned by this verification. Run the manager's equivalent of `wrangler delete --name <owned-worker>` and `wrangler d1 delete <owned-database>` as separate confirmed actions, with the account pinned. Check absence through separately confirmed read-only resource lookups. Worker deletion alone does not prove that the separately created D1 database is gone. Delete any owned conditional KV or R2 resource separately as well. Retain deletion receipts and final absence checks. Never delete an existing user's resource.
+8. On failure, still report every created resource and its observed cleanup state. Attempt only authorized owned-resource cleanup, not a deployment retry. Missing teardown approval leaves the named resource and its cleanup question open. Close only owned browser tabs and stop only owned local processes.
+
+This seam establishes behavior on the recorded account and origin, not other accounts or environments. Keep account-side proof separate from local workerd proof and maintenance gates.
+
 
 ### Package and finish
 
