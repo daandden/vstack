@@ -22,7 +22,7 @@ Private mode reconciles native project MCP JSON into one private shared file, li
 
 Preconditions: `bun`, `omp`, and configuration-hook-capable Git 2.54 or later are on the creator's PATH. Use a supplied checkout and a new evidence directory. No credentials or network are needed. The tests check successful Git prerequisites explicitly and use a deterministic unsupported executable boundary. They initialize repositories with an empty Git template instead of depending on installation-template files.
 
-1. Run the production-process tests from `CHECKOUT`:
+1. Step `private-mcp-tests`: Run the production-process tests from `CHECKOUT`:
 
    ```sh
    bun test --timeout 30000 tests/setup-vstack-private-mcp.test.ts tests/setup-vstack-project.test.ts
@@ -30,7 +30,7 @@ Preconditions: `bun`, `omp`, and configuration-hook-capable Git 2.54 or later ar
 
    They create and remove disposable repositories and homes. Inspect the resulting JSON, backups, absolute symlinks, local exclusion bytes, actual installed-hook execution, and exit codes. A clean test run covers the reconciliation and hook cases above, not omp's cloning implementation or the model's consent reasoning.
 
-2. Run the real omp helper against the supplied checkout:
+2. Step `private-mcp-clone`: Run the real omp helper against the supplied checkout:
 
    ```sh
    bun "$SKILL_DIR/scripts/private-mcp.ts" "$CHECKOUT" "$VERIFY_RUN_DIR/private-mcp-clone"
@@ -38,7 +38,7 @@ Preconditions: `bun`, `omp`, and configuration-hook-capable Git 2.54 or later ar
 
    The helper enables ignored-file cloning only in its disposable HOME, creates a disposable repository, installs the production hook, and calls the real `omp worktree add`. On macOS it separately records `/usr/bin/git`'s actual identity and capability. When that Git is unsupported, it requires an incomplete apply with no configuration writes. It does not assume Apple Git is always unsupported. Require `summary.json` to have `ok: true`. Require the captured `Cloned from ... via ...` output. A plain-checkout fallback fails this proof.
 
-3. Read the numbered command records and `summary.json`. They retain each command, cwd, stdout, stderr, exit code, creator versions, main and cloned link identities, absolute targets, shared edits observed through both links, and the conflict's preserved bytes and checkout. The unrelated fixture hook creates that conflict before the owned hook runs. The expected native failure status is 2 with the inspected omp version. The helper deletes only its own disposable HOME and repositories after retaining proof.
+3. Step `private-mcp-records`: Read the numbered command records and `summary.json`. They retain each command, cwd, stdout, stderr, exit code, creator versions, main and cloned link identities, absolute targets, shared edits observed through both links, and the conflict's preserved bytes and checkout. The unrelated fixture hook creates that conflict before the owned hook runs. The expected native failure status is 2 with the inspected omp version. The helper deletes only its own disposable HOME and repositories after retaining proof.
 
 4. Preserve failed attempts and use a new evidence directory for another drive. If any command first reaches 180 seconds, stop further use of that seam and return its exact command and evidence for Costly seam approval.
 

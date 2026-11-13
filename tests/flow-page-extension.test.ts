@@ -20,7 +20,7 @@ function world(hostOff = false) {
   const project = join(home, "project");
   mkdirSync(project, { recursive: true });
   git(project, "init", "-q", "-b", "main");
-  const listener = Bun.serve({ port: 0, fetch: () => new Response("occupied") });
+  const listener = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
   const port = String(listener.port);
   listener.stop(true);
   const hosts: ReturnType<typeof fakeHost>[] = [];
@@ -29,7 +29,7 @@ function world(hostOff = false) {
     running++;
     try {
       const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
-        cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
+        cwd: project, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
         stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
       });
       const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
@@ -226,6 +226,7 @@ test("an ordinary ask links to its receipt question rather than the newest Stage
   await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "parallel"]);
   await publishQuestions(w, "parallel", "other");
   const current = await w.ok(["bound", "--session", "asked"]);
+  expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("asked");
   const ui = panelUI(h);
   const input = structuredClone(receipt.ask);
@@ -245,6 +246,7 @@ test("a multi-question picker links to its first asked question, not the first o
   await publishQuestions(w, "ordered", "earlier");
   const receipt = await publishQuestions(w, "ordered", "first", "second");
   const current = await w.ok(["bound", "--session", "ordered"]);
+  expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("ordered");
   const ui = panelUI(h);
   for (const questions of [receipt.ask.questions, receipt.ask.questions.toReversed()]) {
@@ -265,6 +267,7 @@ test("an ask with no question id in the bound Flow links to the bound Stage", as
   await w.ok(["open", "--title", "Unrelated Flow", "--skill", "implement", "--session", "foreign"]);
   const foreign = await publishQuestions(w, "foreign", "foreign-first", "foreign-second");
   const current = await w.ok(["bound", "--session", "fallback"]);
+  expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("fallback");
   const ui = panelUI(h);
   for (const [index, args] of [
@@ -285,6 +288,7 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   const w = setup();
   await w.ok(["open", "--title", "Question handoff", "--skill", "implement", "--session", "panel"]);
   const current = await w.ok(["bound", "--session", "panel"]);
+  expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("panel");
   const ui = panelUI(h);
   const lookups = holdLookups(h);
@@ -333,6 +337,8 @@ test("a late lookup from a closed picker never replaces the panel of a call that
   await w.ok(["open", "--title", "New Flow", "--skill", "implement", "--session", "reuse-b"]);
   const old = await w.ok(["bound", "--session", "reuse-a"]);
   const current = await w.ok(["bound", "--session", "reuse-b"]);
+  expect(old.live).toMatchObject({ state: "serving" });
+  expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("reuse-a");
   const ui = panelUI(h);
   const lookups = holdLookups(h);
@@ -358,6 +364,8 @@ test("native host approval shows the panel while its dialog is open and follows 
   await w.ok(["open", "--title", "Second approval", "--skill", "tune-llm-flow", "--session", "native-b"]);
   const first = await w.ok(["bound", "--session", "native-a"]);
   const second = await w.ok(["bound", "--session", "native-b"]);
+  expect(first.live).toMatchObject({ state: "serving" });
+  expect(second.live).toMatchObject({ state: "serving" });
   const h = w.host("native-a");
   const ui = panelUI(h);
   const order: string[] = [];
@@ -464,6 +472,7 @@ test("a dialog from an earlier ask never clears the panel of a newer ask", async
   await w.ok(["open", "--title", "Earlier ask", "--skill", "implement", "--session", "owner-a"]);
   await w.ok(["open", "--title", "Newer ask", "--skill", "implement", "--session", "owner-b"]);
   const newer = await w.ok(["bound", "--session", "owner-b"]);
+  expect(newer.live).toMatchObject({ state: "serving" });
   const h = w.host("owner-a");
   const ui = panelUI(h);
   let close!: () => void;
@@ -549,6 +558,7 @@ test("a disabled host shows its state in the panel with no model or session pres
 test("a main picker publishes presence and clears it on answer, cancellation, timeout, and failure", async () => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Picker presence", "--skill", "implement", "--session", "present"]);
+  expect(opened.live).toMatchObject({ state: "serving" });
   const receipt = await publishQuestions(w, "present", "first", "second");
   const h = w.host("present");
   const ui = panelUI(h);
@@ -603,6 +613,7 @@ test("a main picker publishes presence and clears it on answer, cancellation, ti
 test("a failed presence write never holds the picker or the panel", async () => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Independent picker", "--skill", "implement", "--session", "independent"]);
+  expect(opened.live).toMatchObject({ state: "serving" });
   const h = w.host("independent");
   const ui = panelUI(h);
   const exec = h.pi.exec;
@@ -635,6 +646,7 @@ test("a failed presence write never holds the picker or the panel", async () => 
 test("a down host never holds the native picker, and subagents write no presence", async () => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Main only", "--skill", "implement", "--session", "main-only"]);
+  expect(opened.live).toMatchObject({ state: "serving" });
   await w.ok(["open", "--flow", opened.flow, "--skill", "research", "--session", "main-only", "--agent", "child"]);
   const child = w.host("main-only", { kind: "sub", id: "child", name: "vstack-worker", depth: 1 });
   panelUI(child);
@@ -660,6 +672,7 @@ test("a down host never holds the native picker, and subagents write no presence
 test("a delayed old presence write never replaces a newer picker's presence", async () => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Presence ownership", "--skill", "implement", "--session", "owner"]);
+  expect(opened.live).toMatchObject({ state: "serving" });
   const receipt = await publishQuestions(w, "owner", "old", "new");
   const h = w.host("owner");
   const ui = panelUI(h);

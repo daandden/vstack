@@ -34,7 +34,7 @@ Preconditions:
 - Clear query. Choose `Clear search`. Run `control-notes browser click --role button --name "Clear search"`. The searchbox is empty and the `Recent notes` region replaces the result list.
 - CLI match. Search from the terminal. Run `control-notes cli -- notes search "quarterly" --format json`. Exit code `0` and stdout contain one object whose title is `Quarterly plan`.
 - CLI miss. Search for an absent value. Run `control-notes cli -- notes search "volcano" --format json`. Exit code `0` and stdout are `[]`.
-- Proof. Capture the populated result state. Run `control-notes browser snapshot --aria --path $VERIFY_RUN_DIR/search/results.aria.txt` and `control-notes browser screenshot --path $VERIFY_RUN_DIR/search/results.png`. Convert the PNG to lossless WebP as the README describes. Both artifacts identify Notes, the query, and `Quarterly plan`.
+- Proof. Capture the populated result state. Run `control-notes browser snapshot --aria --path $VERIFY_RUN_DIR/search/results.aria.txt` and `control-notes browser screenshot --path $VERIFY_RUN_DIR/search/results.png`. Both artifacts identify Notes, the query, and `Quarterly plan`.
 
 ## Gotchas
 

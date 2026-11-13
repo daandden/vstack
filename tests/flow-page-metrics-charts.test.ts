@@ -10,7 +10,7 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 function cli(args: string[], items?: unknown[]) {
   const p = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "01a1c256-24ed-7201-9841-ae02a7a0e4a2", "--agent", "impl-438"], {
-    cwd: root, env: { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" },
+    cwd: root, env: { PATH: process.env.PATH!, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
     stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   const stdout = p.stdout.toString();

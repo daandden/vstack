@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Replace the installed Flow host generation only after a complete candidate starts, while the last good generation keeps serving stable links."
+  ]
+}

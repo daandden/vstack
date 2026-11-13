@@ -37,9 +37,20 @@ Reasoning-led skill behavior is an exception to the stub-model isolation below. 
 
 The Tern plugin recipe uses `scripts/tern-verify`, ported from `tern-plugins`. It links only the checkout's `plugin/tern/vstack-flow` into a new config directory, with separate daemon and control sockets. Read `features/README.md`'s Tern baseline and `features/vstack-flow.md` for Launch, Doctor, Drive, Evidence, and Cleanup. Every Tern command uses the helper. A bare `tern` command can act on the user's working window.
 
+## Proof step IDs
+
+Every required proof step starts with the word Step, its ID in code formatting, and a colon. A caller copies the IDs it requires into `expected.json`, and the Verifier reports one `proof_steps` outcome per ID, as `skill://ship/references/verdict-record.md` describes. `features/README.md` defines the feature-step convention and the uniqueness check. This file owns four shared steps:
+
+- `reader-build`: Launch's reader build, when the change touches `reader/`.
+- `tests`: `bun run test` in `CHECKOUT`, as Gotchas says.
+- `doctor`: the Doctor check.
+- `cleanup`: every Cleanup item.
+
+Parent-versus-head comparisons are feature steps with their own IDs, such as `ticket-publication-parent-vs-head`.
+
 ## Launch
 
-Nothing builds at launch: the Flow reader is committed prebuilt. When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It generates and ships the bundle under `plugin/skills/flow-page/reader/`. The reader uses Nuxt UI, Tailwind utilities, and Catppuccin theme tokens, with base typography in Tailwind's base layer and no separate `reader.css`. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
+Nothing builds at launch: the Flow reader is committed prebuilt. Step `reader-build`: When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It generates and ships the bundle under `plugin/skills/flow-page/reader/`. The reader uses Nuxt UI, Tailwind utilities, and Catppuccin theme tokens, with base typography in Tailwind's base layer and no separate `reader.css`. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
@@ -83,7 +94,7 @@ Exit 0 prints `{"load_gate":"passed",...}` and writes it to `$VERIFY_RUN_DIR/plu
 
 ## Doctor
 
-Run Doctor first, and again whenever a result looks wrong. It is read-only.
+Step `doctor`: Run Doctor first, and again whenever a result looks wrong. It is read-only.
 
 ```sh
 bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
@@ -99,7 +110,7 @@ Each feature file in `features/` gives the exact commands and the proof for one 
 
 - Session behavior (skills, commands, tools, rules, agents): `scripts/drive.ts`, as in Launch. Make the stub model act as the agent with `--replies`. A `{"tool": ...}` reply makes omp run that tool for real, in the session, with the plugin loaded.
 - Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. For isolated CLI fixtures, pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Native enrollment instead uses its documented normal-HOME namespace. Do not use `realpath skill://...` here. That path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
-- Pages: open the page's URL in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. For the Flow page, that is the receipt's `live.url`. Read state with `tab.ariaSnapshot()` and act by role and name.
+- Pages: open the page's URL in the omp `browser` with `app: "chromium"` and a `viewport` of `{ width: 1280, height: 900 }`. For the Flow page, that is the receipt's `live.url`. Read state with `tab.ariaSnapshot()` and act by role and name.
 - Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `docs/maintainer.md` documents. Capture the command, stdout, stderr, and exit code.
 
 Keep every verification browser outside the user's working Tern window. Ordinary page checks use the explicit non-Tern backend on every open, including diagnostics, retries, recovery, and delegated verification. The Tern plugin recipe instead uses only its helper-owned isolated Tern window. Pass this policy in verification handoffs and inspect each open result to confirm the actual backend.
@@ -126,6 +137,8 @@ Set the working directory with the bash tool's `cwd` parameter, not with `cd`. O
 The model stub stands at the model-provider boundary. Scratch identity uses named process-boundary fault fixtures, and Private MCP verification uses an unrelated named-hook fixture to put a conflicting regular config into a newly cloned checkout. Both run the real production CLIs and Git. Never prove application behavior through `tests/support/extension-host.ts`, the extension factory called in-process, or another replacement of the component under test.
 
 ## Cleanup
+
+Step `cleanup`: Do all three items below.
 
 1. Close every browser tab this run opened, by the name you gave it: `await browser.tab("<name>").close()`.
 2. Run the cleanup script:
@@ -154,7 +167,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/figures.ts <checkout> <new evidence directory>`: renders the named figure inputs and refusals, retains raw CLI proof, and writes the browser consumer. Use `features/figure-render.md`.
 - `scripts/figure-audit.js`: evaluate its complete text in the figure consumer with `await tab.evaluate(await Bun.file(SKILL_DIR + "/scripts/figure-audit.js").text())`. It returns browser-computed paint and geometry checks.
 - `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures historical SVG, role-marked Mermaid, and a Document Mermaid code block in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
-- `scripts/figure-reader-audit.js`: evaluate its complete text in that live Flow after explicitly selecting Light or Dark. It checks seven 22% role fills, ordinary labels, border-only focus, step edges, and label outlines. Use `features/figure-render.md`.
+- `scripts/figure-reader-audit.js`: evaluate its complete text in that live Flow after explicitly selecting Light or Dark. It checks seven 22% role fills, ordinary labels, border-only focus, step edges, Base edge-label boxes, and cluster-label outlines. Use `features/figure-render.md`.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
 - `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 - `scripts/frontend-maintenance.ts <checkout> <new evidence directory> <upstream cache>`: drives the public register and maintenance CLIs with a deterministic future-source fixture, preserving the real Pin and local adaptations. Use `features/frontend-guidance.md`.
@@ -164,7 +177,7 @@ All paths are relative to `SKILL_DIR`.
 
 - A drive starts a new omp process, so it sees the plugin files as they are on disk now, uncommitted edits included. Your own session does not.
 - `omp plugin link` in the run's home replaces the link each drive. To compare two checkouts, use two run dirs.
-- Run tests with `bun run test`, or pass `--timeout 30000` when naming files. Bun's default 5000 ms timeout fails slow tests such as `tests/clean-wt.test.ts` that pass under the repo's declared command.
+- Step `tests`: Run tests with `bun run test`, or pass `--timeout 30000` when naming files. Bun's default 5000 ms timeout fails slow tests such as `tests/clean-wt.test.ts` that pass under the repo's declared command.
 - The stub model does not think. It answers with `--replies` in order, one per model request. A tool call needs a second reply for the turn after the tool result.
 - Startup tool-routing compression requests are logged but do not consume `--replies`. The helper recognizes only tool-less requests whose user text starts with `Compress into one routing hint`.
 - `get_state` holds the whole system prompt (about 40 KB). The summary shows only its size. Read fields from `rpc.jsonl` with `jq`.

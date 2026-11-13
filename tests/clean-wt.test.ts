@@ -3,6 +3,7 @@ import type { Subprocess } from "bun";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { writeExecutable } from "./support/executable.ts";
 import { ENV, git } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "clean-wt", "scripts", "clean-wt.ts");
@@ -35,11 +36,11 @@ beforeEach(async () => {
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "init");
   mkdirSync(join(dir, "bin"));
-  writeFileSync(join(dir, "bin", "omp"), `#!/bin/sh\nexec bun ${JSON.stringify(FAKE_OMP)} "$@"\n`, { mode: 0o755 });
+  writeExecutable(join(dir, "bin", "omp"), "sh", `exec bun ${JSON.stringify(FAKE_OMP)} "$@"`);
   ovnfsRoot = join(dir, "checkouts");
   mkdirSync(ovnfsRoot);
   writeFileSync(join(ovnfsRoot, "checkouts.json"), "[]");
-  writeFileSync(join(dir, "bin", "ovnfs"), `#!/bin/sh\nexec bun ${JSON.stringify(FAKE_OVNFS)} "$@"\n`, { mode: 0o755 });
+  writeExecutable(join(dir, "bin", "ovnfs"), "sh", `exec bun ${JSON.stringify(FAKE_OVNFS)} "$@"`);
   session(OWN, dir);
   await holdLease(OWN);
 });
@@ -117,10 +118,12 @@ interface Checkout {
   source_git_dir?: string;
 }
 
-function inventory(env: Record<string, string | undefined> = {}): Record<string, Checkout> {
+function inventory(env: Record<string, string | undefined> = {}, expectGaps = false): Record<string, Checkout> {
   const r = cleanWt(["inventory"], env);
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
+  if (expectGaps) expect(r.json.evidence_gaps).not.toEqual([]);
+  else expect(r.json.evidence_gaps).toEqual([]);
   return Object.fromEntries((r.json.checkouts as Checkout[]).map((c) => [c.path, c]));
 }
 
@@ -150,12 +153,12 @@ test("a held session lease protects its checkout, and a session whose lease is f
 
 test("without proof that lease detection works, an unowned checkout is uncertain, never unused", async () => {
   const path = linkedWorktree("wt-a");
-  const noId = inventory({ PI_SESSION_ID: undefined })[path];
+  const noId = inventory({ PI_SESSION_ID: undefined }, true)[path];
   expect(noId.verdict).toBe("uncertain");
   expect(noId.reasons.join(" ")).toContain("PI_SESSION_ID");
   for (const h of holders) h.kill();
   await Promise.all(holders.map((h) => h.exited));
-  const withoutOwnLease = inventory()[path];
+  const withoutOwnLease = inventory({}, true)[path];
   expect(withoutOwnLease.verdict).toBe("uncertain");
   expect(withoutOwnLease.reasons.join(" ")).toContain(OWN);
 });
@@ -201,6 +204,33 @@ test("a running process whose working directory is inside a checkout protects it
   const shell = Bun.spawn(["sleep", "600"], { cwd: join(path, "sub") });
   holders.push(shell);
   expect(inventory()[path]).toMatchObject({ verdict: "owned", owners: [{ type: "process", pid: shell.pid }] });
+});
+
+test.skipIf(process.platform === "linux" || process.platform === "win32")("one native ownership scan protects both lease and cwd owners without treating open files as cwd owners", async () => {
+  const leased = linkedWorktree("wt-leased");
+  const active = linkedWorktree("wt-active");
+  const inactive = linkedWorktree("wt-inactive");
+  for (const holder of holders) holder.kill();
+  await Promise.all(holders.map(holder => holder.exited));
+  holders = [];
+  owners = join(inactive, "leases");
+  mkdirSync(owners);
+  await holdLease(OWN);
+  session("leased-session", leased);
+  await holdLease("leased-session", join(inactive, "README.md"));
+  const shell = Bun.spawn(["sleep", "600"], { cwd: active });
+  holders.push(shell);
+  const lsof = Bun.which("lsof")!;
+  const calls = join(dir, "lsof-calls.jsonl");
+  writeExecutable(join(dir, "bin", "lsof"), "bun", `import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(calls)}, JSON.stringify(process.argv.slice(2)) + "\\n");
+const result = Bun.spawnSync([${JSON.stringify(lsof)}, ...process.argv.slice(2)], { stdout: "inherit", stderr: "inherit" });
+process.exit(result.exitCode);`);
+  const inv = inventory();
+  expect(inv[leased]).toMatchObject({ verdict: "owned", owners: [{ type: "session", id: "leased-session" }] });
+  expect(inv[active]).toMatchObject({ verdict: "owned", owners: [{ type: "process", pid: shell.pid }] });
+  expect(inv[inactive]).toMatchObject({ verdict: "unused", owners: [] });
+  expect(readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(1);
 });
 
 test("staged, unstaged, and untracked changes make a checkout dirty, and each is listed", () => {
@@ -421,7 +451,7 @@ test("only entries that omp lists are inventoried, and without omp's listing not
   const r = cleanWt(["remove", `${hidden}=${"0".repeat(64)}`], { FAKE_OMP_HIDE: "wt-hidden" });
   expect(r.code).toBe(2);
   expect(existsSync(hidden)).toBe(true);
-  const failing = inventory({ FAKE_OMP_FAIL: "1" });
+  const failing = inventory({ FAKE_OMP_FAIL: "1" }, true);
   expect(failing[listed].verdict).toBe("uncertain");
   expect(failing[listed].reasons.join(" ")).toContain("omp worktree list");
 });
@@ -439,7 +469,7 @@ test("a task sandbox with no owner marker is uncertain", () => {
 test.skipIf(process.platform === "linux")("a held session lease with no readable session file makes unowned checkouts uncertain", async () => {
   const path = linkedWorktree("wt-a");
   await holdLease("ghost-session-1");
-  const c = inventory()[path];
+  const c = inventory({}, true)[path];
   expect(c.verdict).toBe("uncertain");
   expect(c.reasons.join(" ")).toContain("ghost-session-1");
 });
@@ -491,7 +521,7 @@ test("a sandbox with both an m and a merged checkout is uncertain, so removing o
 test("uncertain ownership leaves contents uninspected, just like a live owner", () => {
   const path = linkedWorktree("wt-uncertain");
   writeFileSync(join(path, "private-draft.txt"), "not inspected\n");
-  const c = inventory({ PI_SESSION_ID: undefined })[path];
+  const c = inventory({ PI_SESSION_ID: undefined }, true)[path];
   expect(c).toMatchObject({ verdict: "uncertain", state: "not checked", changes: {}, fingerprint: "" });
 });
 
@@ -572,10 +602,12 @@ function comparedCheckout(path: string): Checkout {
   const discovered = inventory()[path];
   const prepared = cleanWt(["inventory", "--prepare-source", discovered.source_git_dir!]);
   expect(prepared.code).toBe(0);
+  expect(prepared.json.evidence_gaps).toEqual([]);
   const file = join(dir, "source-facts.json");
   writeFileSync(file, JSON.stringify(prepared.json));
   const compared = cleanWt(["inventory", "--target", path, "--source-facts", file]);
   expect(compared.code).toBe(0);
+  expect(compared.json.evidence_gaps).toEqual([]);
   return compared.json.checkouts[0];
 }
 
@@ -923,8 +955,8 @@ test.each([
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
   const path = ovnfsCheckout("omp-configured-123");
   const configured = join(dir, "configured-ovnfs");
-  writeFileSync(configured, `#!${process.execPath}\nimport ${JSON.stringify(FAKE_OVNFS)};\n`, { mode: 0o755 });
-  writeFileSync(join(dir, "bin/ovnfs"), `#!${process.execPath}\nconsole.log('{"checkouts":[]}');\n`, { mode: 0o755 });
+  writeExecutable(configured, "bun", `await import(${JSON.stringify(FAKE_OVNFS)});`);
+  writeExecutable(join(dir, "bin/ovnfs"), "bun", `console.log('{"checkouts":[]}');`);
   const env = { FAKE_OVNFS_PATH: configured };
   const c = inventory(env)[path];
   expect(c).toMatchObject({ kind: "ovnfs", verdict: "unused", automatic: true });

@@ -100,7 +100,7 @@ Pele 1.12.0 emits `font-size="smaller"` for those spans. Browser proof showed ab
 
 Flowchart edges default to `step`. This changes the presentation of Pele's routes. It adds no line jumps and does not reduce crossings.
 
-Edge and cluster labels and loose Wardley and Venn text have a Base-colored `0.12em` outline. The outline hides a line behind the letters, not text overlapping other text. Ordinary node labels keep their existing treatment. Outline and focus rules stay inside each figure, including inline exports with repeated Mermaid ids.
+Edge labels sit in Pele's label boxes, filled with the Base color, so a line stops at the box edge instead of crossing the text. Cluster labels and loose Wardley and Venn text have a Base-colored `0.3em` outline instead. The outline hides a line behind the letters, not text overlapping other text. Ordinary node labels keep their existing treatment. Outline and focus rules stay inside each figure, including inline exports with repeated Mermaid ids.
 
 ### Keep a figure inside its width
 

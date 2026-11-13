@@ -27,13 +27,13 @@ Preconditions:
 - The baseline from `README.md`.
 - The normal stub home has no native judge. It can prove instructions and unavailable-judge tool completion, but cannot select an Addon.
 
-Start a fresh saved session with a bare Matt skill:
+Step `addon-tools-run-instruction`: Start a fresh saved session with a bare Matt skill:
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name addon-run-instruction --session '{"type":"prompt","message":"/skill:implement"}' '{"type":"get_state"}'
 ```
 
-Read `addon-run-instruction/model-requests.jsonl` and `rpc.jsonl`. The first request contains a displayed `vstack-addon-instruction` message to gather intent and call `inject_principles`. The saved session records that message. There is no automatic pick. Repeat with `/skill:to-spec` in a new drive named `addon-other-matt-instruction` and observe the `inject_addons` instruction. Use a new drive named `addon-no-chat-instruction` with plain chat and then a message containing a pasted skill header below its first line. Neither receives the instruction.
+Read `addon-run-instruction/model-requests.jsonl` and `rpc.jsonl`. The first request contains a displayed `vstack-addon-instruction` message to gather intent and call `inject_principles`. The saved session records that message. There is no automatic pick. Step `addon-tools-other-matt-instruction`: Repeat with `/skill:to-spec` in a new drive named `addon-other-matt-instruction` and observe the `inject_addons` instruction. Step `addon-tools-no-chat-instruction`: Use a new drive named `addon-no-chat-instruction` with plain chat and then a message containing a pasted skill header below its first line. Neither receives the instruction.
 
 Prove the tool list survives a mid-session Matt start. Create `$VERIFY_RUN_DIR/addon-stable-replies.json`:
 
@@ -51,7 +51,7 @@ bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN
 
 Compare the complete `tools` arrays in every `addon-stable-tools/model-requests.jsonl` request that has tools. Both Addon tools must appear in the first request, and the arrays must be identical before and after the Matt start, including order and schemas. The plain-chat call must complete with `No Addons selected.` and no saved `vstack-addons` entry. The saved session must contain no `tool-roster-notice`. Only the Matt-start request receives the instruction. This proves request stability, not a paid provider's cache hit count.
 
-To exercise both tools without a native judge, create `$VERIFY_RUN_DIR/addon-tool-replies.json`:
+Step `addon-tools-tool-unavailable`: To exercise both tools without a native judge, create `$VERIFY_RUN_DIR/addon-tool-replies.json`:
 
 ```json
 [
@@ -69,7 +69,7 @@ bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN
 
 In `addon-tool-unavailable/rpc.jsonl`, each tool has a successful `tool_execution_end` with a no-picks result. The later model request contains that result. The saved session contains no `vstack-addons` custom entry. Report this as unavailable-native-judge proof, not selection proof.
 
-Native selection needs a separately authorized, isolated omp home with a configured native judge role and credentials. The stub-only drive does not provide one. In that home, start a fresh Matt run, gather real source intent, call the tools, and capture the returned pointers and saved `vstack-addons` entries. Call again to prove delivered pointers do not return, then branch and resume the saved session and repeat. Cancel an in-flight call and confirm its late response saves no pointers. For subagents, start a judged vstack agent during that Matt run and capture its first-prompt pointers and a follow-up without automatic selection. Report any missing native-judge path as skipped with its missing prerequisite.
+Step `addon-tools-native-selection`: Native selection needs a separately authorized, isolated omp home with a configured native judge role and credentials. The stub-only drive does not provide one. In that home, start a fresh Matt run, gather real source intent, call the tools, and capture the returned pointers and saved `vstack-addons` entries. Call again to prove delivered pointers do not return, then branch and resume the saved session and repeat. Cancel an in-flight call and confirm its late response saves no pointers. For subagents, start a judged vstack agent during that Matt run and capture its first-prompt pointers and a follow-up without automatic selection. Report any missing native-judge path as skipped with its missing prerequisite.
 
 ## Gotchas
 

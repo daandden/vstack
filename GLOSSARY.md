@@ -228,6 +228,10 @@ _Avoid_: Report block, stage result, report section
 A note a reader attaches to text or a block of one Result revision on the Flow page, saved to the Flow. It is never an answer and never consent.
 _Avoid_: feedback, annotation, Flow comment, review comment
 
+**Correction**:
+Content that a later Stage publishes to correct an earlier block of the same Flow, such as a Result, a Background, or an answer reading, linked to that block. The earlier block stays as published and shows where it was corrected.
+_Avoid_: erratum, superseding block, retraction, amendment
+
 **Architecture assessment**:
 A grill's determination of whether a consequential architecture choice remains unsettled and needs agreement before dependent implementation.
 _Avoid_: architecture gate, complexity score

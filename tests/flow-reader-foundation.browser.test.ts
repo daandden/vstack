@@ -17,7 +17,7 @@ if (proof) mkdirSync(proof, { recursive: true });
 
 function cli(args: string[], items?: object[]) {
   const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c20b-3147-74c5-9dfb-082a101dd15e", "--agent", "impl-431"], {
-    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: home },
+    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
     stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")} exited ${p.exitCode}: ${p.stderr.toString()}`);

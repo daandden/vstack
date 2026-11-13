@@ -1,6 +1,6 @@
 # Selected Emil skills govern animation guidance
 
-> Amended by [ADR 0074](0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). The Emil-derived skills are visible Utility skills, their text holds over good-css for CSS conflicts too, and the decision removes good-css's hand-offs to them.
+> Amended by [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). The Emil-derived skills are visible Utility skills, their text holds over good-css for CSS conflicts too, and the decision removes good-css's hand-offs to them.
 
 Vstack restores good-css's hand-offs to the selected skills from the [UI upstream](../../GLOSSARY.md#sources), `emilkowalski/skills`. Those skills take precedence over good-css for animation guidance. We chose this over good-css-only precedence because the selected skills contribute motion and interaction judgment beyond CSS declarations.
 

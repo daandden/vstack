@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Collect native checkout ownership evidence in one lsof scan per refresh, retaining lease, working-directory, and removal guards."
+  ]
+}

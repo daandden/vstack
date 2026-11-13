@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Correct Backgrounds, Topic notes, question context, answer readings, Assumed picks, and close decisions through later Stages. Withdraw mistaken readings without changing user responses or creating consent, and mark affected historical summaries.",
+    "Keep questions in finished Stages closed when a later Stage withdraws their reading.",
+    "Refuse reading Corrections whose replacement is resolved, so a Correction only withdraws a decision, and name every corrected target by title and revision in Correction links: Results and entries by title, readings, context, and summary decisions by question number and attempt, and Backgrounds, Topics, and Assumed picks by title, with inline code in titles shown as code."
+  ]
+}

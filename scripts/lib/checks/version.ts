@@ -1,29 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { artifactFiles, ConfigError, readManifest } from "../vstack-repo.ts";
+import { artifactFiles, readManifest } from "../vstack-repo.ts";
 import { PLUGIN_RELEASE, foldNotes, highestLevel, pendingNotes, releaseVersion } from "../change-notes.ts";
-import type { Check, CheckContext, Failure } from "./types.ts";
+import { git, resolveBase } from "./base.ts";
+import type { Check, Failure } from "./types.ts";
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
-
-function git(root: string, args: string[]) {
-  const r = Bun.spawnSync(["git", "-C", root, ...args], { stdout: "pipe", stderr: "pipe" });
-  return { ok: r.exitCode === 0, out: r.stdout.toString().trim() };
-}
-
-function resolveBase(ctx: CheckContext): { sha?: string; label: string } {
-  const given = ctx.baseRef?.trim();
-  if (given && !/^0+$/.test(given)) {
-    const r = git(ctx.root, ["rev-parse", "--verify", "--quiet", `${given}^{commit}`]);
-    if (!r.ok) throw new ConfigError(`change-note base ${given} is not a commit in ${ctx.root}`);
-    return { sha: r.out, label: `${given} (given)` };
-  }
-  const mb = git(ctx.root, ["merge-base", "HEAD", "origin/HEAD"]);
-  if (mb.ok && mb.out) return { sha: mb.out, label: "merge base of HEAD and origin/HEAD" };
-  const head = git(ctx.root, ["rev-parse", "--verify", "--quiet", "HEAD^{commit}"]);
-  if (head.ok) return { sha: head.out, label: "HEAD (no origin/HEAD; only uncommitted changes count)" };
-  return { label: "none (no commits)" };
-}
 
 function checkRelease(root: string, base: string, version: string): { attempted: boolean; error?: string } {
   const previous = git(root, ["show", `${base}:${PLUGIN_RELEASE}`]).out;

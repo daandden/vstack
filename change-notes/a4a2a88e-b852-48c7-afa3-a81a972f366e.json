@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add the vstack-python rule: Python runs in eval under omp's `python.interpreter` setting, bash runs Python only through repo tooling, and a missing library is installed only after approval through `ask` (#492).",
+    "Add the vstack-images rule: use lossless WebP whenever the tool that produces or saves an image offers it (#492)."
+  ]
+}

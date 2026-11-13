@@ -16,6 +16,7 @@ export type Contract = {
   discriminator?: string;
   select?: (value: Obj) => Contract;
   expected?: string;
+  selection?: string;
   check?: (value: Obj, path: string) => Diagnostic[];
 };
 const string: Contract = { type: "string" };
@@ -23,7 +24,7 @@ const number: Contract = { type: "number" };
 const boolean: Contract = { type: "boolean" };
 const enumeration = (...values: unknown[]): Contract => ({ type: "literal", values });
 const array = (items: Contract, min = 1, max?: number): Contract => ({ type: "array", items, min, ...(max === undefined ? {} : { max }) });
-const strings: Contract = { ...array(string), expected: "array of non-empty strings" };
+const strings: Contract = { ...array({ ...string, expected: "non-empty string" }), expected: "array of non-empty strings" };
 const unknown: Contract = { type: "unknown", expected: "field value checked against the target Result" };
 const object = (fields: Record<string, Contract>, required = Object.keys(fields)): Contract => ({ type: "object", fields, required });
 const union = (variants: Record<string, Contract>, discriminator?: string): Contract => ({ type: "union", variants, ...(discriminator ? { discriminator } : {}) });
@@ -124,17 +125,28 @@ const taskStates = enumeration("pending", "active", "done", "skipped", "inapplic
 const checkOutcomes = enumeration("passed", "failed", "pending");
 const prStates = enumeration("open", "merged", "closed");
 const item = (fields: Record<string, Contract>, extra: Record<string, Contract> = {}) => optional({ kind: string, ...fields }, extra);
-const update = (key: string, create: Contract, edit: Contract): Contract => ({ type: "object", select: value => value[key] === undefined ? create : edit });
+const update = (key: string, create: Contract, edit: Contract): Contract => ({
+  ...union({ create, update: edit }),
+  selection: `${key} absent selects create; present selects update`,
+  select: value => value[key] === undefined ? create : edit,
+});
+const reading = {
+  resolved: optional({ outcome: enumeration("resolved"), decision: string, basis: string }, { maps_to: string }),
+  unresolved: object({ outcome: enumeration("question", "concern", "ambiguous"), unresolved: string }),
+};
+const readingContract = { ...union(reading), selection: "outcome=resolved selects resolved; otherwise unresolved", select: (value: Obj) => value.outcome === "resolved" ? reading.resolved : reading.unresolved };
 export const contributionKinds: Record<string, Contract> = {
-  background: item({ title: string, summary: string, sections: array(object({ heading: string, body: string })), sources: strings }, { figures: array(figure) }),
+  background: item({ title: string, summary: string, sections: array(object({ heading: string, body: string })), sources: strings }, { ref, figures: array(figure) }),
   topic: item({ title: string, summary: string, body: string, sources: strings }, { ref }),
-  attachment: { type: "object", select: value => value.type === "artifact" ? artifact : value.type === "mermaid" ? mermaid : attachment },
+  attachment: { ...union({ file: attachment, mermaid, artifact }), selection: "type=artifact selects artifact; type=mermaid selects mermaid; otherwise file", select: value => value.type === "artifact" ? artifact : value.type === "mermaid" ? mermaid : attachment },
   result: union(resultContracts, "shape"),
   revise: item({ result: ref }, { base: { ...number, integer: true, min: 1 }, set: { type: "record", items: unknown }, add: array({ type: "record", items: unknown }) }),
+  corrects: item({ target: ref, replacement: ref, reason: string }),
   assumed: item({ decision: string, pick: string, why: string }, { ref }),
   round: item({ questions: array(question) }),
-  answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: { type: "object", select: value => value.outcome === "resolved" ? optional({ outcome: enumeration("resolved"), decision: string, basis: string }, { maps_to: string }) : object({ outcome: enumeration("question", "concern", "ambiguous"), unresolved: string }) } }),
-  close: item({ decisions: array(object({ question: ref, text: string }), 0) }, { extra: strings }),
+  answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: readingContract }),
+  reading: item({ question: ref, reading: readingContract }, { ref }),
+  close: item({ decisions: array(object({ question: ref, text: string }), 0) }, { ref, extra: strings }),
   stage: item({ state: enumeration("finished") }, { retire: array(object({ question: ref, reason: string })) }),
   wayfinder: item({ tickets: array(object({ id: string, title: string, url: string, state: enumeration("resolved", "frontier", "blocked", "claimed", "out-of-scope"), blockers: array(string, 0) }), 0) }),
   task: update("task", item({ title: string }, { ref, state: taskStates, evidence: strings, reason: string }), item({ task: ref }, { state: taskStates, evidence: strings, reason: string })),
@@ -143,6 +155,11 @@ export const contributionKinds: Record<string, Contract> = {
   pr: update("pr", item({ url: string, state: prStates }, { ref, title: string }), item({ pr: ref, state: prStates })),
   check: update("check", item({ name: string, outcome: checkOutcomes }, { ref, evidence: strings }), item({ check: ref, outcome: checkOutcomes }, { evidence: strings })),
 };
+for (const [kind, contract] of Object.entries(contributionKinds)) {
+  for (const variant of contract.variants ? Object.values(contract.variants) : [contract]) {
+    if (variant.fields?.kind) variant.fields.kind = enumeration(kind);
+  }
+}
 export const contributionContract = object({ version: enumeration(1), items: array(union(contributionKinds, "kind")) });
 const fieldPath = (path: string, key: string) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`;
 

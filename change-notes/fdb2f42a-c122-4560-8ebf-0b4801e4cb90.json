@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add browser-local changed-since-last-visit links to new and revised Flow blocks without moving content or recording consent."
+  ]
+}

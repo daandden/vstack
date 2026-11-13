@@ -18,8 +18,8 @@ Single-context repo (most repos):
 /
 ├── GLOSSARY.md
 ├── docs/adr/
-│   ├── 0001-event-sourced-orders.md
-│   └── 0002-postgres-for-write-model.md
+│   ├── 20261111-event-sourced-orders.md
+│   └── 20261111-postgres-for-write-model.md
 └── src/
 ```
 
@@ -46,6 +46,6 @@ If the concept you need isn't in the glossary yet, that's a signal: either you'r
 
 ## Flag ADR conflicts
 
-If your output contradicts an existing ADR, surface it explicitly rather than silently overriding:
+If your output contradicts an existing ADR, surface it explicitly by its filename stem:
 
-> _Contradicts ADR-0007 (event-sourced orders), but worth reopening because…_
+> _Contradicts ADR 20261111-event-sourced-orders, but worth reopening because…_

@@ -178,7 +178,7 @@ interface Leases {
   unknown: Map<string, number | null>;
 }
 
-function heldLeases(ids: string[]): Leases {
+function heldLeases(ids: string[], native: ReturnType<typeof run> | undefined): Leases {
   const held = new Map<string, number | null>();
   const unknown = new Map<string, number | null>();
   if (process.platform === "linux") {
@@ -197,13 +197,15 @@ function heldLeases(ids: string[]): Leases {
     return { ok: true, held, unknown };
   }
   if (process.platform === "win32") return { ok: false, reason: "omp's session leases are named mutexes on Windows, which this script cannot read", held, unknown };
-  const r = run(["lsof", "-Fpn", "+d", ownersDir]);
+  const r = native!;
   if (r.code !== 0 && r.code !== 1) return { ok: false, reason: `lsof failed on ${ownersDir}: ${r.err.trim() || `exit ${r.code}`}`, held, unknown };
   const wanted = new Map(ids.map((id) => [leasePath(id), id]));
   let pid: number | null = null;
+  let descriptor = "";
   for (const line of r.out.split("\n")) {
-    if (line.startsWith("p")) pid = Number(line.slice(1));
-    else if (line.startsWith("n") && line.endsWith(".lock")) {
+    if (line.startsWith("p")) { pid = Number(line.slice(1)); descriptor = ""; }
+    else if (line.startsWith("f")) descriptor = line.slice(1);
+    else if (line.startsWith("n") && descriptor !== "cwd" && dirname(line.slice(1)) === ownersDir && line.endsWith(".lock")) {
       const id = wanted.get(line.slice(1));
       if (id !== undefined) held.set(id, pid);
       else unknown.set(basename(line.slice(1), ".lock"), pid);
@@ -237,7 +239,11 @@ function leaseDetectionGap(): string | undefined {
 function gatherEvidence() {
   listing = ompWorktreeListing(base);
   sessionHeaders = readSessions();
-  leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])]);
+  // lsof unions file selections unless -a is supplied, so one scan covers both ownership guards.
+  const native = process.platform === "linux" || process.platform === "win32"
+    ? undefined
+    : run(["lsof", "-d", "cwd", "+d", ownersDir, "-Fpcfn"]);
+  leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])], native);
   const buf = Buffer.alloc(1 << 16);
   sessionHeaders = sessionHeaders.flatMap((header) => {
     if (!leases.held.has(header.id)) return [header];
@@ -257,7 +263,7 @@ function gatherEvidence() {
       leases.unknown.delete(name);
     }
   }
-  cwds = processCwds();
+  cwds = processCwds(native);
   ovnfs = ovnfsListing();
   const projectPaths = new Set(run(["git", "worktree", "list", "--porcelain"]).out.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => realpath(line.slice(9)) || resolve(line.slice(9))));
   let added: boolean;
@@ -321,7 +327,7 @@ interface ProcessCwd {
   cwd: string;
 }
 
-function processCwds(): { ok: boolean; reason?: string; list: ProcessCwd[] } {
+function processCwds(native: ReturnType<typeof run> | undefined): { ok: boolean; reason?: string; list: ProcessCwd[] } {
   const list: ProcessCwd[] = [];
   if (process.platform === "linux") {
     for (const name of readdirSync("/proc")) {
@@ -336,13 +342,15 @@ function processCwds(): { ok: boolean; reason?: string; list: ProcessCwd[] } {
     return { ok: true, list };
   }
   if (process.platform === "win32") return { ok: false, reason: "process working directories are not readable on Windows", list };
-  const r = run(["lsof", "-a", "-d", "cwd", "-Fpcn"]);
+  const r = native!;
   if (!r.out && r.code !== 0) return { ok: false, reason: `lsof could not list process working directories: ${r.err.trim() || `exit ${r.code}`}`, list };
   let cur: Partial<ProcessCwd> = {};
+  let descriptor = "";
   for (const line of r.out.split("\n")) {
-    if (line.startsWith("p")) cur = { pid: Number(line.slice(1)) };
+    if (line.startsWith("p")) { cur = { pid: Number(line.slice(1)) }; descriptor = ""; }
     else if (line.startsWith("c")) cur.command = line.slice(1);
-    else if (line.startsWith("n") && cur.pid) list.push({ pid: cur.pid, command: cur.command ?? "", cwd: line.slice(1) });
+    else if (line.startsWith("f")) descriptor = line.slice(1);
+    else if (line.startsWith("n") && descriptor === "cwd" && cur.pid) list.push({ pid: cur.pid, command: cur.command ?? "", cwd: line.slice(1) });
   }
   return { ok: true, list };
 }

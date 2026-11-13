@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { writeExecutable } from "./support/executable.ts";
 import { ENV, git } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin/skills/vstack-fan-out/scripts/worker-clone.ts");
@@ -22,7 +23,7 @@ beforeEach(() => {
   mkdirSync(base);
   git(repo, "init", "-q");
   mkdirSync(join(dir, "bin"));
-  for (const name of ["ovnfs", "omp"]) writeFileSync(join(dir, "bin", name), `#!${process.execPath}\nimport ${JSON.stringify(FAKE)};\n`, { mode: 0o755 });
+  for (const name of ["ovnfs", "omp"]) writeExecutable(join(dir, "bin", name), "bun", `await import(${JSON.stringify(FAKE)});`);
   entries = [];
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -61,8 +62,8 @@ test("status finds the ovnfs checkout named by the worker run record without tou
 test("status keeps a worker present when a different ovnfs is on PATH", () => {
   const identity = worker("Configured");
   const configured = join(dir, "configured-ovnfs");
-  writeFileSync(configured, `#!${process.execPath}\nimport ${JSON.stringify(FAKE)};\n`, { mode: 0o755 });
-  writeFileSync(join(dir, "bin/ovnfs"), `#!${process.execPath}\nconsole.log('{"checkouts":[]}');\n`, { mode: 0o755 });
+  writeExecutable(configured, "bun", `await import(${JSON.stringify(FAKE)});`);
+  writeExecutable(join(dir, "bin/ovnfs"), "bun", `console.log('{"checkouts":[]}');`);
   expect(status(["Configured"], undefined, { FAKE_OVNFS_PATH: configured })).toMatchObject({
     listing: { ok: true, command: configured }, workers: [{ state: "present", identity }],
   });

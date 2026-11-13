@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import { entryTitle } from "~/utils/flow";
 
 const f = computed(() => flow.value!);
 const backgrounds = computed(() => f.value.stages.flatMap((st) => (st.background ? [{ stage: st, bg: st.background }] : [])));
 const terms = computed(() => f.value.questions.flatMap((q) => (q.terms ?? []).map((t) => ({ q, t }))));
-const backlinks = computed(() => f.value.questions.flatMap((q) => (q.entries ?? []).map((ref) => ({ q, ref, title: entryTitle(f.value, ref) }))));
+const backlinks = computed(() => f.value.questions.flatMap((q) => q.result_links.map((link) => ({ q, link }))));
 const ask = (id: string) => f.value.question.get(id);
 </script>
 
@@ -40,8 +39,8 @@ const ask = (id: string) => f.value.question.get(id);
       <section v-if="backlinks.length" aria-labelledby="context-backlinks">
         <h2 id="context-backlinks" class="eyebrow">Backlinks</h2>
         <ul class="bullets">
-          <li v-for="b in backlinks" :key="`${b.q.id}:${b.ref}`">
-            <a :href="`#${b.ref.replace('/', '-')}`"><span v-html="inline(b.title?.result ?? b.ref)" /> <span class="entry-id">{{ b.title?.entry }}</span></a>
+          <li v-for="b in backlinks" :key="`${b.q.id}:${b.link.id}`">
+            <a :href="`#${b.link.anchor}`"><span v-html="inline(b.link.title)" /> <span v-if="b.link.entry" class="entry-id">{{ b.link.entry }}</span></a>
             informs <a :href="`#${b.q.id}`">Q{{ b.q.q }}</a>
           </li>
         </ul>

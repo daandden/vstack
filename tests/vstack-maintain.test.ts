@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { chmodSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 import { fakeGitHub } from "./support/fake-github.ts";
 import { checkout, git, makeUpstreams, passingSpec, writeFiles } from "./support/fixture.ts";
@@ -499,13 +499,7 @@ test("gates isolate smoke output from home, delete temp output, and retain failu
     try {
       expect(existsSync(observed.out)).toBe(false);
       if (failed) {
-        const scratch = join(f.dir, "home", ".vstack", "tmp");
-        const keys = readdirSync(scratch);
-        expect(keys).toHaveLength(1);
-        const maintain = join(scratch, keys[0], "maintain");
-        const entries = readdirSync(maintain);
-        expect(entries).toHaveLength(1);
-        const retained = join(maintain, entries[0]);
+        const retained = dirname(report.evidence);
         expect(stage.output).toContain(`Smoke output retained at ${retained}`);
         for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) expect(read(retained, name)).toBe(`Smoke evidence: ${name}`);
       }
@@ -518,7 +512,7 @@ test("gates --scratch retain failed smoke evidence under the supplied Scratch di
   expect(result.stdout).toContain(`Smoke output retained at ${maintain}/`);
   expect(result.code).toBe(2);
   const entries = readdirSync(maintain); expect(entries).toHaveLength(1);
-  const retained = join(maintain, entries[0]);
+  const retained = dirname(JSON.parse(result.stdout).evidence);
   const stage = JSON.parse(result.stdout).stages.find((s: any) => s.name === "smoke");
   expect(stage.output).toContain(`Smoke output retained at ${retained}`);
   for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) expect(read(retained, name)).toBe(`Smoke evidence: ${name}`);

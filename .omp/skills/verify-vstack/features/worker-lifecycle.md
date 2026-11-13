@@ -23,7 +23,7 @@ Preconditions:
 - The checkout contains the status CLI. The helper invokes that checkout's script, not the installed plugin's script.
 - Use real omp 18.17 and an installed real ovnfs daemon. The helper points its throwaway omp home at the caller's ovnfs state and mount through a wrapper, without changing machine settings. `OVNFS_STATE` and `OVNFS_MOUNT` override the caller's default paths.
 
-Run:
+Step `worker-lifecycle-drive`: Run:
 
 ```sh
 bun "$SKILL_DIR/scripts/worker-lifecycle.ts" "$CHECKOUT" "$VERIFY_RUN_DIR"
@@ -33,15 +33,15 @@ The helper uses `drive.ts` with one serialized provider-reply queue. It starts a
 
 A successful command prints `lifecycle: passed`. Check these files before Cleanup:
 
-- `lifecycle/implementer-before.status.json` reports present and saves `identity: {name, path, record}`. `implementer-after.status.json` reports absent against that saved status. `implementer-release.json` preserves the observed release result and integration commit. `implementer.patch` preserves the patch outside the checkout.
-- `lifecycle/fixer-question.json` records retention with its unanswered question. `fixer-answer.json` records the scripted fixture answer separately. `fixer-release.json` records the later landing and release. `fixer-after.json` reports absent.
-- `lifecycle/early-stop-retained.json` records the unfinished child's reason and preserved patch. `protected-after-implementer.json` and `protected-after-fixer.json` both report present. `protected-after-preservation.json` reports absent only after its useful work is preserved.
-- `lifecycle/passed.json` names both integration commits and the final fixture repository. Inspect the repository with `git show <commit>:lifecycle.txt`: the implementer commit contains `implemented`, and the review-fixer commit contains `reviewed`.
-- `worker-lifecycle/rpc.jsonl` contains the actual tool results and a final `get_state` response. Decisive disk and listing observations occur before this parent exits. Require no failing `tool_execution_end` frame.
+- Step `worker-lifecycle-implementer`: `lifecycle/implementer-before.status.json` reports present and saves `identity: {name, path, record}`. `implementer-after.status.json` reports absent against that saved status. `implementer-release.json` preserves the observed release result and integration commit. `implementer.patch` preserves the patch outside the checkout.
+- Step `worker-lifecycle-fixer`: `lifecycle/fixer-question.json` records retention with its unanswered question. `fixer-answer.json` records the scripted fixture answer separately. `fixer-release.json` records the later landing and release. `fixer-after.json` reports absent.
+- Step `worker-lifecycle-early-stop`: `lifecycle/early-stop-retained.json` records the unfinished child's reason and preserved patch. `protected-after-implementer.json` and `protected-after-fixer.json` both report present. `protected-after-preservation.json` reports absent only after its useful work is preserved.
+- Step `worker-lifecycle-passed`: `lifecycle/passed.json` names both integration commits and the final fixture repository. Inspect the repository with `git show <commit>:lifecycle.txt`: the implementer commit contains `implemented`, and the review-fixer commit contains `reviewed`.
+- Step `worker-lifecycle-rpc`: `worker-lifecycle/rpc.jsonl` contains the actual tool results and a final `get_state` response. Decisive disk and listing observations occur before this parent exits. Require no failing `tool_execution_end` frame.
 
-Run Doctor again and then Cleanup as the Verify skill says. Cleanup removes the disposable repository and home, not the patch copies, raw RPC proof, or lifecycle records. Confirm those evidence files survive.
+Step `worker-lifecycle-cleanup`: Run Doctor again and then Cleanup as the Verify skill says. Cleanup removes the disposable repository and home, not the patch copies, raw RPC proof, or lifecycle records. Confirm those evidence files survive.
 
-Compare against the parent revision by reading its status command and lifecycle contract. The old status command locates APFS task copies, not ovnfs checkouts. The CLI regression tests supply red/green evidence. There is no meaningful executable red test for prose. This scripted drive proves real lifecycle operations, not autonomous compliance with every implement-spec instruction.
+Step `worker-lifecycle-parent-vs-head`: Compare against the parent revision by reading its status command and lifecycle contract. The old status command locates APFS task copies, not ovnfs checkouts. The CLI regression tests supply red/green evidence. There is no meaningful executable red test for prose. This scripted drive proves real lifecycle operations, not autonomous compliance with every implement-spec instruction.
 
 ## Gotchas
 

@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add highlighted Result revision comparisons with complete snapshots and visit-relative navigation.",
+    "Compare revisions by whole words and numbers, and pick the earlier snapshot with the reader's standard select."
+  ]
+}

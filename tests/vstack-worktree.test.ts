@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { writeExecutable } from "./support/executable.ts";
 
 const script = resolve(import.meta.dir, "../plugin/skills/vstack-worktree/scripts/worktree.ts");
 const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
@@ -15,7 +16,7 @@ function fixture(ovnfs = true, blockedRecord = false, repoName = "repo") {
   const gitBin = Bun.which("git")!;
   const env = { ...process.env, PATH: bin, FAKE_OVNFS_ROOT: dir, FAKE_GIT: gitBin, OMP_WORKTREE_DIR: join(dir, "fallback"), GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" };
   symlinkSync(gitBin, join(bin, "git"));
-  for (const name of ovnfs ? ["ovnfs", "omp"] : ["omp"]) writeFileSync(join(bin, name), `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
+  for (const name of ovnfs ? ["ovnfs", "omp"] : ["omp"]) writeExecutable(join(bin, name), "bun", `await import(${JSON.stringify(fake)});`);
   const git = (...args: string[]) => {
     const p = Bun.spawnSync([gitBin, ...args], { cwd: repo, env });
     if (p.exitCode) throw new Error(p.stderr.toString());
@@ -98,7 +99,7 @@ test("stops without ovnfs before creating a checkout or branch", () => {
 
 test("uses omp's configured ovnfs binary when it is not on PATH", () => {
   const f = fixture(false); const binary = join(f.dir, "configured-ovnfs");
-  writeFileSync(binary, `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
+  writeExecutable(binary, "bun", `await import(${JSON.stringify(fake)});`);
   const r = f.open(["--commit", f.base], { FAKE_OVNFS_PATH: binary });
   expect(r.code).toBe(0); expect(r.record.backend).toBe("ovnfs");
   expect(f.run("remove", [], { FAKE_OVNFS_PATH: binary }).code).toBe(0);
@@ -106,8 +107,8 @@ test("uses omp's configured ovnfs binary when it is not on PATH", () => {
 
 test("prefers the configured ovnfs executable over a different one on PATH", () => {
   const f = fixture(); const binary = join(f.dir, "configured-ovnfs");
-  writeFileSync(binary, `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
-  writeFileSync(join(f.bin, "ovnfs"), `#!${process.execPath}\nconsole.error("wrong ovnfs");process.exit(1);\n`, { mode: 0o755 });
+  writeExecutable(binary, "bun", `await import(${JSON.stringify(fake)});`);
+  writeExecutable(join(f.bin, "ovnfs"), "bun", `console.error("wrong ovnfs");process.exit(1);`);
   const r = f.open(["--commit", f.base], { FAKE_OVNFS_PATH: binary });
   expect(r.code).toBe(0); expect(r.record.backend).toBe("ovnfs");
   expect(f.calls().find(c => c.args.includes("new")).cli).toBe("configured-ovnfs");

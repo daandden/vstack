@@ -6,6 +6,7 @@ defineProps<{ bg: NonNullable<StageView["background"]> }>();
 
 <template>
   <section :id="bg.id" class="background grid gap-2.5" :aria-labelledby="`${bg.id}-title`" data-stop>
+    <CorrectionNotice :notice="bg" />
     <h2 :id="`${bg.id}-title`" v-html="inline(bg.title)" />
     <p class="text-toned" v-html="inline(bg.summary)" />
     <FigureList :figures="bg.figures" />

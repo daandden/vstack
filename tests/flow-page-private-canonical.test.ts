@@ -28,7 +28,7 @@ function world() {
 
 function run(w: ReturnType<typeof world>, cwd: string, args: string[], items?: object[]) {
   const r = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", w.home, "--session", "01a1aa9c-b610-70af-a82e-e369dacd3759", "--agent", "Impl354"], {
-    cwd, env: { ...ENV, HOME: w.home, VSTACK_FLOW_HOST: "off" },
+    cwd, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
     stdin: items === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify({ version: 1, items })), stdout: "pipe", stderr: "pipe",
   });
   return { code: r.exitCode, stdout: r.stdout.toString(), stderr: r.stderr.toString() };

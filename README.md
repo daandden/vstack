@@ -28,7 +28,9 @@ Setup handles existing Matt configurations through Migration. See the [setup gui
 
 To update, run `git pull` and `bun install --frozen-lockfile` in the clone, then start a new omp session.
 
-If a running Local Flow host reports an incompatible reader after an update, stop that owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`. The next Flow command starts the refreshed reader.
+After the update, the running Local Flow host replaces itself. It keeps serving the last good version until the updated version starts, and Flow links stay the same. An incomplete or failing update leaves the last good version serving. Open Flow pages reload to the new reader and keep unsent Reader comments and the reading position.
+
+A host started by a vstack version from before this behavior cannot replace itself. If it reports an incompatible reader after the update, stop it with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`. The next Flow command starts the updated host on the same links.
 
 ## Use
 
@@ -43,7 +45,7 @@ Run `/vstack-clean [age]` to preview expired Scratch entries. The default is `90
 
 Use `/skill:pick-frontend-stack <task>` for one task-specific Vue or Nuxt library choice. It checks the target app and keeps suitable installed solutions. Advice is read-only. Explicit setup defaults new applications to Nuxt, honors Vue with Vite requests, and uses Bun only without an existing or requested manager. The [curated choices](plugin/skills/pick-frontend-stack/references/choices.md) stay conditional rather than becoming a scaffold dependency bundle.
 
-The twelve Emil-derived skills are visible Utility skills. They can load by description in any session or by name, without Addon judge selection. Their guidance takes precedence over good-css for CSS and animation under [ADR 0074](docs/adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). [Choreograph](plugin/skills/choreograph/SKILL.md) coordinates several moving elements; [gestures](plugin/skills/gestures/SKILL.md) covers direct manipulation and suggests Vaul only when the project already depends on it.
+The twelve Emil-derived skills are visible Utility skills. They can load by description in any session or by name, without Addon judge selection. Their guidance takes precedence over good-css for CSS and animation under [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](docs/adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). [Choreograph](plugin/skills/choreograph/SKILL.md) coordinates several moving elements; [gestures](plugin/skills/gestures/SKILL.md) covers direct manipulation and suggests Vaul only when the project already depends on it.
 
 Frontend implementation and delegated UI workers can reach [emil-design-eng](plugin/skills/emil-design-eng/SKILL.md), [apple-design](plugin/skills/apple-design/SKILL.md), [mobile-native](plugin/skills/mobile-native/SKILL.md), and [break-ui](plugin/skills/break-ui/SKILL.md) through their descriptions. Apple-derived guidance applies to web interactions, and mobile-native covers mobile web, not Expo or Swift. Break-ui supplies realistic adverse-content cases to existing implementation and Verify owners, not another executor. Motion construction uses [animate](plugin/skills/animate/SKILL.md); driver choices and stutter diagnosis use [animation-performance](plugin/skills/animation-performance/SKILL.md). Existing code review and delegated Standards reviewers also reach [review-animations](plugin/skills/review-animations/SKILL.md) for motion changes. Evidence-backed motion defects can block approval; browser-supported exceptions need applicable evidence rather than a blanket property ban. The [maintainer guide](docs/maintainer.md#ui-upstream) records all twelve shipped adaptations and six exclusions.
 

@@ -1,9 +1,11 @@
 import { afterAll, expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
-import { storedFolder } from "./support/flow-store.ts";
+import { statePathOf, storedFolder } from "./support/flow-store.ts";
+import type { State } from "../plugin/skills/flow-page/scripts/model.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
@@ -25,7 +27,7 @@ function world() {
 type Run = { code: number; stdout: string; stderr: string; json: any };
 type Opts = { session?: string; stdin?: unknown; cwd: string; home: string; env?: Record<string, string> };
 const argv = (args: string[], o: Opts) => ["bun", SCRIPT, ...args, "--home", o.home];
-const envOf = (o: Opts) => ({ ...ENV, ...o.env, HOME: o.home, VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) });
+const envOf = (o: Opts) => ({ ...ENV, ...o.env, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) });
 const stdinOf = (o: Opts) => (o.stdin === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(o.stdin)));
 const parse = (code: number, stdout: string, stderr: string): Run => {
   let json: any;
@@ -248,6 +250,36 @@ test("a repeated submission, even a simultaneous one, creates nothing twice", as
   expect(s.questions).toHaveLength(1);
   expect(s.results).toHaveLength(1);
   expect(ok(run(["show", "--flow", a.flow], at)).revision).toBe(x.json.revision);
+});
+
+// model.ts keeps its submission digest private, so the test computes it the same way and checks it against a stored digest first.
+const stableJson = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(stableJson).join(",")}]` : typeof v === "object" && v !== null ? `{${Object.entries(v).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([k, x]) => `${JSON.stringify(k)}:${stableJson(x)}`).join(",")}}` : JSON.stringify(v);
+const digestOf = (v: unknown) => createHash("sha256").update(stableJson(v)).digest("hex");
+
+test("an unchanged receipt committed by an earlier, laxer validator replays without writing, and an edited copy is refused", () => {
+  const w = world();
+  const { at, a } = twoTickets(w);
+  const committed = contribution(round(question("scope")));
+  const sent = ok(run(["submit"], { ...at, session: "s-a", stdin: committed }));
+  const statePath = statePathOf(w.home, a.flow);
+  const state = JSON.parse(readFileSync(statePath, "utf8")) as State;
+  expect(state.submissions[a.stage]!.digest).toBe(digestOf(committed));
+
+  const historical = contribution(round({ ...question("scope"), options: [{ ...option("First", "scope"), gains: [] }, option("Second", "scope")] }));
+  expect(run(["validate"], { ...at, session: "s-a", stdin: historical }).code).toBe(1);
+  state.submissions[a.stage]!.digest = digestOf(historical);
+  writeFileSync(statePath, JSON.stringify(state));
+
+  const before = tree(w.home);
+  const replay = ok(run(["submit"], { ...at, session: "s-a", stdin: historical }));
+  expect(replay).toMatchObject({ repeated: true, revision: sent.revision, refs: sent.refs });
+  expect(tree(w.home)).toEqual(before);
+
+  const edited = run(["submit"], { ...at, session: "s-a", stdin: contribution(round({ ...question("scope"), title: "Which scope now?", options: [{ ...option("First", "scope"), gains: [] }, option("Second", "scope")] })) });
+  expect(edited.code).toBe(1);
+  expect(edited.stderr).toContain("gains");
+  expect(tree(w.home)).toEqual(before);
 });
 
 test("a focused revision changes one Result entry, and a stale edit of the same entry is refused as a conflict", () => {
