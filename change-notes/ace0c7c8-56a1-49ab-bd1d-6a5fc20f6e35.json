@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Name clean-adr replacement ADRs by local date and slug, reject reused active or archived stems, and repair live citations with linked full stems (ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds, ADR 20261111-new-adrs-are-named-by-date-and-slug)."
+  ]
+}

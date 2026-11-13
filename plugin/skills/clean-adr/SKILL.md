@@ -25,11 +25,11 @@ Read [citation repair's report-only list](references/citations.md#read-the-repor
 
 Deduplicate directories by their resolved paths without merging their namespaces. Keep each ADR's source directory and context throughout the run. Never move an ADR between contexts or between private and tracked directories.
 
-Inventory the numbered active files outside `archive/`. Read each one. Record its path, number, contents checksum, context, and outgoing relative links. Inventory archived numbers recursively for numbering, but treat archived text as historical evidence, not a current rule. Record the current branch, HEAD, and existing working changes without altering them. An empty active set produces a no-change report.
+Inventory every active ADR outside `archive/`, including numbered and dated files. Read each one. Record its path, full stem, legacy number when present, contents checksum, context, and outgoing relative links. Inventory archived stems recursively to prevent name reuse, but treat archived text as historical evidence, not a current rule. Record the current branch, HEAD, and existing working changes without altering them. An empty active set produces a no-change report.
 
-Each typed command starts a new run against the current inventory and project evidence. Prior run records are history, not pending check counters. Finish this run's checks and unresolved banners before reporting it. On an unchanged invocation, preserve the active ADRs' existing bytes and numbers, including unresolved banners, unless a newly archived ADR requires citation repair. Report earlier unresolved rows as still unresolved. Do not resume or retroactively finish an earlier run, reword a holding decision, or treat missing implementation evidence as abandonment.
+Each typed command starts a new run against the current inventory and project evidence. Prior run records are history, not pending check counters. Finish this run's checks and unresolved banners before reporting it. On an unchanged invocation, preserve the active ADRs' existing bytes and names, including unresolved banners, unless a newly archived ADR requires citation repair. Report earlier unresolved rows as still unresolved. Do not resume or retroactively finish an earlier run, reword a holding decision, or treat missing implementation evidence as abandonment.
 
-Group related active ADRs by decision, not just by adjacent numbers. Give every active ADR exactly one owning group. Give each scout access to later ADRs and cross-group references so grouping does not hide a replacement. For a large set, schedule several Fan-outs of manageable related groups. Record the groups before investigation and account for every group after each batch.
+Group related active ADRs by decision, not just by adjacent filenames. Give every active ADR exactly one owning group. Give each scout access to later ADRs and cross-group references so grouping does not hide a replacement. For a large set, schedule several Fan-outs of manageable related groups. Record the groups before investigation and account for every group after each batch.
 
 ## 2. Judge what holds
 
@@ -51,24 +51,24 @@ Complete the verdict table only when every active ADR has a verdict or an explic
 
 Read `skill://domain-modeling/ADR-FORMAT.md` for the fallback format. Follow the project's own ADR format when it has one. This command already authorizes the rewrite, so no ADR-offer or approval step applies.
 
-Keep a fully holding ADR in place with its number and original bytes unless citation repair later needs to change a citation. Archive the whole file when any provision no longer holds, or when the rewrite merges that file with other ADRs. Do not trim a partly holding ADR in place. Do not rewrite a holding ADR just to improve its wording.
+Keep a fully holding ADR in place with its name and original bytes unless citation repair later needs to change a citation. Archive the whole file when any provision no longer holds, or when the rewrite merges it with other ADRs. Do not trim a partly holding ADR in place. Do not rewrite a holding ADR just to improve its wording.
 
 For each source directory, plan new ADRs that state only the settled provisions that hold. Merge ADRs describing one decision into one replacement within that directory. Related decisions across directories remain in their own contexts. An ADR with no holding provisions needs no replacement. Preserve the rationale for the holding decision, but introduce no new decision, inferred constraint, or unsupported justification.
 
-Allocate each new number after the highest number anywhere in its source ADR directory and all run-time folders under its `archive/`. Reserve numbers for the whole plan before writing, incrementing for each new ADR. Never reuse a number or derive a private context's number from a tracked or neighboring directory.
+Name each replacement `YYYYMMDD-slug.md` from the run's local date, in its source ADR directory. Plan every full stem before writing. Each planned stem must differ from every other planned stem in that directory and be unused by any active ADR or ADR anywhere under that directory's `archive/`. On a clash, pick a different slug. Keep tracked, private, and context directories separate.
 
 Use one run-time stamp, `YYYY-MM-DDTHHMM`, for `archive/<date>T<HHMM>/` inside each affected source directory, for example `archive/2026-11-10T1530/`. Use one new folder per run in each directory. Never reuse an existing folder, even if empty or none of its filenames collide. Refuse the existing destination rather than sharing it. Keep the original basenames. Prepare a complete mapping of original paths to archive paths and replacing ADR paths. One original may have several replacements. A retired decision instead records `no part holds` and its evidence-backed reason.
 
 Write a provision coverage table. Every provision of every file to archive must map to a replacement provision or an explicit dropped reason. Each replacement statement must map back to its source. Each replacement ADR lists and links all archived ADRs it replaces. Save this plan before any move.
 
-Validate the plan with read-only file checks before execution. Check that every source still matches its inventoried checksum, every run-time archive folder is absent, every reserved number is unused, every replacement has sources, and each archived provision has a disposition. Save the command and its outcome. On a failed check, refresh the affected inventory and reconcile the plan before proceeding. Preserve user changes. Never overwrite a file changed since investigation under an earlier plan.
+Validate the plan with read-only file checks before execution. Check that every source still matches its inventoried checksum, every run-time archive folder is absent, every planned stem is unique within its source directory's plan and unused by active ADRs and ADRs recursively under its `archive/`, every replacement has sources, and each archived provision has a disposition. Save the command and its outcome. On a failed check, refresh the affected inventory and reconcile the plan before proceeding. Preserve user changes. Never overwrite a file changed since investigation under an earlier plan.
 
 ## 4. Archive and write what holds
 
 Write the planned replacement ADRs at their real target paths. Create each planned run-time archive folder exclusively, refusing an existing destination before moving files into it. Move each planned original to its own directory's new archive folder. Preserve its historical body, including existing supersession quotes. Add exactly one new archive banner above it, using the folder's run-time stamp:
 
 ```md
-> Archived on YYYY-MM-DDTHHMM. Replaced by [ADR NNNN](../../NNNN-slug.md).
+> Archived on YYYY-MM-DDTHHMM. Replaced by [ADR YYYYMMDD-slug](../../YYYYMMDD-slug.md).
 ```
 
 List every replacing ADR in the banner. When no part holds, use this form with the actual reason:
@@ -125,7 +125,7 @@ List all remaining problems affecting that ADR in its banner. For a missing prov
 
 ## 6. Report the run
 
-Account for every inventoried ADR. Report holding ADRs left in place, archived paths and their replacements or retirement reasons, new numbers, unresolved verdicts, operation failures, and pre-existing broken links. Include citation repair and independent-check outcomes, with skipped phases and missing proof explicit. Link the saved raw scout results, provision coverage, link map, and command diagnostics. In a Flow, use table Results for ADR outcomes and a Document Result for failures that have no ADR row.
+Account for every inventoried ADR. Report holding ADRs left in place, archived paths and their replacements or retirement reasons, new stems, unresolved verdicts, operation failures, and pre-existing broken links. Include citation repair and independent-check outcomes, with skipped phases and missing proof explicit. Link the saved raw scout results, provision coverage, link map, and command diagnostics. In a Flow, use table Results for ADR outcomes and a Document Result for failures that have no ADR row.
 
 Report every citation or link under report-only paths with its file, line, and new target. List live citations with no replacement and their archived targets separately. Include applied citation repairs, unresolved source or history classifications, and affected link-check failures. Distinguish protected non-edits from failures and pre-existing broken links.
 

@@ -12,13 +12,13 @@ git grep -l '^>' "$baseline" -- 'docs/adr/*.md' | wc -l
 
 The archive is `archive/<date>T<HHMM>/` inside the ADR directory that the ADR came from, for example `archive/2026-11-10T1530/`. Each run uses one new run-time folder in each affected ADR directory. A run never reuses an existing folder and refuses an existing destination rather than sharing it. This decision's earlier draft said `archive/<date>/`. Private mode and each context of a multi-context repo use the same layout under their own ADR directory. An archived ADR keeps its text. It gets one banner that names the replacing ADRs, or says that no part holds, and its relative links are repaired.
 
-No ADR number is used twice. A new ADR takes the next number after the highest one in the ADR directory and its archive, and lists the archived ADRs that it replaces. A citation of an archived number that nobody updated finds that ADR only in the archive, and the banner there leads to the replacement. The same citation under reused numbers would point at an unrelated decision.
+Each replacement uses `YYYYMMDD-slug.md` from the run's local date, following [ADR 20261111-new-adrs-are-named-by-date-and-slug](20261111-new-adrs-are-named-by-date-and-slug.md). Its full stem must be unused by active ADRs and ADRs anywhere under its source directory's archive. A clash needs a different slug. Each replacement lists the archived ADRs it replaces. Archived numbered and dated files keep their names, so old citations still identify the original decision.
 
-An ADR that holds completely and needs no merge stays in place with its number, so later runs change only what went stale. Its text changes only where it cites an ADR that the run archives. That citation and its link move to the replacing ADR.
+An ADR that holds completely and needs no merge stays in place with its name, so later runs change only what went stale. Its text changes only where it cites an ADR that the run archives. A live citation and its link name the replacing ADR by its full stem.
 
 The typed command authorizes the whole run, with no approval question. Scouts judge each ADR against later ADRs and the current project. After the rewrite, scouts that did not write the new ADRs check them twice over. Every archived provision is restated or dropped with a reason, and every new statement is true of the project. The skill fixes what the check finds and checks again, for at most three checks. Problems that remain stay in the result. The skill reports them and marks each affected new ADR with a banner. The skill also changes citations of archived numbers in live text to the replacing ADR. Citations in history, such as CHANGELOG entries and archived ADRs, keep their old numbers, but a link in history to an archived file is retargeted to its place in the run-time archive folder, so the old number still opens the ADR it named. The skill commits nothing.
 
-The always-apply Private-mode rule states what the archive means, because that rule already says where ADRs live and reaches projects whose `domain.md` predates the archive. Only the skills whose behavior changes get edits. why reads the archive, and domain-modeling counts archived numbers.
+The always-apply Private-mode rule states what the archive means, because that rule already says where ADRs live and reaches projects whose `domain.md` predates the archive. Only the skills whose behavior changes get edits. why reads the archive as historical evidence, and domain-modeling checks new stems against archived names.
 
 Coverage distinguishes archived provisions from new statements with a required, stable `kind`. An archived provision closes only as restated or dropped with the original judge's evidence-backed reason. A later fix can delete an invented new statement without abandoning an archived decision. Its stable row then closes as `removed`, with its former new ADR paths, verified current-ADR evidence of absence from every new ADR, no problem, and a resolution if previously open. Unknown or unavailable evidence stays open. This avoids relabelling a deleted invention as an abandoned source provision.
 
@@ -27,9 +27,9 @@ Coverage owns claims actually asserted in archived or new ADR text. Runtime, rat
 ## Considered options
 
 - Move only fully superseded ADRs. At baseline commit `4de7c8a875d9561f00c81be6f51b299ce3b01134`, the active set would shrink by 4 files of 67 and still hold superseded provisions behind banners. Regenerate the fully superseded count with `git grep -l -E '^> (Superseded by|.*None of this ADR still stands)' 4de7c8a875d9561f00c81be6f51b299ce3b01134 -- 'docs/adr/*.md' | wc -l`. The total uses the `git ls-tree` command above.
-- Trim each partly superseded ADR in place and archive its original. One number would name two texts.
-- Archive and rewrite every ADR on every run. An ADR that holds would get a reworded copy and a new number each run, and its citations would change each time.
-- Restart numbering at 0001 for each new set. Every old citation would point at a different decision without any sign of it.
+- Trim each partly superseded ADR in place and archive its original. One name would identify two texts.
+- Archive and rewrite every ADR on every run. An ADR that holds would get a reworded copy and a new name each run, and its citations would change each time.
+- Reuse an archived filename for a new decision. Every old citation would point at a different decision without any sign of it.
 - A sibling `adr-archive/` directory. No reader of the ADR directory could meet an archived ADR by accident, but every project's `domain.md` would need the second path.
 - Approval before the directory changes, once or twice per run. The user chose a run with no questions. In Private mode git does not track ADRs, so the run-time archive folder is the only way back.
 - Undo the run when the third check still fails. It discards the passed work for one open row.
