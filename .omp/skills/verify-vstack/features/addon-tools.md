@@ -6,6 +6,8 @@ A typed Matt run displays an instruction to gather intent from the task's real c
 
 - `addon-run-instruction` a bare typed Matt skill displays the instruction even without a native judge. implement and implement-spec name `inject_principles`. Other Matt skills name `inject_addons`.
 - `addon-no-chat-instruction` plain chat and a pasted skill header below the first line display no instruction.
+- `addon-stable-tools` both tools are active in the first main request and remain in the same positions after a mid-session Matt start.
+- `addon-no-run-picks` a tool call in a branch with no Matt start returns no picks and saves no Addon entry.
 - `addon-tool-unavailable` both registered tools complete without picks when the judge role has no native candidate.
 - `addon-tool-picks` with a native judge, tools return fitting pointers and save them once per session across branches and resume.
 - `addon-principle-scope` `inject_principles` asks all main principle questions, including never-block-on-the-human. `inject_addons` asks both kinds of Addon questions.
@@ -32,6 +34,22 @@ bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN
 ```
 
 Read `addon-run-instruction/model-requests.jsonl` and `rpc.jsonl`. The first request contains a displayed `vstack-addon-instruction` message to gather intent and call `inject_principles`. The saved session records that message. There is no automatic pick. Step `addon-tools-other-matt-instruction`: Repeat with `/skill:to-spec` in a new drive named `addon-other-matt-instruction` and observe the `inject_addons` instruction. Step `addon-tools-no-chat-instruction`: Use a new drive named `addon-no-chat-instruction` with plain chat and then a message containing a pasted skill header below its first line. Neither receives the instruction.
+
+Prove the tool list survives a mid-session Matt start. Create `$VERIFY_RUN_DIR/addon-stable-replies.json`:
+
+```json
+[
+	{"tool":"inject_addons","args":{"intent":"Open a PR"}},
+	{"text":"Plain chat completed."},
+	{"text":"Matt run started."}
+]
+```
+
+```sh
+bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name addon-stable-tools --session --replies "$VERIFY_RUN_DIR/addon-stable-replies.json" '{"type":"prompt","message":"Explain the project"}' '{"type":"prompt","message":"/skill:to-spec"}' '{"type":"get_state"}'
+```
+
+Compare the complete `tools` arrays in every `addon-stable-tools/model-requests.jsonl` request that has tools. Both Addon tools must appear in the first request, and the arrays must be identical before and after the Matt start, including order and schemas. The plain-chat call must complete with `No Addons selected.` and no saved `vstack-addons` entry. The saved session must contain no `tool-roster-notice`. Only the Matt-start request receives the instruction. This proves request stability, not a paid provider's cache hit count.
 
 Step `addon-tools-tool-unavailable`: To exercise both tools without a native judge, create `$VERIFY_RUN_DIR/addon-tool-replies.json`:
 

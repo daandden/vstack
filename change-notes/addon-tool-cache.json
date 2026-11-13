@@ -1,0 +1,1 @@
+{"schema":1,"level":"patch","entries":["Keep the Addon tools active from the first main request so a mid-session Matt run start does not invalidate the prompt cache. Calls outside a Matt run return no picks."]}
