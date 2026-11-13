@@ -1,6 +1,6 @@
 ---
 name: web-fullstack
-description: Choose frontend libraries, set up Vue or Nuxt projects, or build fullstack Nuxt sites on Cloudflare Workers.
+description: Choose frontend libraries, or set up and deploy Vue and Nuxt projects, including fullstack Nuxt on Cloudflare Workers.
 ---
 
 # Choose and set up a web stack
