@@ -2,9 +2,7 @@
 
 ## Set the boundary
 
-Use the target app's declared manager and lockfile, or the user's explicit choice. Resolve conflicting declarations through [the shared question contract](../SKILL.md#flow-and-questions) before installation. With no declaration or existing convention in a new project, use Bun. If the selected manager is unavailable, report the prerequisite. Do not install it globally or substitute another manager. Bun as installer does not change an existing application's runtime.
-
-Keep an existing application's framework. For a new application, default to Nuxt. Honor an explicit Vue with Vite request, and use Vue with Vite for an embedded widget or component library. Choose framework separately from rendering and deployment. Resolve consequential rendering requirements through [the shared question contract](../SKILL.md#flow-and-questions).
+Apply the [shared framework, manager, and rendering rules](../SKILL.md#inspect-the-target-application). Resolve consequential rendering requirements through [the shared question contract](../SKILL.md#flow-and-questions).
 
 Check the scaffold command's current options before running it. Create the real project in the requested directory, install its dependencies with the selected manager, and replace its starter page with the requested working feature. For Bun with no prior convention, the starting commands are:
 
@@ -28,6 +26,10 @@ Use the [curated task row](choices.md), not the whole list. Verify current frame
 
 For UnoCSS, shadcn-vue, and icons, follow [the controls recipe](unocss-controls.md). For managed forms and runtime schemas, follow [the forms recipe](forms.md). Optional state, query, chart, table, motion, and 3D packages remain absent unless their task requires them.
 
+For server routes or data, follow [server and data setup](server-data.md). For a Cloudflare target, also follow [the local boundary and deploy checklist](cloudflare-deploy.md). Frontend-only setup does not load either reference unless the task needs it.
+
+For sign-in, also follow [Better Auth setup](auth.md). Keep auth absent for tasks without sign-in.
+
 ## Keep one lint and format policy
 
 Preserve existing ESLint, Prettier, Biome, or other tooling unless migration is explicit. When tooling is absent, use compatible ESLint and `@antfu/eslint-config` development dependencies. In Nuxt, compose antfu with the generated Nuxt configuration rather than creating a parallel Vue or TypeScript ruleset:
@@ -46,5 +48,7 @@ Register `@nuxt/eslint` and run Nuxt preparation before importing its generated 
 ## Establish completion
 
 Run the target project's production build, typecheck, and relevant configured lint command. Fix integration failures within scope. Exercise the actual requested feature, including keyboard and error paths, themes, and narrow layouts where applicable. For schemas, include repeated validation under the target policy, not only a first successful call.
+
+For fullstack Cloudflare setup, also prove a page and server route writing and reading local D1 in both Nuxt dev and the built Worker under `wrangler dev`. Return the written deploy checklist. A successful Node preview is not Workers-runtime proof.
 
 Return the project path, framework and manager decisions, installed task-required dependencies, exact commands and outcomes, and browser evidence or an explicit unavailable check. Report incompatibility or missing prerequisites instead of replacing the chosen CSS system, components, or schema library silently.

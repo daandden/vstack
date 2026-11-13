@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Complete web-fullstack deployment on explicit request with account and per-step confirmation, private terminal secret input, live-origin checks, and accountless Verify proof."
+  ]
+}
