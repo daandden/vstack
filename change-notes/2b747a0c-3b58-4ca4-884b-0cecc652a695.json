@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add conditional Better Auth setup through @nuxtjs/better-auth and NuxtHub D1, with local secret handling, Workers site URL configuration, and browser verification."
+  ]
+}

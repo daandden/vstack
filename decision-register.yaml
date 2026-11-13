@@ -1161,7 +1161,7 @@ originals:
   - plugin/skills/clean-adr
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
-  - plugin/skills/pick-frontend-stack
+  - plugin/skills/web-fullstack
   - plugin/rules/vstack-python.md
   - plugin/rules/vstack-images.md
 utility:
@@ -1194,4 +1194,4 @@ utility:
   - plugin/skills/interrogate
   - plugin/skills/choreograph
   - plugin/skills/gestures
-  - plugin/skills/pick-frontend-stack
+  - plugin/skills/web-fullstack
