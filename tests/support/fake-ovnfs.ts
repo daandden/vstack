@@ -11,8 +11,10 @@ const save = () => { writeFileSync(stateFile, JSON.stringify(entries)); writeFil
 const remove = (name: string, sticky: boolean) => {
   const i = entries.findIndex(e => e.name === name);
   if (i < 0) process.exit(1);
-  rmSync(entries[i].path, { recursive: true });
-  if (entries[i].git) rmSync(entries[i].git!, { recursive: true, force: true });
+  if (!process.env.FAKE_OVNFS_RETAIN_DIRECTORY) {
+    rmSync(entries[i].path, { recursive: true });
+    if (entries[i].git) rmSync(entries[i].git!, { recursive: true, force: true });
+  }
   entries.splice(i, 1);
   if (!sticky && !process.env.FAKE_OVNFS_OLD_DAEMON) snapshots.splice(0, snapshots.length, ...snapshots.filter(s => s.checkout !== name));
   save(); console.log("{}");

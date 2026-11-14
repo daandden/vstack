@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Make clean-wt recover external saved-session headers, report native checkout exclusions, reject unsupported non-Git invocation before scanning, reduce redundant content reads with fresh deletion guards, and plan informed approval in bounded rounds."
+  ]
+}

@@ -175,7 +175,7 @@ function retainedMountGap(entry: string): string | undefined {
 export interface CheckoutLocation {
   path: string;
   entry: string;
-  kind: "worktree" | "task-isolation" | "standalone-clone";
+  kind: "worktree" | "task-isolation" | "standalone-clone" | "excluded";
   gaps: string[];
 }
 
@@ -195,20 +195,43 @@ export function checkoutLocations(path: string): CheckoutLocation[] | undefined 
   return undefined;
 }
 
-export function scanCheckoutLocations(base: string, listing: { ok: boolean; paths: Set<string> }): CheckoutLocation[] {
+export function scanCheckoutLocations(base: string, listing: { ok: boolean; reason?: string; paths: Set<string> }): CheckoutLocation[] {
   const out: CheckoutLocation[] = [];
+  if (listing.ok) {
+    for (const path of [...listing.paths].sort()) {
+      const exclude = (reason: string) => out.push({ path, entry: path, kind: "excluded", gaps: [reason] });
+      const depth = path.startsWith(base + sep) ? path.slice(base.length + 1).split(sep).length : 0;
+      if (depth < 1 || depth > 2) {
+        exclude(`native omp entry is outside the supported cleanup base or layout: ${path}`);
+        continue;
+      }
+      if (!lstat(path)?.isDirectory()) {
+        exclude(`native omp entry directory is missing or not a directory: ${path}`);
+        continue;
+      }
+      try {
+        const locations = checkoutLocations(path);
+        if (locations?.length) out.push(...locations);
+        else exclude(`native omp entry has no supported checkout layout; retain its metadata and contents: ${path}`);
+      } catch (error) {
+        exclude(`cannot inspect native omp entry layout: ${path}: ${(error as Error).message}`);
+      }
+    }
+    return out;
+  }
   if (!lstat(base)?.isDirectory()) return out;
-  const listed = (path: string) => !listing.ok || listing.paths.has(path);
   for (const name of readdirSync(base).sort()) {
     const path = join(base, name);
     if (!lstat(path)?.isDirectory()) continue;
-    const locations = listed(path) ? checkoutLocations(path) : undefined;
+    const locations = checkoutLocations(path);
     if (locations) { out.push(...locations); continue; }
     for (const child of readdirSync(path).sort()) {
       const childPath = join(path, child);
-      if (listed(childPath) && lstat(childPath)?.isDirectory()) out.push(...(checkoutLocations(childPath) ?? []));
+      if (lstat(childPath)?.isDirectory()) out.push(...(checkoutLocations(childPath) ?? []));
     }
   }
+  const gap = listing.reason || `cannot read native omp listing for ${base}; local discovery cannot confirm cleanup eligibility`;
+  for (const location of out) location.gaps = [gap, ...location.gaps];
   return out;
 }
 
@@ -259,23 +282,18 @@ export function cleanupOvnfsLocations(
       }
     }
   } while (changed);
-  return listing.checkouts.filter((checkout) => checkout.name.startsWith("omp-")).flatMap((checkout) => {
+  return listing.checkouts.map((checkout) => {
     const record = records.get(checkout.name);
     const belongs = known.has(checkout.source);
-    if (!belongs && lstat(checkout.source)?.isDirectory()) {
-      try {
-        const paths = run(["git", "-C", checkout.source, "worktree", "list", "--porcelain"]);
-        if (paths.split("\n").some((line) => line.startsWith("worktree ")) && projectPaths.size) return [];
-      } catch {}
-    }
-    return [{
+    return {
       path: checkout.path, entry: checkout.path, kind: "ovnfs" as const, name: checkout.name,
       source: checkout.source, record: record?.file,
       gaps: [
+        ...(!checkout.name.startsWith("omp-") ? [`ovnfs checkout is outside omp cleanup scope; retain named and verifier checkouts: ${checkout.name}`] : []),
         ...(!belongs ? [`cannot establish ovnfs checkout origin: ${checkout.source}`] : []),
         ...(!lstat(checkout.path)?.isDirectory() ? [`ovnfs checkout directory is missing: ${checkout.path}`] : []),
         ...(record?.gap ? [record.gap] : []),
       ],
-    }];
+    };
   });
 }
