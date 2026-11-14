@@ -976,7 +976,7 @@ while (!existsSync(${JSON.stringify(listed)})) {
   if (performance.now() >= deadline) process.exit(1);
   Bun.sleepSync(10);
 }
-Bun.sleepSync(500);
+Bun.sleepSync(5000);
 rmSync(${JSON.stringify(path)}, { recursive: true, force: true });`], { cwd: dir, stdout: "ignore", stderr: "pipe" });
     holders.push(worker);
   }
@@ -993,7 +993,7 @@ rmSync(${JSON.stringify(path)}, { recursive: true, force: true });`], { cwd: dir
     expect(out.json).toEqual({ removed: [], skipped: [], failed: [{ path, error: "the directory still exists after removal" }] });
     expect(existsSync(path)).toBe(true);
   }
-});
+}, 30000);
 
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
   const path = ovnfsCheckout("omp-configured-123");

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Wait up to fifteen seconds for ovnfs mount teardown after confirmed removal, so delayed directory cleanup does not report a false failure."
+  ]
+}
