@@ -56,10 +56,12 @@ Create `$F/docs/protocol.md` containing a `# Protocol` heading. For `contexts`, 
 Before the baseline in every shared-seed fixture, write `$F/docs/current-policy.md` as an ordinary project domain document with these accepted current policies:
 
 ```md
-# Current cache policy
+# Current project policy
 
 The fixed ten-entry cache cap is retired. Cache capacity comes from configuration.
 The seven-day retention decision remains accepted so devices can reconnect after a week offline.
+Remote polling is retired. Devices no longer poll the remote service for updates.
+Payloads use gzip for receiver compatibility. This is one decision.
 ```
 
 Link this document from `C/domain.md` and each seeded glossary, including both Private-mode domain namespaces and every context. Apply this seed to protected, direct, and dated-source citation fixtures as well. It establishes policy acceptance, not runtime enforcement, measured memory limits, physical offline durations, or deployed receiver capabilities. Keep the settings and original ADR bodies and rationales unchanged. The evidence-poor checks must still leave those unsupported claims open.
@@ -152,7 +154,7 @@ Create these incoming citations before taking the baseline. When one file cites 
 |---|---|---|
 | Step `clean-adr-citation-live-links`: `docs/live-citations.md` | A live inline link labelled `ADR 0002`, a live reference-style link labelled `ADR-0004`, and a live HTML link labelled `ADR 0002`. | Each label names the appropriate cache or compression replacement by full stem, and its destination reaches that replacement. |
 | Step `clean-adr-citation-code`: `src/policy.ts` | A code comment citing plain `ADR 0004` and naming its ADR directory. | The comment names and links the compression replacement by full stem, not the archived number. |
-| Step `clean-adr-citation-retired`: `docs/retired.md` | A live link labelled `ADR 0001` and a plain live `ADR 0001` citation. | Keep both numbers. Retarget the link to the retired original in the run-time archive folder. Report both occurrences and their archived targets. |
+| Step `clean-adr-citation-retired`: `docs/retired.md` | A live lookup link labelled `ADR 0001` and a plain live lookup `ADR 0001` citation, neither endorsing polling as current policy. | Keep both numbers. Retarget the link to the retired original in the run-time archive folder. Report both occurrences and their archived targets. |
 | Step `clean-adr-citation-changelog`: `CHANGELOG.md` | A release entry with an inline link labelled `ADR 0002`. | Keep the old number and entry wording. Only the destination changes to the run-time archive folder. |
 | Step `clean-adr-citation-plain-history`: `research/plain.md` | A past-research statement citing plain `ADR 0004`. | Keep every byte. |
 | Step `clean-adr-citation-linked-history`: `research/links.md` | A past-research statement with a reference-style link labelled `ADR 0004`. | Keep the old number. Retarget its reference definition to the archived original. |

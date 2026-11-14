@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Separate clean-adr decision verdicts from runtime and rationale evidence gaps so settled archives and merges proceed while independent coverage keeps missing proof open."
+  ]
+}
