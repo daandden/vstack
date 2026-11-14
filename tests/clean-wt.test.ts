@@ -1069,6 +1069,27 @@ test.each([
   expect(git(repo, "status", "--porcelain")).toBe("");
 });
 
+test("ovnfs removal waits for mounted directory visibility without repeating deletion", async () => {
+  const name = "omp-delayed-visibility";
+  const path = ovnfsCheckout(name);
+  const snapshot = { id: "delayed-snapshot", checkout: name };
+  writeFileSync(join(ovnfsRoot, "snapshots.json"), JSON.stringify([snapshot]));
+  const c = inventory()[path];
+  const observer = Bun.spawn(["python3", "-c", "import json,sys,time,shutil\nprint('ready',flush=True)\nwhile any(e['name']==sys.argv[2] for e in json.load(open(sys.argv[1]))): time.sleep(0.002)\ntime.sleep(0.2)\nshutil.rmtree(sys.argv[3])", join(ovnfsRoot, "checkouts.json"), name, path], { stdout: "pipe", stderr: "inherit" });
+  holders.push(observer);
+  const reader = observer.stdout.getReader();
+  const { value } = await reader.read();
+  reader.releaseLock();
+  expect(new TextDecoder().decode(value)).toContain("ready");
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], { FAKE_OVNFS_RETAIN_DIRECTORY: "1" });
+  expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  expect(existsSync(path)).toBe(false);
+  expect(await observer.exited).toBe(0);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
+  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  expect(calls.filter(call => call.args[0] === "ctl" && call.args[1] === "rm")).toHaveLength(1);
+}, 30000);
+
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
   const path = ovnfsCheckout("omp-configured-123");
   const configured = join(dir, "configured-ovnfs");
