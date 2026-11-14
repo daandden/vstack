@@ -23,6 +23,7 @@ try {
       target: { type: "string", multiple: true },
       "prepare-source": { type: "string", multiple: true },
       "source-facts": { type: "string" },
+      progress: { type: "boolean" },
     },
   });
 } catch (e) {
@@ -41,6 +42,20 @@ function run(cmd: string[], cwd?: string, env?: Record<string, string | undefine
   return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
 }
 
+function progress(phase: string, details: Record<string, unknown>) {
+  if (values.progress) process.stderr.write(`${JSON.stringify({ phase, ...details })}\n`);
+}
+
+const contentReads = { files: 0, bytes: 0 };
+let reportedBytes = 0;
+function countContentBytes(file: string, bytes: number) {
+  contentReads.bytes += bytes;
+  if (values.progress && contentReads.bytes - reportedBytes >= (1 << 26)) {
+    progress("contents", { stage: "reading", path: file, ...contentReads });
+    reportedBytes = contentReads.bytes;
+  }
+}
+
 const lstat = (p: string) => {
   try {
     return lstatSync(p);
@@ -56,6 +71,10 @@ const realpath = (p: string) => {
     return "";
   }
 };
+
+if (run(["git", "rev-parse", "--is-inside-work-tree"]).out.trim() !== "true") {
+  usage("run clean-wt from the source Git repository, not a non-Git workspace; native checkout origins need that project context");
+}
 
 
 const requestedBase = resolve(values.base ?? defaultCheckoutBase(0));
@@ -149,12 +168,16 @@ function readSessions(): SessionHeader[] {
   return [...headersByFile.values()];
 }
 
-/** Session headers from the `.jsonl` files that the given processes hold open, which finds sessions saved outside the session dirs. */
-function openSessionFiles(pids: number[]): SessionHeader[] {
+function discoverHolderSessions(pids: number[]): SessionHeader[] {
   const r = run(["lsof", "-a", "-p", pids.join(","), "-Fn"]);
   const files = new Set(r.out.split("\n").filter((l) => l.startsWith("n") && l.endsWith(".jsonl")).map((l) => l.slice(1)));
   const buf = Buffer.alloc(1 << 16);
-  return [...files].map((f) => readHeader(f, buf)).filter((h): h is SessionHeader => !!h);
+  for (const file of files) {
+    if (!readHeader(file, buf)) continue;
+    const root = dirname(file);
+    if (!sessionRoots.some((existing) => inside(root, existing))) sessionRoots.push(root);
+  }
+  return readSessions();
 }
 
 /** The lock path of omp's session lease for an id: plain ids name the file, other ids are hashed first. */
@@ -229,16 +252,19 @@ function leaseDetectionGap(): string | undefined {
   if (!leases.ok) return leases.reason;
   if (!ownSession) return "PI_SESSION_ID is not set, so the run cannot prove it sees session leases; run clean-wt from an omp session";
   if (!leases.held.has(ownSession)) return `the running session's own lease (${ownSession}) does not show as held under ${ownersDir}`;
-  if (!sessionHeaders.some((s) => s.id === ownSession)) return `the running session ${ownSession} has no session file under ${sessionRoots.join(", ")}, so other sessions may be missing too`;
+  if (!sessionHeaders.some((s) => s.id === ownSession)) return `the running session ${ownSession} has no session file under ${sessionRoots.join(", ")}, so other sessions may be missing too; supply its readable session directory with --sessions`;
   const missing = [...leases.held.keys()].filter((id) => !sessionHeaders.some((s) => s.id === id));
-  if (missing.length > 0) return `live sessions have no readable current header (${missing.join(", ")}), so their checkouts are unknown`;
-  if (leases.unknown.size > 0) return `live sessions hold leases with no readable session file (${[...leases.unknown.keys()].join(", ")}), so their checkouts are unknown`;
+  if (missing.length > 0) return `live sessions have no readable current header (${missing.join(", ")}), so their checkouts are unknown; restore header access or supply their session directories with --sessions`;
+  if (leases.unknown.size > 0) return `live sessions hold leases with no readable session file (${[...leases.unknown.keys()].join(", ")}), so their checkouts are unknown; inspect lease-holder processes (${[...new Set(leases.unknown.values())].join(", ")}) and supply their readable session directories with --sessions; retain unowned checkouts until ownership is resolved`;
   return undefined;
 }
 
 function gatherEvidence() {
+  progress("evidence", { stage: "native listing" });
   listing = ompWorktreeListing(base);
+  progress("evidence", { stage: "session headers" });
   sessionHeaders = readSessions();
+  progress("evidence", { stage: "live ownership" });
   // lsof unions file selections unless -a is supplied, so one scan covers both ownership guards.
   const native = process.platform === "linux" || process.platform === "win32"
     ? undefined
@@ -249,21 +275,23 @@ function gatherEvidence() {
     if (!leases.held.has(header.id)) return [header];
     const current = readHeader(header.file, buf);
     if (current) headersByFile.set(header.file, current);
+    else headersByFile.delete(header.file);
     return current ? [current] : [];
   });
-  const holders = [...new Set(leases.unknown.values())].filter((p): p is number => p !== null);
+  const known = new Set(sessionHeaders.map((s) => s.id));
+  const holders = [...new Set([...leases.unknown.values(), ...[...leases.held].filter(([id]) => !known.has(id)).map(([, pid]) => pid)])].filter((p): p is number => p !== null);
   if (holders.length > 0) {
-    const known = new Set(sessionHeaders.map((s) => s.id));
-    for (const h of openSessionFiles(holders)) {
+    for (const h of discoverHolderSessions(holders)) {
       const name = basename(leasePath(h.id), ".lock");
-      if (known.has(h.id) || !leases.unknown.has(name)) continue;
+      if (known.has(h.id) || (!leases.held.has(h.id) && !leases.unknown.has(name))) continue;
       known.add(h.id);
       sessionHeaders.push(h);
-      leases.held.set(h.id, leases.unknown.get(name) ?? null);
+      leases.held.set(h.id, leases.held.get(h.id) ?? leases.unknown.get(name) ?? null);
       leases.unknown.delete(name);
     }
   }
   cwds = processCwds(native);
+  progress("evidence", { stage: "ovnfs listing" });
   ovnfs = ovnfsListing();
   const projectPaths = new Set(run(["git", "worktree", "list", "--porcelain"]).out.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => realpath(line.slice(9)) || resolve(line.slice(9))));
   let added: boolean;
@@ -281,6 +309,7 @@ function gatherEvidence() {
   } while (added);
   ovnfsLocations = cleanupOvnfsLocations(base, ovnfs, projectPaths);
   evidenceGaps = [leaseDetectionGap(), cwds.ok ? undefined : cwds.reason, listing.ok ? undefined : listing.reason, ovnfs.ok ? undefined : ovnfs.reason].filter((g): g is string => !!g);
+  progress("evidence", { stage: "complete", blockers: evidenceGaps });
 }
 
 interface Owner {
@@ -291,7 +320,7 @@ interface Owner {
   command?: string;
 }
 
-type Kind = "linked-worktree" | "orphaned-worktree" | "task-isolation" | "standalone-clone" | "ovnfs";
+type Kind = "linked-worktree" | "orphaned-worktree" | "task-isolation" | "standalone-clone" | "ovnfs" | "excluded";
 type Verdict = "owned" | "uncertain" | "unused";
 type State = "clean" | "dirty" | "unknown" | "not checked";
 
@@ -456,23 +485,6 @@ function expand(root: string, rel: string): string[] {
   }
 }
 
-function sameBytes(a: string, b: string): boolean {
-  const fa = openSync(a, "r");
-  const fb = openSync(b, "r");
-  try {
-    const ba = Buffer.alloc(1 << 20);
-    const bb = Buffer.alloc(1 << 20);
-    for (;;) {
-      const na = readSync(fa, ba, 0, ba.length, null);
-      const nb = readSync(fb, bb, 0, bb.length, null);
-      if (na !== nb || !ba.subarray(0, na).equals(bb.subarray(0, nb))) return false;
-      if (na === 0) return true;
-    }
-  } finally {
-    closeSync(fa);
-    closeSync(fb);
-  }
-}
 
 /** Where a link points: its path inside its own checkout when it stays inside, else its absolute target. */
 function linkTarget(root: string, rel: string): string {
@@ -480,14 +492,18 @@ function linkTarget(root: string, rel: string): string {
   return inside(target, root) ? `checkout:${target.slice(root.length)}` : target;
 }
 
-function compareIgnored(path: string, ref: string | null, rel: string): "same" | "unique" | "unverified" {
+function compareIgnored(path: string, ref: string | null, rel: string, content: string): "same" | "unique" | "unverified" {
   if (!ref) return "unverified";
   try {
     const a = lstatSync(join(path, rel));
     const b = lstat(join(ref, rel));
     if (a.isSymbolicLink()) return b?.isSymbolicLink() && linkTarget(path, rel) === linkTarget(ref, rel) ? "same" : "unique";
     if (!a.isFile()) return "unverified";
-    return b?.isFile() && a.size === b.size && sameBytes(join(path, rel), join(ref, rel)) ? "same" : "unique";
+    if (content === "missing" || content === "unverified") return "unverified";
+    if (!b?.isFile() || a.size !== b.size) return "unique";
+    const preserved = contentStamp(join(ref, rel));
+    if (preserved === "missing" || preserved === "unverified") return "unverified";
+    return content === preserved ? "same" : "unique";
   } catch {
     return "unverified";
   }
@@ -509,8 +525,10 @@ function contentStamp(file: string): string {
     const hash = createHash("sha256");
     const buf = Buffer.alloc(1 << 16);
     fd = openSync(file, "r");
+    contentReads.files++;
     for (;;) {
       const n = readSync(fd, buf, 0, buf.length, null);
+      countContentBytes(file, n);
       if (n === 0) break;
       hash.update(buf.subarray(0, n));
     }
@@ -579,16 +597,18 @@ function workState(path: string, ref: string | null): WorkState {
       } else if (actual !== entries.get(rel) && !changes.unstaged.includes(rel)) changes.unstaged.push(rel);
     }
   }
-  for (const rel of ignored) {
-    const verdict = compareIgnored(path, ref, rel);
-    if (verdict === "unique") changes.ignored_unique.push(rel);
-    else if (verdict === "unverified") changes.ignored_unverified.push(rel);
-  }
-  const listed = Object.values(changes).flat();
-  const stamp = [r.out, flags.out, ...[...new Set([...listed, ...ignored, ...hidden])].map((rel) => {
+  const ignoredPaths = new Set(ignored);
+  const stamp = [r.out, flags.out, ...[...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])].map((rel) => {
     const st = lstat(join(path, rel));
-    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, contentStamp(join(path, rel))] : [rel];
+    const content = st ? contentStamp(join(path, rel)) : "missing";
+    if (ignoredPaths.has(rel)) {
+      const verdict = compareIgnored(path, ref, rel, content);
+      if (verdict === "unique") changes.ignored_unique.push(rel);
+      else if (verdict === "unverified") changes.ignored_unverified.push(rel);
+    }
+    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content] : [rel];
   })];
+  const listed = Object.values(changes).flat();
   for (const k of Object.keys(changes)) if (changes[k].length === 0) delete changes[k];
   return { state: hiddenUnknown ? "unknown" : listed.length > 0 ? "dirty" : "clean", changes, stamp };
 }
@@ -787,22 +807,32 @@ function integrated(path: string, source: Source | null, work: WorkState): Integ
 }
 
 function inspect(path: string, entry: string, kind: Kind, entryOwners: Owner[], entryGaps: string[]): Checkout {
+  progress("checkout", { stage: "ownership", path });
   const branch: string | null = null;
   const { sessions, moved } = sessionLinks(entry);
   const owners = ownersOf(entry, entryOwners, sessions);
   const { verdict, reasons } = verdictOf(owners, [...evidenceGaps, ...entryGaps]);
   const common: Pick<Checkout, "path" | "entry" | "kind" | "verdict" | "reasons" | "owners" | "branch" | "sessions" | "moved_sessions"> = { path, entry, kind, verdict, reasons, owners, branch, sessions, moved_sessions: moved };
-  if (verdict !== "unused") return { ...common, state: "not checked", changes: {}, unique_history: [], fingerprint: "" };
+  if (verdict !== "unused") {
+    progress("checkout", { stage: "protected", path, blockers: reasons, owners });
+    return { ...common, state: "not checked", changes: {}, unique_history: [], fingerprint: "" };
+  }
   common.branch = run(["git", "symbolic-ref", "-q", "--short", "HEAD"], path).out.trim() || null;
   const source = sourceOf(path, entry, kind);
   const head = run(["git", "rev-parse", "HEAD"], path).out.trim();
+  progress("checkout", { stage: "contents", path });
+  const before = { ...contentReads };
   const work = workState(path, source?.checkout ?? null);
+  progress("contents", { stage: "complete", path, files: contentReads.files - before.files, bytes: contentReads.bytes - before.bytes });
+  progress("checkout", { stage: "history", path });
   const unique_history = uniqueHistory(path, kind, source);
+  if (compareIntegration && work.state === "dirty") progress("checkout", { stage: "integration", path });
   const integration = compareIntegration && work.state === "dirty" ? integrated(path, source, work) : undefined;
   const artifacts = ["ignored_unique", "ignored_unverified", "unmerged"].some((key) => work.changes[key]?.length);
   const automatic = unique_history.length === 0 && (work.state === "clean" || (integration?.status === "verified" && !artifacts));
   const fingerprint = createHash("sha256").update(JSON.stringify([head, common.branch, work.stamp, unique_history, integration])).digest("hex");
   const source_git_dir = source?.commonDir ?? run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path).out.trim();
+  progress("checkout", { stage: "complete", path, state: work.state, automatic, blockers: [...(work.changes.unreadable ?? []), ...(integration?.reason ? [integration.reason] : []), ...unique_history.map(tip => `unique history: ${tip.ref}`)] });
   return { ...common, state: work.state, changes: work.changes, unique_history, fingerprint, integration, automatic, source_git_dir };
 }
 
@@ -878,7 +908,7 @@ function removeAll() {
     const discovered = rescan(t.entry, t.path);
     compareIntegration = discovered?.state === "dirty" && discovered.fingerprint !== t.fingerprint;
     refreshRemote = true;
-    if (compareIntegration) rescan(t.entry, t.path);
+    if (compareIntegration && discovered?.source_git_dir) remoteDefault(discovered.source_git_dir);
     refreshRemote = false;
     gatherEvidence();
     const c = rescan(t.entry, t.path);
@@ -892,6 +922,7 @@ function removeAll() {
     else if (c.state === "unknown") reason = "its Git state and history cannot be verified; repair the checkout before removal";
     else if (needsApproval && !approved.has(t.path)) reason = `it holds ${c.state} work, and removing it needs --approve`;
     if (reason || !c) {
+      progress("remove", { stage: "skipped", path: t.path, blocker: reason });
       skipped.push({ path: t.path, reason: reason! });
       continue;
     }
