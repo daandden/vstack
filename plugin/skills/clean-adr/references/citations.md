@@ -26,7 +26,7 @@ Record each occurrence's file, line, cited source ADR, live or historical role, 
 - Historical passages record what was decided or shipped at the time. CHANGELOG entries, research notes describing past decisions, and archived ADR bodies keep their old identifiers and wording.
 - A new ADR's list of archived sources, such as its `Replaces` links, is provenance. Keep those references pointed at the archived originals, not at the new ADR itself.
 
-A file can contain both live and historical passages. Read the surrounding text before choosing a target. If the evidence cannot identify a source or distinguish those roles, retain the occurrence and report the ambiguity with its candidate targets. Do not invent a replacement or claim that citation repair completed for that occurrence.
+A file, line, or sentence can contain both live and historical passages. Classify each occurrence by its own clause, never by its line or neighbouring citations. For example, in "Use ADR 0002 for retention. Historically considered ADR 0001.", the first citation is live and the second is historical. Read the surrounding text to identify each occurrence's source and purpose. If the evidence cannot identify a source or distinguish those roles, retain the occurrence and report the ambiguity with its candidate targets. Do not invent a replacement or claim that citation repair completed for that occurrence.
 
 ## Choose each new target
 

@@ -43,6 +43,16 @@ observations.push({ name: "configured-capacity", inputCount: stores.length, rece
 const journal = join(output, "journal.jsonl");
 const local = { at: 0, value: "local" };
 const remote = { at: 0, value: "remote", source: "remote" };
+const enabledSettings = join(output, "polling-enabled-settings.json");
+writeFileSync(enabledSettings, JSON.stringify({ ...settings, remotePolling: true }, null, 2) + "\n");
+const pollingInput = { stores: [local, remote], deliverAt: 0 };
+const polling = await execute("polling-enabled-producer", "./producer.ts", [enabledSettings], Buffer.from(JSON.stringify(pollingInput)));
+const pollingReceived = await execute("polling-enabled-receiver", "./receiver.ts", [], polling.stdout);
+equal(polling.exit, 0, polling.stderr);
+equal(pollingReceived.exit, 0, pollingReceived.stderr);
+const pollingEntries = JSON.parse(Buffer.from(pollingReceived.stdout).toString());
+deepStrictEqual(pollingEntries, [{ createdAt: 0, value: "local" }, { createdAt: 0, value: "remote" }]);
+observations.push({ name: "polling-enabled", settings: enabledSettings, input: pollingInput, received: pollingEntries, producerExit: polling.exit, receiverExit: pollingReceived.exit });
 writeFileSync(journal, "");
 const navigationInput = { stores: [local, remote], deliverAt: 0, journal };
 const policy = await execute("policy-producer", "./producer.ts", [], Buffer.from(JSON.stringify(navigationInput)));

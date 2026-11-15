@@ -6,6 +6,8 @@ Use this procedure for every numbered whole-result check. The bundled command co
 
 Save a manifest in the check's Scratch directory. Give every archived provision and new statement a stable row id and one owning group. Separate independent claims when they need different evidence, such as a configured retention period, runtime enforcement, and the operational rationale. Use namespace-qualified ids. Keep the previous check's ids even after a fix. Add rows for statements introduced by a fix or findings discovered by a scout.
 
+Every archived provision owns its rows regardless of its disposition. A dropped provision still needs separate rows for runtime enforcement and rationale asserted by its archived text. An evidence-backed abandonment reason closes only the disposition row, not those claim rows. Keep them open as `unavailable` or `unknown` when independent project evidence is missing, even if the provision has no replacement ADR.
+
 Each manifest group names its raw scout JSON file. A relative report path resolves from the manifest's directory. Every row requires `kind`: `archived` for a provision in an archived ADR, or `new` for a statement in a new ADR. Keep that kind with the stable id through later fixes, including deletion of a new statement. `source` names the provision or statement by path and section or line. `affectedAdrs` lists the new ADR paths that need a banner if the row stays open. Use an empty array when no replacement exists.
 
 ```json

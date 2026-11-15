@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Classify each ADR citation by its own clause and preserve independent runtime and rationale coverage for dropped provisions."
+  ]
+}

@@ -1,7 +1,7 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import { Device } from "./device.ts";
 
-const settings = JSON.parse(readFileSync(new URL("../../settings.json", import.meta.url), "utf8"));
+const settings = JSON.parse(readFileSync(Bun.argv[2] ?? new URL("../../settings.json", import.meta.url), "utf8"));
 const input = await Bun.stdin.json() as { stores: { at: number; value: string; source?: "local" | "remote" }[]; deliverAt: number; journal?: string };
 let now = 0;
 const producer = new Device(settings.cache, () => now);
