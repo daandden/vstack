@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Require clean-adr coverage evidence to establish each claim as written, keeping contradictions open rather than verifying a different value or mechanism, and assess retired behavior with source and recorded evidence under its archived configuration."
+  ]
+}
