@@ -1,7 +1,0 @@
-{
-  "schema": 1,
-  "level": "patch",
-  "entries": [
-    "Wait for ovnfs mount directories to disappear after confirmed checkout removal instead of reporting a teardown race as a failure."
-  ]
-}

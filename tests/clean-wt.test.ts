@@ -84,14 +84,14 @@ function session(id: string, cwd: string, rel = `-${id}/2026-10-21T00-00-00-000Z
   return file;
 }
 
-function cleanWt(args: string[], env: Record<string, string | undefined> = {}) {
+function cleanWt(args: string[], env: Record<string, string | undefined> = {}, cwd = repo) {
   const merged: Record<string, string> = { ...ENV, PI_SESSION_ID: OWN, PATH: `${join(dir, "bin")}:${ENV.PATH}`, FAKE_OVNFS_ROOT: ovnfsRoot, FAKE_GIT: Bun.which("git")! };
   for (const [k, v] of Object.entries(env)) {
     if (v === undefined) delete merged[k];
     else merged[k] = v;
   }
   const r = Bun.spawnSync(["bun", SCRIPT, ...args, "--base", base, "--sessions", sessions, "--session-owners", owners], {
-    cwd: repo,
+    cwd,
     env: merged,
     stdout: "pipe",
     stderr: "pipe",
@@ -139,6 +139,83 @@ test("an unused clean linked worktree is listed as unused and clean, with its br
   expect(c).toMatchObject({ entry: path, kind: "linked-worktree", verdict: "unused", state: "clean", branch: "wt/wt-a", reasons: [], owners: [] });
   expect(c.fingerprint).toMatch(/^[0-9a-f]{64}$/);
 });
+
+test("non-Git invocation rejects mixed native checkouts before discovery or content scans", () => {
+  const legacy = linkedWorktree("wt-nongit");
+  const mounted = ovnfsCheckout("omp-nongit");
+  const calls = join(dir, "native-calls");
+  for (const [name, script] of [["omp", FAKE_OMP], ["ovnfs", FAKE_OVNFS]]) {
+    writeExecutable(join(dir, "bin", name), "bun", `import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(calls)}, ${JSON.stringify(name + "\n")});
+await import(${JSON.stringify(script)});`);
+  }
+  const result = cleanWt(["inventory"], {}, dir);
+  expect(result.code).toBe(2);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toContain("run clean-wt from the source Git repository");
+  expect(existsSync(calls)).toBe(false);
+  expect(existsSync(legacy) && existsSync(mounted)).toBe(true);
+});
+
+test("opt-in progress reports scan work and the actual ownership blocker without changing JSON stdout", () => {
+  const path = linkedWorktree("wt-progress");
+  for (const root of [repo, path]) {
+    mkdirSync(join(root, "node_modules"));
+    writeFileSync(join(root, "node_modules", "same.bin"), Buffer.alloc(4096, 7));
+  }
+  const scanned = cleanWt(["inventory", "--progress"]);
+  expect(scanned.code).toBe(0);
+  expect(scanned.json.checkouts.find((c: Checkout) => c.path === path)).toMatchObject({ verdict: "unused", state: "clean" });
+  const events = scanned.stderr.trim().split("\n").map(line => JSON.parse(line));
+  expect(events).toContainEqual({ phase: "evidence", stage: "native listing" });
+  expect(events).toContainEqual({ phase: "checkout", stage: "contents", path });
+  const contents = events.find(event => event.phase === "contents" && event.stage === "complete" && event.path === path);
+  expect(contents.files).toBeGreaterThan(0);
+  expect(contents.bytes).toBeGreaterThanOrEqual(8192);
+  const blocked = cleanWt(["inventory", "--progress"], { PI_SESSION_ID: undefined });
+  expect(blocked.code).toBe(0);
+  const blockedEvents = blocked.stderr.trim().split("\n").map(line => JSON.parse(line));
+  expect(blockedEvents).toContainEqual({ phase: "evidence", stage: "complete", blockers: blocked.json.evidence_gaps });
+  expect(blockedEvents.find(event => event.phase === "checkout" && event.stage === "protected" && event.path === path).blockers.join(" ")).toContain("run clean-wt from an omp session");
+  expect(blockedEvents.some(event => event.phase === "contents")).toBe(false);
+});
+
+test("large ignored trees keep fresh cleanup guards within a bounded content-read workload", () => {
+  const { path } = integratedDraft();
+  const fileCount = 256;
+  const fileBytes = 8192;
+  for (const root of [repo, path]) {
+    for (let group = 0; group < 32; group++) {
+      const folder = join(root, "node_modules", `package-${group}`);
+      mkdirSync(folder, { recursive: true });
+      for (let file = 0; file < 8; file++) writeFileSync(join(folder, `${file}.bin`), Buffer.alloc(fileBytes, group + file));
+    }
+  }
+  const measured: { operation: string; files: number; bytes: number; elapsed_ms: number }[] = [];
+  const measure = (operation: string, args: string[]) => {
+    const started = performance.now();
+    const result = cleanWt([...args, "--progress"]);
+    expect(result.code).toBe(0);
+    const reads = result.stderr.trim().split("\n").map(line => JSON.parse(line)).filter(event => event.phase === "contents" && event.stage === "complete");
+    measured.push({ operation, files: reads.reduce((sum, event) => sum + event.files, 0), bytes: reads.reduce((sum, event) => sum + event.bytes, 0), elapsed_ms: Math.round(performance.now() - started) });
+    return result.json;
+  };
+  const discovered = measure("discovery", ["inventory"]);
+  const record = discovered.checkouts.find((c: Checkout) => c.path === path);
+  expect(record).toMatchObject({ state: "dirty", automatic: false });
+  const prepared = measure("prepare source", ["inventory", "--prepare-source", record.source_git_dir]);
+  const facts = join(dir, "large-tree-source.json");
+  writeFileSync(facts, JSON.stringify(prepared));
+  const investigated = measure("investigation", ["inventory", "--target", path, "--source-facts", facts]).checkouts[0];
+  expect(investigated).toMatchObject({ state: "dirty", automatic: true, integration: { status: "verified" } });
+  const removed = measure("removal", ["remove", `${path}=${investigated.fingerprint}`]);
+  expect(removed).toEqual({ removed: [{ path, method: "git worktree remove --force" }], skipped: [], failed: [] });
+  expect(measure("final verification", ["inventory"]).checkouts).toEqual([]);
+  const totals = measured.reduce((sum, item) => ({ files: sum.files + item.files, bytes: sum.bytes + item.bytes, elapsed_ms: sum.elapsed_ms + item.elapsed_ms }), { files: 0, bytes: 0, elapsed_ms: 0 });
+  console.log(JSON.stringify({ workload: { files_per_tree: fileCount, bytes_per_tree: fileCount * fileBytes }, measured, totals }));
+  expect(totals.bytes).toBeLessThanOrEqual(8 * fileCount * fileBytes + 1024);
+  expect(totals.files).toBeLessThanOrEqual(8 * fileCount + 16);
+}, 30000);
 
 test("a held session lease protects its checkout, and a session whose lease is free does not", async () => {
   const idle = linkedWorktree("wt-idle");
@@ -498,6 +575,45 @@ test.skipIf(process.platform === "linux")("a held lease's session file outside t
   writeFileSync(file, `${JSON.stringify({ type: "session", version: 3, id: "far-session-1", cwd: path })}\n`);
   await holdLease("far-session-1", file);
   expect(inventory()[path]).toMatchObject({ verdict: "owned", reasons: [], owners: [{ type: "session", id: "far-session-1", file }] });
+});
+
+test.skipIf(process.platform === "linux")("saved leased child headers are recovered beside an open external verifier session", async () => {
+  const path = linkedWorktree("wt-saved-child");
+  const unused = linkedWorktree("wt-unrelated");
+  const external = join(dir, "verifier-run", "sessions");
+  const parentFile = join(external, "verifier.jsonl");
+  const childFile = join(external, "verifier", "saved-child.jsonl");
+  mkdirSync(dirname(childFile), { recursive: true });
+  writeFileSync(parentFile, `${JSON.stringify({ type: "session", version: 3, id: "external-verifier", cwd: repo })}\n`);
+  writeFileSync(childFile, `${JSON.stringify({ type: "session", version: 3, id: "saved-child", cwd: path })}\n`);
+  writeFileSync(join(external, "archived.jsonl"), `${JSON.stringify({ type: "session", version: 3, id: "archived-child", cwd: unused })}\n`);
+  await holdLease("external-verifier", parentFile);
+  await holdLease("saved-child");
+  const inv = inventory();
+  expect(inv[path]).toMatchObject({ verdict: "owned", state: "not checked", owners: [{ type: "session", id: "saved-child", file: childFile }] });
+  expect(inv[unused]).toMatchObject({ verdict: "unused", state: "clean" });
+});
+
+test.skipIf(process.platform === "linux")("an external current-session header is recovered, while an unreadable header still protects checkouts", async () => {
+  const path = linkedWorktree("wt-external-current");
+  for (const holder of holders) holder.kill();
+  await Promise.all(holders.map(holder => holder.exited));
+  holders = [];
+  rmSync(sessions, { recursive: true });
+  mkdirSync(sessions);
+  const file = join(dir, "external-current", "current.jsonl");
+  mkdirSync(dirname(file));
+  writeFileSync(file, `${JSON.stringify({ type: "session", version: 3, id: OWN, cwd: path })}\n`);
+  await holdLease(OWN, file);
+  expect(inventory()[path]).toMatchObject({ verdict: "owned", state: "not checked", owners: [{ type: "session", id: OWN, file }] });
+  chmodSync(file, 0);
+  try {
+    const protectedCheckout = inventory({}, true)[path];
+    expect(protectedCheckout).toMatchObject({ verdict: "uncertain", state: "not checked", fingerprint: "" });
+    expect(protectedCheckout.reasons.join(" ")).toContain("--sessions");
+  } finally {
+    chmodSync(file, 0o600);
+  }
 });
 
 test("a sandbox with both an m and a merged checkout is uncertain, so removing one never deletes the other", () => {
@@ -933,7 +1049,8 @@ test("inventory finds omp ovnfs checkouts outside the base and protects unknown 
   const inv = inventory();
   expect(inv[path]).toMatchObject({ kind: "ovnfs", entry: path, verdict: "unused", state: "clean", automatic: true });
   expect(inv[unknown]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked" });
-  expect(inv[custom]).toBeUndefined();
+  expect(inv[custom]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked", fingerprint: "" });
+  expect(inv[custom].reasons.length).toBeGreaterThan(0);
 });
 
 test.each([
@@ -952,47 +1069,25 @@ test.each([
   expect(git(repo, "status", "--porcelain")).toBe("");
 });
 
-test.each(["delayed", "never"])("ovnfs removal checks a %s directory teardown after the checkout leaves the listing", async (teardown) => {
-  const path = ovnfsCheckout("omp-teardown-123");
-  const state = join(ovnfsRoot, "checkouts.json");
-  const listed = join(dir, "removal-listed");
+test("ovnfs removal waits for mounted directory visibility without repeating deletion", async () => {
+  const name = "omp-delayed-visibility";
+  const path = ovnfsCheckout(name);
+  const snapshot = { id: "delayed-snapshot", checkout: name };
+  writeFileSync(join(ovnfsRoot, "snapshots.json"), JSON.stringify([snapshot]));
   const c = inventory()[path];
-  writeExecutable(join(dir, "bin", "ovnfs"), "bun", `import { readFileSync, writeFileSync } from "node:fs";
-const args = process.argv.slice(2);
-if (args[0] === "ctl" && args[1] === "rm") {
-  writeFileSync(${JSON.stringify(state)}, "[]");
-  console.log("{}");
-} else {
-  if (args.includes("ls") && readFileSync(${JSON.stringify(state)}, "utf8") === "[]") {
-    writeFileSync(${JSON.stringify(listed)}, "ready");
-  }
-  await import(${JSON.stringify(FAKE_OVNFS)});
-}`);
-  let worker: Subprocess | undefined;
-  if (teardown === "delayed") {
-    worker = Bun.spawn(["bun", "-e", `import { existsSync, rmSync } from "node:fs";
-const deadline = performance.now() + 10000;
-while (!existsSync(${JSON.stringify(listed)})) {
-  if (performance.now() >= deadline) process.exit(1);
-  Bun.sleepSync(10);
-}
-Bun.sleepSync(5000);
-rmSync(${JSON.stringify(path)}, { recursive: true, force: true });`], { cwd: dir, stdout: "ignore", stderr: "pipe" });
-    holders.push(worker);
-  }
-  const out = cleanWt(["remove", `${path}=${c.fingerprint}`]);
-  if (worker) expect(await worker.exited).toBe(0);
-  expect(out.code).toBe(0);
-  expect(out.stderr).toBe("");
-  expect(existsSync(listed)).toBe(true);
-  expect(JSON.parse(readFileSync(state, "utf8"))).toEqual([]);
-  if (teardown === "delayed") {
-    expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
-    expect(existsSync(path)).toBe(false);
-  } else {
-    expect(out.json).toEqual({ removed: [], skipped: [], failed: [{ path, error: "the directory still exists after removal" }] });
-    expect(existsSync(path)).toBe(true);
-  }
+  const observer = Bun.spawn(["python3", "-c", "import json,sys,time,shutil\nprint('ready',flush=True)\nwhile any(e['name']==sys.argv[2] for e in json.load(open(sys.argv[1]))): time.sleep(0.002)\ntime.sleep(0.2)\nshutil.rmtree(sys.argv[3])", join(ovnfsRoot, "checkouts.json"), name, path], { stdout: "pipe", stderr: "inherit" });
+  holders.push(observer);
+  const reader = observer.stdout.getReader();
+  const { value } = await reader.read();
+  reader.releaseLock();
+  expect(new TextDecoder().decode(value)).toContain("ready");
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], { FAKE_OVNFS_RETAIN_DIRECTORY: "1" });
+  expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  expect(existsSync(path)).toBe(false);
+  expect(await observer.exited).toBe(0);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
+  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  expect(calls.filter(call => call.args[0] === "ctl" && call.args[1] === "rm")).toHaveLength(1);
 }, 30000);
 
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
@@ -1027,7 +1122,8 @@ test("ovnfs origin follows project worktrees and archived isolated sources, not 
   const foreign = ovnfsCheckout("omp-foreign", other);
   const inv = inventory();
   for (const path of [fromWorktree, nested, fromRemoved]) expect(inv[path]).toMatchObject({ kind: "ovnfs", verdict: "unused", state: "clean" });
-  expect(inv[foreign]).toBeUndefined();
+  expect(inv[foreign]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked", fingerprint: "" });
+  expect(inv[foreign].reasons.length).toBeGreaterThan(0);
 });
 
 test("ovnfs removal binds its checkout identity as well as work bytes", () => {
