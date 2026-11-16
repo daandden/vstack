@@ -249,7 +249,7 @@ tern.block.define("popup", {
 			act(state, "close", cx)
 		elseif state.phase == "confirm" and name == "backspace" then
 			act(state, "back", cx)
-		elseif state.phase == "confirm" and (name == "enter" or name == "d") then
+		elseif state.phase == "confirm" and name == "enter" then
 			act(state, "confirm", cx)
 		elseif state.phase ~= "list" then
 			return false
