@@ -82,22 +82,24 @@ test("one recent file anywhere inside an entry keeps the whole entry", () => {
   expect(listedPaths()).toEqual([join(root, "shop-aaaaaa/hillclimb/log")]);
 });
 
-test("--older-than overrides the 90-day TTL, and the default is 90 days", () => {
+test("--older-than overrides the 15-day TTL, and the default is 15 days", () => {
   file("k-000000/explain/a.html", "a", 60);
   expect(listedPaths("90d")).toEqual([]);
   expect(listedPaths("30d")).toEqual([join(root, "k-000000/explain/a.html")]);
   expect(listedPaths("4w")).toEqual([join(root, "k-000000/explain/a.html")]);
   expect(listedPaths("30")).toEqual([join(root, "k-000000/explain/a.html")]);
   expect(listedPaths("2000h")).toEqual([]);
+  rmSync(join(root, "k-000000"), { recursive: true });
+  file("k-000000/explain/b.html", "b", 14);
   const r = clean("--home", home);
   expect(r.code).toBe(0);
-  expect(r.json.older_than).toBe("90d");
+  expect(r.json.older_than).toBe("15d");
   expect(r.json.entries).toEqual([]);
-  file("k-000000/explain/b.html", "b", 91);
-  expect((clean("--home", home).json.entries as Listed[]).map((e) => e.entry)).toEqual(["b.html"]);
+  file("k-000000/explain/c.html", "c", 16);
+  expect((clean("--home", home).json.entries as Listed[]).map((e) => e.entry)).toEqual(["c.html"]);
 });
 
-test("a paused flow folder is kept for 90 days by default, then listed and deleted as one entry", () => {
+test("a paused flow folder is kept for 15 days by default, then listed and deleted as one entry", () => {
   const flow = "shop-aaaaaa/grilling/shop-151";
   const files = ["state.jsonl", "state.html", "flow.json", "figures/flow.svg"];
   const setAge = (days: number) => {
@@ -105,10 +107,10 @@ test("a paused flow folder is kept for 90 days by default, then listed and delet
     age(`${flow}/figures`, days);
     age(flow, days);
   };
-  setAge(60);
+  setAge(10);
   expect(clean("--home", home).json.entries).toEqual([]);
 
-  setAge(100);
+  setAge(20);
   const listed = clean("--home", home).json.entries as Listed[];
   expect(listed).toHaveLength(1);
   expect(listed[0]).toMatchObject({ path: join(root, flow), kind: "grilling", entry: "shop-151", size: files.length });

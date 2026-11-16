@@ -58,3 +58,5 @@ Keep session and agent authoring identity, binding isolation, full Flow history,
 [ADR 0062](0062-the-agent-picks-test-seams-and-asks-only-for-costly-ones.md) lets the agent pick test seams itself. The rule above that silence and headless picks do not approve a missing test seam now applies only to a Costly seam.
 
 [ADR 20261111-the-installed-flow-host-replaces-itself-on-update](20261111-the-installed-flow-host-replaces-itself-on-update.md) builds the host ownership above: the installed host replaces itself on update, and every CLI copy writes through the installed code.
+
+[ADR 20261116-scratch-cleanup-moves-to-a-tern-popup](20261116-scratch-cleanup-moves-to-a-tern-popup.md) removes the cleanup Result itself: `/vstack-clean` now writes nothing to a Flow.

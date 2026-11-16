@@ -56,12 +56,17 @@ start)
 	else
 		echo '{}' >"$cfg/settings.json"
 	fi
-	jq '.shell = "/opt/homebrew/bin/fish"' "$cfg/settings.json" >"$cfg/settings.json.new"
+	shell=$(command -v fish || true)
+	[ -n "$shell" ] || shell=${SHELL:-/bin/zsh}
+	[ -x "$shell" ] || die "no usable shell for the isolated window: $shell"
+	jq --arg shell "$shell" '.shell = $shell' "$cfg/settings.json" >"$cfg/settings.json.new"
 	mv "$cfg/settings.json.new" "$cfg/settings.json"
 	mkdir "$cfg/omp"
 	printf '{"managed":false,"checked":0,"no_build":false,"offered":true}\n' >"$cfg/omp/state.json"
-	with_isolated_tern_env tern plugin link "$repo/plugin/tern/vstack-flow" >>"$run/start.log" 2>&1 ||
-		die "plugin link failed for $repo/plugin/tern/vstack-flow, see $run/start.log"
+	for plugin in vstack-flow vstack-clean; do
+		with_isolated_tern_env tern plugin link "$repo/plugin/tern/$plugin" >>"$run/start.log" 2>&1 ||
+			die "plugin link failed for $repo/plugin/tern/$plugin, see $run/start.log"
+	done
 	/usr/bin/caffeinate -u -t 2
 	tern_exe=$(command -v tern) || die "tern is not on PATH"
 	cd "$data"
