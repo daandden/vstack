@@ -1,0 +1,12 @@
+schema = 1
+id = "vstack-clean"
+name = "vstack Scratch cleanup"
+version = "0.1.0"
+description = "The popup that /vstack-clean opens over its pane: tick expired Scratch entries, confirm, and delete them."
+window = "window.luau"
+host = "host.luau"
+
+[[blocks]]
+id = "popup"
+title = "Scratch cleanup"
+palette = false

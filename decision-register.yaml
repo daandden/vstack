@@ -1164,6 +1164,7 @@ originals:
   - plugin/skills/web-fullstack
   - plugin/rules/vstack-python.md
   - plugin/rules/vstack-images.md
+  - plugin/tern/vstack-clean
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing

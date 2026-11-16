@@ -26,8 +26,11 @@ function usage(message: string): never {
 const OMP = Bun.which("omp");
 
 const TERN = Bun.which("tern");
-const TERN_PLUGIN = join(import.meta.dir, "..", "..", "..", "tern", "vstack-flow");
-const ternLinkCommand = `tern plugin link '${TERN_PLUGIN.replaceAll("'", "'\\''")}'`;
+const TERN_PLUGINS = [
+  { id: "vstack-flow", check: 12 },
+  { id: "vstack-clean", check: 13 },
+].map(plugin => ({ ...plugin, dir: join(import.meta.dir, "..", "..", "..", "tern", plugin.id) }));
+const ternLinkCommand = (dir: string) => `tern plugin link '${dir.replaceAll("'", "'\\''")}'`;
 
 async function tern(...args: string[]): Promise<string> {
   if (!TERN) throw new Error("tern is not on PATH");
@@ -37,9 +40,9 @@ async function tern(...args: string[]): Promise<string> {
   return stdout;
 }
 
-async function ternLinkFile(): Promise<string> {
+async function ternLinkFile(id: string): Promise<string> {
   const { dir } = JSON.parse(await tern("dir")) as { dir: string };
-  return join(dir, "vstack-flow.path");
+  return join(dir, `${id}.path`);
 }
 
 async function omp(...args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
@@ -255,16 +258,19 @@ async function check(): Promise<Result[]> {
   );
 
   if (TERN) {
-    let detail = "";
-    try {
-      const target = readFileSync(await ternLinkFile(), "utf8").trim();
-      if (realpathSync(target) !== realpathSync(TERN_PLUGIN)) detail = `vstack-flow links to ${target}, not vstack's copy`;
-    } catch (error) {
-      detail = `vstack-flow has no readable link to vstack's copy: ${(error as Error).message}`;
+    for (const plugin of TERN_PLUGINS) {
+      let detail = "";
+      try {
+        const target = readFileSync(await ternLinkFile(plugin.id), "utf8").trim();
+        if (realpathSync(target) !== realpathSync(plugin.dir)) detail = `${plugin.id} links to ${target}, not vstack's copy`;
+      } catch (error) {
+        detail = `${plugin.id} has no readable link to vstack's copy: ${(error as Error).message}`;
+      }
+      const name = `Tern ${plugin.id}`;
+      results.push(detail
+        ? { id: plugin.check, name, status: "warn", detail, remedy: `run ${ternLinkCommand(plugin.dir)} through setup-vstack's tern setter once you approve` }
+        : { id: plugin.check, name, status: "ok" });
     }
-    results.push(detail
-      ? { id: 12, name: "Tern vstack-flow", status: "warn", detail, remedy: `run ${ternLinkCommand} through setup-vstack's tern setter once you approve` }
-      : { id: 12, name: "Tern vstack-flow", status: "ok" });
   }
 
   return results;
@@ -302,14 +308,16 @@ async function main(argv: string[]) {
     }
     for (const name of new Set(names)) {
       if (name === "tern") {
-        try {
-          if (existsSync(await ternLinkFile())) await tern("unlink", "vstack-flow");
-          await tern("link", TERN_PLUGIN);
-        } catch (error) {
-          console.error((error as Error).message);
-          return 2;
+        for (const plugin of TERN_PLUGINS) {
+          try {
+            if (existsSync(await ternLinkFile(plugin.id))) await tern("unlink", plugin.id);
+            await tern("link", plugin.dir);
+          } catch (error) {
+            console.error((error as Error).message);
+            return 2;
+          }
+          console.log(`SET Tern ${plugin.id} = ${plugin.dir}`);
         }
-        console.log(`SET Tern vstack-flow = ${TERN_PLUGIN}`);
         continue;
       }
       const [key, value] = await SETTERS[name]!();

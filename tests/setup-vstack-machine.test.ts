@@ -6,7 +6,12 @@ import { join } from "node:path";
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "machine.ts");
 const FAKE_OMP = join(import.meta.dir, "support", "fake-omp-machine.ts");
 const FAKE_TERN = join(import.meta.dir, "support", "fake-tern-machine.ts");
-const TERN_PLUGIN = realpathSync(join(import.meta.dir, "..", "plugin", "tern", "vstack-flow"));
+const TERN_PLUGINS = {
+  "vstack-flow": realpathSync(join(import.meta.dir, "..", "plugin", "tern", "vstack-flow")),
+  "vstack-clean": realpathSync(join(import.meta.dir, "..", "plugin", "tern", "vstack-clean")),
+};
+const TERN_IDS = ["vstack-flow", "vstack-clean"] as const;
+const TERN_CHECKS = { "vstack-flow": 12, "vstack-clean": 13 } as const;
 const CONFIGURED = `modelRoles:
   judge: typesafe/jev-latest
 ratchet:
@@ -63,7 +68,7 @@ function machineFixture(options: {
     mkdirSync(ternDir, { recursive: true });
     writeFileSync(join(ternDir, "other-plugin.path"), "/other/plugin\n");
     if (options.tern !== "missing") {
-      writeFileSync(join(ternDir, "vstack-flow.path"), `${options.tern === "correct" ? TERN_PLUGIN : "/old/tern-plugins/vstack-flow"}\n`);
+      for (const id of TERN_IDS) writeFileSync(join(ternDir, `${id}.path`), `${options.tern === "correct" ? TERN_PLUGINS[id] : `/old/tern-plugins/${id}`}\n`);
     }
   }
   const invoke = (args: string[] = ["--json"], extraEnv: Record<string, string> = {}) => {
@@ -219,23 +224,23 @@ test("usage errors and a missing omp exit 2 without writing settings", () => {
   expect(f.writes()).toEqual([]);
 });
 
-test("a missing Tern vstack-flow link warns with a link remedy without writing", () => {
+test.each(TERN_IDS)("a missing Tern %s link warns with a link remedy without writing", (id) => {
   const f = machineFixture({ tern: "missing" });
   const r = f.invoke();
   expect(r.code).toBe(0);
-  expect(JSON.parse(r.stdout).checks.find((c: Check) => c.name === "Tern vstack-flow")).toMatchObject({
-    id: 12,
+  expect(JSON.parse(r.stdout).checks.find((c: Check) => c.name === `Tern ${id}`)).toMatchObject({
+    id: TERN_CHECKS[id],
     status: "warn",
-    remedy: expect.stringContaining(`tern plugin link '${TERN_PLUGIN}'`),
+    remedy: expect.stringContaining(`tern plugin link '${TERN_PLUGINS[id]}'`),
   });
   expect(f.ternWrites()).toEqual([]);
   expect(f.ternPlugins()).toEqual([{ id: "other-plugin", path: "/other/plugin" }]);
 });
 
-test.each(["missing", "foreign"] as const)("the Tern setter replaces a %s link only when selected and preserves other plugins", (tern) => {
+test.each(["missing", "foreign"] as const)("the Tern setter replaces %s links only when selected and preserves other plugins", (tern) => {
   const f = machineFixture({ tern });
   const before = f.ternPlugins();
-  expect(f.checks().find(c => c.id === 12)?.status).toBe("warn");
+  expect(f.checks().filter(c => c.id === 12 || c.id === 13).map(c => c.status)).toEqual(["warn", "warn"]);
   expect(f.ternWrites()).toEqual([]);
   expect(f.invoke(["--set", "backend"]).code).toBe(0);
   expect(f.ternPlugins()).toEqual(before);
@@ -243,22 +248,26 @@ test.each(["missing", "foreign"] as const)("the Tern setter replaces a %s link o
   const r = f.invoke(["--set", "tern", "tern"]);
   expect(r.code).toBe(0);
   expect(r.stdout).toContain("SET Tern vstack-flow");
+  expect(r.stdout).toContain("SET Tern vstack-clean");
   expect(f.ternPlugins()).toEqual([
     { id: "other-plugin", path: "/other/plugin" },
-    { id: "vstack-flow", path: TERN_PLUGIN },
+    { id: "vstack-clean", path: TERN_PLUGINS["vstack-clean"] },
+    { id: "vstack-flow", path: TERN_PLUGINS["vstack-flow"] },
   ]);
-  expect(f.ternWrites()).toEqual([
-    ...(tern === "foreign" ? [["unlink", "vstack-flow"]] : []),
-    ["link", TERN_PLUGIN],
-  ]);
-  expect(f.checks().find(c => c.id === 12)?.status).toBe("ok");
+  expect(f.ternWrites()).toEqual(TERN_IDS.flatMap(id => [
+    ...(tern === "foreign" ? [["unlink", id]] : []),
+    ["link", TERN_PLUGINS[id]],
+  ]));
+  expect(f.checks().filter(c => c.id === 12 || c.id === 13).map(c => c.status)).toEqual(["ok", "ok"]);
 });
 
-test("Tern passes when vstack-flow links the installed vstack copy and changes nothing", () => {
+test("Tern passes when both plugins link the installed vstack copies and changes nothing", () => {
   const f = machineFixture({ tern: "correct" });
   expect(f.invoke().code).toBe(0);
-  expect(f.checks().find(c => c.id === 12)).toMatchObject({ name: "Tern vstack-flow", status: "ok" });
-  expect(f.ternPlugins()).toContainEqual({ id: "vstack-flow", path: TERN_PLUGIN });
+  for (const id of TERN_IDS) {
+    expect(f.checks().find(c => c.id === TERN_CHECKS[id])).toMatchObject({ name: `Tern ${id}`, status: "ok" });
+    expect(f.ternPlugins()).toContainEqual({ id, path: TERN_PLUGINS[id] });
+  }
   expect(f.ternWrites()).toEqual([]);
   expect(f.writes()).toEqual([]);
 });

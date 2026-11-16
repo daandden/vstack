@@ -14,3 +14,5 @@ In Standard mode, local-markdown tickets are tracked files, so they travel with 
 - `.scratch/<feature-slug>/` in the checkout the session runs in, untracked. `git add .` can commit it, another worktree cannot `resume`, and removing the worktree deletes the record. A session in the main checkout still dirties it.
 - `.scratch/<feature-slug>/` in the main checkout, with `.scratch/` in `.git/info/exclude`. It still writes into the user's main working tree, against [ADR 0007](0007-isolated-subagents-write-artifacts-through-the-vstack-root.md). A setup-vstack re-run reads `.scratch/` as a sign of a local-markdown tracker, and the exclude would also hide local-markdown tickets that Standard mode tracks.
 - Local-markdown tickets always in the main checkout, whichever checkout the session runs in, for one shared frontier. Worktree sessions would leave uncommitted ticket files in the main checkout, the same leak this ADR fixes.
+
+[ADR 20261116-scratch-cleanup-moves-to-a-tern-popup](20261116-scratch-cleanup-moves-to-a-tern-popup.md) shortens the default age to 15 days, so `/vstack-clean` offers a to-tickets entry 15 days after its newest file.

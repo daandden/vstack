@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "In Tern, `/vstack-clean` opens a Scratch cleanup popup from the new `vstack-clean` Tern plugin: expired entries in a table, all unticked, with Select all and a confirm step that names the count and total size before deleting. Outside Tern, or without the plugin, the Command deletes nothing; setup-vstack now links both Tern plugins.",
+    "Scratch retention drops from 90 to 15 days by default, including closed Flows. Cleanup no longer publishes a Result to the session's Flow."
+  ]
+}

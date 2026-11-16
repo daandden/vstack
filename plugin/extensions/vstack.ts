@@ -7,7 +7,7 @@ import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, ty
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
 import { cleanBrief, preprocessTinyMessage } from "./prompt-cleaner.ts";
 import * as fs from "node:fs";
-import { homedir, tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { randomUUID } from "node:crypto";
 
@@ -380,118 +380,54 @@ function registerAddonSelection(pi: ExtensionAPI): void {
   pi.on("session_switch", (_event, ctx) => unregister(ctx));
 }
 
-interface ScratchEntry {
-  path: string;
-  repo_key: string;
-  kind: string;
-  entry: string;
-  newest_mtime: string;
-  age_days: number;
-  size: number;
+interface TernPlugins {
+  plugins: { id: string; status: string; window: boolean; blocks: { id: string }[] }[];
+}
+
+const AGE = /^\d+[hdw]?$/;
+
+/**
+ * Opens the vstack-clean Tern plugin's popup over the calling pane, or says why it cannot. The plugin claims the
+ * trigger path `<home>/.vstack/clean-popup/<pane>/<age>`; the path never exists. `tern open` reports a handled open as
+ * exit 1 with "cannot open in a file block" and an unclaimed one as exit 0, so readiness comes from the plugin list
+ * first and only that exact exit 1 counts as opened.
+ */
+async function openCleanPopup(pi: ExtensionAPI, age: string): Promise<string | undefined> {
+  if (!AGE.test(age)) return `age must look like 15d, 15, 36h, or 2w, got "${age}"`;
+  const pane = process.env.TERN_PANE;
+  if (!pane || !/^\d+$/.test(pane)) return "it needs Tern with the vstack-clean plugin; run it in a Tern pane";
+  const tern = process.env.TERN_EXE || "tern";
+  const list = await pi.exec(tern, ["plugin", "list", "--json"]);
+  if (list.code !== 0) return `tern plugin list failed: ${list.stderr.trim() || `exit ${list.code}`}`;
+  const ready = (JSON.parse(list.stdout) as TernPlugins).plugins.some(plugin =>
+    plugin.id === "vstack-clean" && plugin.status === "ready" && plugin.window && plugin.blocks.some(block => block.id === "popup"));
+  if (!ready) return "the vstack-clean Tern plugin is not ready in this Tern; run /skill:setup-vstack to link it";
+  const trigger = `${process.env.HOME || homedir()}/.vstack/clean-popup/${pane}/${age}`;
+  const open = await pi.exec(tern, ["open", trigger]);
+  if (open.code === 1 && open.stderr.trim() === `tern open: ${trigger} cannot open in a file block`) return undefined;
+  const why = open.code === 0 ? "no Tern plugin claimed the open" : open.stderr.trim() || `tern open exited ${open.code}`;
+  return `could not open the Scratch cleanup popup: ${why}`;
 }
 
 function registerCleanCommand(pi: ExtensionAPI): void {
-  const script = fileURLToPath(new URL("../skills/vstack-tmp/scripts/clean.ts", import.meta.url));
-  async function publish(ctx: ExtensionContext, outcome: string, diagnostics: { heading: string; blocks: { code: string }[] }[]) {
-    const run = (args: string[]) => flowPage<any>(pi, ctx, args);
-    const current = await run(["bound"]);
-    if (!current.binding) return;
-    const caller = await run(["show", "--flow", current.binding.flow]);
-    const resumeCaller = caller.stages.some((stage: { id: string; state: string }) => stage.id === current.binding.stage && stage.state === "in-progress");
-    const folder = fs.mkdtempSync(`${tmpdir()}/vstack-clean-`);
-    try {
-      const stage = await run(["open", "--flow", current.binding.flow, "--skill", "vstack-clean", "--parent", current.binding.stage]);
-      try {
-        const file = `${folder}/contribution.json`;
-        fs.writeFileSync(file, JSON.stringify({ version: 1, items: [
-          { kind: "result", shape: "document", title: "Scratch cleanup", sections: [
-            { heading: "Outcome", blocks: [{ prose: outcome }] }, ...diagnostics,
-          ] },
-          { kind: "stage", state: "finished" },
-        ] }));
-        await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
-      } finally {
-        if (resumeCaller) await run(["bind", "--flow", current.binding.flow, "--stage", current.binding.stage]);
-      }
-    } finally {
-      fs.rmSync(folder, { recursive: true, force: true });
-    }
-  }
   pi.registerCommand("vstack-clean", {
-    description: "Delete expired Scratch entries: /vstack-clean [age] (default 90d).",
+    description: "Open the Scratch cleanup popup in Tern: /vstack-clean [age] (default 15d).",
     async handler(age, ctx) {
-      let outcome = "/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.";
-      const diagnostics: { heading: string; blocks: { code: string }[] }[] = [];
-      const record = (heading: string, result: { stdout: string; stderr: string; code: number }) => {
-        diagnostics.push({ heading, blocks: [
-          { code: `Exit code: ${result.code}` },
-          ...(result.stdout ? [{ code: result.stdout }] : []),
-          ...(result.stderr ? [{ code: result.stderr }] : []),
-        ] });
-      };
-      let deleteStarted = false;
-      try {
-        if (!ctx.hasUI) {
-          pi.sendMessage({
-            customType: "vstack-clean",
-            content: outcome,
-            display: true,
-          }, { triggerTurn: false });
-          return;
-        }
-        const olderThan = age.trim() || "90d";
-        const args = [script, "--home", homedir(), "--older-than", olderThan];
-        ctx.ui.notify(`Scanning Scratch for entries older than ${olderThan}…`, "info");
-        const preview = await pi.exec("bun", args);
-        record("Dry run diagnostics", preview);
-        if (preview.code !== 0) throw new Error(preview.stderr.trim() || `clean.ts exited with code ${preview.code}`);
-        const listing = JSON.parse(preview.stdout) as { root: string; older_than: string; entries: ScratchEntry[]; kept: number };
-        if (!listing.entries.length) {
-          outcome = `No expired Scratch entries. Kept ${listing.kept} entries. Nothing deleted.`;
-          ctx.ui.notify(`No expired Scratch entries. Kept ${listing.kept} entries. Nothing deleted.`, "info");
-          return;
-        }
-        const rows = listing.entries.map(entry => `${entry.repo_key} | ${entry.kind} | ${entry.entry} | ${entry.age_days} | ${entry.size}`);
-        const total = listing.entries.reduce((size, entry) => size + entry.size, 0);
-        ctx.ui.notify(`Scratch dry run (${listing.root}, older than ${listing.older_than})\nRepo key | Kind | Entry | Age (days) | Size (bytes)\n${rows.join("\n")}\nTotal: ${listing.entries.length} entries, ${total} bytes. Kept ${listing.kept} entries.`, "info");
-        const action = await ctx.ui.select("Delete expired Scratch entries?", ["Apply all", "Choose items", "Cancel"]);
-        let picked: ScratchEntry[] = [];
-        if (action === "Apply all") picked = listing.entries;
-        else if (action === "Choose items") {
-          const labels = listing.entries.map(entry => `${entry.repo_key} / ${entry.kind} / ${entry.entry} — ${entry.age_days} days, ${entry.size} bytes`);
-          const checked = new Set<number>();
-          while (true) {
-            const choice = await ctx.ui.select("Choose Scratch entries to delete", [...labels, "Done", "Cancel"], {
-              selectionMarker: "checkbox", checkedIndices: [...checked], markableCount: labels.length,
-            });
-            if (choice === "Done") { picked = listing.entries.filter((_entry, index) => checked.has(index)); break; }
-            if (!choice || choice === "Cancel") break;
-            const index = labels.indexOf(choice);
-            if (index < 0) break;
-            if (checked.has(index)) checked.delete(index); else checked.add(index);
-          }
-        }
-        if (!picked.length) { outcome = "Deletion was not confirmed for any entry. Nothing deleted."; ctx.ui.notify("Nothing deleted.", "info"); return; }
-        deleteStarted = true;
-        const deletion = await pi.exec("bun", [...args, "--delete", ...picked.map(entry => entry.path)]);
-        record("Deletion diagnostics", deletion);
-        if (deletion.code !== 0) throw new Error(deletion.stderr.trim() || `clean.ts exited with code ${deletion.code}`);
-        const result = JSON.parse(deletion.stdout) as { deleted: string[]; skipped: { path: string; reason: string }[] };
-        const deleted = new Set(result.deleted);
-        const freed = picked.reduce((size, entry) => size + (deleted.has(entry.path) ? entry.size : 0), 0);
-        const skipped = result.skipped.map(entry => `${entry.path}: ${entry.reason}`).join("\n");
-        outcome = `Deleted ${result.deleted.length} ${result.deleted.length === 1 ? "entry" : "entries"}; freed ${freed} bytes. Skipped ${result.skipped.length} entries.${skipped ? `\n${skipped}` : ""}`;
-        ctx.ui.notify(outcome, "info");
-      } catch (error) {
-        const effect = deleteStarted ? "Some entries may already be deleted." : "Nothing deleted.";
-        outcome = `/vstack-clean failed: ${error instanceof Error ? error.message : String(error)}. ${effect}`;
-        ctx.ui.notify(outcome, "error");
-      } finally {
-        try { await publish(ctx, outcome, diagnostics); }
-        catch (error) {
-          pi.sendMessage({ customType: "vstack-clean", content: `Cleanup outcome could not be attached to the Flow: ${error instanceof Error ? error.message : String(error)}\n${outcome}`, display: true }, { triggerTurn: false });
-        }
+      if (!ctx.hasUI) {
+        pi.sendMessage({
+          customType: "vstack-clean",
+          content: "/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.",
+          display: true,
+        }, { triggerTurn: false });
+        return;
       }
+      let refusal: string | undefined;
+      try {
+        refusal = await openCleanPopup(pi, age.trim() || "15d");
+      } catch (error) {
+        refusal = error instanceof Error ? error.message : String(error);
+      }
+      if (refusal) ctx.ui.notify(`/vstack-clean: ${refusal}. Nothing deleted.`, "error");
     },
   });
 }

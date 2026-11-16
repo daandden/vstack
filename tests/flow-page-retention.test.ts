@@ -97,7 +97,7 @@ test("an open Flow is never listed or deleted, however old its files are", () =>
   expect(ok(run(["show", "--flow", f.flow], w.at)).flow.id).toBe(f.flow);
 });
 
-test("a closed Flow becomes eligible 90 days after its close, whatever its file times or reads say", () => {
+test("a closed Flow becomes eligible 15 days after its close, whatever its file times or reads say", () => {
   const w = world();
   const f = finishedFlow(w);
   const closed = ok(run(["close", "--flow", f.flow], w.at));
@@ -106,16 +106,16 @@ test("a closed Flow becomes eligible 90 days after its close, whatever its file 
   expect(ok(run(["show", "--flow", f.flow], w.at)).open).toBe(false);
 
   touchAll(f.folder, at - 1000 * DAY);
-  expect(listed(clean(w.at, at, 89))).not.toContain(f.folder);
-  expect(ok(clean(w.at, at, 89, "--delete", f.folder)).deleted).toEqual([]);
+  expect(listed(clean(w.at, at, 14))).not.toContain(f.folder);
+  expect(ok(clean(w.at, at, 14, "--delete", f.folder)).deleted).toEqual([]);
 
   for (const read of [["show", "--flow", f.flow], ["find", `slug:${ok(run(["show", "--flow", f.flow], w.at)).flow.slug}`]]) ok(run(read, w.at));
   expect(lifecycleTime(w.at, f.flow)).toBe(at);
-  touchAll(f.folder, at + 90 * DAY);
-  const due = ok(clean(w.at, at, 91));
+  touchAll(f.folder, at + 15 * DAY);
+  const due = ok(clean(w.at, at, 16));
   expect(due.entries.map((e: { path: string }) => e.path)).toContain(f.folder);
-  expect(due.entries.find((e: { path: string }) => e.path === f.folder).age_days).toBe(91);
-  expect(listed(clean(w.at, at, 30, "--older-than", "1d"))).not.toContain(f.folder);
+  expect(due.entries.find((e: { path: string }) => e.path === f.folder).age_days).toBe(16);
+  expect(listed(clean(w.at, at, 10, "--older-than", "1d"))).not.toContain(f.folder);
 });
 
 test("closing needs every Stage finished, and a closed Flow takes no Stage or content until it is reopened", () => {
@@ -157,8 +157,8 @@ test("reopening adds a Stage, keeps the history, and protects the Flow again unt
   expect(ok(clean(w.at, closedAt, 400, "--delete", f.folder)).deleted).toEqual([]);
   ok(run(["submit"], w.at, "s-2", contribution(FINISH)));
   ok(run(["close"], w.at, "s-2"));
-  expect(listed(clean(w.at, lifecycleTime(w.at, f.flow), 89))).not.toContain(f.folder);
-  expect(listed(clean(w.at, lifecycleTime(w.at, f.flow), 91))).toContain(f.folder);
+  expect(listed(clean(w.at, lifecycleTime(w.at, f.flow), 14))).not.toContain(f.folder);
+  expect(listed(clean(w.at, lifecycleTime(w.at, f.flow), 16))).toContain(f.folder);
 });
 
 test("an expired Flow goes with its data and captured files, and its identity reports the loss instead of starting empty", () => {
@@ -177,9 +177,9 @@ test("an expired Flow goes with its data and captured files, and its identity re
   ok(run(["close", "--flow", f.flow], w.at));
   const at = lifecycleTime(w.at, f.flow);
   const flowsDir = dirname(f.folder);
-  touchAll(f.folder, at + 90 * DAY);
+  touchAll(f.folder, at + 15 * DAY);
 
-  const del = ok(clean(w.at, at, 91, "--delete", f.folder));
+  const del = ok(clean(w.at, at, 16, "--delete", f.folder));
   expect(del.deleted).toEqual([f.folder]);
   expect(existsSync(f.folder)).toBe(false);
   expect(existsSync(late)).toBe(false);

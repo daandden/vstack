@@ -13,7 +13,7 @@ The user-facing parts:
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the flow-page script.
 - The HTML pages those scripts serve, such as the Flow page at its live `http://127.0.0.1` URL. You view them in a browser. The Flow page needs the host; it has no `file://` form.
 - The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `docs/maintainer.md`.
-- The `vstack-flow` Tern window plugin in `plugin/tern/vstack-flow/`, linked and driven in its own isolated native Tern instance.
+- The `vstack-flow` and `vstack-clean` Tern window plugins in `plugin/tern/`, linked and driven in their own isolated native Tern instance.
 
 `features/README.md` indexes the feature map. Read it, then the feature file for the change, before you drive anything.
 
@@ -35,7 +35,7 @@ Never use your already-running omp session as proof. It loaded the plugin when i
 
 Reasoning-led skill behavior is an exception to the stub-model isolation below. For architecture assessment and agreement, use `features/architecture-agreement.md` and skill-creator's actual isolated evaluations with the Session model and real `HOME`. Keep their Flow homes and outputs disposable and separate. Scripted replies prove tool plumbing, never the model's reasoning or a human's consent.
 
-The Tern plugin recipe uses `scripts/tern-verify`, ported from `tern-plugins`. It links only the checkout's `plugin/tern/vstack-flow` into a new config directory, with separate daemon and control sockets. Read `features/README.md`'s Tern baseline and `features/vstack-flow.md` for Launch, Doctor, Drive, Evidence, and Cleanup. Every Tern command uses the helper. A bare `tern` command can act on the user's working window.
+The Tern plugin recipes use `scripts/tern-verify`, ported from `tern-plugins`. It links the checkout's `plugin/tern/vstack-flow` and `plugin/tern/vstack-clean` into a new config directory, with separate daemon and control sockets. Read `features/README.md`'s Tern baseline and the matching `features/vstack-flow.md` or `features/vstack-clean.md` recipe for Launch, Doctor, Drive, Evidence, and Cleanup. Every Tern command uses the helper. A bare `tern` command can act on the user's working window.
 
 ## Proof step IDs
 

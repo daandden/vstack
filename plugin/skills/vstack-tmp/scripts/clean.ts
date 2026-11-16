@@ -3,11 +3,11 @@
 //   bun clean.ts --home <dir> [--older-than <age>] [--now <time>]                     list (dry run)
 //   bun clean.ts --home <dir> [--older-than <age>] [--now <time>] --delete <path>...  delete those entries
 //
-// <age> is <n>d, <n>h, <n>w, or a bare <n> for days (default 90d). An entry's age comes from the newest mtime of the entry and
+// <age> is <n>d, <n>h, <n>w, or a bare <n> for days (default 15d). An entry's age comes from the newest mtime of the entry and
 // everything inside it. Symlinks are never followed: a link counts by its own mtime and is deleted as a link.
 // A Flow in the `flow` kind is the exception: its age comes from its lifecycle, never from file times or page reads. An
 // open Flow is never listed or deleted, and a closed one is listed once it has been closed longer than <age> and at least
-// 90 days. The kind's dot entries, the Flow id registry and the session bindings, are never entries; deleting a Flow
+// 15 days. The kind's dot entries, the Flow id registry and the session bindings, are never entries; deleting a Flow
 // deletes its bindings and keeps its id registered, so the id reports the loss instead of starting again empty.
 // <time> is an ISO date and time to measure ages from (default: now).
 // The listing prints JSON {root, older_than, entries: [{path, repo_key, kind, entry, newest_mtime, age_days, size, closed?}], kept}.
@@ -42,7 +42,7 @@ try {
 const { values, positionals } = parsed;
 if (!values.home) usage("--home is required");
 if (positionals.length > 0 && !values.delete) usage(`unexpected argument ${positionals[0]}`);
-const olderThan = values["older-than"] ?? "90d";
+const olderThan = values["older-than"] ?? "15d";
 const m = /^(\d+)([hdw]?)$/.exec(olderThan);
 if (!m) usage(`--older-than must look like 90d, 90, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];

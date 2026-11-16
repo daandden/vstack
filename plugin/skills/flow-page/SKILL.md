@@ -28,7 +28,7 @@ The migration keeps record ids, Q numbers, round times, questions, answers, sour
 
 Old Other answers show the recorded words, with no invented pick or reading. Old unanswered reasons stay unanswered. Unresolved asks of finished Stages retire from current work. Missing historical timestamps stay missing. The old records, including superseded versions, remain in the migrated provenance.
 
-A historically closed Flow stays closed. Its 90-day retention starts at migration time because the historical format has no Flow close timestamp. Migration never backdates that lifecycle event to a round or Stage.
+A historically closed Flow stays closed. Its 15-day retention starts at migration time because the historical format has no Flow close timestamp. Migration never backdates that lifecycle event to a round or Stage.
 
 Run `show --flow <id>` to find the in-progress Stage, then `bind --flow <id> --stage <id>` to continue it. For finished work in an open Flow, open a new Stage. Use `reopen` for a closed Flow. Migration binds no session. Use only the new authoring contract after the cutover. Repeating `migrate` on unchanged state returns the same Flow with `repeated: true`. Changed source state is refused instead of overwriting later work.
 
@@ -67,7 +67,7 @@ When the Flow has a Matt flow path, `show` also prints its path and current posi
 
 `target --session <id>` returns that session's main-agent page target for Tern. [Session targets and Picker presence](references/host-observations.md#session-targets-and-picker-presence) defines its runtime query and extension-owned presence commands.
 
-Present Flow links only at question handoffs under "Every ask in a Flow", including Ratchet's native approval exception. Result-only replies and completion summaries have no Flow link or path reminder. The extension supplies hidden authoring context without a post-reply message, and `/vstack-clean` publishes its Result without a separate Flow link. Never open a browser automatically.
+Present Flow links only at question handoffs under "Every ask in a Flow", including Ratchet's native approval exception. Result-only replies and completion summaries have no Flow link or path reminder. The extension supplies hidden authoring context without a post-reply message, and `/vstack-clean` writes nothing to a Flow. Never open a browser automatically.
 
 ## Find a Flow
 
@@ -90,7 +90,7 @@ A Flow is open until it is closed. The skill that runs its last Stage says when 
 
 `show` prints `open` and the `lifecycle` records, oldest first. The page heading says when the Flow was closed or reopened.
 
-Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion only after the Flow has been closed for 90 days, and the user still confirms the deletion. Reading the page, `show`, and `find` never move that date. The Flow's data and captured files go together. Its id is never used again, so a later command that names it is refused with the report that its content is gone.
+Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion only after the Flow has been closed for 15 days, and the user still confirms the deletion. Reading the page, `show`, and `find` never move that date. The Flow's data and captured files go together. Its id is never used again, so a later command that names it is refused with the report that its content is gone.
 
 ## Submit a contribution
 

@@ -109,7 +109,7 @@ export function dropBindings(dir: string, id: string): void {
   }
 }
 
-export const CLOSED_RETENTION = 90 * 86_400_000;
+export const CLOSED_RETENTION = 15 * 86_400_000;
 export type Retention = { flow: string; closed?: string } | "unreadable";
 
 /** The lifecycle of the Flow in `folder` without following links, "unreadable" when its state cannot be read, or undefined when `folder` holds no Flow state. */
