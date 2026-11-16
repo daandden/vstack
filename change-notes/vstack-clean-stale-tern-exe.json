@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "`/vstack-clean` and the vstack-flow Tern plugin no longer fail with `ENOENT ... posix_spawn` after a Tern update. A pane started before the update keeps a `TERN_EXE` that names a removed binary, such as the old `Tern Daemon.app` helper. They now run `tern` from PATH when `TERN_EXE` names a file that does not exist."
+  ]
+}

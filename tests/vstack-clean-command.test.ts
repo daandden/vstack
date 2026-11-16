@@ -5,7 +5,7 @@ import { fakeHost } from "./support/extension-host.ts";
 type Exec = { stdout: string; stderr: string; code: number; killed: boolean };
 
 const HOME = "/home/cleaner";
-const TERN = "/opt/tern/bin/tern";
+const TERN = process.execPath;
 const READY = {
   plugins: [
     { id: "vstack-flow", status: "ready", window: true, blocks: [] },
@@ -57,6 +57,14 @@ test("an age argument travels to the popup", async () => {
   const h = host();
   await h.callCommand("vstack-clean", " 30d ");
   expect(h.execCalls.at(-1)).toEqual({ command: TERN, args: ["open", trigger("7", "30d")] });
+});
+
+test("a TERN_EXE that no longer exists falls back to tern on PATH", async () => {
+  process.env.TERN_EXE = "/Applications/Tern.app/Contents/Helpers/Tern Daemon.app/Contents/MacOS/tern-removed";
+  const h = host();
+  await h.callCommand("vstack-clean");
+  expect(h.execCalls.map(call => call.command)).toEqual(["tern", "tern"]);
+  expect(notes(h).every(note => note.level !== "error")).toBe(true);
 });
 
 test("an invalid age is refused in omp before Tern is asked anything", async () => {

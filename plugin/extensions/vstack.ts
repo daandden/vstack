@@ -396,7 +396,9 @@ async function openCleanPopup(pi: ExtensionAPI, age: string): Promise<string | u
   if (!AGE.test(age)) return `age must look like 15d, 15, 36h, or 2w, got "${age}"`;
   const pane = process.env.TERN_PANE;
   if (!pane || !/^\d+$/.test(pane)) return "it needs Tern with the vstack-clean plugin; run it in a Tern pane";
-  const tern = process.env.TERN_EXE || "tern";
+  // A Tern update can remove the binary an older daemon put in TERN_EXE; the PATH `tern` still reaches the daemon.
+  const exe = process.env.TERN_EXE;
+  const tern = exe && fs.existsSync(exe) ? exe : "tern";
   const list = await pi.exec(tern, ["plugin", "list", "--json"]);
   if (list.code !== 0) return `tern plugin list failed: ${list.stderr.trim() || `exit ${list.code}`}`;
   const ready = (JSON.parse(list.stdout) as TernPlugins).plugins.some(plugin =>

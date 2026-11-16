@@ -1,9 +1,10 @@
-import { openSync, readSync, closeSync } from "node:fs";
+import { closeSync, existsSync, openSync, readSync } from "node:fs";
 import { resolve } from "node:path";
 
 const env = { ...process.env };
 for (const key of ["TERN_PANE", "TERN_PANE_SOCKET", "PI_SESSION_ID", "PI_SESSION_FILE"]) delete env[key];
-const inspect = Bun.spawn([env.TERN_EXE || "tern", "inspect", "--json"], { env, stdout: "pipe", stderr: "pipe" });
+const tern = env.TERN_EXE && existsSync(env.TERN_EXE) ? env.TERN_EXE : "tern";
+const inspect = Bun.spawn([tern, "inspect", "--json"], { env, stdout: "pipe", stderr: "pipe" });
 const inspection = await new Response(inspect.stdout).json();
 if (await inspect.exited !== 0) throw new Error("Tern inspection failed");
 const wanted = new Set(process.argv.slice(2).map(Number));
