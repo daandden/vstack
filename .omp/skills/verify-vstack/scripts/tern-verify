@@ -7,7 +7,7 @@ die() {
 	exit 1
 }
 
-[ $# -ge 2 ] || die "usage: tern-verify start|doctor|ctl|tern|type|shot|lens|stop RUN [ARGS...]"
+[ $# -ge 2 ] || die "usage: tern-verify start|doctor|clear|ctl|tern|type|shot|lens|stop RUN [ARGS...]"
 cmd=$1
 case $2 in
 /*) run=$2 ;;
@@ -39,6 +39,20 @@ socket_owner() {
 omp_session_dir() {
 	rel=${data#"$HOME"/}
 	printf '%s/.omp/agent/sessions/-%s\n' "$HOME" "$(printf %s "$rel" | tr / -)"
+}
+
+# A card (Stencil sign-in, macOS permissions) takes every key while open: Enter on the sign-in card signs the
+# window in through the user's browser. Close cards with their own close button only.
+open_cards() {
+	modal=$(ctl tree '.mdl' | jq -r '.count')
+	signin=$(ctl tree '.tn-signin-card' | jq -r '.count')
+	echo $((modal + signin))
+}
+
+close_cards() {
+	xy=$(ctl tree '.mdl-x' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] / 2) \(.[1] + .[3] / 2)" else "" end')
+	[ -n "$xy" ] || xy=$(ctl tree '.tn-signin-card' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] - 22) \(.[1] + 26)" else "" end')
+	[ -z "$xy" ] || ctl click $xy >/dev/null
 }
 
 case $cmd in
@@ -86,11 +100,9 @@ start)
 	socket_owner "$daemon_sock" >"$data/daemon.pid"
 	[ -s "$data/daemon.pid" ] || die "no session daemon on $daemon_sock, see $run/window.log"
 	if [ -n "${TERN_VERIFY_HOME:-}" ]; then
-		# The Stencil sign-in card shows up to a few seconds after start and takes Escape and Enter. Close it with its
-		# close button (top-right of the card); Enter would sign the window in through the user's browser.
+		# Cards such as Stencil sign-in and macOS permissions show up to a few seconds after start and take keys.
 		for _ in 1 2 3 4 5 6 7 8; do
-			rect=$(ctl tree '.tn-signin-card' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] - 22) \(.[1] + 26)" else "" end')
-			[ -n "$rect" ] && ctl click $rect >/dev/null
+			close_cards
 			sleep 0.5
 		done
 	fi
@@ -155,8 +167,8 @@ doctor)
 	if ! ctl tree >"$data/doctor-tree.json"; then
 		printf 'overlay:    could not inspect window\n'
 		status=1
-	elif [ "$(ctl tree '.tn-signin-card' | jq -r '.count')" != 0 ]; then
-		printf 'SIGN-IN OVERLAY OPEN: close the .tn-signin-card with its close button in this isolated window, then rerun Doctor\n'
+	elif [ "$(open_cards)" != 0 ]; then
+		printf 'CARD OPEN: run tern-verify clear in this isolated window, then rerun Doctor\n'
 		status=1
 	else
 		printf 'overlay:    none\n'
@@ -172,6 +184,14 @@ doctor)
 	;;
 ctl)
 	ctl "$@"
+	;;
+clear)
+	for _ in 1 2 3 4 5 6; do
+		[ "$(open_cards)" != 0 ] || exit 0
+		close_cards
+		sleep 0.5
+	done
+	die "a card is still open; send no key to this window"
 	;;
 tern)
 	with_isolated_tern_env tern "$@"
