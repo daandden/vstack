@@ -8,7 +8,7 @@ Save each later plan JSON unchanged in the run entry from step 2 of SKILL.md, as
 
 ## 1. Ask
 
-Call `ask` following `skill://flow-page`'s "Every ask in a Flow" with one question, "This repo has Matt Pocock config. Migrate it to vstack first?", and the options Migrate first (Recommended) and Set up beside it. Name the Matt files in the question. On Set up beside it, keep the read-only plan for Done and go back to step 3 of SKILL.md.
+Call plain `ask` with one question, "This repo has Matt Pocock config. Migrate it to vstack first?", and the options Migrate first (Recommended) and Set up beside it. Name the Matt files in chat before the picker. On Set up beside it, keep the read-only plan for Done and go back to step 3 of SKILL.md.
 
 ## 2. Mode
 
@@ -35,16 +35,16 @@ Show every item id, move, diff, manual hit, destructive flag, and notice in one 
 
 ## 4. Approve
 
-Publish the complete plan and manual diffs as Results with one approval question offering Apply all (Recommended), Choose items, and Cancel. Follow flow-page's "Every ask in a Flow" contract, then record the observed response separately. On Choose items, publish one round containing one question for the optional item ids and the manual diffs, then call `ask` under that contract. Set `multi: true` on that Flow-authored question. Mandatory ids remain included in the apply set and are not optional choices. On Cancel, write nothing. Go back to step 3 of SKILL.md, as for Set up beside it.
+Show the complete plan and manual diffs in chat, then call one plain `ask` offering Apply all (Recommended), Choose items, and Cancel. On Choose items, show the optional item ids and manual diffs in chat, then call one multi-select plain `ask` over them. Mandatory ids remain included in the apply set and are not optional choices. On Cancel, write nothing. Go back to step 3 of SKILL.md, as for Set up beside it.
 
 ## 5. Apply
 
 Run `migrate.ts apply --plan <absolute plan path>`, with one `--skip <id>` per declined optional item:
 
-- Exit 2 means that the repo changed since the plan, that the plan was made in another checkout, or that a skip named a mandatory id. Nothing was written. Make a fresh plan in this checkout. Publish it for renewed approval as in steps 3 and 4, with `again` on the Flow-authored question, then call `ask` under the common contract. Apply only the approved fresh plan.
+- Exit 2 means that the repo changed since the plan, that the plan was made in another checkout, or that a skip named a mandatory id. Nothing was written. Make a fresh plan in this checkout. Show it in chat as in step 3, then call plain `ask` for renewed approval as in step 4. Apply only the approved fresh plan.
 - Exit 1 means that the Migration is incomplete: an item failed, or old storage stays. Show `failures` and the remaining work, and stop the run. Setup does not go on.
 - Exit 0 means complete. Apply each approved manual diff only after its parent item applied, at its `after_path`. Leave declined manual diffs as remaining hits.
 
-Keep the report's `paths` and the repo-relative path of each applied manual diff outside the git common dir. These are the Migration paths for the Standard commit. Show `applied`, `skipped`, and the remaining manual hits.
+Keep the report's `paths` and the repo-relative path of each applied manual diff outside the git common dir. These are the Migration paths for the Standard commit. Show the apply report in chat, including `applied`, `skipped`, and the remaining manual hits.
 
 Then return to step 2 of SKILL.md, which reads the state again. Keep the mode from step 2 of this file. This run's Migration changed files when it applied any item or manual diff.
