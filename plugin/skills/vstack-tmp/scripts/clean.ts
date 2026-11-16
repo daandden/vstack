@@ -15,7 +15,7 @@
 // empty, and prints JSON {root, deleted, skipped: [{path, reason}], pruned}. Exit 2 on a usage error, and on a
 // delete path that is not an entry under the root, before anything is deleted.
 
-import { lstatSync, readFileSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
+import { chmodSync, lstatSync, readFileSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { CLOSED_RETENTION, dropBindings, FLOW_KIND, readState, registerMigration, retentionOf, withLock } from "../../flow-page/scripts/store.ts";
@@ -88,6 +88,7 @@ function measure(p: string, st: Stats): { newest: number; size: number } {
 function remove(p: string) {
   const st = lstatSync(p);
   if (st.isDirectory()) {
+    if ((st.mode & 0o700) !== 0o700) chmodSync(p, st.mode | 0o700);
     for (const name of readdirSync(p)) remove(join(p, name));
     rmdirSync(p);
   } else {

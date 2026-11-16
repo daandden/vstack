@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Fix vstack-clean deletion of nested read-only snapshot directories while preserving preview permissions, symlink targets, and retention checks."
+  ]
+}

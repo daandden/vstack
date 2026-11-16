@@ -2,7 +2,7 @@
 // anywhere in an entry, no symlink following, and empty-parent pruning. The fake home goes in through --home only.
 
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV } from "./support/fixture.ts";
@@ -195,6 +195,40 @@ test("deleting prunes the kind and key dirs it empties, and keeps the Scratch ro
   expect(r.json.pruned.sort()).toEqual([join(root, "shop-aaaaaa"), join(root, "shop-aaaaaa/explain"), join(root, "shop-aaaaaa/verify")]);
   expect(readdirSync(join(root, "other-bbbbbb/handoff"))).toEqual(["keep.md"]);
   expect(existsSync(root)).toBe(true);
+});
+
+test.skipIf(process.platform === "win32" || process.getuid?.() === 0)("deletes nested read-only snapshots without changing symlink targets or preview permissions", () => {
+  const entry = join(root, "shop-aaaaaa/verify/run1");
+  const snapshot = join(entry, "base-snapshot");
+  const tests = join(snapshot, "tests");
+  const outside = join(dir, "outside");
+  const readonlyDirs = [snapshot, tests, outside];
+  const document = file("shop-aaaaaa/verify/run1/base-snapshot/decision-register.yaml", "retained proof", 10);
+  const source = file("shop-aaaaaa/verify/run1/base-snapshot/tests/vstack-clean.test.ts", "test fixture", 10);
+  mkdirSync(outside);
+  writeFileSync(join(outside, "precious.txt"), "keep");
+  const link = join(snapshot, "outside");
+  symlinkSync(outside, link);
+  lutimesSync(link, daysAgo(10), daysAgo(10));
+  age("shop-aaaaaa/verify/run1/base-snapshot/tests", 10);
+  age("shop-aaaaaa/verify/run1/base-snapshot", 10);
+  age("shop-aaaaaa/verify/run1", 10);
+  chmodSync(document, 0o444);
+  chmodSync(source, 0o444);
+  for (const path of readonlyDirs) chmodSync(path, 0o555);
+  try {
+    expect(listedPaths("3d")).toEqual([entry]);
+    for (const path of readonlyDirs) expect(lstatSync(path).mode & 0o777).toBe(0o555);
+
+    const r = clean("--home", home, "--older-than", "3d", "--delete", entry);
+    expect(r.code).toBe(0);
+    expect(r.json.deleted).toEqual([entry]);
+    expect(existsSync(entry)).toBe(false);
+    expect(readdirSync(outside)).toEqual(["precious.txt"]);
+    expect(lstatSync(outside).mode & 0o777).toBe(0o555);
+  } finally {
+    for (const path of readonlyDirs) if (existsSync(path)) chmodSync(path, 0o755);
+  }
 });
 
 test("an entry written to since the listing is skipped, not deleted", () => {
