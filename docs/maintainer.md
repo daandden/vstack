@@ -68,7 +68,7 @@ Both checks return a nonzero exit status for source errors. The Bun check includ
 
 ### Tern Flow links
 
-`plugin/tern/vstack-flow/` is the separately linked Tern window plugin. Run `tern plugin link <installed vstack>/tern/vstack-flow` to load it in Tern. Its Luau source and manifest ship with the omp package. The [Tern routing Verify recipe](../.omp/skills/verify-vstack/features/vstack-flow.md) drives an isolated Tern instance.
+`plugin/tern/vstack-flow/` and `plugin/tern/vstack-clean/` are the separately linked Tern plugins. `/skill:setup-vstack` links both, or run `tern plugin link <installed vstack>/tern/<plugin>` for each. Their Luau source and manifests ship with the omp package. The [Tern routing Verify recipe](../.omp/skills/verify-vstack/features/vstack-flow.md) and the [Scratch cleanup popup recipe](../.omp/skills/verify-vstack/features/vstack-clean.md) drive an isolated Tern instance.
 
 The window plugin claims only local HTTP Flow URLs on `127.0.0.1` or `localhost`, with `/f/<project>/<flow>/<64 hex>/` followed by an optional fragment. User information, queries, and extra path segments stay with Tern. Tern applies `link_click` before calling the route. The route leaves clicks with `mods.alt` to Tern too.
 
