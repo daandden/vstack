@@ -86,9 +86,13 @@ start)
 	socket_owner "$daemon_sock" >"$data/daemon.pid"
 	[ -s "$data/daemon.pid" ] || die "no session daemon on $daemon_sock, see $run/window.log"
 	if [ -n "${TERN_VERIFY_HOME:-}" ]; then
-		if ctl tree | jq -e '[.. | objects | .class? // "" | select(test("(^| )tn-signin-x( |$)"))] | length > 0' >/dev/null; then
-			ctl click '".tn-signin-x"' >/dev/null
-		fi
+		# The Stencil sign-in card shows up to a few seconds after start and takes Escape and Enter. Close it with its
+		# close button (top-right of the card); Enter would sign the window in through the user's browser.
+		for _ in 1 2 3 4 5 6 7 8; do
+			rect=$(ctl tree '.tn-signin-card' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] - 22) \(.[1] + 26)" else "" end')
+			[ -n "$rect" ] && ctl click $rect >/dev/null
+			sleep 0.5
+		done
 	fi
 	printf 'ready: window pid %s, daemon pid %s, repo %s\n' \
 		"$(cat "$data/window.pid")" "$(cat "$data/daemon.pid")" "$repo"
@@ -151,8 +155,8 @@ doctor)
 	if ! ctl tree >"$data/doctor-tree.json"; then
 		printf 'overlay:    could not inspect window\n'
 		status=1
-	elif jq -e '[.. | objects | .class? // "" | select(test("(^| )tn-signin-x( |$)"))] | length > 0' "$data/doctor-tree.json" >/dev/null; then
-		printf 'SIGN-IN OVERLAY OPEN: close .tn-signin-x in this isolated window, then rerun Doctor\n'
+	elif [ "$(ctl tree '.tn-signin-card' | jq -r '.count')" != 0 ]; then
+		printf 'SIGN-IN OVERLAY OPEN: close the .tn-signin-card with its close button in this isolated window, then rerun Doctor\n'
 		status=1
 	else
 		printf 'overlay:    none\n'

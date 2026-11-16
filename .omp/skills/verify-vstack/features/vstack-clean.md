@@ -13,6 +13,7 @@ The model-free `/vstack-clean [age]` Command opens a Scratch cleanup popup over 
 - `clean-outcome` reports the deleted count, freed size, skipped count, and a line for every deleted or skipped path.
 - `clean-empty` shows `No expired Scratch entries. Nothing to delete.` when no entry expires.
 - `clean-close` Esc, Close, or focus leaving the popup closes it, in every state including confirmation.
+- `clean-close-during-delete` a delete already started finishes on disk after the popup closes.
 - `clean-open-flow` an open Flow older than the age is never listed; it counts as kept.
 - `clean-unlinked` with the plugin unlinked, real `/vstack-clean` refuses in omp and opens nothing.
 - `clean-replace` another trigger replaces the open popup rather than adding one.
@@ -34,7 +35,7 @@ Preconditions:
 - Steps 1 to 15 drive the plugin's trigger route from a shell. Step 16 drives the real `/vstack-clean` Command in a real omp session in the same isolated window. Use `scratch-dir.md` for RPC refusal drives.
 - Use only the helper-owned control socket for input. Before typing, focus the shell and require its id in `ctl state`. After mutations, poll `tern ls` and `ctl state` with an eight-second limit for the expected pane and focus state.
 
-1. Step `vstack-clean-start`: Run `"$V" start "$RUN"`. The isolated HOME can show a Stencil sign-in card a moment after start, and while it is open it takes Escape and Enter. Poll `"$V" ctl "$RUN" tree '.tn-signin-card'` for two seconds; while its count is 1, click its close button at the card rect's top-right (`x = rect[0] + rect[2] - 22`, `y = rect[1] + 26`) with `ctl click X Y`, never Enter, which signs the window in through the user's browser. Require `"$V" doctor "$RUN"` to exit 0, including `overlay: none`. The isolated HOME skips the account check. Save the initial shell id as `SHELL_PANE` from `"$V" tern "$RUN" ls`.
+1. Step `vstack-clean-start`: Run `"$V" start "$RUN"`. With an isolated HOME, start polls for the Stencil sign-in card for four seconds and closes it with its close button, never Enter, which signs the window in through the user's browser. Require `"$V" doctor "$RUN"` to exit 0, including `overlay: none`; Doctor fails while a `.tn-signin-card` is open. If a card shows later, close it the same way: click at the card rect's top-right (`x = rect[0] + rect[2] - 22`, `y = rect[1] + 26`) from `"$V" ctl "$RUN" tree '.tn-signin-card'`. The isolated HOME skips the account check. Save the initial shell id as `SHELL_PANE` from `"$V" tern "$RUN" ls`.
 2. Step `vstack-clean-profile`: Resolve the real Bun and Tern executables in the driver's environment. Write the isolated login profile so the popup's cleanup process can find Bun:
 
    ```sh
@@ -98,6 +99,7 @@ Preconditions:
     10. Press Space, d, and Enter in that order. Before each key, require `ctl state` to name the popup as focused. If focus moved, stop sending keys and record it, because a key sent to the omp pane becomes a model prompt.
     11. Require `Deleted 1 entry, freed 1 B.` Require the marker's key dir to be gone from `$TERN_VERIFY_HOME/.vstack/tmp`.
 17. Step `vstack-clean-unlinked`: In the same omp run, close the popup. Run `"$V" tern "$RUN" plugin unlink vstack-clean` and require `plugin list` without it. Send `/vstack-clean` to the omp pane again as in sub-step 7. Require no new pane in `tern ls`, no empty file pane, and an error notification in the omp pane that names the vstack-clean Tern plugin as not ready and ends `Nothing deleted.` Relink with `"$V" tern "$RUN" plugin link "$CHECKOUT/plugin/tern/vstack-clean"` before stopping.
+18. Step `vstack-clean-close-during-delete`: In a fresh run (steps 1 and 2), seed one entry with many small files so deletion takes seconds: `BIG="$FH/.vstack/tmp/proj-bbbbbb/verify/big-run"`, 40 directories of 1500 empty files each, every path aged 20 days with `touch -h -t`. Open the `15d` trigger and wait until `ctl a11y` shows `Select all`. Press Space and `d`, require the Delete, Back, and Close buttons, then press Enter and Escape 0.1 seconds apart. Require no popup in `tern ls` and some files still under `BIG` right after the close. Within 30 seconds, require `BIG` to be gone.
 
 ## Proof
 
@@ -114,5 +116,5 @@ Step `vstack-clean-cleanup`: After success or failure, run `"$V" stop "$RUN"` to
 - The popup's cleanup process uses a login shell. A PATH available only in the driver's shell does not prove Bun is available in the isolated HOME.
 - Moving focus to the shell closes the popup. Use the driver's file tools for the late-file fixture and the helper's direct `tern open` for replacement.
 - Esc closes the popup in every state, confirmation included. Backspace or the Back button returns from confirmation to the list.
-- Whether a deletion already started finishes after the popup closes is unproven. Keep the popup open until its outcome for this proof.
+- A delete already started runs to completion after the popup closes: the cleanup process does not stop with the block.
 - A command typed as `omp` in the isolated shell can become a Tern-managed agent pane that runs with the user's real HOME. Without `env HOME=...` and the marker guard, its popup lists and deletes the user's real Scratch. This happened once in development and deleted a real closed Flow.
