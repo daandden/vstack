@@ -7,8 +7,15 @@ How the engineering skills should consume this repo's domain documentation when 
 - **`GLOSSARY.md`** at the repo root, or
 - **`GLOSSARY-MAP.md`** at the repo root if it exists: it points at one `GLOSSARY.md` per context. Read each one relevant to the topic.
 - **`docs/adr/`**: read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+- **ADR archive**: `archive/<date>T<HHMM>/` inside each ADR directory above. Each run uses a new run-time folder and refuses an existing destination. It is history read for why, never a rule.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `skill://domain-modeling` skill (reached via `skill://grill-with-docs` and `skill://improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
+
+## clean-adr citation repair
+
+- clean-adr report-only paths: []
+
+The optional `clean-adr report-only paths` line is a JSON array of literal file or directory paths. Directory entries include descendants. Relative paths start at the checkout root, even in Private mode; absolute paths can name private files. clean-adr leaves citations and links under these paths unchanged and reports their file, line, and new target instead. An absent or empty list means direct citation repair everywhere. List text with a separate change process here, for example `["plugin/"]` in a project whose plugin text requires a gated Hand edit.
 
 ## File structure
 

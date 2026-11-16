@@ -49,6 +49,23 @@ rmdir .agents/skills .agents
 
 Frozen restoration refuses upstream content that no longer matches the recorded hash. To update, rerun the relevant `add` command in a clean directory, review the new skill files and lock entry, and replace the corresponding tracked copies together. Keep imported guidance unchanged. Repo-specific runtime and testing decisions still govern the reader.
 
+### Typechecking
+
+Install the development dependencies with `bun install --frozen-lockfile`. Run `bun run typecheck` to check the Bun scripts, plugin TypeScript, tests, Verify helpers, and reader shipping script. It uses `tsconfig.bun.json` and does not depend on Nuxt's generated files.
+
+`@types/bun` supplies Bun APIs and `bun:test`. `@types/node` supplies API declarations such as `node:fs`; it does not require Node.js as the runtime. The compiler commands run through `bun --bun`. TypeScript stays on the 6.0 release line used by the installed Nuxt version, and `vue-tsc` is installed explicitly.
+
+Check the Nuxt reader separately:
+
+```sh
+bun run reader:prepare
+bun run reader:typecheck
+```
+
+`reader:prepare` generates the ignored `reader/.nuxt/` configuration and declarations. `reader:typecheck` runs that preparation itself before checking the reader's project references with `vue-tsc`. Preparation is required after a fresh checkout or a Nuxt configuration change. It does not build or replace the shipped reader bundle.
+
+Both checks return a nonzero exit status for source errors. The Bun check includes the omp extension, whose `@oh-my-pi/*` SDK declarations are not installed by this repo. Tests mock those host modules at runtime, but the mocks do not supply TypeScript declarations. Missing host declarations and existing source errors remain visible; do not replace them with ambient `any` modules or disable strict checking.
+
 ### Tern Flow links
 
 `plugin/tern/vstack-flow/` is the separately linked Tern window plugin. Run `tern plugin link <installed vstack>/tern/vstack-flow` to load it in Tern. Its Luau source and manifest ship with the omp package. The [Tern routing Verify recipe](../.omp/skills/verify-vstack/features/vstack-flow.md) drives an isolated Tern instance.

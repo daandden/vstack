@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Recheck new ADR stems immediately before writing against active and recursively archived names, and keep clean-adr reports out of project history.",
+    "Clarify same-day replacement rationale and capture controlled help output before and after clean-adr verification drives."
+  ]
+}

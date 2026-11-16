@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep unavailable or unknown clean-adr evidence rows open, derive completion from raw coverage, and preserve unchanged repeat runs (#453).",
+    "Keep evidence-poor clean-adr baselines and add executable sample-device evidence only to controlled-repair verification fixtures."
+  ]
+}

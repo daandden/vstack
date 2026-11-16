@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069). New ADRs use local creation dates and stable full-stem citations instead of Upstream sequential numbers (#462, ADR 20261111-new-adrs-are-named-by-date-and-slug)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069). New ADRs use local creation dates and stable full-stem citations instead of Upstream sequential numbers, checking stems against active and archived names (#462, ADR 20261111-new-adrs-are-named-by-date-and-slug)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b644b684781fd5baae57f6be000a180a4d4448d7
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Share Private mode MCP configuration across new worktrees without tracked changes or replacement of existing hooks."
+    reason: "Share Private mode MCP configuration across new worktrees without tracked changes or replacement of existing hooks. Names the ADR archive in fresh domain drafts and Private-mode Migration config (ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds, #450). Documents the optional clean-adr report-only path list in fresh and Private-mode Migration config and preserves its checkout-relative paths (#452)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, Code host, tracker, and MCP evidence. Resolves configured MCP evidence through current descriptions, schemas, and facts, records gaps, and retains fresh-context synthesis (#49, #204, #207, ADR 0035)."
+    reason: "Profiles git, Code host, tracker, and MCP evidence. Resolves configured MCP evidence through current descriptions, schemas, and facts, records gaps, and retains fresh-context synthesis (#49, #204, #207, ADR 0035). Reads active ADRs and the ADR archive as historical evidence for why (ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds, #450)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook
@@ -1156,8 +1156,9 @@ originals:
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow
-  - plugin/agents/vstack-wt-investigator.md
+  - plugin/agents/vstack-scout.md
   - plugin/tern/vstack-flow
+  - plugin/skills/clean-adr
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
   - plugin/skills/web-fullstack
@@ -1179,6 +1180,7 @@ utility:
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt
+  - plugin/skills/clean-adr
   - plugin/skills/animate
   - plugin/skills/animation-performance
   - plugin/skills/apple-design

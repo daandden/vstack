@@ -9,6 +9,8 @@ The vstack root is `<git common dir>/vstack` when `<git common dir>/vstack/confi
 
 In Standard mode, vstack skills use the tracked paths they name (`docs/vstack/`, `GLOSSARY.md`, `docs/adr/`, `.omp/skills/verify-<app>/`). Resolve a `.scratch/` path a skill names against the checkout the session runs in, not through the vstack root. It lands in the main checkout only when the session runs there. In Private mode, the vstack root is shared by every worktree of the repo, and git never tracks it.
 
+Active ADRs are rules. The ADR archive lives at `archive/<date>T<HHMM>/` inside each ADR directory in Standard mode, Private mode, and each context. Each run uses a new folder and refuses an existing destination. It is history that skills read to learn why, never a rule to respect.
+
 In Private mode:
 
 - `config/` holds `issue-tracker.md`, `triage-labels.md`, `domain.md`, and any other vstack config, and replaces `docs/vstack/`: wherever a skill names `docs/vstack/<file>` or the `## vstack` block, read `<vstack root>/config/<file>` instead. A missing file there still needs `/skill:setup-vstack`.

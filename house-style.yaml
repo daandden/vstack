@@ -160,6 +160,14 @@ replacements:
     match: literal
     upstream: any
     uses: [migration]
+  - id: rename-vstack-wt-investigator
+    from: vstack-wt-investigator
+    match: name
+    to: vstack-scout
+    upstream: any
+    scope: required
+    uses:
+      - update
   - id: rename-pick-frontend-stack
     from: pick-frontend-stack
     match: name

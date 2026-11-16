@@ -5,6 +5,9 @@
   "scripts": {
     "test": "bun scripts/test.ts",
     "check-register": "bun scripts/check-register.ts",
+    "typecheck": "bun --bun tsc --project tsconfig.bun.json",
+    "reader:prepare": "bun --bun nuxt prepare reader",
+    "reader:typecheck": "bun run reader:prepare && bun --bun vue-tsc --build reader/tsconfig.json --noEmit",
     "reader:build": "nuxt generate reader && bun reader/ship.ts"
   },
   "dependencies": {
@@ -12,6 +15,8 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "@types/node": "^26.6.6",
     "@iconify-json/lucide": "1.2.150",
     "@nuxt/ui": "4.12.0",
     "@tanstack/charts": "1.5.0",

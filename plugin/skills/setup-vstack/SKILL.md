@@ -230,7 +230,7 @@ For Section C's re-setup branch, use the existing rows and facts as directed the
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
-- `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
+- `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Keep the ADR archive at `archive/<date>T<HHMM>/` inside every ADR directory, including `<vstack_root>/domain/adr/` and each context's ADR directory. Each run uses a new run-time folder and refuses an existing destination. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
 Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results before writing. Once the section choices are settled, continue to step 7 without a separate write-approval question. An unanswered section choice remains unresolved; a timeout, cancellation, or headless recommendation cannot supply it.
 

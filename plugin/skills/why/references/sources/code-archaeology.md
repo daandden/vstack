@@ -5,7 +5,7 @@
 - Commit history (messages, dates, authors, diffs)
 - PR descriptions, review comments, and discussion threads (through the profile's Code host tool)
 - Inline code comments, TODOs, FIXMEs, deprecation notes
-- ADRs (architectural decision records) if the repo keeps them
+- Active ADRs and the ADR archive if the repo keeps them
 - Tests, whose names and assertions often encode the edge cases that motivated a change
 - Related files modified in the same commits (co-change signal)
 - CHANGELOG entries and release notes in the repo
@@ -43,4 +43,4 @@ An unavailable or unauthenticated tool is a gap, not an empty search.
 
 Look for out-of-band docs:
 
-Use `find` for ADRs and related tests, then `grep` for known symbols and nearby TODO, FIXME, HACK, XXX, or NOTE text. Read the matching files with `read`.
+Use `find` for ADRs and related tests, then `grep` for known symbols and nearby TODO, FIXME, HACK, XXX, or NOTE text. Search active ADRs and every folder below `archive/` in each relevant ADR directory, including `archive/<date>T<HHMM>/`. Use the domain docs config to find those directories, including private and tracked ADRs in Private mode and context-scoped ADRs. Read the matching files with `read`. Cite an archived ADR at its run-time path when it explains the decision, even if no active ADR contains that rationale. Read its banner and any replacement to distinguish the original motivation from what holds now.

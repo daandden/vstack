@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Retarget absolute clean-adr report-only paths with a moving legacy private store while preserving literal checkout-relative and unrelated paths (#452)."
+  ]
+}

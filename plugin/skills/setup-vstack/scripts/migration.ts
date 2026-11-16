@@ -59,7 +59,7 @@ function files(root: string): string[] {
 }
 
 function hits(path: string, t: string, replacements: Replacement[]): Hit[] {
-  return t.split("\n").flatMap((line, i) => /matt-pocock|docs-agents/.test(line) || replacements.some(r => findRow(line, r).length)
+  return t.split("\n").flatMap((line, i) => !line.startsWith("- clean-adr report-only paths:") && (/matt-pocock|docs-agents/.test(line) || replacements.some(r => findRow(line, r).length))
     ? [{ path, line: i + 1, text: line }] : []);
 }
 
@@ -69,13 +69,28 @@ function change(path: string, afterPath: string, before: string, after: string):
     diff: `--- ${path}\n+++ ${afterPath}\n@@ -1,${a.length} +1,${b.length} @@\n${a.map(l => "-" + l).join("\n")}\n${b.map(l => "+" + l).join("\n")}\n` };
 }
 
-function rewrite(t: string, common: string, commonIsOrdinaryGit: boolean, replacements: Replacement[]) {
-  const from = join(common, "matt-pocock"), to = join(common, "vstack");
-  for (const [a, b] of [[from + "/docs-agents", to + "/config"], [from, to]]) {
-    const escaped = a!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    t = t.replace(new RegExp(escaped + "(?=$|[/\\s\"'`<>),;])", "g"), () => b!);
-  }
-  return applyRows(t, replacements.filter(r => commonIsOrdinaryGit || !r.id.startsWith("mig-")));
+function reportOnlyPaths(line: string, retarget?: (path: string) => string): string {
+  if (!retarget) return line;
+  const start = line.indexOf(":") + 1;
+  let paths: unknown;
+  try { paths = JSON.parse(line.slice(start)); } catch { return line; }
+  if (!Array.isArray(paths) || !paths.every(path => typeof path === "string")) return line;
+  const after = paths.map(retarget);
+  return after.some((path, i) => path !== paths[i]) ? line.slice(0, start) + " " + JSON.stringify(after) : line;
+}
+
+const domainTarget = (path: string) => join(dirname(path), basename(path).replace(/^CONTEXT/, "GLOSSARY"));
+
+function rewrite(t: string, common: string, commonIsOrdinaryGit: boolean, replacements: Replacement[], retarget?: (path: string) => string) {
+  return t.split(/^(- clean-adr report-only paths:.*)$/m).map((part, i) => {
+    if (i % 2) return reportOnlyPaths(part, retarget);
+    const from = join(common, "matt-pocock"), to = join(common, "vstack");
+    for (const [a, b] of [[from + "/docs-agents", to + "/config"], [from, to]]) {
+      const escaped = a!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      part = part.replace(new RegExp(escaped + "(?=$|[/\\s\"'`<>),;])", "g"), () => b!);
+    }
+    return applyRows(part, replacements.filter(r => commonIsOrdinaryGit || !r.id.startsWith("mig-")));
+  }).join("");
 }
 
 function domainFiles(root: string): string[] {
@@ -100,15 +115,21 @@ function codeHostSeed(root: string): { template: string; text: string } | null {
   return { template, text: seeded };
 }
 
-function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGit: boolean, replacements: Replacement[]): Item {
+function adrArchiveNote(store: string, domain: string): string {
+  const paths = /^- clean-adr report-only paths:/m.test(domain) ? "" : "\n- clean-adr report-only paths: []\n";
+  return `\nThe ADR archive lives in ${store}/domain/adr/archive/<date>T<HHMM>/, docs/adr/archive/<date>T<HHMM>/, and archive/<date>T<HHMM>/ inside each context's ADR directory. Each run uses a new run-time folder and refuses an existing destination. It is history read for why, never a rule.\n\n## clean-adr citation repair\n${paths}\nThe optional \`clean-adr report-only paths\` line is a JSON array of literal file or directory paths. Directory entries include descendants. Relative paths start at the checkout root, even in this private config; absolute paths can name private files. clean-adr leaves citations and links under these paths unchanged and reports their file, line, and new target instead. An absent or empty list means direct citation repair everywhere. List text with a separate change process here.\n`;
+}
+
+function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGit: boolean, replacements: Replacement[], retarget: (path: string) => string): Item {
   const from = join(common, "matt-pocock"), to = join(common, "vstack");
   const item: Item = { id: `private:${common}`, kind: "private-move", mandatory: true, destructive: true, from, to, changes: [], manual_hits: [], symlinks: [] };
   for (const p of files(from)) {
     if (!STORE_TEXT.includes(extname(p))) continue;
     const before = text(p);
     if (before.includes("\0")) continue;
-    const after = rewrite(before, common, commonIsOrdinaryGit, replacements);
+    let after = rewrite(before, common, commonIsOrdinaryGit, replacements, retarget);
     const target = join(to, p.slice(from.length + 1).replace(/^docs-agents(?=\/|$)/, "config"));
+    if (target === join(to, "config/domain.md")) after += adrArchiveNote(to, after);
     if (before !== after) item.changes.push(change(p, target, before, after));
     item.manual_hits.push(...hits(target, after, replacements));
   }
@@ -135,11 +156,17 @@ export function projectPlan(cwd: string, mode: Mode = "move"): Plan {
     "vstack wins destination conflicts; deletion offers never merge old files.",
   ] };
   const replacements = rows(), checkoutOwnsCommonDir = join(root, ".git") === common;
+  const oldDomainFiles = existsSync(oldStore) && !existsSync(store) ? domainFiles(oldStore) : [];
+  const domainTargets = new Map(oldDomainFiles.map(path => [path, domainTarget(join(store, relative(oldStore, path)))]));
+  const retarget = existsSync(oldStore) && !existsSync(store) ? (path: string) => {
+    if (path !== oldStore && !path.startsWith(oldStore + "/")) return path;
+    return domainTargets.get(path) ?? store + path.slice(oldStore.length).replace(/^\/docs-agents(?=\/|$)/, "/config");
+  } : undefined;
   const worktrees = git(root, "worktree", "list", "--porcelain").split("\n").filter(l => l.startsWith("worktree ")).map(l => l.slice(9));
   // Relative paths in the shared store name the main checkout's `.git`, wherever setup runs.
   const commonIsOrdinaryGit = worktrees.some(w => resolve(w, ".git") === common);
   const substitute = (t: string, path = root) =>
-    rewrite(t, common, path.startsWith(common + "/") ? commonIsOrdinaryGit : checkoutOwnsCommonDir, replacements);
+    rewrite(t, common, path.startsWith(common + "/") ? commonIsOrdinaryGit : checkoutOwnsCommonDir, replacements, retarget);
   const add = (kind: Item["kind"], from: string, to: string, before: string, after: string) => {
     plan.items.push({ id: `${kind}:${from}`, kind, mandatory: false, destructive: ["old-delete", "old-store-delete"].includes(kind), from, to,
       changes: [change(from, to, before, after)], manual_hits: hits(to, after, replacements) });
@@ -157,7 +184,7 @@ export function projectPlan(cwd: string, mode: Mode = "move"): Plan {
       if (!dir(join(store, "config"))) plan.notices.push("The winning vstack store has no config directory; application refuses deletion until you resolve that destination.");
       return plan;
     }
-    moved = privateMovePlan(common, worktrees, commonIsOrdinaryGit, replacements);
+    moved = privateMovePlan(common, worktrees, commonIsOrdinaryGit, replacements, retarget!);
     plan.items.push(moved);
     plan.notices.push("The private move is mandatory. A failure stops all remaining Migration actions. Outside links to old storage break.");
   }
@@ -171,8 +198,10 @@ export function projectPlan(cwd: string, mode: Mode = "move"): Plan {
       let after = substitute(before);
       if (privateMode && e.name === "issue-tracker.md") after = after.replaceAll(".scratch/", join(store, "artifacts") + "/");
       if (privateMode && e.name === "domain.md") {
-        after = after.replace(/(?<![\w/-])GLOSSARY(-MAP)?\.md/g, (_, map) => join(store, "domain", `GLOSSARY${map ?? ""}.md`)).replaceAll("docs/adr/", join(store, "domain/adr") + "/");
+        after = after.split("\n").map(line => line.startsWith("- clean-adr report-only paths:") ? line
+          : line.replace(/(?<![\w/-])GLOSSARY(-MAP)?\.md/g, (_, map) => join(store, "domain", `GLOSSARY${map ?? ""}.md`)).replaceAll("docs/adr/", join(store, "domain/adr") + "/")).join("\n");
         after += `\nRead the repo's tracked GLOSSARY.md and docs/adr/ as well when present. Private domain docs live in ${store}/domain/.\n`;
+        after += adrArchiveNote(store, after);
       }
       add(privateMode ? "config-copy" : "config-move", from, to, before, after);
     }
@@ -192,12 +221,12 @@ export function projectPlan(cwd: string, mode: Mode = "move"): Plan {
     const before = text(path), after = substitute(before);
     if (before !== after || hits(path, after, replacements).length) add("rewrite", path, path, before, after);
   }
-  for (const source of [...domainFiles(root), ...domainFiles(moved ? oldStore : join(store, "domain"))]) {
+  for (const source of [...domainFiles(root), ...(moved ? oldDomainFiles : domainFiles(join(store, "domain")))]) {
     if (privateMode && tracked(root, source)) continue;
     const inOld = moved !== undefined && source.startsWith(oldStore + "/");
     const path = inOld ? join(store, source.slice(oldStore.length + 1)) : source;
     const before = inOld ? substitute(text(source), source) : text(source);
-    const to = join(dirname(path), basename(path).replace(/^CONTEXT/, "GLOSSARY"));
+    const to = domainTarget(path);
     const after = substitute(before, path);
     if (path !== to) {
       if (existsSync(to)) add("old-delete", path, to, before, text(to));

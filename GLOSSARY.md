@@ -61,7 +61,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, the skills derived from the UI upstream, and skill-creator set how text, styles, interfaces, and skills are made. explain, how, why, and forensics answer questions about existing work. interrogate reports only adversarial findings that the coordinator reproduces, without fixes. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, the skills derived from the UI upstream, and skill-creator set how text, styles, interfaces, and skills are made. explain, how, why, and forensics answer questions about existing work. interrogate reports only adversarial findings that the coordinator reproduces, without fixes. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. clean-adr archives ADRs that no longer fully hold and restates what holds. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -101,6 +101,10 @@ _Avoid_: manifest (for this table), ADR list
 **House style**:
 The written rules that turn Upstream text into vstack text: exact replacement rows, plus the spawn, skill-reference, and asking rules. Applying any of it to an item makes that item adapt. An adopt item is touched only by a row or rule that every vstack artifact must follow, and that touch flips it to adapt.
 _Avoid_: substitution list, style guide
+
+**ADR archive**:
+The run-time folders at `archive/<date>T<HHMM>/` inside an ADR directory that hold ADRs that no longer hold or that a newer ADR replaced. Each run uses a new folder and refuses an existing destination. It is history that explains why, never a rule to respect.
+_Avoid_: old ADRs, deprecated ADRs, ADR history
 
 ### Behavior
 
