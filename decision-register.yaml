@@ -92,7 +92,7 @@ items:
     tree: b644b684781fd5baae57f6be000a180a4d4448d7
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Share Private mode MCP configuration across new worktrees without tracked changes or replacement of existing hooks. Names the ADR archive in fresh domain drafts and Private-mode Migration config (ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds, #450). Documents the optional clean-adr report-only path list in fresh and Private-mode Migration config and preserves its checkout-relative paths (#452)."
+    reason: "Share Private mode MCP configuration across new worktrees without tracked changes or replacement of existing hooks. Names the ADR archive in fresh domain drafts and Private-mode Migration config (ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds, #450). Documents the optional clean-adr report-only path list in fresh and Private-mode Migration config and preserves its checkout-relative paths (#452). Runs in chat and never enters a Flow (ADR 20261116-setup-vstack-never-enters-a-flow, #511)."
   - id: matt/tdd
     upstream: matt
     kind: skill

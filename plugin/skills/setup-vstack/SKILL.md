@@ -16,19 +16,13 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 
 The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills or global rules.
 
-This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
+This is a prompt-driven skill with helper scripts. It runs entirely in chat, whatever the caller's context or the user's request for a page. Explore, present what you found, settle each choice through plain `ask`, then write.
 
-Every question to the user follows `skill://flow-page`'s "Every ask in a Flow", with Flow CLI publication of the complete round and separate recording of the observed response. A timed-out answer is not the user's. Re-ask a gate once through the same contract, setting `again` on the Flow-authored question. If it times out again, stop without acting and say why. Unavailable questioning grants no approval.
+Write every question's context in chat before the picker. A timed-out answer is not the user's. Re-ask a gate once. If the second attempt times out, stop without acting and say why. Unavailable questioning grants no approval.
 
-## Flow page and diagnostics
+Show helper output in chat: machine lines verbatim, the Migration plan and apply report, the commit receipt, each Check result, and every helper refusal or failure with its exit code and message as printed. Redact credentials. Never show Private MCP values. Save no helper-output files to Scratch.
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before the first check. All setup and Migration questions belong to this run.
-
-Keep each helper's command, exit code, stdout, and stderr in this run's `setup-vstack` Scratch entry. Keep machine diagnostics verbatim, including remaining FAIL, WARN, and NOTE lines. Redact credentials before capturing them. Project config and Migration exports stay canonical at their existing paths.
-
-Before every exit, including incomplete Migration, unavailable discovery, and a declined confirmation, submit a Document Result with the observed machine checks, project mode, config paths, Migration outcome, remaining failures, and next action. Include the raw diagnostics in code blocks and capture their files as evidence attachments. A skipped section says why. An incomplete setup is not complete. Link written project files as sources, not a separate report page.
-
-Continue with the machine section below.
+Before every exit, including incomplete Migration, unavailable discovery, and a declined confirmation, give the final chat report in step 8. An incomplete setup is not complete.
 
 Run the scripts with the bash tool, from inside the repo when there is one:
 
@@ -88,6 +82,8 @@ Read `skill://vstack-tmp` and resolve the project Scratch dir once. Every worktr
 - The Migration is incomplete. Stop the run after showing the failure.
 - The Migration applied. Run `project.ts state` again. Use its facts from here on, except `block_file_dirty`. Keep the Migration paths and the mode that Migration settled. Migration does not seed `ci.md`; the missing file takes this run straight to the CI section in step 5 after exploration. A `code-host.md` that Migration seeds has no default End state and no Landing method, so `missing_default_end_state` and `missing_landing_method` add Section B's two questions.
 
+Keep only Migration plan JSON files and the Private MCP `mcp-plan.json` and `mcp-choices.json` in this run entry.
+
 ### 3. Mode
 
 When `mode` is set, or Migration settled the mode, tell the user the mode and keep it. In Private mode, follow [references/private-mcp.md](references/private-mcp.md) before considering any shortcut below. That procedure reconciles raw configuration through explicit conflict choices and reports incomplete setup when a prerequisite remains. Then take the first branch that applies:
@@ -121,7 +117,7 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 
 Summarize what is present and what is missing. Then take the missing-file sections in order, one round through `ask` per section. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
 
-MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Publish the draft in step 6.
+MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Show the draft in step 6.
 
 Section A, issue tracker.
 
@@ -170,7 +166,7 @@ Then ask the project's Landing method in its own round, because its options depe
 
 > Explainer: ship lands each PR with this method. Squash puts one commit on the default branch. A rebase puts each of the PR's commits there with new SHAs. A merge commit keeps the PR's commits and adds one commit that joins them.
 
-Add the answer to the drafted `code-host.md`'s facts list, under the default End state, as the line `- Landing method: <method>`. When `code-host.md` already exists and `missing_landing_method` is true, ask this question alone and draft the existing file with only that line changed: remove every existing `- Landing method:` line and add the one chosen line. On a GitLab Code host, that draft also replaces the existing `merge-methods`, `merge-pr`, and `auto-merge` rows with the rows in [code-host-gitlab.md](./code-host-gitlab.md). Earlier GitLab rows do not read `squash_option` or send `squash=false`, so a non-squash pick could still squash. Show the replaced rows in step 6's Results. If Section C's cutover or the default End state question also revises `code-host.md`, make these changes in that draft.
+Add the answer to the drafted `code-host.md`'s facts list, under the default End state, as the line `- Landing method: <method>`. When `code-host.md` already exists and `missing_landing_method` is true, ask this question alone and draft the existing file with only that line changed: remove every existing `- Landing method:` line and add the one chosen line. On a GitLab Code host, that draft also replaces the existing `merge-methods`, `merge-pr`, and `auto-merge` rows with the rows in [code-host-gitlab.md](./code-host-gitlab.md). Earlier GitLab rows do not read `squash_option` or send `squash=false`, so a non-squash pick could still squash. Show the replaced rows in full in chat in step 6. If Section C's cutover or the default End state question also revises `code-host.md`, make these changes in that draft.
 
 Section C, CI service.
 
@@ -181,7 +177,7 @@ When `ci.md` is missing and `code-host.md` exists, read that file before present
 - For a CLI source, copy the four rows that exist verbatim, including hand-edited arguments, input handling, and policy notes. The exception is a `rerun-ci` row that does not rerun the linked failed build in full, such as the earlier GitLab template's `glab api --method POST projects/:id/merge_requests/<iid>/pipelines`, which starts a new pipeline. Draft that operation as `unsupported` with the reason, as [ci-gitlab.md](./ci-gitlab.md) does. Draft `code-host.md` with only those rows removed. Keep every other row and note unchanged, including `required-checks` and `watch-checks`.
 - For an MCP source, carry the rows' user-specific values, arguments, and policies into `ci.md`'s project facts. Follow MCP discovery and draft `ci.md` with Section C's MCP pins. Select `ci-logs`, `set-secret`, and `set-variable` from current tool descriptions, not copied pins. Draft `code-host.md` in Section B's short shape, keeping its server, project facts, and read-only Check pin, with no operation rows. Preserve Code host facts embedded in the old rows, such as exact-commit fetching and the review reference.
 
-Include both complete drafts together as Results in step 6 before writing either file. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `ask`, not unrelated setup sections.
+Show both complete drafts together in chat in step 6 before writing either file. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `ask`, not unrelated setup sections.
 
 If the existing `code-host.md` has no CI rows, use the normal CI choices below. Still include an MCP Code host's short-shape draft in the same write set. A CLI Code host with no CI rows stays unchanged.
 
@@ -206,9 +202,9 @@ For GitHub or GitLab, include creation of missing configured triage labels in th
 
 Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
-### 6. Publish the drafts
+### 6. Show the drafts
 
-Write the drafts from the seed templates in this skill's directory:
+Draft from the seed templates in this skill's directory:
 
 - [issue-tracker-github.md](./issue-tracker-github.md): GitHub issue tracker
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md): GitLab issue tracker
@@ -232,7 +228,7 @@ In Private mode, change two drafts so that they point under the vstack root by a
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Keep the ADR archive at `archive/<date>T<HHMM>/` inside every ADR directory, including `<vstack_root>/domain/adr/` and each context's ADR directory. Each run uses a new run-time folder and refuses an existing destination. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results before writing. Once the section choices are settled, continue to step 7 without a separate write-approval question. An unanswered section choice remains unresolved; a timeout, cancellation, or headless recommendation cannot supply it.
+Before writing, show in chat in full every draft composed beyond a seed template. This includes Other issue tracker, Code host, and CI configs composed from CLI help, MCP tools, or the user's prose, Section C's `ci.md` and revised `code-host.md`, Section B's GitLab row replacements, and the Standard-mode `## vstack` block change from step 7. For each template-seeded file, show one line with its path, template, and filled values, including the repo, host, default End state, and Landing method where applicable. Once the section choices are settled, continue to step 7 without a separate write-approval question. An unanswered section choice remains unresolved; a timeout, cancellation, or headless recommendation cannot supply it.
 
 ### 7. Write
 
@@ -282,7 +278,7 @@ On failure, print `WARN <config name>: <named tool or command and observed failu
 
 ### 8. Done
 
-Publish the Result described above. Tell the user whether setup is complete, in which mode, and where the config is. Repeat every machine line that still fails unchanged. Report the Migration result: applied and skipped items, remaining manual hits, and notices. When the user set up beside the Matt files, name the Matt files that remain.
+In the final chat reply, tell the user whether setup is complete, the mode, and the config paths. Repeat every machine line that still fails verbatim. Report the Migration outcome: applied and skipped items, remaining manual hits, and notices. When the user set up beside the Matt files, name the Matt files that remain. State any remaining failures, skipped sections with their reasons, and the next action.
 
 In Private mode, include the MCP procedure's outcome, canonical file path, recoverable-original paths, and inspected creator Git identity. A pending MCP prerequisite leaves setup incomplete even when every Markdown config exists. Tell the user to edit the canonical shared JSON file and run `/mcp reload`. Native project-scoped add, removal, enable, and disable commands can replace the link and are outside the sharing guarantee. Existing worktree MCP files stay outside this migration.
 

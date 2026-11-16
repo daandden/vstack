@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Run setup-vstack entirely in chat, with plain questions, visible drafts and helper output, and a final setup report (ADR 20261116-setup-vstack-never-enters-a-flow, #511)"
+  ]
+}
