@@ -82,6 +82,12 @@ Failed polls retain pending pane focus until a poll succeeds. A selected-session
 
 When the target already equals the page's URL, following dispatches the browser's standard `hashchange` event instead of asking Tern to load that URL again. An exact-URL load reloads the document and discards drafts. Replaying the event lets the reader reselect the question or hold it until blur without adding a reader-specific interface.
 
+### Flow persistence
+
+`plugin/skills/flow-page/scripts/store.ts` owns Flow persistence. The CLI and host use `projectStore` or `hostedStore` and address Flows by id. `commit` and `create` provide the writer that saves State and captured assets under the store's lock. Moves, aliases, bindings, historical migration identities, deleted ids, Reader comments, learning progress, and observation context also go through the store.
+
+Scratch cleanup calls the store's retention listing and deletion operations. `clean.ts` still owns eligibility and the re-check before deletion, including the 15-day closed-Flow floor. The on-disk JSON layout is unchanged. Host discovery records and Picker presence are not Flow data.
+
 ### Flow reader delivery
 
 The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.

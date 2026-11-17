@@ -2,9 +2,8 @@ import { spawn } from "node:child_process";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { withLock } from "./store.ts";
 import { runtimeFiles, skillsRoot } from "./generation.ts";
-import { walkFiles } from "./files.ts";
+import { walkFiles, withLock } from "./files.ts";
 import { isNormalHome } from "./home.ts";
 
 export const hostDir = (home: string) => join(home, ".vstack", "host");

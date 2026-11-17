@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { repoKey } from "../../vstack-tmp/scripts/scratch.ts";
 import type { State } from "./model.ts";
-import { writeAtomic } from "./store.ts";
+import type { FlowStore } from "./store.ts";
 
 export type Observation = {
   status: "current" | "stale" | "unavailable" | "unknown";
@@ -25,15 +25,14 @@ export const unknownObservations = (): Observations => ({ git: unknown("git", "L
 export const observationVersion = (o: Observations) => createHash("sha256").update(JSON.stringify(o)).digest("hex");
 
 type AuthoringContext = { cwd: string; stage?: string; revision?: number };
-type ProjectRegistration = AuthoringContext & { contexts?: AuthoringContext[] };
-export function registerObservation(folder: string, cwd: string, s: State, stage?: string): void {
-  const path = join(folder, "observation-project.json");
+export type ProjectRegistration = AuthoringContext & { contexts?: AuthoringContext[] };
+export function registerObservation(store: FlowStore, cwd: string, s: State, stage?: string): void {
   let previous: ProjectRegistration | undefined;
-  try { previous = JSON.parse(readFileSync(path, "utf8")); } catch {}
+  try { previous = store.readObservation(s.flow.id); } catch {}
   const context = { cwd, ...(stage ? { stage } : {}), revision: s.revision };
   const prior = previous?.contexts ?? (previous ? [previous] : []);
   const contexts = [context, ...prior.filter((c) => c.cwd !== cwd || c.stage !== stage)];
-  writeAtomic(path, JSON.stringify({ ...context, contexts }));
+  store.saveObservation(s.flow.id, { ...context, contexts });
 }
 
 async function command(cwd: string, args: string[]): Promise<string> {
@@ -109,11 +108,11 @@ async function collect(cwd: string, kind: keyof Observations, c: Config, branch:
 }
 
 /** No domain writes. Cache entries are scoped to the checkout, provider configuration, and authored branch. */
-export function observations(folder: string, key: string, s: State): Observations {
+export function observations(store: FlowStore, key: string, s: State): Observations {
   const out = unknownObservations();
   let cwd: string, dir: string, stage: string | undefined;
   try {
-    const registration = JSON.parse(readFileSync(join(folder, "observation-project.json"), "utf8")) as ProjectRegistration;
+    const registration = store.readObservation(s.flow.id);
     const contexts = registration.contexts ?? [registration];
     let selected: { context: AuthoringContext; project: { root: string; common: string; expires: number } } | undefined;
     for (const context of contexts) {

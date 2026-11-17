@@ -7,13 +7,13 @@
 // Exit 1 refuses without committing Flow content. Host lifecycle metadata may be written. Exit 2 is a usage error.
 // A receipt's `live` says whether the host presents the Flow; committed content never depends on it.
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
 import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
-import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
+import { projectStore, type FlowWrite } from "./store.ts";
 import { connect, flowUrl, hostCommand, originOf } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { readComments } from "./comments.ts";
@@ -100,34 +100,31 @@ if (command === "describe") {
 }
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
-const dir = flowsDir(home, process.cwd());
+const store = projectStore(home, process.cwd());
 const session = (opt.session as string | undefined) ?? process.env.PI_SESSION_ID ?? undefined;
 const agent = (opt.agent as string | undefined) ?? "main";
 const time = nowIso();
 
-const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
+const scratch = store.scratch;
 
 function aliasMatches(key: string) {
   const alias = parseAlias(key);
   const matches = (value: string) => /^(spec|ticket):/.test(alias) ? value.toLowerCase() === alias.toLowerCase() : value === alias;
-  const current = flowFolders(dir).flatMap((name) => {
-    const s = readState(join(dir, name));
-    return s && aliasesOf(s).some(matches) ? [{ id: s.flow.id, folder: join(dir, name) }] : [];
-  });
-  const historical = historicalFlows(dirname(dir)).filter((h) => {
+  const current = store.find(alias).map(s => ({ id: s.flow.id }));
+  const historical = historicalFlows(scratch).filter((h) => {
     if (!h.aliases.some(matches)) return false;
-    const migrated = migrationIdentity(dir, h.source);
+    const migrated = store.migration(h.source);
     if (migrated) {
-      if (!folderOfId(dir, migrated.flow) && !current.length) refuse(`${alias} belonged to Flow ${migrated.flow}, whose content expired or was deleted. Its historical source cannot recreate that identity. Open a new Flow explicitly`);
+      if (!store.read(migrated.flow) && !current.length) refuse(`${alias} belonged to Flow ${migrated.flow}, whose content expired or was deleted. Its historical source cannot recreate that identity. Open a new Flow explicitly`);
       return false;
     }
-    return !flowFolders(dir).some((name) => readState(join(dir, name))?.migrated?.from === h.source);
+    return !store.migratedFrom(h.source);
   });
   if (current.length + historical.length > 1) refuse(`${alias} names multiple Flows in this project: ${[...current.map((h) => h.id), ...historical.map((h) => h.source)].join(", ")}. Name a Flow by id or explicitly migrate one historical source`);
   return { alias, current, historical };
 }
 
-function locate(key: string): { id: string; folder: string } {
+function locate(key: string): { id: string } {
   if (key.includes(":")) {
     const { alias, current, historical } = aliasMatches(key);
     if (historical.length) refuse(`${alias} has historical structured Flow content at ${historical[0].source}. Continue it with migrate ${JSON.stringify(historical[0].source)} before opening a Stage`);
@@ -135,48 +132,35 @@ function locate(key: string): { id: string; folder: string } {
     return current[0];
   }
   if (!SLUG.test(key)) refuse(`--flow must be a Flow id of lowercase letters, digits, and hyphens, or a qualified alias such as spec:267, got ${JSON.stringify(key)}`);
-  const folder = folderOfId(dir, key);
-  if (folder) return { id: key, folder };
-  return refuse(registeredFolder(dir, key) !== undefined
+  if (store.read(key)) return { id: key };
+  return refuse(store.hasId(key)
     ? `Flow ${key} has no content any more: it expired after it was closed, or its folder was deleted. Nothing can be read or added under this id; open a new Flow`
     : `this project has no Flow ${key}`);
 }
 
-function observeAuthoring(folder: string, s: State, stage?: string): void {
-  const bound = session ? readBinding(dir, session, agent) : undefined;
+function observeAuthoring(s: State, stage?: string): void {
+  const bound = session ? store.binding(session, agent) : undefined;
   try {
-    registerObservation(folder, realpathSync(process.cwd()), s, stage ?? (bound?.flow === s.flow.id ? bound.stage : undefined));
+    registerObservation(store, realpathSync(process.cwd()), s, stage ?? (bound?.flow === s.flow.id ? bound.stage : undefined));
   } catch {
     process.stderr.write("flow-page.ts: the command succeeded, but its checkout could not be registered for read-only observation. Do not resubmit.\n");
   }
 }
 
-async function locked<T>(key: string, fn: (folder: string, s: State) => T): Promise<T> {
-  let at = locate(key);
-  for (let tries = 0; tries < 5; tries++) {
-    let done: { value: T } | undefined;
-    try {
-      done = await withLock(at.folder, () => {
-        const s = readState(at.folder);
-        if (s?.flow.id !== at.id) return undefined;
-        const value = fn(at.folder, s);
-        observeAuthoring(folderOfId(dir, at.id)!, s, (value as { stage?: string }).stage);
-        return { value };
-      });
-    } catch (e) {
-      if (errno(e) !== "ENOENT" || existsSync(at.folder)) throw e;
-    }
-    if (done) return done.value;
-    at = locate(at.id);
-  }
-  return refuse(`Flow ${at.id} kept moving while this command waited; run it again`);
+async function locked<T>(key: string, fn: (write: FlowWrite, s: State) => T): Promise<T> {
+  const { id } = locate(key);
+  return store.commit(id, (s, write) => {
+    const value = fn(write, s);
+    observeAuthoring(s, (value as { stage?: string }).stage);
+    return value;
+  });
 }
 
 function roots(canonical = false): Root[] {
   const top = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd: process.cwd(), stdout: "pipe", stderr: "ignore" });
   const project = top.exitCode === 0 ? top.stdout.toString().trim() : process.cwd();
   const out: Root[] = [{ name: "project", dir: realpathSync(project) }];
-  if (existsSync(dirname(dir))) out.push({ name: "scratch", dir: realpathSync(dirname(dir)) });
+  if (existsSync(scratch)) out.push({ name: "scratch", dir: realpathSync(scratch) });
   if (canonical) {
     const common = projectCommonDir(process.cwd());
     const shared = common && join(common, "vstack");
@@ -204,19 +188,13 @@ const io: Io = {
   },
 };
 
-function publish(folder: string, s: State): void {
-  for (const [file, bytes] of captured) {
-    const path = join(assetsDir(folder), file);
-    if (existsSync(path)) continue;
-    mkdirSync(dirname(path), { recursive: true });
-    writeAtomic(path, bytes);
-  }
-  writeAtomic(statePath(folder), `${JSON.stringify(s)}\n`);
+function publish(write: FlowWrite, s: State): void {
+  write.save(s, captured);
 }
 
 function binding() {
   if (!session) refuse("no session to look up a binding for: run from an omp session (which sets PI_SESSION_ID) or give --session, or name the Flow");
-  return readBinding(dir, session!, agent) ?? refuse(`session ${session} (agent ${agent}) is bound to no Flow in this project: run open or bind first, or name the Flow`);
+  return store.binding(session!, agent) ?? refuse(`session ${session} (agent ${agent}) is bound to no Flow in this project: run open or bind first, or name the Flow`);
 }
 
 function target(): { flow: string; stage: string } {
@@ -230,7 +208,7 @@ const flowKey = (): string => (opt.flow as string | undefined) ?? binding().flow
 
 const bind = (flow: string, stage: string) => {
   if (!session) return false;
-  writeBinding(dir, { flow, stage, session, agent, bound: time });
+  store.bind({ flow, stage, session, agent, bound: time });
   return true;
 };
 
@@ -243,41 +221,39 @@ async function main(): Promise<object> {
     case "migrate": {
       let from: string;
       try { from = realpathSync(rest[0]); } catch { return refuse(`migrate: ${rest[0]} does not exist`); }
-      if (!existsSync(dirname(dir))) refuse("migrate: this project has no historical Scratch folder");
-      const scratch = realpathSync(dirname(dir));
-      const rel = relative(scratch, from);
-      if (rel === ".." || rel.startsWith(`..${sep}`) || !rel || from === dir || from.startsWith(dir + sep)) refuse("migrate: the source must be a historical folder in this project's Scratch dir, outside its Flow store");
+      if (!existsSync(scratch)) refuse("migrate: this project has no historical Scratch folder");
+      const historicalScratch = realpathSync(scratch);
+      const rel = relative(historicalScratch, from);
+      if (rel === ".." || rel.startsWith(`..${sep}`) || !rel || store.contains(from)) refuse("migrate: the source must be a historical folder in this project's Scratch dir, outside its Flow store");
       const path = join(from, "page.jsonl");
       if (!existsSync(path)) refuse("migrate: this page has no structured page.jsonl state; its handwritten page stays untouched");
       const historical = parseHistorical(readFileSync(path, "utf8"));
       const migrationIo: Io = { ...io, capture: (path, type, where, focus) => io.capture(resolve(from, path), type, where, focus) };
       const migrated = migrateHistorical(historical, "probe", from, time, migrationIo);
-      mkdirSync(dir, { recursive: true });
-      return withLock(dir, () => {
-        const identity = migrationIdentity(dir, from);
-        if (identity && !folderOfId(dir, identity.flow)) refuse(`migrate: Flow ${identity.flow} expired or was deleted. The retained historical source cannot recreate that identity. Open a new Flow explicitly`);
-        for (const name of flowFolders(dir)) {
-          const folder = join(dir, name);
-          const s = readState(folder);
-          if (s?.migrated?.from !== from) continue;
-          return locked(s.flow.id, (folder, current) => {
+      return store.migrating(() => {
+        const identity = store.migration(from);
+        if (identity && !store.read(identity.flow)) refuse(`migrate: Flow ${identity.flow} expired or was deleted. The retained historical source cannot recreate that identity. Open a new Flow explicitly`);
+        const prior = store.migratedFrom(from);
+        if (prior) {
+          return locked(prior.flow.id, (folder, current) => {
             if (current.migrated!.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${current.flow.id}; continue authoring that Flow instead of overwriting it`);
             const repaired = captureHistoricalImages(current, from, time, migrationIo);
             if (repaired) {
               current.revision++;
               publish(folder, current);
             }
-            registerMigration(dir, { source: from, flow: current.flow.id, sha256: historical.sha256 });
+            store.registerMigration({ source: from, flow: current.flow.id, sha256: historical.sha256 });
             return { flow: current.flow.id, revision: current.revision, ...(repaired ? { repaired: true } : { repeated: true }) };
           });
         }
-        const { id, folder } = createFlowFolder(dir, historical.slug);
-        migrated.flow.id = id;
-        migrated.aliases[0] = `folder:${id}`;
-        publish(folder, migrated);
-        registerMigration(dir, { source: from, flow: id, sha256: historical.sha256 });
-        observeAuthoring(folder, migrated);
-        return { flow: id, revision: migrated.revision };
+        return store.create(historical.slug, (id, write) => {
+          migrated.flow.id = id;
+          migrated.aliases[0] = `folder:${id}`;
+          publish(write, migrated);
+          store.registerMigration({ source: from, flow: id, sha256: historical.sha256 });
+          observeAuthoring(migrated);
+          return { flow: id, revision: migrated.revision };
+        });
       });
     }
     case "open": {
@@ -296,12 +272,11 @@ async function main(): Promise<object> {
       if (!SLUG.test(slug)) refuse(`--slug must be lowercase words joined by hyphens, got ${JSON.stringify(slug)}`);
       const probe = newFlow("probe", slug, opt.title as string, time);
       openStage(probe, opt.skill as string, opt.ticket as string | undefined, time);
-      const { id, folder } = createFlowFolder(dir, slug);
-      return withLock(folder, () => {
+      return store.create(slug, (id, folder) => {
         const s = newFlow(id, slug, opt.title as string, time);
         const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time);
         publish(folder, s);
-        observeAuthoring(folder, s, stage.id);
+        observeAuthoring(s, stage.id);
         return { flow: id, stage: stage.id, revision: s.revision, bound: bind(id, stage.id) };
       });
     }
@@ -325,11 +300,11 @@ async function main(): Promise<object> {
       } catch (e) {
         throw new ContributionRefusal([{ code: "invalid_json", path: "$", message: `the contribution is not valid JSON (${(e as Error).message})`, allowed: "JSON object" }]);
       }
-      const apply = (folder: string, s: State) => {
+      const apply = (folder: FlowWrite | undefined, s: State) => {
         try {
           const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
           if (command === "validate") return { ok: true, diagnostics: [] };
-          if (!repeated) publish(folder, s);
+          if (!repeated) publish(folder!, s);
           return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
         } catch (error) {
           if (error instanceof ContributionRefusal) throw error;
@@ -337,9 +312,9 @@ async function main(): Promise<object> {
         }
       };
       if (command === "validate") {
-        const { folder } = locate(t.flow);
-        const s = readState(folder) ?? refuse(`Flow ${t.flow} has no stored content`);
-        return apply(folder, s);
+        const { id } = locate(t.flow);
+        const s = store.read(id) ?? refuse(`Flow ${t.flow} has no stored content`);
+        return apply(undefined, s);
       }
       return locked(t.flow, apply);
     }
@@ -371,47 +346,22 @@ async function main(): Promise<object> {
         const { historical } = aliasMatches(rest[0]);
         if (historical.length) return { migration_required: true, historical };
       }
-      const { folder } = locate(rest[0]);
-      const s = readState(folder)!;
+      const { id } = locate(rest[0]);
+      const s = store.read(id)!;
       return { flow: s.flow.id, revision: s.revision, aliases: aliasesOf(s) };
     }
     case "move": {
       const to = opt.to as string | undefined;
       if (to === undefined) usage("move needs --to, the new folder key");
       if (!SLUG.test(to!)) refuse(`--to must be lowercase words joined by hyphens, got ${JSON.stringify(to)}`);
-      return locked(flowKey(), (folder, s) => {
-        const from = basename(folder);
-        const dest = join(dir, to!);
-        if (dest === folder) refuse(`Flow ${s.flow.id} is already in ${to}`);
-        // Reserve the destination first: mkdir is exclusive, and renaming onto the empty folder then replaces it.
-        try {
-          mkdirSync(dest);
-        } catch (e) {
-          refuse(errno(e) === "EEXIST" ? `${to} is taken in this project; choose another folder key` : `could not move Flow ${s.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
-        }
-        try {
-          renameSync(folder, dest);
-        } catch (e) {
-          rmdirSync(dest);
-          refuse(`could not move Flow ${s.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
-        }
-        try {
-          registerFolder(dir, s.flow.id, to!);
-          if (addAliases(s, [`folder:${to}`]).length) writeAtomic(statePath(dest), `${JSON.stringify(s)}\n`);
-        } catch (e) {
-          renameSync(dest, folder);
-          registerFolder(dir, s.flow.id, from);
-          refuse(`could not move Flow ${s.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
-        }
-        return { flow: s.flow.id, revision: s.revision, moved_from: from };
-      });
+      return locked(flowKey(), (write, s) => write.move(s, to!));
     }
     case "picker": {
       if (!session || agent !== "main") return { presence: false };
-      const key = basename(dirname(dir));
-      const b = readBinding(dir, session, "main");
+      const key = store.key;
+      const b = store.binding(session, "main");
       if (rest[0] === "open" && !b) return { binding: null, presence: false };
-      const s = b ? readState(locate(b.flow).folder)! : undefined;
+      const s = b ? store.read(locate(b.flow).id)! : undefined;
       const questions = s ? rest.slice(1).filter(id => view(s).questions.has(id)) : [];
       const p = { key, session, picker: opt.picker, ...(b ? { flow: b.flow, stage: b.stage } : {}), questions, expires: Date.now() + 30_000 };
       let presence = false;
@@ -428,29 +378,29 @@ async function main(): Promise<object> {
     }
     case "target":
     case "bound": {
-      const b = session ? readBinding(dir, session, command === "target" ? "main" : agent) : undefined;
+      const b = session ? store.binding(session, command === "target" ? "main" : agent) : undefined;
       if (!b) return command === "target" ? { target: null } : { binding: null };
-      const { folder } = locate(b.flow);
-      const s = readState(folder)!;
+      const { id } = locate(b.flow);
+      const s = store.read(id)!;
       stageOf(s, b.stage, "bound");
       return { binding: b, flow: s.flow.id, stage: b.stage, revision: s.revision, ...(command === "target" ? { target: null, picker: null } : {}) };
     }
     default: {
-      const { folder } = locate(flowKey());
-      const s = readState(folder)!;
-      return { ...snapshot(view(s)), aliases: aliasesOf(s), reader_comments: readComments(folder).comments };
+      const { id } = locate(flowKey());
+      const s = store.read(id)!;
+      return { ...snapshot(view(s)), aliases: aliasesOf(s), reader_comments: readComments(store, id).comments };
     }
   }
 }
 
-const unbound = ["bound", "target", "picker"].includes(command) && (!session || !readBinding(dir, session, command === "bound" ? agent : "main")) && !(command === "picker" && rest[0] === "clear");
+const unbound = ["bound", "target", "picker"].includes(command) && (!session || !store.binding(session, command === "bound" ? agent : "main")) && !(command === "picker" && rest[0] === "clear");
 const live = command === "host" || command === "validate" || unbound ? undefined : await connect(home);
 try {
   const result = await main() as { flow?: string | { id: string }; stage?: string; target?: string | null; picker?: string | null };
   if (live && result.flow) {
     const id = typeof result.flow === "string" ? result.flow : result.flow.id;
     const presentation = live.state === "serving"
-      ? { state: "serving", url: flowUrl(live.port, live.secret.read, basename(dirname(dir)), id) }
+      ? { state: "serving", url: flowUrl(live.port, live.secret.read, store.key, id) }
       : live;
     Object.assign(result, { live: presentation });
     if (command === "target" && presentation.state === "serving" && "url" in presentation) {

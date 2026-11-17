@@ -1,13 +1,13 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
-import { lstatSync, realpathSync, rmSync } from "node:fs";
-import { extname, join, sep } from "node:path";
+import { rmSync } from "node:fs";
+import { extname } from "node:path";
 import { parseArgs } from "node:util";
-import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
 import { attest, capability, originOf, readerBundle, record, recordPath, same, secrets, version, type HostRecord, type Runtimes } from "./live.ts";
 import { SLUG, view, type State } from "./model.ts";
 import { learning } from "./learning.ts";
 import { comments } from "./comments.ts";
-import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
+import { hostedStore } from "./store.ts";
+import { writeAtomic } from "./files.ts";
 import { observations, observationVersion, observing } from "./observations.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });
@@ -58,14 +58,6 @@ const controlled = (req: Request) => same(req.headers.get("authorization") ?? ""
 const mime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mmd": "text/plain; charset=utf-8", ".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf" };
 const executableMime: Record<string, string> = { ...mime, ".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".woff": "font/woff", ".woff2": "font/woff2", ".txt": "text/plain" };
 
-function flowFolder(key: string, id: string): string | undefined {
-  if (!/^[^./\\\x00][^/\\\x00]*$/.test(key) || !SLUG.test(id)) return undefined;
-  const dir = join(scratchRoot(home), key, "flow");
-  if (!realpathSync(dir).startsWith(realpathSync(scratchRoot(home)) + sep)) return undefined;
-  const folder = folderOfId(dir, id);
-  return folder && realpathSync(folder).startsWith(realpathSync(dir) + sep) ? folder : undefined;
-}
-
 async function runtimes(s: State, key: string): Promise<Runtimes> {
   const out: Runtimes = {};
   await Promise.all(s.attachments.map(async (a) => {
@@ -99,15 +91,13 @@ function prototype(req: Request): Response {
   let path: string;
   try { key = decodeURIComponent(m[1]); path = decodeURIComponent(m[5]); } catch { return missing(); }
   if (!same(m[4], capability(secret.read, key, `${m[2]}\nartifact\n${m[3]}`))) return missing();
-  const folder = flowFolder(key, m[2]);
-  if (!folder) return missing();
-  const s = readState(folder);
+  const store = hostedStore(home, key);
+  const s = store?.read(m[2]);
   const a = s?.flow.id === m[2] ? s.attachments.find((a) => a.id === m[3] && a.runtime === "html" && a.availability === "captured") : undefined;
   const f = a?.bundle?.files.find((f) => f.path === path);
   if (!f) return missing();
-  const base = realpathSync(assetsDir(folder));
-  const file = join(base, f.file);
-  if (!/^[a-f0-9]{64}\/[A-Za-z0-9._-]+$/.test(f.file) || !base.startsWith(realpathSync(folder) + sep) || !lstatSync(file).isFile() || realpathSync(file) !== file) return missing();
+  const file = store!.asset(m[2], f.file);
+  if (!file) return missing();
   return response(req.method === "HEAD" ? null : Bun.file(file), 200, {
     "Content-Type": executableMime[extname(path).toLowerCase()] ?? "application/octet-stream",
     "Content-Security-Policy": `default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self'; frame-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors ${origin}; sandbox allow-scripts allow-same-origin`,
@@ -164,8 +154,8 @@ async function route(req: Request): Promise<Response> {
       if (typeof p.flow !== "string" || !SLUG.test(p.flow) || typeof p.stage !== "string" ||
         !Array.isArray(p.questions) || !p.questions.every(q => typeof q === "string") ||
         !Number.isFinite(p.expires)) return response("Invalid Picker presence.", 400);
-      const folder = flowFolder(p.key, p.flow);
-      if (!folder || !readState(folder)?.stages.some(stage => stage.id === p.stage)) return missing();
+      const store = hostedStore(home, p.key);
+      if (!store?.read(p.flow)?.stages.some(stage => stage.id === p.stage)) return missing();
       pickers.set(key, p);
       return response(JSON.stringify({ ok: true }), 200, { "Content-Type": "application/json" });
     }
@@ -190,20 +180,16 @@ async function route(req: Request): Promise<Response> {
   const id = m[2];
   if (!/^[^./\\\x00][^/\\\x00]*$/.test(key) || !SLUG.test(id) || !same(m[3], capability(secret.read, key, id))) return missing();
   if (m[4] === undefined) return response(null, 308, { Location: `${url.pathname}/` });
-  const dir = join(scratchRoot(home), key, "flow");
-  const root = realpathSync(scratchRoot(home));
-  if (!realpathSync(dir).startsWith(root + sep)) return missing();
-  const folder = folderOfId(dir, id);
-  if (!folder || !realpathSync(folder).startsWith(realpathSync(dir) + sep)) return missing();
-  const s = readState(folder);
-  if (!s || s.flow.id !== id) return missing();
+  const store = hostedStore(home, key);
+  const s = store?.read(id);
+  if (!store || !s || s.flow.id !== id) return missing();
   const progressToken = createHmac("sha256", secret.control).update(`flow-learning-v1\n${key}\n${id}`).digest("hex");
   if (m[4] === "/learning" || m[4] === "/comments") {
     const token = req.headers.get("cookie")?.split(";").map((x) => x.trim()).find((x) => x.startsWith("flow_learning="))?.slice(14) ?? "";
     if (!same(token, progressToken)) return response("Reader permission required.", 401);
     if (req.method === "POST" && req.headers.get("origin") !== origin) return response("Invalid reader origin.", 403);
     if (req.method === "POST" && req.headers.get("content-type") !== "application/json") return response("Use application/json.", 415);
-    const result = await (m[4] === "/comments" ? comments : learning)(folder, req);
+    const result = await (m[4] === "/comments" ? comments : learning)(store, id, req);
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
@@ -215,20 +201,18 @@ async function route(req: Request): Promise<Response> {
     const content = view(s);
     return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) }), 200, { "Content-Type": "application/json" });
   }
-  if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
+  if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(store, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/presence") return response(req.method === "HEAD" ? null : JSON.stringify({ presences: presences(key, id) }), 200, { "Content-Type": "application/json" });
   if (m[4] === "/versions") return response(req.method === "HEAD" ? null : JSON.stringify({
-    revision: s.revision, observationVersion: observationVersion(observations(folder, key, s)), hostGeneration: instance, readerGeneration: readerVersion,
+    revision: s.revision, observationVersion: observationVersion(observations(store, key, s)), hostGeneration: instance, readerGeneration: readerVersion,
   }), 200, { "Content-Type": "application/json" });
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
   try { file = decodeURIComponent(m[4].slice(8)); } catch { return missing(); }
   const a = s.attachments.find((a) => a.availability === "captured" && a.file === file);
   if (!a || !/^[a-f0-9]{64}\/[A-Za-z0-9._-]+$/.test(file)) return missing();
-  const base = realpathSync(assetsDir(folder));
-  if (!base.startsWith(realpathSync(folder) + sep)) return missing();
-  const path = join(base, file);
-  if (!lstatSync(path).isFile() || realpathSync(path) !== path) return missing();
+  const path = store.asset(id, file);
+  if (!path) return missing();
   const media = ["image", "video", "svg"].includes(a.type);
   return response(req.method === "HEAD" ? null : Bun.file(path), 200, {
     "Content-Type": mime[extname(path)] ?? "application/octet-stream",
