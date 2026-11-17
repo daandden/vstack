@@ -18,7 +18,7 @@
 import { lstatSync, readFileSync, readdirSync, rmdirSync, type Stats } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
-import { CLOSED_RETENTION, deleteFlowEntry, FLOW_KIND, flowRetentionEntries, flowRetentionEntry, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
+import { CLOSED_RETENTION, compactFlowDatabase, deleteFlowEntry, FLOW_KIND, flowRetentionEntries, flowRetentionEntry, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
 import { measureEntry, removeEntry } from "../../flow-page/scripts/files.ts";
 import { scratchRoot } from "./scratch.ts";
 import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
@@ -149,6 +149,7 @@ const targets = positionals.map((p) => {
 const deleted: string[] = [];
 const skipped: { path: string; reason: string }[] = [];
 const pruned: string[] = [];
+const compact = new Set<string>();
 for (const { path, kind, entry } of targets) {
   const st = lstat(path);
   if (!st) {
@@ -173,6 +174,7 @@ for (const { path, kind, entry } of targets) {
       skipped.push({ path, reason });
       continue;
     }
+    if (v.flow) compact.add(join(path, "..", ".."));
   } else {
     removeEntry(path);
   }
@@ -184,4 +186,5 @@ for (const { path, kind, entry } of targets) {
     pruned.push(dir);
   }
 }
+for (const projectScratch of compact) compactFlowDatabase(projectScratch);
 await print({ root, deleted, skipped, pruned });

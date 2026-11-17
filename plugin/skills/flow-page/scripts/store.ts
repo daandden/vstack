@@ -251,6 +251,10 @@ export class FlowStore {
     }
     return reason;
   }
+  compact(): void {
+    this.connection.sqlite.exec("VACUUM");
+    this.connection.sqlite.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+  }
 }
 
 export const projectStore = (home: string, cwd: string): FlowStore => new FlowStore(flowsDir(home, cwd));
@@ -275,5 +279,8 @@ export function flowRetentionEntries(projectScratch: string): FlowRetentionEntry
 }
 export async function deleteFlowEntry(path: string, recheck: (entry: FlowRetentionEntry) => string | undefined): Promise<string | undefined> {
   return new FlowStore(dirname(path)).delete(path, recheck);
+}
+export function compactFlowDatabase(projectScratch: string): void {
+  new FlowStore(join(projectScratch, FLOW_KIND)).compact();
 }
 
