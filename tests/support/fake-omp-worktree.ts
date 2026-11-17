@@ -1,6 +1,6 @@
 // Stands in for `omp worktree list --json` at the omp CLI boundary: lists every dir directly under
 // $OMP_WORKTREE_DIR, except the names in $FAKE_OMP_HIDE (comma-separated). $FAKE_OMP_FAIL makes it fail.
-import { lstatSync, readdirSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
@@ -28,5 +28,9 @@ try {
 } catch {
   // omp lists nothing for a base that does not exist.
 }
-const entries = names.filter((n) => !hidden.has(n) && lstatSync(join(base, n)).isDirectory()).map((n) => ({ path: join(base, n), kind: "pr-checkout" }));
+const entries = names.filter((n) => !hidden.has(n) && lstatSync(join(base, n)).isDirectory()).map((n) => ({
+  path: join(base, n),
+  kind: "pr-checkout",
+  ...(existsSync(join(base, n, ".git")) && process.env.FAKE_OMP_PARENT ? { parentRepo: process.env.FAKE_OMP_PARENT } : {}),
+}));
 console.log(JSON.stringify(entries));

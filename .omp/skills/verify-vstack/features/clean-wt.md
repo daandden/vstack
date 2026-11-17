@@ -1,6 +1,6 @@
 # Clean worktrees
 
-`/skill:clean-wt` removes the current Git project's omp ovnfs leftovers and legacy worktrees, clones, and task sandboxes under the omp worktree base. Its script checks ownership before inspecting inactive checkouts and reports work state, unique history, integration evidence, and a fingerprint. Its `remove` command removes unused clean checkouts and verified integrated drafts without unique or unverified artifacts. It keeps linked-worktree branches and skips stale, owned, uncertain, unique-history, and unapproved unresolved work.
+`/skill:clean-wt` inventories native omp entries and `omp-*` ovnfs checkouts across repositories from any directory, including outside Git. It resolves each checkout's source independently of the invocation directory. Its script checks ownership before inspecting inactive contents and reports work state, unique history, integration evidence, and a fingerprint. Its `remove` command removes unused clean checkouts and verified integrated drafts without unique or unverified artifacts. It keeps linked-worktree branches and skips stale, owned, uncertain, unique-history, source-dependent, and unapproved unresolved work.
 
 ## Sub-features
 
@@ -15,11 +15,12 @@
 - `cwt-integrated` targeted inventory can qualify dirty tracked contents and untracked files or links for automatic removal when their bytes and modes match the fetched remote HEAD commit, including squash-equivalent changes. Unique or unverified artifacts remain protected. Remote HEAD can differ from the branch checked out in the source repository.
 - `cwt-phases` plain inventory discovers inactive work without remote comparisons. Clean automatic removal finishes before source-fact preparation. Separate targeted comparisons share the same prepared source facts.
 - `cwt-hidden-index` skip-worktree and assume-unchanged cannot hide unique tracked bytes or post-inventory replacements from inspection or fingerprints. Unavailable verification protects the checkout.
-- `cwt-ovnfs` inventories `omp-` ovnfs checkouts from this project's main checkout, worktrees, and isolated sources. Unknown origins remain uncertain. Private Git state and history override an empty ovnfs diff. Removal uses ovnfs's `rm` operation and keeps the checkout's snapshots, including on ovnfs v0.3.0 and later, where `rm` deletes them by default.
+- `cwt-ovnfs` inventories `omp-*` ovnfs checkouts across repositories and follows their source chains. Native `parentRepo`, task-session ancestry, and Git alternates also establish origins. Missing or cyclic origins remain uncertain. Named and verifier entries remain visible but excluded from removal. Private Git state and history override an empty ovnfs diff. Removal uses ovnfs's `rm` operation and keeps snapshots, including on ovnfs v0.3.0 and later, where `rm` deletes them by default.
 - `cwt-native-completion` native removal can finish before mounted metadata disappears. The script observes bounded directory disappearance without repeating removal and rechecks native identity before reporting success.
-- `cwt-discovery` external verifier-session directories reveal saved leased child headers. Unsupported non-Git invocations fail before native discovery or content inspection. Native entries outside supported scope remain visible with protection reasons.
+- `cwt-discovery` external verifier-session directories reveal saved leased child headers. Git and non-Git invocation directories yield the same global inventory. Native entries outside supported layouts remain visible with protection reasons.
 - `cwt-progress` `--progress` writes JSONL diagnostics to stderr while stdout stays JSON. Diagnostics identify the current phase, actual content reads, and ownership blockers.
 - `cwt-approval-plan` the approval planner turns investigated eligible targets into bounded Flow contributions and preserves their inspected path and fingerprint. Planning never publishes, selects, or deletes targets.
+- `cwt-source-guard` every entry in the full ovnfs listing protects its native, task-wrapper, or ovnfs source, including sources of named and verifier dependents. Removal refreshes this evidence. A stale fingerprint or dirty-work approval cannot override a new dependent.
 
 ## How to get to it (user POV)
 
@@ -31,7 +32,7 @@ Preconditions:
 
 - The baseline from `README.md`, and Doctor before the drive.
 - The script reads the running session's lease, so every drive here uses `--session`, except the one that proves the missing lease.
-- Throwaway repo and base: `F="$VERIFY_RUN_DIR/data/cwt"` and `B="$F/wt"`. Never point `--base` at the real omp worktree base.
+- Throwaway repo and base: `F="$VERIFY_RUN_DIR/data/cwt"` and `B="$F/wt"`. Never point `--base` at the real omp worktree base. The base does not restrict ovnfs discovery. Remove only this run's explicitly named disposable targets, and preserve unrelated inventory records.
 
 Step `clean-wt-fixture`: Build the fixture. `g` passes a throwaway identity to git:
 
@@ -43,7 +44,7 @@ g "$F/repo" worktree add -q -b dirty-br "$B/wt-dirty" && echo draft > "$B/wt-dir
 g "$F/repo" worktree add -q --detach "$B/wt-unique" && g "$B/wt-unique" commit -q --allow-empty -m only-here
 ```
 
-The stub model plays the agent: each `{"tool":"bash"}` reply is one command that the session's bash tool runs. Set every call's `cwd` to the disposable source repository, including inventory and removal. A non-Git invocation is rejected before content inspection. Write the replies with `jq`, so the paths are expanded. `fp <name>` expands to a command substitution that reads that checkout's current fingerprint when the tool runs:
+The stub model plays the agent: each `{"tool":"bash"}` reply is one command that the session's bash tool runs. Set every call's `cwd` to the disposable source repository for this legacy removal drive. The global CLI proof below also runs from a disposable non-Git directory. Write the replies with `jq`, so the paths are expanded. `fp <name>` expands to a command substitution that reads that checkout's current fingerprint when the tool runs:
 
 ```sh
 CW="bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts"
@@ -104,7 +105,18 @@ The common CLI suite covers legacy APFS copies and linked worktrees alongside th
 
 Use disposable fixture repositories and native executable stand-ins for these CLI regressions. They exercise the production scripts and real Git. They do not prove that a model follows the skill or that a human consents.
 
-Step `clean-wt-discovery-coverage`: Run `bun test --timeout 30000 tests/clean-wt.test.ts tests/checkout-locator-cleanup.test.ts`. Inspect the named external saved-session, native exclusion, unsupported non-Git, delayed native-directory visibility, and mid-run ownership cases. The owned targets remain, unsupported entries have protection reasons, snapshots survive delayed completion, and no real checkout is a fixture.
+Step `clean-wt-discovery-coverage`: Run `bun test --timeout 30000 tests/clean-wt.test.ts tests/checkout-locator-cleanup.test.ts`. Inspect the named external saved-session, native exclusion, global Git and non-Git inventory, delayed native-directory visibility, and mid-run ownership cases. Owned and uncertain targets remain, excluded entries have protection reasons, snapshots survive delayed completion, and no real checkout is a fixture.
+
+Step `clean-wt-global-source-guard`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'machine-wide inventory|ovnfs origin follows archived sessions|source stays protected by every ovnfs dependent|cyclic or missing origin evidence'`. Retain stdout, stderr, and the exit code. Require these named CLI cases to pass:
+
+- `machine-wide inventory resolves two repositories equally from Git and non-Git directories` proves identical inventories from both repositories and outside Git. Native `parentRepo` establishes each source. Nested ovnfs sources resolve to the correct repository, unknown sources remain uncertain, and progress records one read of each native listing and one inspection per checkout. Removal from outside Git removes only the requested disposable clone.
+- `ovnfs origin follows archived sessions across repositories and retains missing sources` proves archived ancestry and cross-repository source resolution. An unreadable removed source without ancestry stays uncertain.
+- `a %s source stays protected by every ovnfs dependent, including one added after inventory` covers `linked`, `task`, and `ovnfs` sources. Named and verifier dependents protect their sources, including a nested source inside a task wrapper. A dependent created after inventory blocks removal with the old fingerprint even when `--approve` names that source. Both source and dependent remain, and the linked branch remains.
+- `cyclic or missing origin evidence keeps native and ovnfs checkouts uncertain` proves native and ovnfs cycles and missing native origin evidence stay nonautomatic, with no content inspection or fingerprint. Approval does not bypass the uncertainty.
+
+The full CLI suite also retains `a task clone that copied the source repo's git dir is compared with the checkout its parent session ran in` and `a task clone whose parent session's directory was removed takes its source from alternates`. Require both to pass in `clean-wt-discovery-coverage`. These deterministic cases complement, rather than replace, the real session and ovnfs journeys.
+
+Step `clean-wt-task-source-chains`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'a task from an'`. Retain stdout, stderr, and the exit code. All four cases must pass. A task copied from an ovnfs checkout or another task resolves session ancestry and Git alternates to the established repository's `source_git_dir`. Identical ignored `.env` bytes in the immediate parent and child remain clean and automatic, even when the established repository has no copy. Breaking the ultimate source keeps the child uncertain, with no content inspection or fingerprint.
 
 Step `clean-wt-native-completion`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'ovnfs removal waits for mounted directory visibility'`. The native boundary fixture retires the listing before its mounted directory disappears. Cleanup must wait for disappearance, preserve the snapshot, and issue removal only once. The real ovnfs approved/final journey remains required alongside this deterministic regression.
 
@@ -112,7 +124,7 @@ Step `clean-wt-approval-plan`: Run `bun test --timeout 30000 tests/clean-wt-appr
 
 Step `clean-wt-read-budget`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'large ignored trees keep fresh cleanup guards'`. Retain the printed workload and per-operation files, bytes, and elapsed milliseconds. These counters cover script-owned content reads, not Git subprocess I/O. The lifecycle must satisfy the fixture's read budget while retaining final content, ownership, history, and fingerprint checks.
 
-Step `clean-wt-parent-vs-head`: Compare the captured red runs with the passing head CLI cases for saved external headers, missing native entries, early non-Git rejection, 31-target approval, and the identical ignored-tree workload. Read the base implementation to establish the changed paths. Preserve source revisions and observations separately. A timing sample alone does not establish a general speedup.
+Step `clean-wt-parent-vs-head`: Compare the captured red runs with the passing head CLI cases for machine-wide Git and non-Git inventory, native and ovnfs uncertain origins, and full-list source dependency protection. Retain existing comparison evidence for saved external headers, native exclusions, 31-target approval, and the identical ignored-tree workload. Read the base implementation to establish the changed paths. Preserve source revisions and observations separately. A timing sample alone does not establish a general speedup.
 
 ## Gotchas
 
@@ -120,3 +132,4 @@ Step `clean-wt-parent-vs-head`: Compare the captured red runs with the passing h
 - The stub model's replies are fixed before the drive, so a fingerprint cannot come from an earlier tool result. `fp` reads it inside the same bash command.
 - The fixture lives under `data/`, so Cleanup deletes it. Save the after listing before Cleanup.
 - This feature drives the script through the session. The skill's investigation Fan-out and `ask` step need a model that follows the skill, so report them as skipped.
+- The stub driver answers standalone, tool-less omp capability probes for `17 times 23` with `391` without consuming scenario replies. Require actual `tool_execution_end` evidence for the cleanup commands. Transport success alone does not prove that they ran.

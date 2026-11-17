@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "clean-wt inventories omp checkouts across repositories from any directory, resolves each source repository from native metadata and source chains, and protects every checkout used as an ovnfs source, including named and verifier dependents."
+  ]
+}

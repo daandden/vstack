@@ -133,15 +133,24 @@ const realpath = (path: string) => {
   try { return realpathSync(path); } catch { return ""; }
 };
 
-export function ompWorktreeListing(base: string): { ok: boolean; reason?: string; paths: Set<string> } {
+export function ompWorktreeListing(base: string): { ok: boolean; reason?: string; paths: Set<string>; parentRepos: Map<string, string> } {
   const r = Bun.spawnSync(["omp", "worktree", "list", "--json"], { env: { ...process.env, OMP_WORKTREE_DIR: base }, stdout: "pipe", stderr: "pipe" });
   try {
     if (r.exitCode !== 0) throw new Error(r.stderr.toString().trim() || `exit ${r.exitCode}`);
     const entries: unknown = JSON.parse(r.stdout.toString());
     if (!Array.isArray(entries) || !entries.every((e) => typeof e?.path === "string")) throw new Error("unrecognized output");
-    return { ok: true, paths: new Set(entries.map((e: { path: string }) => realpath(e.path) || resolve(e.path))) };
+    const paths = new Set<string>();
+    const parentRepos = new Map<string, string>();
+    for (const entry of entries) {
+      const path = realpath(entry.path) || resolve(entry.path);
+      paths.add(path);
+      if (typeof entry.parentRepo === "string" && entry.parentRepo.startsWith("/")) {
+        parentRepos.set(path, realpath(entry.parentRepo) || resolve(entry.parentRepo));
+      }
+    }
+    return { ok: true, paths, parentRepos };
   } catch (e) {
-    return { ok: false, reason: `cannot read omp worktree list --json for ${base}: ${(e as Error).message}`, paths: new Set() };
+    return { ok: false, reason: `cannot read omp worktree list --json for ${base}: ${(e as Error).message}`, paths: new Set(), parentRepos: new Map() };
   }
 }
 
@@ -256,7 +265,7 @@ export interface OvnfsCleanupLocation {
 export function cleanupOvnfsLocations(
   base: string,
   listing: ReturnType<typeof ovnfsListing>,
-  projectPaths: Set<string>,
+  sourcePaths: Set<string>,
 ): OvnfsCleanupLocation[] {
   const records = new Map<string, { file: string; gap?: string }>();
   if (lstat(base)?.isDirectory()) {
@@ -271,7 +280,7 @@ export function cleanupOvnfsLocations(
       } catch {}
     }
   }
-  const known = new Set([...projectPaths].map(canonical));
+  const known = new Set([...sourcePaths].map(canonical));
   let changed: boolean;
   do {
     changed = false;
