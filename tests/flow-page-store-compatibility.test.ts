@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -11,7 +11,7 @@ const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-store-compatibility-"
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 // Captured from f73626bd before the store prefactor. Only the unchanged model and Scratch dependencies are linked.
-test("previous-release Flow folders accept current submits and the previous store reads current writes", () => {
+test("previous-release JSON imports once and pre-SQLite code refuses the renamed backups", () => {
   const project = join(root, "project");
   const home = join(root, "home");
   mkdirSync(project, { recursive: true });
@@ -49,8 +49,10 @@ test("previous-release Flow folders accept current submits and the previous stor
   expect(receipt.revision).toBe(3);
   const shown = cli(["show", "--flow", flow]);
   expect(shown.stages.find((s: any) => s.id === opened.stage).results[0].entries[0].title).toBe("Compatibility");
-  const readPrevious = (id: string) => old(`store.readState(store.folderOfId(${JSON.stringify(dir)}, ${JSON.stringify(id)}))`);
-  expect(readPrevious(flow)).toMatchObject({ revision: 3, flow: { id: flow } });
+  const readPrevious = (id: string) => old(`(store.folderOfId(${JSON.stringify(dir)}, ${JSON.stringify(id)}) ? store.readState(store.folderOfId(${JSON.stringify(dir)}, ${JSON.stringify(id)})) : null)`);
+  expect(readPrevious(flow)).toBeNull();
+  expect(existsSync(join(dir, flow, "data/state.json"))).toBe(false);
+  expect(readFileSync(join(dir, flow, "data/state.imported.json"))).toEqual(readFileSync(join(fixture, "flow", flow, "data/state.json")));
   const current = cli(["open", "--title", "Current release Flow", "--skill", "explain"]);
-  expect(readPrevious(current.flow)).toMatchObject({ revision: 1, flow: { id: current.flow, title: "Current release Flow" } });
+  expect(readPrevious(current.flow)).toBeNull();
 });

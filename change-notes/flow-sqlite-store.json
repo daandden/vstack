@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Store each project's Flows in SQLite, import existing JSON with byte-preserving backups, and stop a JSON-only normal host before cutover without changing ids, links, receipts, bindings, or retention. Seal the bundled Drizzle database layer so older supervisors can launch it."
+  ]
+}

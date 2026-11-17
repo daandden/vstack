@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { runtimeFiles, skillsRoot } from "./generation.ts";
 import { walkFiles, withLock } from "./files.ts";
@@ -78,6 +78,30 @@ async function hello(port: number, control: string): Promise<Hello> {
   } catch (e) {
     return { state: ["ECONNREFUSED", "ConnectionRefused"].includes((e as NodeJS.ErrnoException).code ?? "") ? "absent" : "other" };
   }
+}
+
+/** The first SQLite release stops JSON-only hosts before any project import. */
+export async function prepareStorage(home: string): Promise<void> {
+  if (!isNormalHome(home) || !existsSync(hostDir(home))) return;
+  mkdirSync(hostDir(home), { recursive: true, mode: 0o700 });
+  await withLock(hostDir(home), async () => {
+    const secret = secrets(home), port = record(home)?.port ?? hostPort();
+    const h = await hello(port, secret.control);
+    if (h.state !== "ours" || h.version === version()) return;
+    const storage = await fetch(`${originOf(port)}/.host/storage`, {
+      headers: { authorization: `Bearer ${secret.control}` }, signal: AbortSignal.timeout(2000),
+    });
+    if (storage.ok && (await storage.json() as { storage?: string }).storage === "sqlite") return;
+    if (storage.status !== 404) throw new Error(`Flow host storage could not be established (${storage.status}); JSON import was not attempted`);
+    const stopped = await fetch(`${originOf(port)}/.host/stop`, {
+      method: "POST", headers: { authorization: `Bearer ${secret.control}` }, signal: AbortSignal.timeout(2000),
+    });
+    if (!stopped.ok) throw new Error(`pre-SQLite Flow host refused stop (${stopped.status}); JSON import was not attempted`);
+    for (const end = Date.now() + 5000; Date.now() < end; await Bun.sleep(25)) {
+      if ((await hello(port, secret.control)).state === "absent") return;
+    }
+    throw new Error("pre-SQLite Flow host did not stop; JSON import was not attempted");
+  });
 }
 
 type Ready = { port: number; secret: Secrets };

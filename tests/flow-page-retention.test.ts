@@ -184,8 +184,8 @@ test("the Flow registry and session bindings are never offered as Scratch entrie
   expect(r.entries.filter((e: { kind: string }) => e.kind === "flow")).toEqual([]);
   const meta = flowMetadataPaths(w.at.home, f.flow);
   expect(meta.length).toBeGreaterThan(0);
-  const del = ok(clean(w.at, Date.now(), 0, "--older-than", "1d", "--delete", ...meta));
-  expect(del.deleted).toEqual([]);
+  const del = clean(w.at, Date.now(), 0, "--older-than", "1d", "--delete", ...meta);
+  expect(del.code).toBe(2);
   for (const p of meta) expect(existsSync(p)).toBe(true);
   expect(ok(run(["show"], w.at, "s-1")).flow.id).toBe(f.flow);
 });

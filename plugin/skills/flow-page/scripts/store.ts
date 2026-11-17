@@ -1,217 +1,52 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, rmdirSync, writeFileSync, type Stats } from "node:fs";
-import { createHash, randomBytes } from "node:crypto";
+import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, type Stats } from "node:fs";
+import { randomBytes } from "node:crypto";
 import { basename, dirname, join, sep } from "node:path";
 import { repoKey, scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
 import { addAliases, aliasesOf, closedAt, SLUG, upgrade, type State } from "./model.ts";
 import { Refusal } from "./fields.ts";
-import { measureEntry, removeEntry, withLock, writeAtomic } from "./files.ts";
+import { measureEntry, removeEntry, writeAtomic } from "./files.ts";
+import { projectDatabase, and, eq, aliases, bindings, flows, identities, learningProgress, migrations, observationContexts, readerComments } from "./database-runtime.js";
 import type { Comments } from "./comments.ts";
 import type { Learning } from "./learning.ts";
 import type { ProjectRegistration } from "./observations.ts";
 
 export const FLOW_KIND = "flow";
-/** `<home>/.vstack/tmp/<repo-key>/flow`: one folder per Flow. All worktrees of a project share it; other projects never see it. */
+export const FLOW_STORAGE = "sqlite";
 const flowsDir = (home: string, cwd: string): string => join(scratchRoot(home), repoKey(cwd), FLOW_KIND);
-
-const statePath = (folder: string) => join(folder, "data", "state.json");
-/** Captured attachment bytes, as `<sha256>/<name>`, which the host serves under the Flow's `assets/` path. */
-const assetsDir = (folder: string) => join(folder, "assets");
-
-const idPath = (dir: string, id: string) => join(dir, ".ids", id);
-
-/** A new Flow id `<slug>-<6 hex>`, reserved exclusively, and its new folder with an empty `data/`. */
-function createFlowFolder(dir: string, slug: string): { id: string; folder: string } {
-  mkdirSync(join(dir, ".ids"), { recursive: true });
-  for (;;) {
-    const id = `${slug}-${randomBytes(3).toString("hex")}`;
-    try {
-      writeFileSync(idPath(dir, id), id, { flag: "wx" });
-      mkdirSync(join(dir, id));
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-      continue;
-    }
-    mkdirSync(join(dir, id, "data"));
-    return { id, folder: join(dir, id) };
-  }
-}
-
-/** The folder name the id registry gives for `id`, if any. */
-const registeredFolder = (dir: string, id: string): string | undefined => (existsSync(idPath(dir, id)) ? readFileSync(idPath(dir, id), "utf8").trim() : undefined);
-
-/** Points `id` at the folder `name`; called after the folder has moved there. */
-const registerFolder = (dir: string, id: string, name: string): void => writeAtomic(idPath(dir, id), name);
-
-type MigrationIdentity = { source: string; flow: string; sha256: string };
-const migrationPath = (dir: string, source: string) => join(dir, ".migrations", createHash("sha256").update(source).digest("hex"));
-function migrationIdentity(dir: string, source: string): MigrationIdentity | undefined {
-  const path = migrationPath(dir, source);
-  return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : undefined;
-}
-function registerMigration(dir: string, identity: MigrationIdentity): void {
-  mkdirSync(join(dir, ".migrations"), { recursive: true });
-  writeAtomic(migrationPath(dir, identity.source), JSON.stringify(identity));
-}
-
-const flowFolders = (dir: string): string[] =>
-  existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name) : [];
-
-function readState(folder: string): State | undefined {
-  try {
-    return upgrade(JSON.parse(readFileSync(statePath(folder), "utf8")));
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw e;
-  }
-}
-
-function folderOfId(dir: string, id: string): string | undefined {
-  if (!SLUG.test(id)) return undefined;
-  const name = registeredFolder(dir, id);
-  if (name && SLUG.test(name) && readState(join(dir, name))?.flow.id === id) return join(dir, name);
-  return flowFolders(dir).map((n) => join(dir, n)).find((folder) => readState(folder)?.flow.id === id);
-}
-
+const lookup = (alias: string) => /^(spec|ticket):/.test(alias) ? alias.toLowerCase() : alias;
 export type Binding = { flow: string; stage: string; session: string; agent: string; bound: string };
-const bindingPath = (dir: string, session: string, agent: string) =>
-  join(dir, ".bindings", `${createHash("sha256").update(`${session}\n${agent}`).digest("hex").slice(0, 32)}.json`);
-
-function readBinding(dir: string, session: string, agent: string): Binding | undefined {
-  const path = bindingPath(dir, session, agent);
-  if (!existsSync(path)) return undefined;
-  const b = JSON.parse(readFileSync(path, "utf8")) as Binding;
-  return b.session === session && b.agent === agent ? b : undefined;
-}
-
-function writeBinding(dir: string, b: Binding): void {
-  mkdirSync(join(dir, ".bindings"), { recursive: true });
-  writeAtomic(bindingPath(dir, b.session, b.agent), `${JSON.stringify(b)}\n`);
-}
-
-/** Deletes every session binding to the Flow `id`. Called when the Flow itself is deleted, so no session stays bound to it. */
-function dropBindings(dir: string, id: string): void {
-  const at = join(dir, ".bindings");
-  if (!existsSync(at)) return;
-  for (const name of readdirSync(at)) {
-    const path = join(at, name);
-    try {
-      if ((JSON.parse(readFileSync(path, "utf8")) as Binding).flow === id) rmSync(path, { force: true });
-    } catch {
-    }
-  }
-}
-
+type MigrationIdentity = { source: string; flow: string; sha256: string };
 export const CLOSED_RETENTION = 15 * 86_400_000;
 export type Retention = { flow: string; closed?: string } | "unreadable";
-
-/** The lifecycle of the Flow in `folder` without following links, "unreadable" when its state cannot be read, or undefined when `folder` holds no Flow state. */
-function retentionOf(folder: string): Retention | undefined {
-  const kind = (p: string) => {
-    try {
-      const st = lstatSync(p);
-      return st.isDirectory() ? "dir" : st.isFile() ? "file" : "other";
-    } catch {
-      return undefined;
-    }
-  };
-  if (kind(folder) !== "dir" || kind(join(folder, "data")) !== "dir" || kind(statePath(folder)) !== "file") return undefined;
-  try {
-    const s = upgrade(JSON.parse(readFileSync(statePath(folder), "utf8")) as State);
-    const closed = closedAt(s);
-    return { flow: s.flow.id, ...(closed !== undefined ? { closed } : {}) };
-  } catch {
-    return "unreadable";
-  }
-}
-
 type Captured = ReadonlyMap<string, Uint8Array>;
 export type FlowWrite = {
   save: (state: State, captured?: Captured) => void;
   move: (state: State, to: string) => { flow: string; revision: number; moved_from: string };
 };
 
-function save(folder: string, state: State, captured?: Captured): void {
-  for (const [file, bytes] of captured ?? []) {
-    const path = join(assetsDir(folder), file);
-    if (existsSync(path)) continue;
-    mkdirSync(dirname(path), { recursive: true });
-    writeAtomic(path, bytes);
-  }
-  writeAtomic(statePath(folder), `${JSON.stringify(state)}\n`);
-}
-
-function move(dir: string, folder: string, state: State, to: string) {
-  const from = basename(folder);
-  const dest = join(dir, to);
-  if (dest === folder) throw new Refusal(`Flow ${state.flow.id} is already in ${to}`);
-  try {
-    mkdirSync(dest);
-  } catch (e) {
-    throw new Refusal((e as NodeJS.ErrnoException).code === "EEXIST" ? `${to} is taken in this project; choose another folder key` : `could not move Flow ${state.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
-  }
-  try {
-    renameSync(folder, dest);
-  } catch (e) {
-    rmdirSync(dest);
-    throw new Refusal(`could not move Flow ${state.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
-  }
-  try {
-    registerFolder(dir, state.flow.id, to);
-    if (addAliases(state, [`folder:${to}`]).length) save(dest, state);
-  } catch (e) {
-    renameSync(dest, folder);
-    registerFolder(dir, state.flow.id, from);
-    throw new Refusal(`could not move Flow ${state.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
-  }
-  return { flow: state.flow.id, revision: state.revision, moved_from: from };
-}
-
-/** All Flow data for one project. Callers use ids, never storage folders or locks. */
+/** All Flow data for one project. Callers use ids, never database tables or storage folders. */
 export class FlowStore {
+  private opened?: ReturnType<typeof projectDatabase>;
+  private get connection() {
+    if (!this.opened) {
+      this.opened = projectDatabase(join(this.scratch, "flow.db"));
+      this.importJson();
+    }
+    return this.opened;
+  }
+  private get db() { return this.connection.db; }
   constructor(private readonly dir: string, private readonly confined = false) {}
-
   get scratch(): string { return dirname(this.dir); }
   get key(): string { return basename(this.scratch); }
   contains(path: string): boolean { return path === this.dir || path.startsWith(this.dir + sep); }
-  read(id: string): State | undefined {
-    const folder = this.folder(id);
-    return folder ? readState(folder) : undefined;
-  }
-  hasId(id: string): boolean { return registeredFolder(this.dir, id) !== undefined; }
-  find(alias: string): State[] {
-    const matches = (value: string) => /^(spec|ticket):/.test(alias) ? value.toLowerCase() === alias.toLowerCase() : value === alias;
-    return flowFolders(this.dir).flatMap(name => {
-      const state = readState(join(this.dir, name));
-      return state && aliasesOf(state).some(matches) ? [state] : [];
-    });
-  }
-  migratedFrom(source: string): State | undefined {
-    for (const name of flowFolders(this.dir)) {
-      const state = readState(join(this.dir, name));
-      if (state?.migrated?.from === source) return state;
-    }
-  }
-  binding(session: string, agent: string): Binding | undefined { return readBinding(this.dir, session, agent); }
-  bind(binding: Binding): void { writeBinding(this.dir, binding); }
-  migration(source: string): MigrationIdentity | undefined { return migrationIdentity(this.dir, source); }
-  registerMigration(identity: MigrationIdentity): void { registerMigration(this.dir, identity); }
-  async migrating<T>(fn: () => T): Promise<T> {
-    mkdirSync(this.dir, { recursive: true });
-    return withLock(this.dir, fn);
-  }
-  async create<T>(slug: string, fn: (id: string, write: FlowWrite) => T): Promise<T> {
-    const { id, folder } = createFlowFolder(this.dir, slug);
-    return withLock(folder, () => fn(id, this.writer(folder)));
-  }
-  async commit<T>(id: string, fn: (state: State, write: FlowWrite) => T): Promise<T> {
-    return this.locked(id, (folder, state) => fn(state, this.writer(folder)));
-  }
-  private writer(folder: string): FlowWrite {
-    return { save: (state, captured) => save(folder, state, captured), move: (state, to) => move(this.dir, folder, state, to) };
-  }
+  private row(id: string) { return this.db.select().from(flows).where(eq(flows.id, id)).get(); }
   private folder(id: string): string | undefined {
-    const folder = folderOfId(this.dir, id);
-    return folder && (!this.confined || realpathSync(folder).startsWith(realpathSync(this.dir) + sep)) ? folder : undefined;
+    const row = this.db.select({ folder: flows.folder }).from(flows).where(eq(flows.id, id)).get();
+    if (!row || !SLUG.test(row.folder)) return undefined;
+    const folder = join(this.dir, row.folder);
+    if (!existsSync(folder)) return undefined;
+    if (this.confined && (!lstatSync(folder).isDirectory() || realpathSync(folder) !== folder || !realpathSync(folder).startsWith(realpathSync(this.dir) + sep))) return undefined;
+    return folder;
   }
   private requireFolder(id: string): string {
     const folder = this.folder(id);
@@ -220,60 +55,201 @@ export class FlowStore {
       ? `Flow ${id} has no content any more: it expired after it was closed, or its folder was deleted. Nothing can be read or added under this id; open a new Flow`
       : `this project has no Flow ${id}`);
   }
-  private async locked<T>(id: string, fn: (folder: string, state: State) => T): Promise<T> {
-    let folder = this.requireFolder(id);
-    for (let tries = 0; tries < 5; tries++) {
-      let done: { value: T } | undefined;
-      try {
-        done = await withLock(folder, () => {
-          const state = readState(folder);
-          return state?.flow.id === id ? { value: fn(folder, state) } : undefined;
-        });
-      } catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "ENOENT" || existsSync(folder)) throw e;
-      }
-      if (done) return done.value;
-      folder = this.requireFolder(id);
+  read(id: string): State | undefined { return this.folder(id) ? upgrade(this.row(id)!.state) : undefined; }
+  revision(id: string): number | undefined {
+    return this.folder(id) ? this.db.select({ revision: flows.revision }).from(flows).where(eq(flows.id, id)).get()?.revision : undefined;
+  }
+  summary(id: string) {
+    const row = this.db.select({ id: flows.id, revision: flows.revision }).from(flows).where(eq(flows.id, id)).get();
+    return row && this.folder(id) ? { flow: row.id, revision: row.revision, aliases: this.db.select({ alias: aliases.alias }).from(aliases).where(eq(aliases.flow, id)).orderBy(aliases.position).all().map(a => a.alias) } : undefined;
+  }
+  hasId(id: string): boolean { return this.db.select().from(identities).where(eq(identities.id, id)).get() !== undefined; }
+  find(alias: string): State[] { return this.findIds(alias).flatMap(({ flow }) => { const state = this.read(flow.id); return state ? [state] : []; }); }
+  findIds(alias: string): { flow: { id: string } }[] {
+    return this.db.select({ id: aliases.flow }).from(aliases).where(eq(aliases.lookup, lookup(alias))).all().map(row => ({ flow: { id: row.id } }));
+  }
+  migratedFrom(source: string): State | undefined { const identity = this.migration(source); return identity && this.read(identity.flow); }
+  binding(session: string, agent: string): Binding | undefined {
+    if (!this.opened && !existsSync(join(this.scratch, "flow.db")) && !existsSync(join(this.dir, ".bindings"))) return undefined;
+    return this.db.select().from(bindings).where(and(eq(bindings.session, session), eq(bindings.agent, agent))).get()?.data;
+  }
+  bind(binding: Binding): void {
+    this.db.insert(bindings).values({ ...binding, data: binding }).onConflictDoUpdate({ target: [bindings.session, bindings.agent], set: { flow: binding.flow, data: binding } }).run();
+  }
+  migration(source: string): MigrationIdentity | undefined { return this.db.select().from(migrations).where(eq(migrations.source, source)).get(); }
+  registerMigration(identity: MigrationIdentity): void {
+    this.db.insert(migrations).values(identity).onConflictDoUpdate({ target: migrations.source, set: identity }).run();
+  }
+  migrating<T>(fn: () => T): T { return this.connection.sqlite.transaction(fn).immediate(); }
+  create<T>(slug: string, fn: (id: string, write: FlowWrite) => T): T {
+    return this.migrating(() => {
+      let id: string;
+      do { id = `${slug}-${randomBytes(3).toString("hex")}`; } while (this.hasId(id) || existsSync(join(this.dir, id)));
+      this.db.insert(identities).values({ id }).run();
+      const folder = join(this.dir, id);
+      mkdirSync(join(folder, "data"), { recursive: true });
+      try { return fn(id, this.writer(folder)); }
+      catch (error) { rmSync(folder, { recursive: true, force: true }); throw error; }
+    });
+  }
+  commit<T>(id: string, fn: (state: State, write: FlowWrite) => T): T {
+    return this.migrating(() => {
+      const folder = this.requireFolder(id);
+      return fn(upgrade(this.row(id)!.state), this.writer(folder));
+    });
+  }
+  private save(folder: string, state: State, captured?: Captured): void {
+    for (const [file, bytes] of captured ?? []) {
+      const path = join(folder, "assets", file);
+      if (existsSync(path)) continue;
+      mkdirSync(dirname(path), { recursive: true });
+      writeAtomic(path, bytes);
     }
-    throw new Refusal(`Flow ${id} kept moving while this command waited; run it again`);
+    const row = { id: state.flow.id, folder: basename(folder), state, revision: state.revision, slug: state.flow.slug, title: state.flow.title, created: state.flow.created, closed: closedAt(state) ?? null };
+    this.db.insert(identities).values({ id: state.flow.id }).onConflictDoNothing().run();
+    this.db.insert(flows).values(row).onConflictDoUpdate({ target: flows.id, set: row }).run();
+    for (const [position, alias] of aliasesOf(state).entries()) this.db.insert(aliases).values({ flow: state.flow.id, alias, lookup: lookup(alias), position }).onConflictDoUpdate({ target: [aliases.flow, aliases.alias], set: { position } }).run();
+    if (state.migrated) this.registerMigration({ source: state.migrated.from, flow: state.flow.id, sha256: state.migrated.sha256 });
   }
-  private readData<T>(id: string, name: string, label: string, empty: () => T): T {
-    const path = join(this.requireFolder(id), "data", name);
-    if (!existsSync(path)) return empty();
-    if (!lstatSync(path).isFile() || lstatSync(path).isSymbolicLink()) throw new Error(`${label} storage is not a regular file`);
-    return JSON.parse(readFileSync(path, "utf8"));
+  private writer(folder: string): FlowWrite {
+    return {
+      save: (state, captured) => this.save(folder, state, captured),
+      move: (state, to) => {
+        const from = basename(folder), dest = join(this.dir, to);
+        if (dest === folder) throw new Refusal(`Flow ${state.flow.id} is already in ${to}`);
+        if (existsSync(dest)) throw new Refusal(`${to} is taken in this project; choose another folder key`);
+        try { renameSync(folder, dest); }
+        catch (error) { throw new Refusal(`could not move Flow ${state.flow.id} to ${to} (${(error as Error).message}); it stays in ${from}`); }
+        try { addAliases(state, [`folder:${to}`]); this.save(dest, state); }
+        catch (error) { renameSync(dest, folder); throw error; }
+        return { flow: state.flow.id, revision: state.revision, moved_from: from };
+      },
+    };
   }
-  readComments(id: string): Comments { return this.readData(id, "comments.json", "Comments", () => ({ version: 1, comments: [] })); }
-  async updateComments<T>(id: string, fn: (saved: Comments, state: State) => T): Promise<T> {
-    return this.locked(id, (folder, state) => {
-      const saved = this.readComments(id);
-      const result = fn(saved, state);
-      writeAtomic(join(folder, "data", "comments.json"), JSON.stringify(saved));
+  readComments(id: string): Comments {
+    this.requireFolder(id);
+    return this.db.select().from(readerComments).where(eq(readerComments.flow, id)).get()?.data ?? { version: 1, comments: [] };
+  }
+  updateComments<T>(id: string, fn: (saved: Comments, state: State) => T): T {
+    return this.commit(id, state => {
+      const saved = this.readComments(id), result = fn(saved, state);
+      this.db.insert(readerComments).values({ flow: id, data: saved }).onConflictDoUpdate({ target: readerComments.flow, set: { data: saved } }).run();
       return result;
     });
   }
-  readLearning(id: string): Learning { return this.readData(id, "learning.json", "Learning", () => ({ version: 1, attempts: [], completed: [] })); }
-  async updateLearning<T>(id: string, fn: (saved: Learning, state: State) => T): Promise<T> {
-    return this.locked(id, (folder, state) => {
-      const saved = this.readLearning(id);
-      const result = fn(saved, state);
-      writeAtomic(join(folder, "data", "learning.json"), JSON.stringify(saved));
+  readLearning(id: string): Learning {
+    this.requireFolder(id);
+    return this.db.select().from(learningProgress).where(eq(learningProgress.flow, id)).get()?.data ?? { version: 1, attempts: [], completed: [] };
+  }
+  updateLearning<T>(id: string, fn: (saved: Learning, state: State) => T): T {
+    return this.commit(id, state => {
+      const saved = this.readLearning(id), result = fn(saved, state);
+      this.db.insert(learningProgress).values({ flow: id, data: saved }).onConflictDoUpdate({ target: learningProgress.flow, set: { data: saved } }).run();
       return result;
     });
   }
   readObservation(id: string): ProjectRegistration {
-    return JSON.parse(readFileSync(join(this.requireFolder(id), "observation-project.json"), "utf8"));
+    this.requireFolder(id);
+    const row = this.db.select().from(observationContexts).where(eq(observationContexts.flow, id)).get();
+    if (!row) throw new Error("Flow observation context is missing");
+    return row.data;
   }
   saveObservation(id: string, registration: ProjectRegistration): void {
-    writeAtomic(join(this.requireFolder(id), "observation-project.json"), JSON.stringify(registration));
+    this.requireFolder(id);
+    this.db.insert(observationContexts).values({ flow: id, data: registration }).onConflictDoUpdate({ target: observationContexts.flow, set: { data: registration } }).run();
   }
-  assets(id: string): string { return assetsDir(this.requireFolder(id)); }
+  assets(id: string): string { return join(this.requireFolder(id), "assets"); }
   asset(id: string, file: string): string | undefined {
     if (!/^[a-f0-9]{64}\/[A-Za-z0-9._-]+$/.test(file)) return undefined;
     const folder = this.requireFolder(id);
-    const base = realpathSync(assetsDir(folder));
-    const path = join(base, file);
+    const base = realpathSync(join(folder, "assets")), path = join(base, file);
     return base.startsWith(realpathSync(folder) + sep) && lstatSync(path).isFile() && realpathSync(path) === path ? path : undefined;
+  }
+  private importJson(): void {
+    if (!existsSync(this.dir)) return;
+    const files = (at: string) => existsSync(at) ? readdirSync(at).map(name => join(at, name)).filter(path => lstatSync(path).isFile()) : [];
+    this.migrating(() => {
+      for (const path of files(join(this.dir, ".ids"))) if (SLUG.test(basename(path))) this.db.insert(identities).values({ id: basename(path) }).onConflictDoNothing().run();
+      for (const path of files(join(this.dir, ".migrations"))) {
+        try { const identity = JSON.parse(readFileSync(path, "utf8")) as MigrationIdentity; if (!this.migration(identity.source)) this.registerMigration(identity); } catch {}
+      }
+    });
+    for (const entry of readdirSync(this.dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !SLUG.test(entry.name)) continue;
+      const folder = join(this.dir, entry.name), path = join(folder, "data", "state.json");
+      if (!existsSync(path) || !lstatSync(path).isFile() || realpathSync(path) !== path) continue;
+      try {
+        this.migrating(() => {
+          if (!existsSync(path)) return;
+          const state = upgrade(JSON.parse(readFileSync(path, "utf8")));
+          if (!SLUG.test(state.flow.id)) throw new Error("invalid imported Flow id");
+          if (!this.row(state.flow.id)) {
+            const data = (name: string) => {
+              const at = join(folder, name);
+              if (!existsSync(at)) return undefined;
+              if (!lstatSync(at).isFile() || realpathSync(at) !== at) throw new Error("import source is not a regular file");
+              return JSON.parse(readFileSync(at, "utf8"));
+            };
+            addAliases(state, [`folder:${entry.name}`]);
+            this.save(folder, state);
+            const comments = data("data/comments.json"), learning = data("data/learning.json"), context = data("observation-project.json");
+            if (comments) this.db.insert(readerComments).values({ flow: state.flow.id, data: comments }).run();
+            if (learning) this.db.insert(learningProgress).values({ flow: state.flow.id, data: learning }).run();
+            if (context) this.saveObservation(state.flow.id, context);
+            for (const binding of files(join(this.dir, ".bindings"))) {
+              const saved = JSON.parse(readFileSync(binding, "utf8")) as Binding;
+              if (saved.flow === state.flow.id) this.bind(saved);
+            }
+          }
+        });
+        for (const name of ["state", "comments", "learning"]) {
+          const source = join(folder, "data", `${name}.json`);
+          if (existsSync(source)) renameSync(source, join(folder, "data", `${name}.imported.json`));
+        }
+      } catch {
+        // Keep this Flow's source for the next open without blocking other imports.
+      }
+    }
+  }
+  retention(path: string, st: Stats): FlowRetentionEntry {
+    const entry = basename(path);
+    if (entry.startsWith(".")) return { path, entry, registry: true, newest: 0, size: 0 };
+    const row = this.db.select({ id: flows.id, closed: flows.closed }).from(flows).where(eq(flows.folder, entry)).get();
+    const source = join(path, "data/state.json");
+    const retention: Retention | undefined = row ? { flow: row.id, ...(row.closed === null ? {} : { closed: row.closed }) } : existsSync(source) ? "unreadable" : undefined;
+    return { path, entry, registry: false, ...measureEntry(path, st), retention };
+  }
+  delete(path: string, recheck: (entry: FlowRetentionEntry) => string | undefined): string | undefined {
+    let staged: string | undefined;
+    let reason: string | undefined;
+    let deletedId: string | undefined;
+    try {
+      reason = this.migrating(() => {
+        const reason = recheck(this.retention(path, lstatSync(path)));
+        if (reason) return reason;
+        const row = this.db.select({ id: flows.id }).from(flows).where(eq(flows.folder, basename(path))).get();
+        deletedId = row?.id;
+        staged = join(this.dir, `.${basename(path)}.delete-${randomBytes(8).toString("hex")}`);
+        renameSync(path, staged);
+        if (row) {
+          for (const table of [bindings, readerComments, learningProgress, observationContexts]) this.db.delete(table).where(eq(table.flow, row.id)).run();
+          this.db.delete(flows).where(eq(flows.id, row.id)).run();
+        }
+      });
+    } catch (error) {
+      if (staged && existsSync(staged)) renameSync(staged, path);
+      throw error;
+    }
+    if (staged) removeEntry(staged);
+    if (deletedId) {
+      const legacyBindings = join(this.dir, ".bindings");
+      if (existsSync(legacyBindings)) for (const name of readdirSync(legacyBindings)) {
+        const path = join(legacyBindings, name);
+        if (!lstatSync(path).isFile()) continue;
+        try { if ((JSON.parse(readFileSync(path, "utf8")) as Binding).flow === deletedId) rmSync(path); } catch {}
+      }
+    }
+    return reason;
   }
 }
 
@@ -286,29 +262,18 @@ export function hostedStore(home: string, key: string): FlowStore | undefined {
 
 export type FlowRetentionEntry = { path: string; entry: string; registry: boolean; newest: number; size: number; retention?: Retention };
 export function flowRetentionEntry(path: string, st = lstatSync(path)): FlowRetentionEntry {
-  const entry = basename(path);
-  if (entry.startsWith(".")) return { path, entry, registry: true, newest: 0, size: 0 };
-  return { path, entry, registry: false, ...measureEntry(path, st), retention: retentionOf(path) };
+  return new FlowStore(dirname(path)).retention(path, st);
 }
 export function flowRetentionEntries(projectScratch: string): FlowRetentionEntry[] {
-  const dir = join(projectScratch, FLOW_KIND);
+  const dir = join(projectScratch, FLOW_KIND), store = new FlowStore(dir);
   return readdirSync(dir).sort().flatMap(entry => {
     const path = join(dir, entry);
     let st: Stats;
     try { st = lstatSync(path); } catch { return []; }
-    return [flowRetentionEntry(path, st)];
+    return [store.retention(path, st)];
   });
 }
 export async function deleteFlowEntry(path: string, recheck: (entry: FlowRetentionEntry) => string | undefined): Promise<string | undefined> {
-  const entry = flowRetentionEntry(path);
-  const remove = () => {
-    const reason = recheck(flowRetentionEntry(path));
-    if (reason) return reason;
-    const state = entry.retention && entry.retention !== "unreadable" ? readState(path) : undefined;
-    if (state?.migrated) registerMigration(dirname(path), { source: state.migrated.from, flow: state.flow.id, sha256: state.migrated.sha256 });
-    removeEntry(path);
-    if (state) dropBindings(dirname(path), state.flow.id);
-  };
-  return entry.retention && entry.retention !== "unreadable" ? withLock(path, remove) : remove();
+  return new FlowStore(dirname(path)).delete(path, recheck);
 }
 

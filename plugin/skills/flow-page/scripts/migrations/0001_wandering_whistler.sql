@@ -1,0 +1,1 @@
+CREATE INDEX `flows_folder` ON `flows` (`folder`);

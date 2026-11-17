@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794898872568,
+      "tag": "0000_broad_silver_surfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794899720183,
+      "tag": "0001_wandering_whistler",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794900008512,
+      "tag": "0002_odd_mordo",
+      "breakpoints": true
+    }
+  ]
+}

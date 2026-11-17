@@ -108,7 +108,7 @@ async function collect(cwd: string, kind: keyof Observations, c: Config, branch:
 }
 
 /** No domain writes. Cache entries are scoped to the checkout, provider configuration, and authored branch. */
-export function observations(store: FlowStore, key: string, s: State): Observations {
+export function observations(store: FlowStore, key: string, s: { flow: { id: string }; aliases: string[] }): Observations {
   const out = unknownObservations();
   let cwd: string, dir: string, stage: string | undefined;
   try {

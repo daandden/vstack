@@ -140,6 +140,7 @@ async function route(req: Request): Promise<Response> {
       return response(JSON.stringify({ app: "vstack-flow-host", version: hostVersion, instance, proof: attest(secret.control, nonce, hostVersion, instance) }), 200, { "Content-Type": "application/json" });
     }
     if (!controlled(req)) return response("Not authorized.", 401);
+    if (url.pathname === "/.host/storage" && req.method === "GET") return response(JSON.stringify({ storage: "sqlite" }), 200, { "Content-Type": "application/json" });
     if (url.pathname === "/.host/hold" && req.method === "GET") return hold(req);
     if (url.pathname === "/.host/picker" && ["PUT", "DELETE"].includes(req.method)) {
       let p: PickerPresence;
@@ -181,6 +182,15 @@ async function route(req: Request): Promise<Response> {
   if (!/^[^./\\\x00][^/\\\x00]*$/.test(key) || !SLUG.test(id) || !same(m[3], capability(secret.read, key, id))) return missing();
   if (m[4] === undefined) return response(null, 308, { Location: `${url.pathname}/` });
   const store = hostedStore(home, key);
+  if (m[4] === "/versions") {
+    if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
+    const summary = store?.summary(id);
+    if (!summary) return missing();
+    const observed = observations(store!, key, { flow: { id }, aliases: summary.aliases });
+    return response(req.method === "HEAD" ? null : JSON.stringify({
+      revision: summary.revision, observationVersion: observationVersion(observed), hostGeneration: instance, readerGeneration: readerVersion,
+    }), 200, { "Content-Type": "application/json" });
+  }
   const s = store?.read(id);
   if (!store || !s || s.flow.id !== id) return missing();
   const progressToken = createHmac("sha256", secret.control).update(`flow-learning-v1\n${key}\n${id}`).digest("hex");
@@ -203,9 +213,6 @@ async function route(req: Request): Promise<Response> {
   }
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(store, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/presence") return response(req.method === "HEAD" ? null : JSON.stringify({ presences: presences(key, id) }), 200, { "Content-Type": "application/json" });
-  if (m[4] === "/versions") return response(req.method === "HEAD" ? null : JSON.stringify({
-    revision: s.revision, observationVersion: observationVersion(observations(store, key, s)), hostGeneration: instance, readerGeneration: readerVersion,
-  }), 200, { "Content-Type": "application/json" });
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
   try { file = decodeURIComponent(m[4].slice(8)); } catch { return missing(); }

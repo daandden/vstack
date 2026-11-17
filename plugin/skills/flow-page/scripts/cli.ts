@@ -14,7 +14,7 @@ import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
 import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
 import { projectStore, type FlowWrite } from "./store.ts";
-import { connect, flowUrl, hostCommand, originOf } from "./live.ts";
+import { connect, flowUrl, hostCommand, originOf, prepareStorage } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { readComments } from "./comments.ts";
 import { Refusal } from "./fields.ts";
@@ -100,6 +100,7 @@ if (command === "describe") {
 }
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
+if (command !== "host" && command !== "validate") await prepareStorage(home);
 const store = projectStore(home, process.cwd());
 const session = (opt.session as string | undefined) ?? process.env.PI_SESSION_ID ?? undefined;
 const agent = (opt.agent as string | undefined) ?? "main";
@@ -110,12 +111,12 @@ const scratch = store.scratch;
 function aliasMatches(key: string) {
   const alias = parseAlias(key);
   const matches = (value: string) => /^(spec|ticket):/.test(alias) ? value.toLowerCase() === alias.toLowerCase() : value === alias;
-  const current = store.find(alias).map(s => ({ id: s.flow.id }));
+  const current = store.findIds(alias).map(s => ({ id: s.flow.id }));
   const historical = historicalFlows(scratch).filter((h) => {
     if (!h.aliases.some(matches)) return false;
     const migrated = store.migration(h.source);
     if (migrated) {
-      if (!store.read(migrated.flow) && !current.length) refuse(`${alias} belonged to Flow ${migrated.flow}, whose content expired or was deleted. Its historical source cannot recreate that identity. Open a new Flow explicitly`);
+      if (store.revision(migrated.flow) === undefined && !current.length) refuse(`${alias} belonged to Flow ${migrated.flow}, whose content expired or was deleted. Its historical source cannot recreate that identity. Open a new Flow explicitly`);
       return false;
     }
     return !store.migratedFrom(h.source);
@@ -129,10 +130,11 @@ function locate(key: string): { id: string } {
     const { alias, current, historical } = aliasMatches(key);
     if (historical.length) refuse(`${alias} has historical structured Flow content at ${historical[0].source}. Continue it with migrate ${JSON.stringify(historical[0].source)} before opening a Stage`);
     if (!current.length) refuse(`no Flow in this project has ${alias}`);
+    if (store.revision(current[0].id) === undefined) refuse(`Flow ${current[0].id} has no content any more: it expired or was deleted. Open a new Flow`);
     return current[0];
   }
   if (!SLUG.test(key)) refuse(`--flow must be a Flow id of lowercase letters, digits, and hyphens, or a qualified alias such as spec:267, got ${JSON.stringify(key)}`);
-  if (store.read(key)) return { id: key };
+  if (store.revision(key) !== undefined) return { id: key };
   return refuse(store.hasId(key)
     ? `Flow ${key} has no content any more: it expired after it was closed, or its folder was deleted. Nothing can be read or added under this id; open a new Flow`
     : `this project has no Flow ${key}`);
@@ -147,7 +149,7 @@ function observeAuthoring(s: State, stage?: string): void {
   }
 }
 
-async function locked<T>(key: string, fn: (write: FlowWrite, s: State) => T): Promise<T> {
+function locked<T>(key: string, fn: (write: FlowWrite, s: State) => T): T {
   const { id } = locate(key);
   return store.commit(id, (s, write) => {
     const value = fn(write, s);
@@ -347,8 +349,7 @@ async function main(): Promise<object> {
         if (historical.length) return { migration_required: true, historical };
       }
       const { id } = locate(rest[0]);
-      const s = store.read(id)!;
-      return { flow: s.flow.id, revision: s.revision, aliases: aliasesOf(s) };
+      return store.summary(id)!;
     }
     case "move": {
       const to = opt.to as string | undefined;

@@ -84,9 +84,17 @@ When the target already equals the page's URL, following dispatches the browser'
 
 ### Flow persistence
 
-`plugin/skills/flow-page/scripts/store.ts` owns Flow persistence. The CLI and host use `projectStore` or `hostedStore` and address Flows by id. `commit` and `create` provide the writer that saves State and captured assets under the store's lock. Moves, aliases, bindings, historical migration identities, deleted ids, Reader comments, learning progress, and observation context also go through the store.
+`plugin/skills/flow-page/scripts/store.ts` owns Flow persistence. The CLI, host, and Scratch cleanup use one Drizzle schema over Bun's built-in SQLite driver. Each project's Scratch dir holds `flow.db`, shared by its worktrees. WAL mode and a ten-second busy timeout allow independent CLI writers while the host reads. Contributions apply to the latest State in an immediate transaction, with revision, title, slug, creation time, and closed time saved alongside its JSON. Aliases, bindings, migration identities, id tombstones, Reader comments, learning progress, and observation context have separate tables. Captured bytes remain content-addressed files under each Flow's asset folder.
 
-Scratch cleanup calls the store's retention listing and deletion operations. `clean.ts` still owns eligibility and the re-check before deletion, including the 15-day closed-Flow floor. The on-disk JSON layout is unchanged. Host discovery records and Picker presence are not Flow data.
+Scratch cleanup calls the store's retention listing and deletion operations. `clean.ts` still owns eligibility and the re-check before deletion, including the 15-day closed-Flow floor. It reads indexed lifecycle columns, removes a confirmed Flow's row and files, and keeps aliases, id tombstones, and historical migration identities so expired content cannot be recreated. Host discovery records and Picker presence are not Flow data.
+
+Every database open imports remaining JSON Flow folders independently. Successful imports preserve identity, revision, reading order, bindings, comments, learning progress, and observation context. State, comment, and learning files are renamed to `*.imported.json` with their bytes unchanged, and are never read as current state again. A failed import keeps its source for the next open without blocking other Flows.
+
+Before import in the normal home, the CLI authenticates the running host. An identical runtime version already reads SQLite. For another version it checks the worker's control-authenticated `/.host/storage` route, which older supervisors forward. Only a 404 identifies a JSON-only worker and triggers the one-time authenticated stop under the host lock. Import waits for the listener to close. A failed replacement then reports unavailable, rather than serving frozen JSON. Isolated `--home` hosts are never stopped automatically.
+
+The schema lives in `flow-page/scripts/schema.ts`. Generate migrations with `bun --bun drizzle-kit generate --dialect sqlite --schema ./plugin/skills/flow-page/scripts/schema.ts --out ./plugin/skills/flow-page/scripts/migrations`. Review every generated statement. Automatic migrations are additive forever: new tables, indexes, and nullable or defaulted columns only. Nothing is dropped, renamed, retyped, or newly constrained. The first opener applies pending migrations under one immediate transaction. Older SQLite generations keep reading and writing after newer migrations.
+
+After changing the database source, schema, or Drizzle version, run `bun scripts/build-flow-store.ts`, then reseal the runtime. The generated `database-runtime.js` inlines locked `drizzle-orm` so even a pre-SQLite supervisor copies the dependency within an existing runtime root. `bun scripts/build-flow-store.ts --check` refuses stale output. `drizzle-kit` is a development dependency only. The manifest format and supervisor launch contract are unchanged.
 
 ### Flow reader delivery
 

@@ -1,30 +1,39 @@
-import { mkdirSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { State } from "../../plugin/skills/flow-page/scripts/model.ts";
+import { Database } from "bun:sqlite";
+import { closedAt } from "../../plugin/skills/flow-page/scripts/model.ts";
 
-export function storedFolder(home: string, flow: string): string {
-  for (const state of new Bun.Glob(".vstack/tmp/*/flow/*/data/state.json").scanSync({ cwd: home, dot: true, absolute: true })) {
-    if (JSON.parse(readFileSync(state, "utf8")).flow?.id === flow) return dirname(dirname(state));
+function stored(home: string, flow: string) {
+  for (const path of new Bun.Glob(".vstack/tmp/*/flow.db").scanSync({ cwd: home, dot: true, absolute: true })) {
+    const db = new Database(path);
+    const row = db.query<{ folder: string; state: string }, [string]>("SELECT folder, state FROM flows WHERE id = ?").get(flow);
+    if (row) return { db, row, path };
+    db.close();
   }
   throw new Error(`no stored Flow ${flow} under ${home}`);
 }
 
-function statePathOf(home: string, flow: string): string {
-  return join(storedFolder(home, flow), "data", "state.json");
+export function storedFolder(home: string, flow: string): string {
+  const { db, row, path } = stored(home, flow);
+  db.close();
+  return join(dirname(path), "flow", row.folder);
 }
 
 export function editStoredFlow(home: string, flow: string, edit: (state: State) => void): void {
-  const path = statePathOf(home, flow);
-  const state = JSON.parse(readFileSync(path, "utf8")) as State;
+  const { db, row } = stored(home, flow);
+  const state = JSON.parse(row.state) as State;
   edit(state);
-  writeFileSync(path, JSON.stringify(state));
+  db.query("UPDATE flows SET state = ?, revision = ?, slug = ?, title = ?, created = ?, closed = ? WHERE id = ?").run(JSON.stringify(state), state.revision, state.flow.slug, state.flow.title, state.flow.created, closedAt(state) ?? null, flow);
+  db.close();
 }
 
 export function editStoredComments(home: string, flow: string, edit: (comments: any, state: State) => void): void {
-  const path = join(storedFolder(home, flow), "data", "comments.json");
-  const comments = JSON.parse(readFileSync(path, "utf8"));
-  edit(comments, JSON.parse(readFileSync(statePathOf(home, flow), "utf8")));
-  writeFileSync(path, JSON.stringify(comments));
+  const { db, row } = stored(home, flow);
+  const comments = JSON.parse(db.query<{ data: string }, [string]>("SELECT data FROM reader_comments WHERE flow = ?").get(flow)!.data);
+  edit(comments, JSON.parse(row.state));
+  db.query("UPDATE reader_comments SET data = ? WHERE flow = ?").run(JSON.stringify(comments), flow);
+  db.close();
 }
 
 export function seedHistoricalMermaidCapture(home: string, flow: string, attachment: string, source: Buffer, name: string): void {
@@ -50,8 +59,9 @@ export function touchStoredFiles(dir: string, when: number): void {
 }
 
 export function flowMetadataPaths(home: string, flow: string): string[] {
-  const dir = dirname(storedFolder(home, flow));
-  return readdirSync(dir).filter(name => name.startsWith(".")).map(name => join(dir, name));
+  const { db, path } = stored(home, flow);
+  db.close();
+  return [path];
 }
 
 export function temporaryFlowFiles(home: string, flow: string): string[] {

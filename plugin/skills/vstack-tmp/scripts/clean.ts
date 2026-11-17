@@ -22,6 +22,7 @@ import { CLOSED_RETENTION, deleteFlowEntry, FLOW_KIND, flowRetentionEntries, flo
 import { measureEntry, removeEntry } from "../../flow-page/scripts/files.ts";
 import { scratchRoot } from "./scratch.ts";
 import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
+import { prepareStorage } from "../../flow-page/scripts/live.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 
@@ -48,6 +49,7 @@ const m = /^(\d+)([hdw]?)$/.exec(olderThan);
 if (!m) usage(`--older-than must look like 90d, 90, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];
 const home = resolve(values.home);
+await prepareStorage(home);
 const root = scratchRoot(home);
 const now = values.now === undefined ? Date.now() : Date.parse(values.now);
 if (Number.isNaN(now)) usage(`--now must be an ISO date and time, got ${JSON.stringify(values.now)}`);
