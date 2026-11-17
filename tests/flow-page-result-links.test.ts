@@ -1,10 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { snapshot } from "../plugin/skills/flow-page/scripts/model.ts";
 import { ENV } from "./support/fixture.ts";
-import { statePathOf } from "./support/flow-store.ts";
 import { linkedQuestion, linkedResults, mixedTargets } from "./support/result-links.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
@@ -60,8 +59,7 @@ test.each(["missing-result", "cards/missing", "topic"])("unknown or wrong-kind t
   const cli = world();
   const opened = cli(["open", "--title", "Atomic link refusal", "--skill", "grill-me"]);
   const { flow } = ok<{ flow: string }>(opened);
-  const state = statePathOf(opened.home, flow);
-  const before = readFileSync(state, "utf8");
+  const before = ok<Snapshot>(cli(["show", "--flow", flow]));
   const refused = cli(["submit"], [
     ...linkedResults(), { kind: "topic", ref: "topic", title: "Not a Result", summary: "Wrong kind.", body: "Must not publish.", sources: ["Fixture"] },
     { kind: "round", questions: [linkedQuestion(["document", "cards/saved", target])] },
@@ -72,7 +70,7 @@ test.each(["missing-result", "cards/missing", "topic"])("unknown or wrong-kind t
     expect(refused.stderr).toContain("<result ref or id>");
     expect(refused.stderr).toContain("<result ref or id>/<entry ref or id>");
   }
-  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(ok<Snapshot>(cli(["show", "--flow", flow]))).toEqual(before);
   expect(ok<Snapshot>(cli(["show", "--flow", flow])).stages[0].results).toEqual([]);
 });
 

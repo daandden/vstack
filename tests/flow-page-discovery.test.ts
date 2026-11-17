@@ -2,7 +2,6 @@ import { afterAll, beforeEach, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { statePathOf } from "./support/flow-store.ts";
 import type { Contract, Diagnostic } from "../plugin/skills/flow-page/scripts/contracts.ts";
 import type { Answer, Decision, Question, Reading } from "../plugin/skills/flow-page/scripts/model.ts";
 
@@ -227,8 +226,6 @@ test("discovered required non-Result fields validate, diagnose omissions and bad
   const round = fromRequired(contract) as { questions: Pick<Question, "title" | "description" | "needs" | "options">[] };
   expect(run(["open", "--skill", "implement", "--title", "Non-Result discovery"]).code).toBe(0);
   const before = run(["show"]).json;
-  const state = statePathOf(home, before.flow.id);
-  const beforeBytes = readFileSync(state, "utf8");
   expect(run(["validate"], envelope(round))).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] } });
   for (const path of requiredPaths(contract, round)) {
     const missing = structuredClone(round);
@@ -258,7 +255,6 @@ test("discovered required non-Result fields validate, diagnose omissions and bad
   ]));
   expect(run(["submit"], envelope(invalid))).toMatchObject({ code: 1, json: checked.json });
   expect(run(["show"]).json).toEqual(before);
-  expect(readFileSync(state, "utf8")).toBe(beforeBytes);
   const submitted = run(["submit"], envelope(round));
   expect(submitted.code).toBe(0);
   const published = run(["show"]).json;

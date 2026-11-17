@@ -3,7 +3,8 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { storedFolder } from "./support/flow-store.ts";
+import { storedFolder, temporaryFlowFiles } from "./support/flow-store.ts";
+import { flowContent } from "./support/flow-client.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-test-")));
@@ -12,10 +13,14 @@ afterAll(() => rmSync(root, { recursive: true, force: true }));
 let home: string;
 let cwd: string;
 let n = 0;
+let observedFlows: Set<string>;
+let observedSessions: Set<string>;
 beforeEach(() => {
   home = join(root, String(n), "home");
   cwd = join(root, String(n++), "work");
   Bun.spawnSync(["mkdir", "-p", home, cwd]);
+  observedFlows = new Set();
+  observedSessions = new Set();
 });
 
 type Run = { code: number; stdout: string; stderr: string; json: any };
@@ -30,6 +35,10 @@ function run(args: string[], opts: { session?: string; stdin?: unknown } = {}): 
     json = JSON.parse(stdout);
   } catch {
     json = undefined;
+  }
+  if (r.exitCode === 0 && json?.flow) {
+    observedFlows.add(typeof json.flow === "string" ? json.flow : json.flow.id);
+    if (opts.session) observedSessions.add(opts.session);
   }
   return { code: r.exitCode, stdout, stderr: r.stderr.toString(), json };
 }
@@ -143,7 +152,7 @@ test.each([
   ["costs", { options: [option("One", { costs: ["The problem remains unplanned."] })] }, { options: [option("Two", { costs: ["The problem remains unplanned."] })] }],
 ] as const)("a round refuses repeated %s across questions without committing any item", (field, first, second) => {
   openFlow();
-  const before = tree();
+  const before = observed();
   const refused = submit("s-1",
     { kind: "topic", title: "Unpublished", summary: "Atomic refusal.", body: "Must not land.", sources: ["fixture"] },
     round(distinctQuestion("transport", first), distinctQuestion("safety", second)));
@@ -151,7 +160,7 @@ test.each([
   expect(refused.stderr).toContain("question 1");
   expect(refused.stderr).toContain("question 2");
   expect(refused.stderr).toContain(field);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a round preserves distinct costs and allows repeated labels, sources, and text in later rounds", () => {
@@ -206,11 +215,11 @@ test("a review summary links authoritative findings and stays current after a fo
 test("a Stage has one authoritative review, and a second review cannot replace or duplicate it", () => {
   openFlow("s-1", "code-review");
   expect(submit("s-1", review()).code).toBe(0);
-  const before = tree();
+  const before = observed();
   const duplicate = submit("s-1", review({ ref: "another", title: "Another review" }));
   expect(duplicate.code).toBe(1);
   expect(duplicate.stderr).not.toBe("");
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a review with no findings states clean, skipped, unavailable, and blocked axes without invented cards", () => {
@@ -243,36 +252,36 @@ test.each([
   ["a finding on an unknown axis", { entries: [finding("other")] }],
 ] as const)("a review refuses %s without losing previously published work", (_name, extra) => {
   openFlow("s-1", "code-review");
-  const before = tree();
+  const before = observed();
   const refused = submit("s-1", { kind: "topic", title: "Earlier item", summary: "Must not land", body: "No partial write.", sources: ["#285"] }, review(extra));
   expect(refused.code).toBe(1);
   expect(refused.stderr).not.toBe("");
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a new question declares its reader needs before any part of its contribution is published", () => {
   const opened = openFlow();
-  const before = tree();
+  const before = observed();
   const { needs: _, ...bare } = question("scope");
   const refused = submit("s-1",
     { kind: "topic", title: "Unpublished context", summary: "Must remain atomic.", body: "The round is incomplete.", sources: ["fixture"] },
     round(bare));
   expect(refused.code).toBe(1);
   expect(refused.stderr).toContain("needs");
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   expect(show(opened.flow).stages[0].questions).toEqual([]);
 });
 
 test("a declared visual need requires a visual with its declared kind on the question", () => {
   openFlow();
-  const before = tree();
+  const before = observed();
   const refused = submit("s-1", round(question("source", {
     needs: [{ need: "Read the exact changed configuration.", kind: "source-excerpt" }],
     example: "timeout: 30",
   })));
   expect(refused.code).toBe(1);
   expect(refused.stderr).toContain("source-excerpt");
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test.each([
@@ -283,9 +292,9 @@ test.each([
   ["option preview outside an option", { needs: [{ need: "See the output.", kind: "option-preview" }], figures: [{ text: "Ready", kind: "option-preview" }] }],
 ] as const)("incomplete %s is refused atomically", (_name, extra) => {
   openFlow();
-  const before = tree();
+  const before = observed();
   expect(submit("s-1", round(question("source", extra))).code).toBe(1);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("one complete question publishes source text and option usage with their reader needs in the same revision", () => {
@@ -305,19 +314,19 @@ test("one complete question publishes source text and option usage with their re
   expect(snap.stages[0].questions[0].needs).toEqual(needs);
   expect(snap.stages[0].questions[0].figures[0]).toMatchObject({ text: "config.ts:4\n\ttimeout: 30 < 60", kind: "source-excerpt" });
   expect(snap.stages[0].questions[0].options[1].preview).toMatchObject({ text: "checkout()", kind: "option-preview" });
-  const before = tree();
+  const before = observed();
   const { needs: _, ...bare } = question("again", { again: r.json.refs.source });
   expect(submit("s-1", round(bare)).code).toBe(1);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a Background figure cannot fulfill a question need even when it has the same kind", () => {
   openFlow();
-  const before = tree();
+  const before = observed();
   expect(submit("s-1",
     { kind: "background", title: "Source", summary: "Current configuration", sections: [{ heading: "Scope", body: "One checkout." }], sources: ["config.ts:4"], figures: [{ text: "timeout: 30", kind: "source-excerpt" }] },
     round(question("source", { needs: [{ need: "Read the current timeout.", kind: "source-excerpt" }] }))).code).toBe(1);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a bound caller submits a round and gets assigned references, a numbered label-only ask, and the revision", () => {
@@ -342,28 +351,22 @@ test("a bound caller submits a round and gets assigned references, a numbered la
   for (const content of ["Why scope matters.", "First does", "First gain", "it is first"]) expect(r.stdout).not.toContain(content);
 });
 
-function tree(dir = home): Record<string, string> {
-  const out: Record<string, string> = {};
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name !== ".lock") out[p] = readFileSync(p, "utf8");
-    }
+function observed() {
+  return {
+    flows: [...observedFlows].map(flow => show(flow)),
+    bindings: [...observedSessions].map(session => run(["bound"], { session }).json),
   };
-  walk(dir);
-  return out;
 }
 
 test("another session cannot write through a binding it does not hold, and nothing is written", () => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   for (const r of [submit("s-2", round(question("scope"))), submit(undefined, round(question("scope"))), run(["submit", "--agent", "worker"], { session: "s-1", stdin: contribution(round(question("scope"))) })]) {
     expect(r.code).toBe(1);
     expect(r.stderr).not.toBe("");
     expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   }
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a caller with no binding writes by naming the Flow and Stage explicitly", () => {
@@ -496,9 +499,9 @@ test("a CLI multiselect round retains multiple explicit picks independently of p
     answer: { state: "picked", picks: ["A. First", "B. Second"], response },
   });
   expect(questionOf(snapshot, refs.single).open).toBe(true);
-  const before = tree();
+  const before = observed();
   expect(submit("s-1", round(question("invalid", { multi: "yes" }))).code).toBe(1);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test.each([
@@ -512,11 +515,11 @@ test.each([
 ])("%s is refused with no write", (_, item) => {
   openFlow("s-1");
   const { refs } = submit("s-1", round(question("a"))).json;
-  const before = tree();
+  const before = observed();
   const r = submit("s-1", item(refs.a));
   expect(r.code).toBe(1);
   expect(r.stderr).toMatch(/response|reading/);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test.each([
@@ -549,12 +552,12 @@ test("finishing a Stage needs a reason for each unresolved question and retires 
   const opened = openFlow("s-1");
   const { refs } = submit("s-1", round(question("done"), question("left"), question("skipped"))).json;
   submit("s-1", picked(refs.done, "A"), answer(refs.left, { status: "timed-out" }), decide(refs.done, refs.left, refs.skipped));
-  const before = tree();
+  const before = observed();
   for (const r of [submit("s-1", finish()), submit("s-1", finish([refs.left, "Out of scope now."])), submit("s-1", finish([refs.left, "x"], [refs.skipped, "y"], [refs.done, "z"]))]) {
     expect(r.code).toBe(1);
     expect(r.stderr).toMatch(new RegExp(`${refs.skipped}|${refs.done}`));
   }
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   expect(submit("s-1", finish([refs.left, "The ticket breakdown made it moot."], [refs.skipped, "Never asked; the spec settles it."])).stderr).toBe("");
   const snap = show(opened.flow);
   const q = (id: string) => questionOf(snap, id);
@@ -589,22 +592,22 @@ test("a question of another in-progress Stage cannot be asked again across Stage
   const opened = openFlow("s-1", "wayfinder");
   const { refs } = submit("s-1", round(question("mine"))).json;
   run(["open", "--flow", opened.flow, "--skill", "wayfinder", "--ticket", "272"], { session: "s-2" });
-  const before = tree();
+  const before = observed();
   const r = submit("s-2", round(question("stolen", { again: refs.mine })));
   expect(r.code).toBe(1);
   expect(r.stderr).toContain(refs.mine);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("reopening a decision keeps its earlier answer, and returning to finished work opens a child Stage without rewriting the old one", () => {
   const opened = openFlow("s-1");
   const { refs } = submit("s-1", round(question("limit"))).json;
   submit("s-1", picked(refs.limit, "A"));
-  const before = tree();
+  const before = observed();
   const twice = submit("s-1", picked(refs.limit, "B"));
   expect(twice.code).toBe(1);
   expect(twice.stderr).toContain(refs.limit);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   const reopened = submit("s-1", round(question("limit-again", { again: refs.limit }))).json.refs["limit-again"];
   submit("s-1", picked(reopened, "B"), decide(reopened), finish());
   const snap = show(opened.flow);
@@ -689,22 +692,22 @@ test.each([
   ["a valid item before an invalid one", contribution(topic("ok"), { kind: "close", decisions: [] }), "item 2"],
 ])("%s is refused precisely with no partial write", (_, input, names) => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   const r = run(["submit"], { session: "s-1", stdin: input });
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toContain(names);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a close must decide every latest ask of its Stage", () => {
   openFlow("s-1");
   const { refs } = submit("s-1", round(question("a"), question("b"))).json;
-  const before = tree();
+  const before = observed();
   const r = submit("s-1", { kind: "close", decisions: [{ question: refs.a, text: "A holds." }] });
   expect(r.code).toBe(1);
   expect(r.stderr).toContain(refs.b);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a finished Stage takes no more content and cannot reopen, and an answer cannot reach into another Stage", () => {
@@ -712,7 +715,7 @@ test("a finished Stage takes no more content and cannot reopen, and an answer ca
   const { refs } = submit("s-1", round(question("a"))).json;
   expect(submit("s-1", picked(refs.a, "A"), decide(refs.a), finish()).code).toBe(0);
   const later = run(["open", "--flow", opened.flow, "--skill", "to-spec"], { session: "s-2" }).json;
-  const before = tree();
+  const before = observed();
   for (const r of [
     submit("s-1", round(question("late"))),
     submit("s-1", { kind: "stage", state: "in-progress" }),
@@ -722,7 +725,7 @@ test("a finished Stage takes no more content and cannot reopen, and an answer ca
     expect(r.code).toBe(1);
     expect(r.stderr).toMatch(new RegExp(`${opened.stage}|${refs.a}`));
   }
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   expect(later.stage).not.toBe(opened.stage);
 });
 
@@ -740,9 +743,7 @@ test("hostile text is stored as submitted, and a publication leaves no temporary
   const snap = show(r.json.flow);
   expect(snap.revision).toBe(r.json.revision);
   expect(snap.progress.tasks.map((t: any) => t.title)).toEqual([hostile, hostile]);
-  const folder = storedFolder(home, r.json.flow);
-  expect(readdirSync(folder).filter((f) => f.endsWith(".tmp"))).toEqual([]);
-  expect(readdirSync(join(folder, "data")).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+  expect(temporaryFlowFiles(home, r.json.flow)).toEqual([]);
 });
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -793,7 +794,7 @@ test("a Document Result keeps ordered sections, citations, figures, limitations,
 
 test("a Document Mermaid parse error refuses the whole contribution without a partial write", () => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   const invalid = "flowchart LR\n  a[Unclosed";
   const r = submit("s-1",
     { kind: "topic", ref: "pending", title: "Not committed", summary: "Part of the refused contribution.", body: "Nothing is stored.", sources: ["fixture"] },
@@ -803,7 +804,7 @@ test("a Document Mermaid parse error refuses the whole contribution without a pa
     path: "$.items[1].sections[0].blocks[0]",
     message: expect.stringContaining("Expecting 'SQE', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got '$end'"),
   })]) });
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("Document Mermaid blocks accept authored paints and unchecked roles while other languages stay plain", () => {
@@ -821,8 +822,8 @@ test("Document Mermaid blocks accept authored paints and unchecked roles while o
   ] }], citations: undefined }));
   expect(r.code).toBe(0);
   expect(r.stderr).toBe("");
-  const state = JSON.parse(readFileSync(join(storedFolder(home, r.json.flow), "data", "state.json"), "utf8"));
-  expect(state.results[0].document.sections[0].blocks).toEqual([
+  const content = flowContent(home, cwd, r.json.flow);
+  expect(content.stages[0].results[0].doc!.sections[0].blocks).toEqual([
     { code, language: "mermaid" },
     { code: "flowchart LR\n  a[Unclosed", language: "text" },
   ]);
@@ -855,11 +856,11 @@ test("every attachment type keeps its caption, origin, captured revision, and av
   const check = () => {
     const snap = show(flow);
     const byId = new Map(snap.attachments.map((a: any) => [a.id, a]));
-    const stored = new Map(JSON.parse(readFileSync(join(storedFolder(home, flow), "data", "state.json"), "utf8")).attachments.map((a: any) => [a.id, a]));
+    const content = new Map(flowContent(home, cwd, flow).attachments.map(a => [a.id, a]));
     expect(snap.stages[0].results[0].attachments).toEqual(refsOf.map((x) => refs[x]));
     for (const [ref, [type, , bytes]] of Object.entries(files)) {
       const a: any = byId.get(refs[ref]);
-      const s: any = stored.get(refs[ref]);
+      const s = content.get(refs[ref])!;
       expect([a.type, a.availability, a.revision, s.caption, s.origin]).toEqual([type, "captured", sha(bytes), `Caption of ${ref}`, `Origin of ${ref}`]);
       expect(bytesOf(flow, refs[ref])).toEqual(Buffer.from(bytes));
     }
@@ -907,7 +908,7 @@ test("an 80-character caption is accepted, and the description keeps the author'
     attachment("bare", "mermaid", { path: "media/seams.mmd" }),
     { kind: "result", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: ["fig", "bare"] });
   expect(r.stderr).toBe("");
-  const byId = new Map(JSON.parse(readFileSync(join(storedFolder(home, opened.flow), "data", "state.json"), "utf8")).attachments.map((a: any) => [a.id, a]));
+  const byId = new Map(flowContent(home, cwd, opened.flow).attachments.map(a => [a.id, a]));
   const fig: any = byId.get(r.json.refs.fig);
   expect([fig.caption, fig.description]).toEqual([caption, description]);
   expect((byId.get(r.json.refs.bare) as any).description).toBeUndefined();
@@ -982,7 +983,7 @@ test.each([
 ])("an SVG prolog does not admit %s or commit its surrounding contribution", (_, body, category) => {
   const opened = openFlow("s-1");
   put("media/unsafe.svg", `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Provenance: security fixture. -->\n${body}`);
-  const before = tree();
+  const before = observed();
   const beforeState = show(opened.flow);
   const r = submit("s-1",
     { kind: "result", shape: "table", title: "Must not be saved", columns: ["Check"], rows: [{ cells: ["Pending capture"] }] },
@@ -993,7 +994,7 @@ test.each([
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toMatch(category);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   expect(show(opened.flow)).toEqual(beforeState);
 });
 
@@ -1066,12 +1067,12 @@ test.each([
   put("media/onload.svg", unsafeSvg(`<rect onload="alert(1)"/>`));
   put("media/href.svg", unsafeSvg(`<a href="java&#x73;cript:alert(1)"><rect/></a>`));
   put("media/foreign.svg", unsafeSvg(`<foreignObject><div>x</div></foreignObject>`));
-  const before = tree();
+  const before = observed();
   const r = run(["submit"], { session: "s-1", stdin: contribution(...items()) });
   expect(r.stderr).toContain(names);
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a symlink that stays inside the project is captured as the file it points to", () => {
@@ -1086,11 +1087,11 @@ test("a symlink that stays inside the project is captured as the file it points 
 test("a Result captured from a tracker or commit revision must name its new revision when it is published again", () => {
   openFlow("s-1");
   const first = submit("s-1", prose("Fact.", { canonical: { tracker: "daandden/vstack#267", revision: "2026-10-28T08:00:00Z" } })).json;
-  const before = tree();
+  const before = observed();
   const r = submit("s-1", prose("Fact, revised.", { revises: first.refs.doc }));
   expect(r.code).toBe(1);
   expect(r.stderr).toContain("daandden/vstack#267");
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   const ok = submit("s-1", prose("Fact, revised.", { revises: first.refs.doc, canonical: { tracker: "daandden/vstack#267", revision: "2026-10-29T08:00:00Z" } }));
   expect(ok.stderr).toBe("");
   expect(show(first.flow).stages[0].results[0].revisions.map((x: any) => x.canonical.revision)).toEqual(["2026-10-28T08:00:00Z", "2026-10-29T08:00:00Z"]);
@@ -1223,24 +1224,24 @@ test.each([
   ["a task id used as a ref", [task("task-1")], "task-1"],
 ])("%s is refused precisely with no partial write", (_, items, names) => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   const r = run(["submit"], { session: "s-1", stdin: contribution(...items) });
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toStartWith("flow-page.ts: ");
   expect(r.stderr).toContain(names);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("resolving a blocker twice is refused with no write", () => {
   openFlow("s-1");
   const { refs } = submit("s-1", { kind: "blocker", ref: "b", text: "Waiting." }).json;
   expect(submit("s-1", { kind: "blocker", blocker: refs.b, resolved: "Done." }).code).toBe(0);
-  const before = tree();
+  const before = observed();
   const again = submit("s-1", { kind: "blocker", blocker: refs.b, resolved: "Done again." });
   expect(again.code).toBe(1);
   expect(again.stderr).toContain(refs.b);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 const demo = (body: object = {}, extra: object = {}) => ({
@@ -1304,13 +1305,13 @@ test.each([
   ["an action with no transition", () => demo({ actions: [{ name: "go", label: "Go", transitions: [] }] }), "transitions"],
 ])("a demo with %s is refused precisely with no partial write", (_, item, names) => {
   openFlow("s-1", "prototype");
-  const before = tree();
+  const before = observed();
   const r = submit("s-1", item());
   expect(r.stderr).toContain(names);
   expect(r.stderr).toContain("item 1");
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a demo Result is revised like any Result: its header changes, it takes no entries, and a republication keeps the earlier demo", () => {
@@ -1319,11 +1320,11 @@ test("a demo Result is revised like any Result: its header changes, it takes no 
   const id = first.refs.demo;
   const renamed = submit("s-1", { kind: "revise", result: id, base: first.revision, set: { title: "Cart limit, renamed" } });
   expect(renamed.stderr).toBe("");
-  const before = tree();
+  const before = observed();
   const add = submit("s-1", { kind: "revise", result: id, add: [{ cells: ["x"] }] });
   expect(add.code).toBe(1);
   expect(add.stderr).toContain(id);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   const again = submit("s-1", demo({ states: [{ name: "browsing", label: "Shopping" }, { name: "full", label: "Cart full" }, { name: "paid", label: "Paid" }] }, { revises: id }));
   expect(again.stderr).toBe("");
   const res = show(first.flow).stages[0].results[0];
@@ -1494,20 +1495,20 @@ test.each([
   ["a verdict outside the reported verdicts", metWith((m) => (m.measurements[0].verdict = "amazing")), "verdict"],
 ])("%s is refused precisely with no partial write", (_, items, names) => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   const r = run(["submit"], { session: "s-1", stdin: contribution(...items()) });
   expect(r.stderr).toContain(names);
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a Comparison or Metrics Result takes a new revision with revises, and earlier revisions stay readable", () => {
   openFlow("s-1");
   const first = submit("s-1", metrics("m"), cmpWith(() => {})()[0]).json;
-  const before = tree();
+  const before = observed();
   expect(submit("s-1", { kind: "revise", result: first.refs.m, add: [{ cells: ["x"] }] }).code).toBe(1);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   const next = metrics("m", { revises: first.refs.m, outcome: "Rerun: no measurable difference." });
   const r = submit("s-1", next);
   expect(r.stderr).toBe("");
@@ -1638,11 +1639,11 @@ test("an object-valued append reports the add collection shape without changing 
   openFlow("s-1");
   const first = submit("s-1", timeline("run", event("build")));
   expect(first.code).toBe(0);
-  const before = tree();
+  const before = observed();
   const refused = submit("s-1", { kind: "revise", result: first.json.refs.run, add: event("test") });
   expect(refused.code).toBe(1);
   expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
   expect(refused.stderr).not.toMatch(/earlier contribution|belongs to/i);
 });
@@ -1656,12 +1657,12 @@ test.each([
 ])("an append with %s is refused as an add collection error without saving a simultaneous edit", (_name, add) => {
   openFlow("s-1");
   const first = submit("s-1", timeline("run", event("build"))).json;
-  const before = tree();
+  const before = observed();
   const refused = submit("s-1", { kind: "revise", result: first.refs.run, base: first.revision, set: { title: "Not saved" }, add });
   expect(refused.code).toBe(1);
   expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("valid appends preserve Result and entry identities, reciprocal links, evidence, and prior revisions", () => {
@@ -1707,27 +1708,27 @@ test.each([
 ])("an append containing %s keeps entry validation and refuses the whole contribution", (_name, entry) => {
   openFlow("s-1");
   const first = submit("s-1", timeline("run", event("build"))).json;
-  const before = tree();
+  const before = observed();
   const refused = submit("s-1", { kind: "revise", result: first.refs.run, add: [event("valid"), entry] });
   expect(refused.code).toBe(1);
   expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(refused.stderr).toMatch(/add 2/);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("an entry array cannot bypass Result ownership or append to a Result in the same contribution", () => {
   const opened = openFlow("s-1");
   const first = submit("s-1", timeline("run", event("build"))).json;
   expect(run(["open", "--flow", opened.flow, "--skill", "implement"], { session: "s-2" }).code).toBe(0);
-  const before = tree();
+  const before = observed();
   const foreign = submit("s-2", { kind: "revise", result: first.refs.run, add: [event("test")] });
   expect(foreign.code).toBe(1);
   expect(foreign.stderr).toMatch(/belongs to Stage|bound Stage/);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   const fresh = submit("s-1", timeline("new", event("start")), { kind: "revise", result: "new", add: [event("end")] });
   expect(fresh.code).toBe(1);
   expect(fresh.stderr).toMatch(/earlier contribution/);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test("a Timeline grows by focused revisions: add appends later events, and set records a known outcome against its base", () => {
@@ -1738,11 +1739,11 @@ test("a Timeline grows by focused revisions: add appends later events, and set r
   expect(added.stderr).toBe("");
   const set = submit("s-1", { kind: "revise", result: `${id}/e1`, base: first.revision, set: { outcome: "succeeded", time: "2026-10-28T10:59:00Z" } });
   expect(set.stderr).toBe("");
-  const before = tree();
+  const before = observed();
   const stale = submit("s-1", { kind: "revise", result: `${id}/e1`, base: first.revision, set: { outcome: "failed" } });
   expect(stale.code).toBe(1);
   expect(stale.stderr).toContain("conflict");
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   const entries = show(first.flow).stages[0].results[0].entries;
   expect(entries.map((e: any) => [e.title, e.outcome, e.time])).toEqual([
     ["Event build", "succeeded", "2026-10-28T10:59:00Z"],
@@ -1761,13 +1762,13 @@ test.each([
   ["a file with a line break", { file: "a.ts\nb.ts", code: "a\n" }, "file"],
 ])("a Code/diff entry with %s is refused precisely with no partial write", (_, extra, names) => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   const r = submit("s-1", codeResult("c", { file: "src/a.ts", ...extra }));
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toContain("entry 1");
   expect(r.stderr).toContain(names);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 test.each([
@@ -1778,12 +1779,12 @@ test.each([
   ["evidence that names no attachment", { attachments: ["attachment-9"] }, "attachment-9"],
 ])("a Timeline event with %s is refused precisely with no partial write", (_, extra, names) => {
   openFlow("s-1");
-  const before = tree();
+  const before = observed();
   const r = submit("s-1", timeline("t", event("e", extra)));
   expect(r.code).toBe(1);
   expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toContain(names);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });
 
 function busyFlow() {
@@ -1864,7 +1865,7 @@ test.each(ledgerFields.flatMap((field) => [
   const [example] = publishedLedgerExamples();
   const accepted = run(["submit"], { session: "s-1", stdin: example });
   expect(accepted.code).toBe(0);
-  const before = tree();
+  const before = observed();
   const malformed = structuredClone(example);
   const entry = malformed.items[0].entries[0];
   if (value === undefined) delete entry[field];
@@ -1873,7 +1874,7 @@ test.each(ledgerFields.flatMap((field) => [
   expect(refused.code).toBe(1);
   expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(refused.stderr).toContain(field);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
   expect(show(opened.flow).revision).toBe(accepted.json.revision);
 });
 
@@ -1884,11 +1885,11 @@ test.each([
   openFlow();
   const [example] = publishedLedgerExamples();
   expect(run(["submit"], { session: "s-1", stdin: example }).code).toBe(0);
-  const before = tree();
+  const before = observed();
   const malformed = structuredClone(example);
   Object.assign(malformed.items[0].entries[0], fields);
   const refused = run(["submit"], { session: "s-1", stdin: malformed });
   expect(refused.code).toBe(1);
   expect(refused.stderr).toContain(diagnostic);
-  expect(tree()).toEqual(before);
+  expect(observed()).toEqual(before);
 });

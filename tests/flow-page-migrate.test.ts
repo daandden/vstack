@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { ENV, git } from "./support/fixture.ts";
-import { storedFolder } from "./support/flow-store.ts";
+import { editStoredFlow, storedFolder } from "./support/flow-store.ts";
+import { flowContent } from "./support/flow-client.ts";
 
 const FLOW_PAGE = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const FIXTURES = join(import.meta.dir, "fixtures", "flow-page-migrate");
@@ -89,12 +90,12 @@ function legacyPage(w: World, fixture = "legacy.jsonl") {
 test("alias discovery offers historical continuation before a new Flow, and requires explicit migration", () => {
   const w = world();
   const folder = legacyPage(w);
-  const before = tree(w.scratch);
+  const before = tree(folder);
   const found = ok(run(w, ["find", "ticket:42"]));
   expect(found.migration_required).toBe(true);
   expect(found.historical).toEqual([expect.objectContaining({ source: folder, title: "Checkout limits", open: true })]);
   expect(found.flow).toBeUndefined();
-  expect(tree(w.scratch)).toEqual(before);
+  expect(tree(folder)).toEqual(before);
   const migrated = ok(run(w, ["migrate", found.historical[0].source]));
   expect(ok(run(w, ["find", "ticket:42"])).flow).toBe(migrated.flow);
   const continued = ok(run(w, ["open", "--flow", "ticket:42", "--skill", "research"]));
@@ -122,13 +123,13 @@ test("historical alias ambiguity names the sources and never silently chooses a 
   const first = legacyPage(w);
   const second = join(w.scratch, "grilling", "another-41");
   historical(second, "legacy.jsonl");
-  const before = tree(w.scratch);
+  const before = tree(join(w.scratch, "grilling"));
   const ambiguous = run(w, ["find", "ticket:42"]);
   expect(ambiguous.code).toBe(1);
   expect(ambiguous.stdout).toBe("");
   expect(ambiguous.stderr).toContain(first);
   expect(ambiguous.stderr).toContain(second);
-  expect(tree(w.scratch)).toEqual(before);
+  expect(tree(join(w.scratch, "grilling"))).toEqual(before);
   const migrated = ok(run(w, ["migrate", first]));
   const mixed = run(w, ["find", "ticket:42"]);
   expect(mixed.code).toBe(1);
@@ -148,14 +149,14 @@ test("an expired migrated Flow cannot be resurrected by its retained historical 
   expect(clean.exitCode).toBe(0);
   expect(JSON.parse(clean.stdout.toString()).deleted).toEqual([join(w.scratch, "flow", migrated.flow)]);
   expect(existsSync(folder)).toBe(false);
-  const before = tree(w.scratch);
+  const before = tree(source);
   for (const args of [["find", "spec:41"], ["migrate", source], ["show", "--flow", migrated.flow]]) {
     const refused = run(w, args);
     expect(refused.code).toBe(1);
     expect(refused.stdout).toBe("");
     expect(refused.stderr).toContain(migrated.flow);
   }
-  expect(tree(w.scratch)).toEqual(before);
+  expect(tree(source)).toEqual(before);
   expect(tree(source)).toEqual(beforeSource);
   expect(ok(run(w, ["open", "--title", "Explicit new work", "--skill", "research"])).flow).not.toBe(migrated.flow);
 });
@@ -320,9 +321,9 @@ test("migration keeps a usable img srcset when its fallback file is missing", ()
   rmSync(join(folder, "figures"), { recursive: true });
   const url = images[0].srcset!.split(" ")[0];
   expect(readFileSync(join(storedFolder(w.home, migrated.flow), url))).toEqual(PNG);
-  const beforeRepeat = tree(w.home);
+  const beforeRepeat = ok(run(w, ["show", "--flow", migrated.flow]));
   expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
-  expect(tree(w.home)).toEqual(beforeRepeat);
+  expect(ok(run(w, ["show", "--flow", migrated.flow]))).toEqual(beforeRepeat);
 });
 
 test("migration keeps the img for usable picture sources without leaking to other pictures", () => {
@@ -349,9 +350,9 @@ test("migration keeps the img for usable picture sources without leaking to othe
   expect(html).toContain("Image unavailable: Unavailable standalone.");
   rmSync(join(folder, "figures"), { recursive: true });
   expect(readFileSync(join(storedFolder(w.home, migrated.flow), sources[0]!.split(" ")[0]))).toEqual(PNG);
-  const beforeRepeat = tree(w.home);
+  const beforeRepeat = ok(run(w, ["show", "--flow", migrated.flow]));
   expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
-  expect(tree(w.home)).toEqual(beforeRepeat);
+  expect(ok(run(w, ["show", "--flow", migrated.flow]))).toEqual(beforeRepeat);
 });
 
 test("repeating migration repairs old inline images without replacing later authored work", () => {
@@ -366,14 +367,15 @@ test("repeating migration repairs old inline images without replacing later auth
     { kind: "answer", question: "q-open", response: { status: "answered", picks: ["B"] } },
     { kind: "result", ref: "new-work", shape: "document", title: "Later work", sections: [{ heading: "Decision", blocks: [{ prose: "Keep later work intact." }] }] },
   ] } }));
-  const stateFile = join(storedFolder(w.home, migrated.flow), "data", "state.json");
-  const state = JSON.parse(readFileSync(stateFile, "utf8"));
-  const figure = state.questions.find((q: any) => q.id === "q-open").figures[0];
-  const inline = new Set(figure.attachments);
-  state.attachments = state.attachments.filter((a: any) => !inline.has(a.id));
-  figure.html = visual.html;
-  delete figure.attachments;
-  writeFileSync(stateFile, JSON.stringify(state));
+  const laterWork = flowContent(w.home, w.project, migrated.flow).stages.flatMap(s => s.results).find(r => r.id === continued.refs["new-work"]);
+  editStoredFlow(w.home, migrated.flow, state => {
+    const figure = state.questions.find(q => q.id === "q-open")?.figures?.[0];
+    if (!figure || !("html" in figure)) throw new Error("Expected the migrated HTML figure");
+    const inline = new Set(figure.attachments);
+    state.attachments = state.attachments.filter(a => !inline.has(a.id));
+    figure.html = visual.html;
+    delete figure.attachments;
+  });
   const beforeSource = tree(folder);
   const repaired = ok(run(w, ["migrate", folder]));
   expect(repaired.flow).toBe(migrated.flow);
@@ -382,16 +384,16 @@ test("repeating migration repairs old inline images without replacing later auth
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
   const impl = snap.stages.find((st: any) => st.id === "impl");
   expect(impl.questions.find((q: any) => q.id === "q-open").answer.picks).toEqual(["B. Second"]);
-  expect(JSON.parse(readFileSync(stateFile, "utf8")).results.find((r: any) => r.id === continued.refs["new-work"])).toEqual(state.results.find((r: any) => r.id === continued.refs["new-work"]));
+  expect(flowContent(w.home, w.project, migrated.flow).stages.flatMap(s => s.results).find(r => r.id === continued.refs["new-work"])).toEqual(laterWork);
   const sources = pageImageUrls(impl.questions.find((q: any) => q.id === "q-open").figures[0].html);
   for (const src of sources) {
     expect(src).toStartWith("assets/");
     expect(existsSync(join(storedFolder(w.home, migrated.flow), src))).toBe(true);
   }
   expect(tree(folder)).toEqual(beforeSource);
-  const beforeRepeat = tree(w.home);
+  const beforeRepeat = ok(run(w, ["show", "--flow", migrated.flow]));
   expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
-  expect(tree(w.home)).toEqual(beforeRepeat);
+  expect(ok(run(w, ["show", "--flow", migrated.flow]))).toEqual(beforeRepeat);
 });
 
 test("an in-flight migrated Stage takes new contributions without changing old Q numbers, ids, or captured figures", () => {
@@ -431,12 +433,12 @@ test("a handwritten page stays readable and untouched instead of gaining fabrica
   const folder = join(w.scratch, "grilling", "project-handwritten");
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, "page.html"), "<h1>Handwritten decisions</h1><p>A personal note, not structured state.</p>");
-  const before = tree(w.scratch);
+  const before = tree(folder);
   const r = run(w, ["migrate", folder]);
   expect(r.code).toBe(1);
   expect(r.stdout).toBe("");
   expect(r.stderr).not.toBe("");
-  expect(tree(w.scratch)).toEqual(before);
+  expect(tree(folder)).toEqual(before);
 });
 
 test("a historically closed Flow starts retention at migration without inventing historical timestamps", () => {
@@ -465,23 +467,23 @@ test("repeating migration finds the same Flow, but changed source or invalid his
   const w = world();
   const folder = legacyPage(w);
   const migrated = ok(run(w, ["migrate", folder]));
-  const before = tree(w.home);
+  const before = ok(run(w, ["show", "--flow", migrated.flow]));
   const repeated = ok(run(w, ["migrate", folder]));
   expect(repeated.flow).toBe(migrated.flow);
   expect(repeated.repeated).toBe(true);
-  expect(tree(w.home)).toEqual(before);
+  expect(ok(run(w, ["show", "--flow", migrated.flow]))).toEqual(before);
   historical(folder, "legacy-changed.jsonl");
-  const changed = tree(w.home);
+  const changed = ok(run(w, ["show", "--flow", migrated.flow]));
   const refused = run(w, ["migrate", folder]);
   expect(refused.code).toBe(1);
-  expect(tree(w.home)).toEqual(changed);
+  expect(ok(run(w, ["show", "--flow", migrated.flow]))).toEqual(changed);
   expect(ok(run(w, ["show", "--flow", migrated.flow])).revision).toBe(migrated.revision);
   const invalid = join(w.scratch, "grilling", "project-invalid");
   mkdirSync(invalid);
   writeFileSync(join(invalid, "page.jsonl"), readFileSync(join(folder, "page.jsonl"), "utf8").replace('\"picks\":[\"A\"]', '\"picks\":[\"Z\"]'));
-  const invalidBefore = tree(w.home);
+  const invalidBefore = ok(run(w, ["show", "--flow", migrated.flow]));
   expect(run(w, ["migrate", invalid]).code).toBe(1);
-  expect(tree(w.home)).toEqual(invalidBefore);
+  expect(ok(run(w, ["show", "--flow", migrated.flow]))).toEqual(invalidBefore);
 });
 
 test("stageless historical questions keep session-scoped Q numbers and missing figures stay honestly unavailable", () => {

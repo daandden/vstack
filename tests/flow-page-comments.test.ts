@@ -1,9 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV } from "./support/fixture.ts";
-import { statePathOf } from "./support/flow-store.ts";
+import { editStoredComments } from "./support/flow-store.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-comments-")));
@@ -29,6 +29,10 @@ function cli(w: ReturnType<typeof world>, args: string[], items?: object[]) {
 }
 afterAll(() => { for (const w of worlds) cli(w, ["host", "stop"]); rmSync(root, { recursive: true, force: true }); });
 const table = { kind: "result", ref: "proof", shape: "table", title: "Restart evidence", columns: ["Check"], rows: [{ ref: "restart", cells: ["Host restart"] }] };
+const authored = (w: ReturnType<typeof world>, flow: string) => {
+  const { reader_comments: _, ...content } = cli(w, ["show", "--flow", flow]);
+  return content;
+};
 
 test("Reader comments authenticate, persist independently, and show their captured Result revision", async () => {
   const w = world();
@@ -39,8 +43,7 @@ test("Reader comments authenticate, persist independently, and show their captur
   const page = await fetch(url);
   expect(page.headers.get("set-cookie")).toContain("HttpOnly; SameSite=Strict");
   const cookie = page.headers.get("set-cookie")!.split(";")[0];
-  const statePath = statePathOf(w.home, sent.flow);
-  const before = readFileSync(statePath, "utf8");
+  const before = authored(w, sent.flow);
   const input = { version: 1, result: sent.refs.proof, revision: 1, edit: null, anchor: { kind: "entry", entry: sent.refs["proof/restart"].split("/")[1] }, text: "Keep the restart proof." };
   const send = (body: unknown = input, headers: Record<string, string> = {}) => fetch(endpoint, { method: "POST", headers: { cookie, origin: url.origin, "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
   expect((await send(input, { cookie: "" })).status).toBe(401);
@@ -60,7 +63,7 @@ test("Reader comments authenticate, persist independently, and show their captur
   expect((await fetch(endpoint)).status).toBe(401);
   const other = cli(w, ["open", "--title", "Other Flow", "--skill", "implement"]);
   expect((await fetch(new URL("comments", other.live.url), { method: "POST", headers: { cookie, origin: url.origin, "content-type": "application/json" }, body: JSON.stringify(input) })).status).toBe(401);
-  expect(readFileSync(statePath, "utf8")).toBe(before);
+  expect(authored(w, sent.flow)).toEqual(before);
   expect(cli(w, ["show", "--flow", sent.flow]).reader_comments).toEqual([saved]);
   const revised = cli(w, ["submit", "--flow", sent.flow, "--stage", sent.stage], [{ ...table, ref: "new-proof", revises: sent.refs.proof, title: "New evidence" }]);
   expect(revised.revision).toBeGreaterThan(sent.revision);
@@ -88,8 +91,7 @@ test("text comments retain their quote and revision through edits, Result revisi
   expect(original.anchor).toEqual(input.anchor);
   const revised = cli(w, ["submit"], [{ ...table, ref: "replacement", revises: sent.refs.proof, rows: [{ cells: ["Different evidence"] }] }]);
   expect(revised.revision).toBeGreaterThan(sent.revision);
-  const statePath = statePathOf(w.home, sent.flow);
-  const authored = readFileSync(statePath, "utf8");
+  const before = authored(w, sent.flow);
   expect((await post({ ...input, anchor: { kind: "text", quote: " " } })).status).toBe(400);
   const editedResponse = await post({ version: 1, action: "edit", id: original.id, text: "Keep the original quote." });
   expect(editedResponse.status).toBe(200);
@@ -104,7 +106,7 @@ test("text comments retain their quote and revision through edits, Result revisi
   expect(removed.status).toBe(200);
   expect((await removed.json() as any).comments).toEqual([]);
   expect((await fetch(endpoint, { headers: { cookie: freshCookie } }).then((r) => r.json()) as any).comments).toEqual([]);
-  expect(readFileSync(statePath, "utf8")).toBe(authored);
+  expect(authored(w, sent.flow)).toEqual(before);
 });
 
 test("comments identify each focused set and add capture, including delayed saves and legacy data", async () => {
@@ -132,22 +134,19 @@ test("comments identify each focused set and add capture, including delayed save
   expect(shown.reader_comments.map((c: any) => c.edit)).toEqual([null, null, edited.revision, added.revision]);
   expect(shown.stages[0].results[0]).toMatchObject({ revision: 1, edit: added.revision });
   expect(shown.stages[0].results[0].history.map((r: any) => r.edit ?? null)).toEqual([null, edited.revision]);
-  const stored = statePathOf(w.home, sent.flow);
-  const authored = readFileSync(stored, "utf8");
-  const commentPath = join(stored, "..", "comments.json");
-  const legacy = JSON.parse(readFileSync(commentPath, "utf8"));
-  const original = legacy.comments[0];
-  delete original.edit;
-  const state = JSON.parse(authored);
-  original.time = new Date((Date.parse(state.history[0].captured) + Date.parse(state.history[1].captured)) / 2).toISOString();
-  legacy.comments.push({ ...original, id: "late-legacy-save", time: new Date().toISOString() });
-  legacy.comments.push({ ...original, id: "unknown-capture", time: "not recorded" });
-  writeFileSync(commentPath, JSON.stringify(legacy));
+  const before = authored(w, sent.flow);
+  editStoredComments(w.home, sent.flow, (legacy, state) => {
+    const original = legacy.comments[0];
+    delete original.edit;
+    original.time = new Date((Date.parse(state.history[0].captured!) + Date.parse(state.history[1].captured!)) / 2).toISOString();
+    legacy.comments.push({ ...original, id: "late-legacy-save", time: new Date().toISOString() });
+    legacy.comments.push({ ...original, id: "unknown-capture", time: "not recorded" });
+  });
   const recovered = cli(w, ["show"]).reader_comments;
   expect(recovered[0].edit).toBe(null);
   expect(recovered.at(-2).edit).toBeUndefined();
   expect(recovered.at(-2).version_unknown).toBe(true);
   expect(recovered.at(-1).edit).toBeUndefined();
   expect(recovered.at(-1).version_unknown).toBe(true);
-  expect(readFileSync(stored, "utf8")).toBe(authored);
+  expect(authored(w, sent.flow)).toEqual(before);
 });

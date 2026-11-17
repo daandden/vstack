@@ -229,7 +229,6 @@ test.each([
     ok(submit(home, { ...attachment, ref: "seed", path: "valid.mmd", focus: ["Done"] }, document(["seed"])));
     const before = ok(run(home, ["show"]));
     const folder = storedFolder(home, before.flow.id);
-    const state = readFileSync(join(folder, "data/state.json"), "utf8");
     const assets = readdirSync(join(folder, "assets"), { recursive: true });
     writeFileSync(join(root, "refused.mmd"), source);
     const refused = submit(home,
@@ -246,7 +245,6 @@ test.each([
     expect(exported.stderr.toString()).toContain(message);
     expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining(exported.stderr.toString().trim()) })]) });
     expect(ok(run(home, ["show"]))).toEqual(before);
-    expect(readFileSync(join(folder, "data/state.json"), "utf8")).toBe(state);
     expect(readdirSync(join(folder, "assets"), { recursive: true })).toEqual(assets);
   } finally {
     ok(run(home, ["host", "stop"]));

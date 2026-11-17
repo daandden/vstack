@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Locator, type Page } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
-import { storedFolder } from "./support/flow-store.ts";
+import { seedHistoricalMermaidCapture as seedStoredMermaidCapture } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const CAPTURED_SVG = join(import.meta.dir, "fixtures", "flow-page-diagrams", "captured-pele-mocha.svg");
@@ -31,16 +31,7 @@ function cli(args: string[], input?: object) {
 }
 
 function seedHistoricalMermaidCapture(flow: string, attachmentId: string, source: Buffer, name: string) {
-  const folder = storedFolder(home, flow);
-  const statePath = join(folder, "data", "state.json");
-  const state = JSON.parse(readFileSync(statePath, "utf8"));
-  const revision = new Bun.CryptoHasher("sha256").update(source).digest("hex");
-  const file = `${revision}/${name}`;
-  mkdirSync(join(folder, "assets", revision), { recursive: true });
-  writeFileSync(join(folder, "assets", file), source);
-  Object.assign(state.attachments.find((a: any) => a.id === attachmentId), { revision, file, size: source.length });
-  state.revision++;
-  writeFileSync(statePath, JSON.stringify(state));
+  seedStoredMermaidCapture(home, flow, attachmentId, source, name);
 }
 
 let browser: Browser;

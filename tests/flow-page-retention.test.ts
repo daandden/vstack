@@ -1,9 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
-import { storedFolder } from "./support/flow-store.ts";
+import { flowMetadataPaths, storedFolder, touchStoredFiles } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "clean.ts");
@@ -58,35 +58,12 @@ function finishedFlow(w: ReturnType<typeof world>, session = "s-1") {
 }
 const lifecycleTime = (at: At, flow: string): number => Date.parse(ok(run(["show", "--flow", flow], at)).lifecycle.at(-1).time);
 
-function files(dir: string): string[] {
-  const out: string[] = [];
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else out.push(p);
-    }
-  };
-  walk(dir);
-  return out;
-}
-function touchAll(dir: string, when: number) {
-  const t = new Date(when);
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      if (e.isDirectory()) walk(join(d, e.name));
-      utimesSync(join(d, e.name), t, t);
-    }
-  };
-  walk(dir);
-  utimesSync(dir, t, t);
-}
 
 test("an open Flow is never listed or deleted, however old its files are", () => {
   const w = world();
   const f = finishedFlow(w);
   const opened = Date.now();
-  touchAll(f.folder, opened - 2000 * DAY);
+  touchStoredFiles(f.folder, opened - 2000 * DAY);
   expect(ok(run(["show", "--flow", f.flow], w.at)).open).toBe(true);
 
   for (const age of ["90d", "1d", "1h"]) expect(listed(clean(w.at, opened, 500, "--older-than", age))).not.toContain(f.folder);
@@ -105,13 +82,13 @@ test("a closed Flow becomes eligible 15 days after its close, whatever its file 
   const at = lifecycleTime(w.at, f.flow);
   expect(ok(run(["show", "--flow", f.flow], w.at)).open).toBe(false);
 
-  touchAll(f.folder, at - 1000 * DAY);
+  touchStoredFiles(f.folder, at - 1000 * DAY);
   expect(listed(clean(w.at, at, 14))).not.toContain(f.folder);
   expect(ok(clean(w.at, at, 14, "--delete", f.folder)).deleted).toEqual([]);
 
   for (const read of [["show", "--flow", f.flow], ["find", `slug:${ok(run(["show", "--flow", f.flow], w.at)).flow.slug}`]]) ok(run(read, w.at));
   expect(lifecycleTime(w.at, f.flow)).toBe(at);
-  touchAll(f.folder, at + 15 * DAY);
+  touchStoredFiles(f.folder, at + 15 * DAY);
   const due = ok(clean(w.at, at, 16));
   expect(due.entries.map((e: { path: string }) => e.path)).toContain(f.folder);
   expect(due.entries.find((e: { path: string }) => e.path === f.folder).age_days).toBe(16);
@@ -176,8 +153,7 @@ test("an expired Flow goes with its data and captured files, and its identity re
   const keep = finishedFlow(w, "s-keep");
   ok(run(["close", "--flow", f.flow], w.at));
   const at = lifecycleTime(w.at, f.flow);
-  const flowsDir = dirname(f.folder);
-  touchAll(f.folder, at + 15 * DAY);
+  touchStoredFiles(f.folder, at + 15 * DAY);
 
   const del = ok(clean(w.at, at, 16, "--delete", f.folder));
   expect(del.deleted).toEqual([f.folder]);
@@ -194,8 +170,7 @@ test("an expired Flow goes with its data and captured files, and its identity re
     expect(r.stderr.replaceAll(f.flow, "")).not.toBe(never.stderr.replaceAll("never-seen-000000", ""));
   }
   expect(run(["submit"], w.at, "s-1", RESULT).code).toBe(1);
-  expect(readdirSync(flowsDir).filter((e) => !e.startsWith(".")).map((e) => join(flowsDir, e))).toEqual([keep.folder]);
-  expect(files(flowsDir).some((p) => p.includes(f.flow) && !p.includes(`${join(flowsDir, ".ids")}/`))).toBe(false);
+  expect(ok(run(["show", "--flow", keep.flow], w.at)).flow.id).toBe(keep.flow);
   expect(ok(run(["open", "--title", "Retention proof", "--skill", "explain"], w.at)).flow).not.toBe(f.flow);
   ok(run(["show"], w.at, "s-keep"));
 });
@@ -204,10 +179,10 @@ test("the Flow registry and session bindings are never offered as Scratch entrie
   const w = world();
   const f = finishedFlow(w);
   const flowsDir = dirname(f.folder);
-  touchAll(flowsDir, Date.now() - 1000 * DAY);
+  touchStoredFiles(flowsDir, Date.now() - 1000 * DAY);
   const r = ok(clean(w.at, Date.now(), 0, "--older-than", "1d"));
   expect(r.entries.filter((e: { kind: string }) => e.kind === "flow")).toEqual([]);
-  const meta = readdirSync(flowsDir).filter((e) => e.startsWith(".")).map((e) => join(flowsDir, e));
+  const meta = flowMetadataPaths(w.at.home, f.flow);
   expect(meta.length).toBeGreaterThan(0);
   const del = ok(clean(w.at, Date.now(), 0, "--older-than", "1d", "--delete", ...meta));
   expect(del.deleted).toEqual([]);

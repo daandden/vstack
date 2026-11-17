@@ -4,8 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
-import { statePathOf, storedFolder } from "./support/flow-store.ts";
-import type { State } from "../plugin/skills/flow-page/scripts/model.ts";
+import { editStoredFlow, storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
@@ -13,6 +12,7 @@ const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-identity-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 let n = 0;
+const observations = new Map<string, { flows: Map<string, string>; sessions: Map<string, Opts> }>();
 function world() {
   const base = join(root, String(n++));
   const home = join(base, "home");
@@ -40,7 +40,14 @@ const parse = (code: number, stdout: string, stderr: string): Run => {
 };
 function run(args: string[], o: Opts): Run {
   const r = Bun.spawnSync(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout: "pipe", stderr: "pipe" });
-  return parse(r.exitCode, r.stdout.toString(), r.stderr.toString());
+  const result = parse(r.exitCode, r.stdout.toString(), r.stderr.toString());
+  if (result.code === 0 && result.json?.flow) {
+    let observed = observations.get(o.home);
+    if (!observed) observations.set(o.home, observed = { flows: new Map(), sessions: new Map() });
+    observed.flows.set(typeof result.json.flow === "string" ? result.json.flow : result.json.flow.id, o.cwd);
+    if (o.session) observed.sessions.set(`${o.cwd}/${o.session}`, { cwd: o.cwd, home: o.home, session: o.session });
+  }
+  return result;
 }
 async function runAsync(args: string[], o: Opts): Promise<Run> {
   const capture = mkdtempSync(join(root, "stdio-"));
@@ -66,17 +73,12 @@ const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });
 
-function tree(dir: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  const walk = (d: string) => {
-    for (const e of readdirSync(d, { withFileTypes: true })) {
-      const p = join(d, e.name);
-      if (e.isDirectory()) walk(p);
-      else if (e.name !== ".lock") out[p] = readFileSync(p, "utf8");
-    }
+function observed(home: string) {
+  const observed = observations.get(home)!;
+  return {
+    flows: [...observed.flows].map(([flow, cwd]) => ok(run(["show", "--flow", flow], { home, cwd }))),
+    bindings: [...observed.sessions.values()].map(at => ok(run(["bound"], at))),
   };
-  walk(dir);
-  return out;
 }
 
 function twoTickets(w: ReturnType<typeof world>) {
@@ -252,7 +254,6 @@ test("a repeated submission, even a simultaneous one, creates nothing twice", as
   expect(ok(run(["show", "--flow", a.flow], at)).revision).toBe(x.json.revision);
 });
 
-// model.ts keeps its submission digest private, so the test computes it the same way and checks it against a stored digest first.
 const stableJson = (v: unknown): string =>
   Array.isArray(v) ? `[${v.map(stableJson).join(",")}]` : typeof v === "object" && v !== null ? `{${Object.entries(v).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([k, x]) => `${JSON.stringify(k)}:${stableJson(x)}`).join(",")}}` : JSON.stringify(v);
 const digestOf = (v: unknown) => createHash("sha256").update(stableJson(v)).digest("hex");
@@ -262,24 +263,22 @@ test("an unchanged receipt committed by an earlier, laxer validator replays with
   const { at, a } = twoTickets(w);
   const committed = contribution(round(question("scope")));
   const sent = ok(run(["submit"], { ...at, session: "s-a", stdin: committed }));
-  const statePath = statePathOf(w.home, a.flow);
-  const state = JSON.parse(readFileSync(statePath, "utf8")) as State;
-  expect(state.submissions[a.stage]!.digest).toBe(digestOf(committed));
+  const shown = ok(run(["show", "--flow", a.flow], at));
 
   const historical = contribution(round({ ...question("scope"), options: [{ ...option("First", "scope"), gains: [] }, option("Second", "scope")] }));
   expect(run(["validate"], { ...at, session: "s-a", stdin: historical }).code).toBe(1);
-  state.submissions[a.stage]!.digest = digestOf(historical);
-  writeFileSync(statePath, JSON.stringify(state));
+  editStoredFlow(w.home, a.flow, state => { state.submissions[a.stage]!.digest = digestOf(historical); });
 
-  const before = tree(w.home);
+  const before = observed(w.home);
   const replay = ok(run(["submit"], { ...at, session: "s-a", stdin: historical }));
+  expect(ok(run(["show", "--flow", a.flow], at))).toEqual(shown);
   expect(replay).toMatchObject({ repeated: true, revision: sent.revision, refs: sent.refs });
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w.home)).toEqual(before);
 
   const edited = run(["submit"], { ...at, session: "s-a", stdin: contribution(round({ ...question("scope"), title: "Which scope now?", options: [{ ...option("First", "scope"), gains: [] }, option("Second", "scope")] })) });
   expect(edited.code).toBe(1);
   expect(edited.stderr).toContain("gains");
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w.home)).toEqual(before);
 });
 
 test("a focused revision changes one Result entry, and a stale edit of the same entry is refused as a conflict", () => {
@@ -293,12 +292,12 @@ test("a focused revision changes one Result entry, and a stale edit of the same 
   ok(run(["submit"], { ...at, session: "s-a", stdin: contribution({ kind: "revise", result: `${rid}/one`, base, set: { blocking: false } }) }));
   expect(stored().entries[0]).toMatchObject({ title: "Finding one", blocking: false, impact: "Users see one.", evidence: "one.ts:1" });
 
-  const before = tree(w.home);
+  const before = observed(w.home);
   const stale = run(["submit"], { ...at, session: "s-a", stdin: contribution({ kind: "revise", result: `${rid}/one`, base, set: { impact: "Users see a stale edit." } }) });
   expect(stale.code).toBe(1);
   expect(JSON.parse(stale.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(stale.stderr).toContain("conflict");
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w.home)).toEqual(before);
 
   ok(run(["submit"], { ...at, session: "s-a", stdin: contribution({ kind: "revise", result: `${rid}/two`, base, set: { action: "Ship two." } }) }));
   ok(run(["submit"], { ...at, session: "s-a", stdin: contribution({ kind: "revise", result: rid, add: [card("three")] }) }));
@@ -326,7 +325,7 @@ test("qualified aliases find a Flow, and lookup reports a missing or ambiguous F
   const other = ok(run(["open", "--title", "Another flow", "--skill", "explain"], { ...at, session: "s-c" }));
   ok(run(["alias", "--flow", other.flow, "branch:feat/flow-page"], at));
 
-  const before = tree(w.home);
+  const before = observed(w.home);
   const missing = run(["find", "spec:999"], at);
   expect(missing.code).toBe(1);
   expect(missing.stderr).toContain("spec:999");
@@ -336,13 +335,15 @@ test("qualified aliases find a Flow, and lookup reports a missing or ambiguous F
   expect(ambiguous.stderr).toContain(other.flow);
   const unqualified = run(["alias", "267"], { ...at, session: "s-a" });
   expect(unqualified.code).not.toBe(0);
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w.home)).toEqual(before);
 });
 
 test("a failed git lookup refuses authoring instead of routing a repository to global Flows", () => {
   const w = world();
   const { at } = twoTickets(w);
-  const before = tree(w.home);
+  const before = observed(w.home);
+  const config = join(w.project, ".git", "config");
+  const originalConfig = readFileSync(config, "utf8");
   writeFileSync(join(w.project, ".git", "config"), "[invalid config\n");
   const result = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("must-not-route"))) });
   expect(result.code).not.toBe(0);
@@ -350,7 +351,8 @@ test("a failed git lookup refuses authoring instead of routing a repository to g
   expect(result.stderr).toContain("git rev-parse");
   expect(result.stderr).toContain("bad config line");
   expect(result.stderr).not.toContain("is bound to no Flow");
-  expect(tree(w.home)).toEqual(before);
+  writeFileSync(config, originalConfig);
+  expect(observed(w.home)).toEqual(before);
 });
 
 test("projects stay isolated, and worktrees of one project share a Flow", () => {
@@ -362,7 +364,7 @@ test("projects stay isolated, and worktrees of one project share a Flow", () => 
   git(elsewhere, "commit", "-q", "--allow-empty", "-m", "base");
   ok(run(["alias", "spec:267"], { ...at, session: "s-a" }));
 
-  const before = tree(w.home);
+  const before = observed(w.home);
   const there = { cwd: elsewhere, home: w.home };
   for (const [i, r] of [
     run(["submit", "--flow", a.flow, "--stage", a.stage], { ...there, stdin: contribution(round(question("x"))) }),
@@ -374,7 +376,7 @@ test("projects stay isolated, and worktrees of one project share a Flow", () => 
     if (i < 2) expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
     else expect(r.stdout).toBe("");
   }
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w.home)).toEqual(before);
 
   const wt = join(w.base, "wt");
   git(w.project, "worktree", "add", "-q", wt, "-b", "side");
@@ -442,10 +444,10 @@ test("a failed relocation leaves the old Flow usable", () => {
   const other = ok(run(["open", "--title", "Another flow", "--skill", "explain"], { ...at, session: "s-c" }));
   const flowsDir = dirname(storedFolder(w.home, other.flow));
 
-  const before = tree(w.home);
+  const before = observed(w.home);
   const taken = run(["move", "--to", other.flow], { ...at, session: "s-a" });
   expect(taken.code).toBe(1);
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w.home)).toEqual(before);
 
   chmodSync(flowsDir, 0o555);
   try {
