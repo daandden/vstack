@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Allow locked restores and task-required project dependencies without separate approval while preserving checkout permissions and approval for other installs (#524)."
+  ]
+}
