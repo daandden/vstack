@@ -24,7 +24,6 @@ const hostVersion = version(reader);
 const readerGeneration = createHash("sha256");
 for (const [path, bytes] of reader) readerGeneration.update(path).update(bytes);
 const readerVersion = readerGeneration.digest("hex");
-const readerShell = new TextDecoder().decode(reader.get("index.html")).replace("</head>", `<meta name="flow-host-generation" content="${instance}"><meta name="flow-reader-generation" content="${readerVersion}"></head>`);
 const origin = originOf(port);
 let active = 0;
 let last = Date.now();
@@ -46,12 +45,9 @@ const headers = {
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Resource-Policy": "same-origin",
 };
-const shellScripts = [...new TextDecoder().decode(reader.get("index.html")).matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
-  .filter(([, attrs]) => !/\bsrc=|application\/json/.test(attrs!))
-  .map(([, , body]) => `'sha256-${createHash("sha256").update(body!).digest("base64")}'`);
 const csp = [
   "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'", "object-src 'none'",
-  `script-src 'self' ${shellScripts.join(" ")}`, "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "media-src 'self'", "font-src 'self'", "connect-src 'self'",
+  "script-src 'self'", "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "media-src 'self'", "font-src 'self'", "connect-src 'self'",
 ].join("; ");
 const response = (body: BodyInit | null, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: { ...headers, ...extra } });
 const missing = () => response("Flow or captured asset is missing or expired.", 404);
@@ -203,13 +199,14 @@ async function flow(req: Request, endpoint: FlowRoute): Promise<Response> {
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
-  if (endpoint === "shell") return response(req.method === "HEAD" ? null : readerShell, 200, {
-    "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
-    "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
-  });
-  if (endpoint === "content") {
+  if (endpoint === "shell" || endpoint === "content") {
     const content = view(s);
-    return json({ ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) });
+    const initial = { ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) };
+    if (endpoint === "content") return json(initial);
+    return response(req.method === "HEAD" ? null : JSON.stringify({ content: initial, hostGeneration: instance, readerGeneration: readerVersion }), 200, {
+      "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
+      "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
+    });
   }
   if (endpoint === "observations") return json(observations(store, key, s));
   if (endpoint === "presence") return json({ presences: presences(key, id) });
@@ -279,10 +276,5 @@ export const host: FlowHost = {
   start, hello, hold, picker, readerAsset, flow, missing,
   storage() { return response(JSON.stringify({ storage: "sqlite" }), 200, { "Content-Type": "application/json" }); },
   failure(error: unknown) { return (error as NodeJS.ErrnoException).code === "ENOENT" ? missing() : response("Flow presentation is unavailable. The committed Flow content is unchanged.", 500); },
-  fallback(req: Request) {
-    if (!new URL(req.url).pathname.startsWith("/.host/") && !["GET", "HEAD", "POST"].includes(req.method)) return response("Unsupported method.", 405);
-    if (new URL(req.url).pathname.startsWith("/f/")) return flow(req, "missing");
-    return missing();
-  },
   stop() { setTimeout(shutdown, 50); return response("Stopping."); },
 };

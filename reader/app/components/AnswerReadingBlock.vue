@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { StageView } from "~/utils/flow";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 
 const props = defineProps<{ note: StageView["readings"][number] }>();
 const question = computed(() => flow.value!.question.get(props.note.question));

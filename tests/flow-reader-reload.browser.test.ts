@@ -59,6 +59,9 @@ test("served generation swaps refresh unchanged content and reload readers witho
     const versions = async () => (await (await fetch(new URL("versions", url))).json()) as Versions;
     const comments = async () => (await (await page.request.get(new URL("comments", url).href)).json()) as { comments: ReaderComment[] };
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
     let navigations = 0, contentLoads = 0, commentWrites = 0;
     page.on("request", request => {
       if (request.isNavigationRequest() && request.frame() === page.mainFrame()) navigations++;
@@ -114,6 +117,7 @@ test("served generation swaps refresh unchanged content and reload readers witho
     expect(navigations).toBe(2);
     expect((await versions()).revision).toBe(before.revision);
     expect((await versions()).readerGeneration).not.toBe(before.readerGeneration);
+    expect(errors).toEqual([]);
     expect(await region.getByRole("textbox", { name: "Comment" }).inputValue()).toBe(draft);
     expect(await region.getByRole("combobox", { name: "Comment target" }).textContent()).toContain("e1: Host restart");
     expect(await historical.getByRole("textbox", { name: "Comment" }).inputValue()).toBe("Keep this historical passage attached to revision one.");

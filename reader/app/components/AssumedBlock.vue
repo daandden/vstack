@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import type { StageView } from "~/utils/flow";
 
 defineProps<{ a: StageView["assumed"][number]; first: boolean; stage: string }>();

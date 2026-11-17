@@ -32,8 +32,8 @@ function fixture(dependencies = true) {
 const require = createRequire(import.meta.url);
 const shell = process.env.FLOW_READER_SHELL === '1';
 export default defineNuxtConfig({
-  ssr: false, telemetry: false, devtools: { enabled: false },
-  experimental: { noVueServer: !shell },
+  ssr: !shell, telemetry: false, devtools: { enabled: false },
+  buildDir: new URL('./.nuxt', import.meta.url).pathname,
   app: { buildAssetsDir: '/_flow-reader/' },
   nitro: {
     preset: shell ? 'static' : 'bun',

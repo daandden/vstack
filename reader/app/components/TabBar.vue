@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import { current, mapOpen, mapTab, measureHeader, tab } from "~/composables/navigation";
 import { blockLabel } from "~/utils/flow";
 

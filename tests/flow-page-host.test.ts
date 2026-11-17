@@ -151,17 +151,31 @@ test("an authoring command starts the host and serves the Flow live at one URL t
   expect(hostPids(w)).toHaveLength(1);
 });
 
-test("the Flow URL serves the built reader, and the host serves every resource the reader loads without the capability", async () => {
+test("the Flow URL server-renders its content with a strict script policy and shared reader resources", async () => {
   const w = world();
   const opened = ok(open(w));
   const capability = new URL(opened.live.url).pathname.split("/").filter(Boolean).at(-1)!;
+  ok(run(["submit"], w, { session: "s-1", stdin: contribution(round(question("server-rendered"))) }));
   const shell = await fetch(opened.live.url);
   expect(shell.status).toBe(200);
   expect(shell.headers.get("content-type")).toContain("text/html");
   expect(shell.headers.get("set-cookie")).toContain("HttpOnly");
   const html = await shell.text();
-  expect(html).not.toContain(capability);
-  expect(html).not.toContain(opened.flow);
+  const document = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+  expect(document).toContain("Checkout limits");
+  expect(document).toContain("Grill me");
+  expect(document).toContain("Which server-rendered?");
+  const policy = shell.headers.get("content-security-policy")!;
+  const scripts = policy.split(";").find(part => part.trim().startsWith("script-src"))!;
+  expect(scripts).not.toContain("'unsafe-inline'");
+  expect(scripts).toMatch(/'(?:nonce-|sha256-)/);
+  expect(policy).toContain("base-uri 'none'");
+  expect(policy).toContain("frame-ancestors 'none'");
+  const other = ok(open(w, "other-reader", "A different Flow"));
+  const concurrent = await Promise.all([fetch(opened.live.url).then(r => r.text()), fetch(other.live.url).then(r => r.text())]);
+  expect(concurrent[0]).toContain("Which server-rendered?");
+  expect(concurrent[1]).not.toContain("Which server-rendered?");
+  expect(concurrent[1]).toContain("A different Flow");
   const resources = await shellResources(html);
   expect(resources.some((path) => path.endsWith(".js"))).toBe(true);
   expect(resources.some((path) => path.endsWith(".css"))).toBe(true);

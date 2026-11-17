@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Attachment, Figure } from "#flow/model.ts";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 
 defineProps<{ figures?: Figure[] }>();
 const f = computed(() => flow.value!);
@@ -8,6 +9,8 @@ const attachment = (id: string) => f.value.attachments.find((a) => a.id === id);
 const scoped = (css: string, id: string) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors: string, body: string) =>
   `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => (s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`)).join(", ")} { ${body} }`);
 const withImages = (html: string) => /<img\b/i.test(html);
+const hydrated = shallowRef(false);
+onMounted(() => { hydrated.value = true; });
 
 function source(doc: Document, a: Attachment | undefined): HTMLDetailsElement {
   const details = doc.createElement("details");
@@ -33,6 +36,7 @@ function source(doc: Document, a: Attachment | undefined): HTMLDetailsElement {
 }
 
 const historical = (fig: { id: string; html: string; css?: string }) => {
+  if (!hydrated.value) return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${fig.html}`;
   const doc = new DOMParser().parseFromString(fig.html, "text/html");
   for (const img of doc.querySelectorAll("img")) {
     const a = f.value.attachments.find((a) => a.file && img.getAttribute("src")?.split("#")[0] === `assets/${a.file}`);

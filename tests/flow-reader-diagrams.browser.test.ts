@@ -16,6 +16,8 @@ const SETUP = "./node_modules/.bin/playwright-core install --only-shell chromium
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-diagrams-")));
 const home = join(root, "home");
 mkdirSync(home);
+const proof = process.env.FLOW_DIAGRAM_EVIDENCE;
+if (proof) mkdirSync(proof, { recursive: true });
 const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
 const port = socket.port;
 socket.stop(true);
@@ -290,7 +292,8 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
     await page.goto(opened.live.url);
     const figure = page.getByRole("img", { name: "Wide reading diagram" });
     await figure.locator("svg").waitFor();
-    for (const theme of ["Light", "Dark"]) {
+    for (const width of [1280, 360]) for (const theme of ["Light", "Dark"]) {
+      await page.setViewportSize({ width, height: 900 });
       await page.getByRole("button", { name: theme, exact: true }).click();
       const geometry = await figure.evaluate((host) => ({
         fonts: [...host.shadowRoot!.querySelectorAll("text")].filter((t) => t.textContent?.trim()).map((t) => {
@@ -302,25 +305,40 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
       }));
       expect(geometry.fonts.length).toBeGreaterThan(0);
       expect(Math.min(...geometry.fonts)).toBeGreaterThanOrEqual(12);
-      expect(geometry.drawing).toBeGreaterThan(geometry.viewport);
+      if (width === 360) expect(geometry.drawing).toBeGreaterThan(geometry.viewport);
       expect(geometry.page).toBeLessThanOrEqual(geometry.screen);
       await figure.evaluate((host) => { host.scrollLeft = 0; });
       await figure.focus();
       const readingUrl = page.url();
+      const name = `ssr-${type}-${theme.toLowerCase()}-${width}`;
+      if (proof) {
+        await figure.screenshot({ path: join(proof, `${name}-start.png`) });
+        writeFileSync(join(proof, `${name}.aria.txt`), await page.locator("body").ariaSnapshot());
+        writeFileSync(join(proof, `${name}.json`), JSON.stringify({ browser: browser.version(), type, theme, width, geometry }, null, 2));
+      }
       await page.keyboard.press("ArrowRight");
       await Bun.sleep(250);
       const panned = await figure.evaluate((host) => host.scrollLeft);
-      expect(panned).toBeGreaterThan(0);
+      expect(panned > 0).toBe(geometry.drawing > geometry.viewport);
       await page.keyboard.press("ArrowLeft");
       await Bun.sleep(250);
-      expect(await figure.evaluate((host) => host.scrollLeft)).toBeLessThan(panned);
+      if (panned) expect(await figure.evaluate((host) => host.scrollLeft)).toBeLessThan(panned);
+      else expect(await figure.evaluate((host) => host.scrollLeft)).toBe(0);
       expect(page.url()).toBe(readingUrl);
       expect(await figure.evaluate((host) => document.activeElement === host)).toBe(true);
+      if (proof) {
+        await figure.evaluate(host => { host.scrollLeft = host.scrollWidth; });
+        await figure.screenshot({ path: join(proof, `${name}-end.png`) });
+      }
     }
     const model = await (await fetch(new URL("content", opened.live.url))).json() as any;
     const attachment = model.attachments.find((a: any) => a.caption === "Wide reading diagram");
     const served = Buffer.from(await (await fetch(new URL(`assets/${attachment.file}`, opened.live.url))).arrayBuffer());
     expect(served.equals(bytes)).toBe(true);
+    if (proof) writeFileSync(join(proof, `ssr-${type}-source.json`), JSON.stringify({
+      capturedSha256: new Bun.CryptoHasher("sha256").update(bytes).digest("hex"),
+      servedSha256: new Bun.CryptoHasher("sha256").update(served).digest("hex"),
+    }, null, 2));
   } finally {
     await context.close();
   }
@@ -412,7 +430,9 @@ test("every figure shows its caption as a title, a formatted description, and a 
     }
     expect(await page.locator("figcaption").filter({ hasText: /Q\d+ ·/ }).count()).toBe(0);
 
-    await page.goto(migrated.live.url);
+    const response = await page.goto(migrated.live.url);
+    expect(response!.status()).toBe(200);
+    expect((await response!.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")).toContain("Historical example");
     const old = page.locator("#historical-caption");
     await old.locator("img").evaluate((img: HTMLImageElement) => img.decode());
     expect(await old.locator(".figure-title").innerText()).toBe("Historical example");

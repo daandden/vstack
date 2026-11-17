@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import type { ReadingBlock } from "~/utils/flow";
 
 const props = defineProps<{ block: ReadingBlock; position?: number }>();

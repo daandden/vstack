@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const reader = resolve(Bun.argv[2] ?? import.meta.dir);
 const require = createRequire(join(reader, "package.json"));
@@ -15,6 +16,15 @@ for (const command of ["generate", "build"]) {
   if (await child.exited !== 0) process.exit(child.exitCode ?? 1);
   if (command === "generate") shell = readFileSync(join(reader, ".output/public/index.html"));
 }
-const built = await Bun.build({ entrypoints: [join(reader, ".output/server/index.mjs")], outdir: join(reader, ".output/server"), naming: "flow.mjs", target: "bun", packages: "bundle" });
+const built = await Bun.build({
+  entrypoints: [join(reader, ".output/server/index.mjs")],
+  outdir: join(reader, ".output/server"), naming: "flow.mjs", target: "bun", packages: "bundle",
+  plugins: [{
+    name: "nuxt-server-file-urls",
+    setup(build) {
+      build.onResolve({ filter: /^file:/ }, args => ({ path: fileURLToPath(args.path) }));
+    },
+  }],
+});
 if (!built.success) throw new AggregateError(built.logs, "could not bundle the Flow Nitro server");
 writeFileSync(join(reader, ".output/public/index.html"), shell!);

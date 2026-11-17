@@ -9,6 +9,5 @@ export type FlowHost = {
   flow: (request: Request, endpoint: FlowRoute) => Promise<Response>;
   missing: () => Response;
   failure: (error: unknown) => Response;
-  fallback: (request: Request) => Response | Promise<Response>;
   stop: () => Response;
 };

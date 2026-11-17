@@ -58,7 +58,10 @@ test("an HTML bundle is captured once and runs only on an isolated read-only vie
   expect((await fetch(new URL("content", opened.live.url), { headers: { Origin: new URL(viewer).origin } })).status).toBe(403);
   expect(new URL(viewer).pathname).not.toContain(new URL(opened.live.url).pathname.split("/").filter(Boolean).at(-1)!);
   expect((await fetch(new URL(".host/stop", new URL(viewer).origin), { method: "POST" })).status).not.toBe(200);
-  expect(await (await fetch(opened.live.url)).text()).not.toContain(new URL(viewer).origin);
+  const frames: string[] = [];
+  await new HTMLRewriter().on("iframe", { element(element) { frames.push(element.getAttribute("src")!); } })
+    .transform(await fetch(opened.live.url)).text();
+  expect(frames).toEqual([viewer]);
   const stored = ok(run(home, ["show"])).attachments[0].bundle.files.find((f: any) => f.path === "app.js").file;
   const captured = join(storedFolder(home, sent.flow), "assets", stored);
   unlinkSync(captured);

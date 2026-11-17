@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { View } from "#flow/model.ts";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 
 defineProps<{ step: NonNullable<View["path"]>["grill"] }>();
 const states = { finished: "Finished", "in-progress": "In progress", "to-come": "To come", "not-run": "Not run", "not-started": "Not started" };

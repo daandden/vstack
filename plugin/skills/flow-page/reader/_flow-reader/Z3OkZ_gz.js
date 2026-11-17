@@ -1,0 +1,1 @@
+import{Z as e}from"./BSmvHmLY.js";function t(t=e()){let n=t;n&&!n.sp&&(n.sp=[])}export{t};

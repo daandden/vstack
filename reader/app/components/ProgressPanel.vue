@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { flow, observations } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow, observations } = useReaderState();
 
 const f = computed(() => flow.value!);
 const p = computed(() => f.value.progress);

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { VISUAL_KINDS } from "#flow/fields.ts";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import { askLabel, optionLabel, questionOutcome, sourceText, type QuestionView } from "~/utils/flow";
 
 const props = defineProps<{ q: QuestionView }>();

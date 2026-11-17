@@ -8,13 +8,14 @@ const require = createRequire(import.meta.url);
 const nitroRequire = createRequire(require.resolve("nitropack/package.json"));
 
 export default defineNuxtConfig({
-  ssr: false,
+  ssr: !shell,
   compatibilityDate: "2026-10-01",
   telemetry: false,
   devtools: { enabled: false },
   buildId: "flow-reader",
+  buildDir: fileURLToPath(new URL("./.nuxt", import.meta.url)),
   // Fragment navigation belongs to the reader. A delayed router commit can overwrite the next keyboard selection.
-  experimental: { appManifest: false, navigationRepaint: false, noVueServer: !shell },
+  experimental: { appManifest: false, navigationRepaint: false },
   modules: ["@nuxt/ui", "@vueuse/nuxt"],
   ui: { theme: { transitions: false }, experimental: { componentDetection: true } },
   fonts: { provider: "local" },

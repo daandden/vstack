@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CloseView } from "#flow/model.ts";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import type { StageView } from "~/utils/flow";
 
 const props = defineProps<{ close: CloseView; stage: StageView }>();

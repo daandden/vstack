@@ -41,7 +41,8 @@ test("authored corrections show current non-consent, retained raw words, histori
     const page = await context.newPage();
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
-    await page.goto(`${opened.live.url}#overview`);
+    const response = await page.goto(`${opened.live.url}#overview`);
+    expect(response!.status(), await response!.text()).toBe(200);
     await page.locator("#overview-stages").waitFor();
     expect(await page.locator("#overview-stages").innerText()).toContain("Unresolved after correction");
     expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with work");
