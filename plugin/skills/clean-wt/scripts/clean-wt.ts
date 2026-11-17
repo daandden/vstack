@@ -72,9 +72,6 @@ const realpath = (p: string) => {
   }
 };
 
-if (run(["git", "rev-parse", "--is-inside-work-tree"]).out.trim() !== "true") {
-  usage("run clean-wt from the source Git repository, not a non-Git workspace; native checkout origins need that project context");
-}
 
 
 const requestedBase = resolve(values.base ?? defaultCheckoutBase(0));
@@ -242,9 +239,11 @@ const ownSession = process.env.PI_SESSION_ID;
 let sessionHeaders: SessionHeader[] = [];
 let leases: Leases = { ok: false, held: new Map(), unknown: new Map() };
 let cwds: { ok: boolean; reason?: string; list: ProcessCwd[] } = { ok: false, list: [] };
-let listing: { ok: boolean; reason?: string; paths: Set<string> } = { ok: false, paths: new Set() };
+let listing: ReturnType<typeof ompWorktreeListing> = { ok: false, paths: new Set(), parentRepos: new Map() };
 let ovnfs: ReturnType<typeof ovnfsListing> = { ok: false, checkouts: [] };
 let ovnfsLocations: OvnfsCleanupLocation[] = [];
+let nativeLocations: CheckoutLocation[] = [];
+const sources = new Map<string, Source | null>();
 let evidenceGaps: string[] = [];
 
 /** Why the run cannot trust a free lease: it must see its own session's held lease and session file, and every held lease's session. */
@@ -293,21 +292,13 @@ function gatherEvidence() {
   cwds = processCwds(native);
   progress("evidence", { stage: "ovnfs listing" });
   ovnfs = ovnfsListing();
-  const projectPaths = new Set(run(["git", "worktree", "list", "--porcelain"]).out.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => realpath(line.slice(9)) || resolve(line.slice(9))));
-  let added: boolean;
-  do {
-    added = false;
-    for (const header of sessionHeaders) {
-      if (projectPaths.has(header.cwd)) continue;
-      const parentFile = `${dirname(header.file)}.jsonl`;
-      const parent = sessionHeaders.find((candidate) => candidate.file === parentFile);
-      if (parent && projectPaths.has(parent.cwd)) {
-        projectPaths.add(header.cwd);
-        added = true;
-      }
-    }
-  } while (added);
-  ovnfsLocations = cleanupOvnfsLocations(base, ovnfs, projectPaths);
+  nativeLocations = scanCheckoutLocations(base, listing);
+  sources.clear();
+  const sourcePaths = new Set<string>();
+  for (const checkout of ovnfs.checkouts) {
+    if (sourceRepository(checkout.source)) sourcePaths.add(checkout.source);
+  }
+  ovnfsLocations = cleanupOvnfsLocations(base, ovnfs, sourcePaths);
   evidenceGaps = [leaseDetectionGap(), cwds.ok ? undefined : cwds.reason, listing.ok ? undefined : listing.reason, ovnfs.ok ? undefined : ovnfs.reason].filter((g): g is string => !!g);
   progress("evidence", { stage: "complete", blockers: evidenceGaps });
 }
@@ -434,22 +425,14 @@ function mainCheckout(commonDir: string): string | null {
   return lines[0]?.startsWith("worktree ") && !lines.includes("bare") ? lines[0].slice("worktree ".length) : null;
 }
 
-function sourceOf(path: string, entry: string, kind: Kind): Source | null {
-  if (kind === "ovnfs") {
-    const location = ovnfsLocations.find((location) => location.path === path);
-    if (!location) return null;
-    const candidates = [location.source, ...run(["git", "worktree", "list", "--porcelain"]).out.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice(9))];
-    for (const checkout of candidates) {
-      if (!lstat(checkout)?.isDirectory()) continue;
-      const result = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], checkout);
-      if (result.code === 0) return { commonDir: result.out.trim(), checkout };
-    }
-    return null;
-  }
+function sourceOf(path: string, entry: string, kind: Kind, visiting: Set<string>): Source | null {
+  const parent = listing.parentRepos.get(entry);
+  if (parent && !inside(parent, entry)) return sourceRepository(parent, visiting);
   if (kind === "linked-worktree") {
     const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path).out.trim();
     const main = commonDir ? mainCheckout(commonDir) : null;
-    return commonDir ? { commonDir, checkout: main === path ? null : main } : null;
+    return commonDir && lstat(commonDir)?.isDirectory() && !inside(commonDir, entry)
+      ? { commonDir, checkout: main === path ? null : main } : null;
   }
   if (kind === "task-isolation") {
     for (const s of sessionHeaders.filter((h) => inside(h.cwd, entry))) {
@@ -460,18 +443,61 @@ function sourceOf(path: string, entry: string, kind: Kind): Source | null {
       }
       if (!parent || !existsSync(parent.cwd)) continue;
       const top = run(["git", "rev-parse", "--show-toplevel"], parent.cwd).out.trim();
-      const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], parent.cwd).out.trim();
-      if (top && commonDir) return { commonDir, checkout: top };
+      if (!top) continue;
+      const source = sourceRepository(top, visiting);
+      return source ? { commonDir: source.commonDir, checkout: top } : null;
     }
   }
   try {
     const objects = readFileSync(join(path, ".git", "objects", "info", "alternates"), "utf8").split("\n")[0].trim();
     if (!objects) return null;
     const commonDir = resolve(join(path, ".git", "objects"), objects, "..");
-    return { commonDir, checkout: mainCheckout(commonDir) };
+    if (!lstat(commonDir)?.isDirectory() || inside(commonDir, entry)) return null;
+    const checkout = [...ovnfs.checkouts, ...nativeLocations].find(({ path }) => {
+      const git = join(path, ".git");
+      const gitdir = lstat(git)?.isDirectory() ? git : lstat(git)?.isFile() ? registeredGitDir(path).gitdir : "";
+      return !!gitdir && realpath(gitdir) === realpath(commonDir);
+    })?.path ?? mainCheckout(commonDir);
+    if (!checkout) return null;
+    const top = run(["git", "rev-parse", "--show-toplevel"], checkout).out.trim();
+    if (!top) return null;
+    const source = sourceRepository(top, visiting);
+    return source ? { commonDir: source.commonDir, checkout: top } : null;
   } catch {
     return null;
   }
+}
+
+function sourceRepository(path: string, visiting = new Set<string>()): Source | null {
+  path = realpath(path) || resolve(path);
+  if (sources.has(path)) return sources.get(path)!;
+  if (visiting.has(path)) return null;
+  visiting.add(path);
+  let source: Source | null = null;
+  const mounted = ovnfs.checkouts.find((checkout) => inside(path, checkout.path));
+  const native = nativeLocations.find((location) => inside(path, location.path));
+  if (mounted) source = sourceRepository(mounted.source, visiting);
+  else if (native) {
+    if (native.kind !== "excluded") {
+      source = sourceOf(native.path, native.entry, native.kind === "worktree" ? "linked-worktree" : native.kind, visiting);
+    }
+  } else if (lstat(path)?.isDirectory()) {
+    const common = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path);
+    if (common.code === 0) {
+      const top = run(["git", "rev-parse", "--show-toplevel"], path);
+      source = { commonDir: common.out.trim(), checkout: top.code === 0 ? top.out.trim() : null };
+    }
+  }
+  if (!source) {
+    for (const header of sessionHeaders.filter((header) => header.cwd === path)) {
+      const parent = sessionHeaders.find((candidate) => candidate.file === `${dirname(header.file)}.jsonl`);
+      if (parent) source = sourceRepository(parent.cwd, visiting);
+      if (source) break;
+    }
+  }
+  visiting.delete(path);
+  sources.set(path, source);
+  return source;
 }
 
 function expand(root: string, rel: string): string[] {
@@ -703,10 +729,10 @@ function sessionLinks(entry: string): { sessions: SessionLink[]; moved: SessionL
   return { sessions: here.map(link), moved: moved.map(link) };
 }
 
-function inspectOrphan(path: string, gitdir: string): Checkout {
+function inspectOrphan(path: string, gitdir: string, gaps: string[]): Checkout {
   const { sessions, moved } = sessionLinks(path);
   const owners = ownersOf(path, [], sessions);
-  const { verdict, reasons } = verdictOf(owners, evidenceGaps);
+  const { verdict, reasons } = verdictOf(owners, [...evidenceGaps, ...gaps]);
   const fingerprint = verdict !== "unused" ? "" : createHash("sha256").update(JSON.stringify(treeStamp(path))).digest("hex");
   const unreadable = [`the repo no longer has this worktree's registration (${gitdir || "no gitdir line"}), so git cannot read its changes`];
   return { path, entry: path, kind: "orphaned-worktree", verdict, reasons, owners, state: "unknown", changes: { unreadable }, unique_history: [], branch: null, fingerprint, sessions, moved_sessions: moved };
@@ -818,7 +844,7 @@ function inspect(path: string, entry: string, kind: Kind, entryOwners: Owner[], 
     return { ...common, state: "not checked", changes: {}, unique_history: [], fingerprint: "" };
   }
   common.branch = run(["git", "symbolic-ref", "-q", "--short", "HEAD"], path).out.trim() || null;
-  const source = sourceOf(path, entry, kind);
+  const source = sourceRepository(path);
   const head = run(["git", "rev-parse", "HEAD"], path).out.trim();
   progress("checkout", { stage: "contents", path });
   const before = { ...contentReads };
@@ -843,7 +869,14 @@ function removeTree(entry: string) {
 }
 
 function inspectLocation(location: CheckoutLocation | OvnfsCleanupLocation): Checkout {
-  const { path, entry, kind, gaps } = location;
+  const { path, entry, kind } = location;
+  const dependents = ovnfs.checkouts.filter((checkout) => inside(checkout.source, entry));
+  const source = kind === "excluded" ? null : sourceRepository(path);
+  const gaps = [
+    ...location.gaps,
+    ...(kind !== "excluded" && !source ? [`cannot establish source repository for ${path}: missing or unreadable parentRepo, source chain, session ancestry, or Git alternates`] : []),
+    ...(dependents.length ? [`source for ovnfs checkouts: ${dependents.map((checkout) => checkout.name).join(", ")}`] : []),
+  ];
   if (kind === "ovnfs") {
     const recordEntry = location.record ? dirname(location.record) : undefined;
     const task = recordEntry && lstat(join(recordEntry, ".omp-isolation-owner.json")) ? taskOwner(recordEntry) : {};
@@ -854,7 +887,7 @@ function inspectLocation(location: CheckoutLocation | OvnfsCleanupLocation): Che
   }
   if (kind === "worktree") {
     const { gitdir, exists } = registeredGitDir(path);
-    return exists ? inspect(path, entry, "linked-worktree", [], gaps) : inspectOrphan(path, gitdir);
+    return exists ? inspect(path, entry, "linked-worktree", [], gaps) : inspectOrphan(path, gitdir, gaps);
   }
   if (kind === "task-isolation") {
     const { owner, gap } = taskOwner(entry);
@@ -864,7 +897,7 @@ function inspectLocation(location: CheckoutLocation | OvnfsCleanupLocation): Che
 }
 
 function scan(): Checkout[] {
-  return [...scanCheckoutLocations(base, listing), ...ovnfsLocations].map(inspectLocation);
+  return [...nativeLocations, ...ovnfsLocations].map(inspectLocation);
 }
 
 function rescan(entry: string, path: string): Checkout | undefined {

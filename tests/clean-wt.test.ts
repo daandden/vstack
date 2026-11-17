@@ -85,7 +85,7 @@ function session(id: string, cwd: string, rel = `-${id}/2026-10-21T00-00-00-000Z
 }
 
 function cleanWt(args: string[], env: Record<string, string | undefined> = {}, cwd = repo) {
-  const merged: Record<string, string> = { ...ENV, PI_SESSION_ID: OWN, PATH: `${join(dir, "bin")}:${ENV.PATH}`, FAKE_OVNFS_ROOT: ovnfsRoot, FAKE_GIT: Bun.which("git")! };
+  const merged: Record<string, string> = { ...ENV, PI_SESSION_ID: OWN, PATH: `${join(dir, "bin")}:${ENV.PATH}`, FAKE_OMP_PARENT: repo, FAKE_OVNFS_ROOT: ovnfsRoot, FAKE_GIT: Bun.which("git")! };
   for (const [k, v] of Object.entries(env)) {
     if (v === undefined) delete merged[k];
     else merged[k] = v;
@@ -140,21 +140,52 @@ test("an unused clean linked worktree is listed as unused and clean, with its br
   expect(c.fingerprint).toMatch(/^[0-9a-f]{64}$/);
 });
 
-test("non-Git invocation rejects mixed native checkouts before discovery or content scans", () => {
-  const legacy = linkedWorktree("wt-nongit");
-  const mounted = ovnfsCheckout("omp-nongit");
-  const calls = join(dir, "native-calls");
-  for (const [name, script] of [["omp", FAKE_OMP], ["ovnfs", FAKE_OVNFS]]) {
-    writeExecutable(join(dir, "bin", name), "bun", `import { appendFileSync } from "node:fs";
-appendFileSync(${JSON.stringify(calls)}, ${JSON.stringify(name + "\n")});
-await import(${JSON.stringify(script)});`);
-  }
-  const result = cleanWt(["inventory"], {}, dir);
-  expect(result.code).toBe(2);
-  expect(result.stdout).toBe("");
-  expect(result.stderr).toContain("run clean-wt from the source Git repository");
-  expect(existsSync(calls)).toBe(false);
-  expect(existsSync(legacy) && existsSync(mounted)).toBe(true);
+test("machine-wide inventory resolves two repositories equally from Git and non-Git directories", () => {
+  const first = linkedWorktree("wt-first");
+  const other = join(dir, "other");
+  git(dir, "clone", "-q", repo, other);
+  const second = join(base, "wt-second");
+  git(other, "worktree", "add", "-q", "-b", "other-work", second);
+  const child = ovnfsCheckout("omp-other", second);
+  const nested = ovnfsCheckout("omp-other-nested", child);
+  const unknown = ovnfsCheckout("omp-unknown", join(dir, "missing-source"));
+  const standalone = join(base, "pr-copy");
+  git(dir, "clone", "-q", repo, standalone);
+  const env = { FAKE_OMP_LISTING: JSON.stringify([
+    { path: first, parentRepo: repo },
+    { path: second, parentRepo: other },
+    { path: standalone, parentRepo: repo },
+  ]) };
+  const inventories = [repo, other, dir].map((cwd) => {
+    const result = cleanWt(["inventory", "--progress"], env, cwd);
+    expect(result.code).toBe(0);
+    expect(result.json.evidence_gaps).toEqual([]);
+    const records = result.json.checkouts as Checkout[];
+    expect(records.map((record) => record.path).sort()).toEqual([first, second, standalone, child, nested, unknown].sort());
+    expect(records.find((record) => record.path === standalone)).toMatchObject({ source_git_dir: join(repo, ".git"), automatic: true });
+    expect(records.find((record) => record.path === child)).toMatchObject({ verdict: "uncertain" });
+    expect(records.find((record) => record.path === nested)).toMatchObject({ source_git_dir: join(other, ".git"), automatic: true });
+    expect(records.find((record) => record.path === second)?.reasons.join(" ")).toContain("omp-other");
+    expect(records.find((record) => record.path === child)?.reasons.join(" ")).toContain("omp-other-nested");
+    expect(records.find((record) => record.path === unknown)).toMatchObject({ verdict: "uncertain", state: "not checked" });
+    expect(records.find((record) => record.path === unknown)?.reasons.join(" ")).toContain("missing-source");
+    const progress = result.stderr.trim().split("\n").map((line) => JSON.parse(line));
+    expect(progress.filter((event) => event.stage === "native listing")).toHaveLength(1);
+    expect(progress.filter((event) => event.stage === "ovnfs listing")).toHaveLength(1);
+    expect(progress.filter((event) => event.phase === "checkout" && event.stage === "ownership").map((event) => event.path).sort()).toEqual(records.map((record) => record.path).sort());
+    return records;
+  });
+  expect(inventories[1]).toEqual(inventories[0]);
+  expect(inventories[2]).toEqual(inventories[0]);
+  const prepared = cleanWt(["inventory", "--prepare-source", join(repo, ".git"), "--prepare-source", join(other, ".git")], env, dir);
+  expect(prepared.code).toBe(0);
+  expect(prepared.json.source_facts.map((fact: { source_git_dir: string }) => fact.source_git_dir).sort()).toEqual([join(repo, ".git"), join(other, ".git")].sort());
+  const candidate = inventories[0]!.find((record) => record.path === standalone)!;
+  const removed = cleanWt(["remove", `${standalone}=${candidate.fingerprint}`], env, dir);
+  expect(removed.code).toBe(0);
+  expect(removed.json.removed).toEqual([{ path: standalone, method: "rm -r" }]);
+  expect(existsSync(standalone)).toBe(false);
+  expect(git(other, "worktree", "list", "--porcelain")).toContain(second);
 });
 
 test("opt-in progress reports scan work and the actual ownership blocker without changing JSON stdout", () => {
@@ -1106,7 +1137,7 @@ test("ovnfs inventory and removal use the configured executable despite a differ
   expect(calls.find(call => call.args.includes("rm"))).toMatchObject({ cli: "configured-ovnfs" });
 });
 
-test("ovnfs origin follows project worktrees and archived isolated sources, not other projects", () => {
+test("ovnfs origin follows archived sessions across repositories and retains missing sources", () => {
   const linked = linkedWorktree("source-worktree");
   const fromWorktree = ovnfsCheckout("omp-from-worktree", linked);
   const ancestor = ovnfsCheckout("omp-old-worker");
@@ -1121,9 +1152,10 @@ test("ovnfs origin follows project worktrees and archived isolated sources, not 
   git(other, "init", "-q", "-b", "main");
   const foreign = ovnfsCheckout("omp-foreign", other);
   const inv = inventory();
-  for (const path of [fromWorktree, nested, fromRemoved]) expect(inv[path]).toMatchObject({ kind: "ovnfs", verdict: "unused", state: "clean" });
-  expect(inv[foreign]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked", fingerprint: "" });
-  expect(inv[foreign].reasons.length).toBeGreaterThan(0);
+  for (const path of [nested, fromRemoved, foreign]) expect(inv[path]).toMatchObject({ kind: "ovnfs", verdict: "unused", state: "clean" });
+  expect(inv[ancestor].reasons.join(" ")).toContain("omp-nested");
+  expect(inv[fromWorktree]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked", fingerprint: "" });
+  expect(inv[fromWorktree].reasons.join(" ")).toContain(linked);
 });
 
 test("ovnfs removal binds its checkout identity as well as work bytes", () => {
@@ -1264,5 +1296,98 @@ test("ovnfs unmerged contents remain protected even with approval and an empty d
   expect(c.changes.unmerged).toEqual(["README.md"]);
   expect(c.automatic).toBe(false);
   expect(remove("--approve", path, `${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(existsSync(path)).toBe(true);
+});
+
+test.each(["linked", "task", "ovnfs"])("a %s source stays protected by every ovnfs dependent, including one added after inventory", (kind) => {
+  const entry = kind === "task"
+    ? taskSandbox("t-source", { pid: Bun.spawnSync(["true"]).pid, id: "source-task" })
+    : kind === "ovnfs" ? ovnfsCheckout("omp-source") : linkedWorktree("wt-source");
+  const path = kind === "task" ? join(entry, "m") : entry;
+  const before = inventory()[path];
+  expect(before.automatic).toBe(true);
+  const source = kind === "task" ? join(path, "nested") : path;
+  if (kind === "task") mkdirSync(source);
+  const name = kind === "linked" ? "personal-dependent" : kind === "task" ? "verifier-dependent" : "omp-dependent";
+  const dependent = ovnfsCheckout(name, source);
+  const protectedRecord = inventory()[path];
+  expect(protectedRecord.automatic).not.toBe(true);
+  expect(protectedRecord.reasons.join(" ")).toContain(name);
+  const out = remove("--approve", path, `${path}=${before.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(out.skipped).toHaveLength(1);
+  expect(out.skipped[0].reason).toContain(name);
+  expect(existsSync(path) && existsSync(dependent)).toBe(true);
+  if (kind === "linked") {
+    expect(git(repo, "worktree", "list", "--porcelain")).toContain(path);
+    expect(git(repo, "branch", "--list", "wt/wt-source")).toContain("wt/wt-source");
+  }
+});
+
+test("cyclic or missing origin evidence keeps native and ovnfs checkouts uncertain", () => {
+  const first = linkedWorktree("wt-origin-first");
+  const second = linkedWorktree("wt-origin-second");
+  const before = inventory()[first];
+  const mounted = ovnfsCheckout("omp-cycle-first");
+  const nested = ovnfsCheckout("omp-cycle-second", mounted);
+  const file = join(ovnfsRoot, "checkouts.json");
+  const entries = JSON.parse(readFileSync(file, "utf8"));
+  entries.find((entry: { path: string }) => entry.path === mounted).source = nested;
+  writeFileSync(file, JSON.stringify(entries));
+  const unknown = join(base, "pr-unknown");
+  git(dir, "clone", "-q", repo, unknown);
+  const env = { FAKE_OMP_LISTING: JSON.stringify([
+    { path: first, parentRepo: second },
+    { path: second, parentRepo: first },
+    { path: unknown },
+  ]) };
+  const result = cleanWt(["inventory"], env, dir);
+  expect(result.code).toBe(0);
+  for (const path of [first, second, mounted, nested, unknown]) {
+    const record = result.json.checkouts.find((record: Checkout) => record.path === path);
+    expect(record).toMatchObject({ verdict: "uncertain", state: "not checked", fingerprint: "" });
+    expect(record.automatic).not.toBe(true);
+    expect(record.reasons.join(" ")).toContain("source");
+  }
+  const out = cleanWt(["remove", "--approve", first, `${first}=${before.fingerprint}`], env, dir);
+  expect(out.code).toBe(0);
+  expect(out.json.removed).toEqual([]);
+  expect(out.json.skipped[0].reason).toContain("source");
+  expect(existsSync(first) && existsSync(second) && existsSync(unknown)).toBe(true);
+});
+
+test.each([
+  ["ovnfs", "session"],
+  ["ovnfs", "alternates"],
+  ["task", "session"],
+  ["task", "alternates"],
+])("a task from an %s source resolves its %s evidence to the established repository", (kind, evidence) => {
+  const dead = Bun.spawnSync(["true"]).pid;
+  const parent = kind === "ovnfs" ? ovnfsCheckout("omp-task-parent")
+    : join(taskSandbox("t-parent", { pid: dead, id: "parent-task" }), "m");
+  writeFileSync(join(parent, ".env"), "CHAIN=preserved-by-immediate-source\n");
+  const entry = join(base, "t-chain-child");
+  const path = join(entry, "m");
+  mkdirSync(entry);
+  writeFileSync(join(entry, ".omp-isolation-owner.json"), JSON.stringify({ pid: dead, id: "chain-child" }));
+  git(dir, "clone", "-q", ...(evidence === "alternates" ? ["--shared"] : []), parent, path);
+  writeFileSync(join(path, ".env"), "CHAIN=preserved-by-immediate-source\n");
+  if (evidence === "session") {
+    const file = session("chain-parent", parent);
+    session("chain-child", path, `${file.slice(sessions.length + 1, -6)}/child.jsonl`);
+  }
+  const record = inventory()[path];
+  expect(record).toMatchObject({ verdict: "unused", state: "clean", source_git_dir: join(repo, ".git"), unique_history: [], automatic: true });
+  if (kind === "ovnfs") {
+    const file = join(ovnfsRoot, "checkouts.json");
+    const entries = JSON.parse(readFileSync(file, "utf8"));
+    entries[0].source = join(dir, "missing-upstream-source");
+    writeFileSync(file, JSON.stringify(entries));
+  } else {
+    writeFileSync(join(parent, ".git", "objects", "info", "alternates"), join(dir, "missing-upstream-source", "objects") + "\n");
+  }
+  const unresolved = inventory()[path];
+  expect(unresolved).toMatchObject({ verdict: "uncertain", state: "not checked", fingerprint: "" });
+  expect(unresolved.reasons.join(" ")).toContain("source");
   expect(existsSync(path)).toBe(true);
 });

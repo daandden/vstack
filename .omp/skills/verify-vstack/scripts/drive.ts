@@ -122,9 +122,13 @@ const server = Bun.serve({
     appendFileSync(requestLog, JSON.stringify({ method: req.method, path: url.pathname, body }) + "\n");
     if (req.method !== "POST" || !url.pathname.endsWith("/chat/completions")) return new Response("not found", { status: 404 });
     const lastUser = Array.isArray(body?.messages) ? body.messages.findLast((message: any) => message.role === "user") : undefined;
-    const routingHint = (body?.tools === undefined || (Array.isArray(body.tools) && body.tools.length === 0)) &&
+    const toolLess = body?.tools === undefined || (Array.isArray(body.tools) && body.tools.length === 0);
+    const routingHint = toolLess &&
       typeof lastUser?.content === "string" && lastUser.content.startsWith("Compress into one routing hint");
+    const capabilityProbe = toolLess && body?.messages?.length === 1 &&
+      typeof lastUser?.content === "string" && lastUser.content.trim() === "What is 17 times 23? Answer with only the number.";
     const reply: Reply = routingHint ? { text: "Use this tool when its description matches the task." }
+      : capabilityProbe ? { text: "391" }
       : replies[next++] ?? { text: "stub: no reply left" };
     const message = "tool" in reply
       ? { role: "assistant", content: null, tool_calls: [{ index: 0, id: `call_${next}`, type: "function", function: { name: reply.tool, arguments: JSON.stringify(reply.args ?? {}) } }] }
