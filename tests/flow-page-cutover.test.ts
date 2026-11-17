@@ -3,6 +3,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync,
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
+import { futureDatabase, legacyBackup, legacyBytes, legacyCompanion, legacyExists, legacySources, storageSnapshot } from "./support/flow-store.ts";
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-cutover-")));
 const skills = join(import.meta.dir, "../plugin/skills");
@@ -27,7 +28,6 @@ function seal(w: ReturnType<typeof world>) {
   expect(run.exitCode).toBe(0);
 }
 function previous(w: ReturnType<typeof world>) {
-  // Pinned at db30b7c4905c09e057249438d7bcc0cffb21bb43, before SQLite.
   for (const name of ["store.ts", "cli.ts", "live.ts", "host.ts", "generation.ts", "managed-host.ts", "flow-page.ts"]) writeFileSync(join(w.script, "..", name), readFileSync(join(pinned, `${name}.txt`)));
   seal(w);
 }
@@ -59,25 +59,25 @@ for (const broken of [false, true]) test(`first SQLite cutover stops the pinned 
   expect((await fetch(new URL("comments", opened.live.url), { method: "POST", headers: { cookie, origin: new URL(opened.live.url).origin, "content-type": "application/json" }, body: JSON.stringify(oldComment) })).status).toBe(200);
   expect(opened.live.state).toBe("serving");
   const status = ok(await cli(w, ["host", "status"])).host;
-  const files = [...new Bun.Glob(".vstack/tmp/*/flow/*/data/state.json").scanSync({ cwd: w.home, dot: true, absolute: true })];
+  const files = legacySources(w.home);
   expect(files).toHaveLength(1);
-  const original = readFileSync(files[0]!);
-  const commentsPath = files[0]!.replace("state.json", "comments.json"), originalComments = readFileSync(commentsPath);
+  const original = legacyBytes(files[0]!);
+  const commentsPath = legacyCompanion(files[0]!, "comments"), originalComments = legacyBytes(commentsPath);
   const poll = setInterval(() => { void fetch(new URL("versions", opened.live.url)).catch(() => {}); }, 50);
   try {
     current(w, broken);
     const result = await cli(w, ["submit"], contribution);
     expect(result.code).toBe(0);
     expect(result.json.revision).toBe(3);
-    expect(existsSync(files[0]!)).toBe(false);
-    expect(readFileSync(files[0]!.replace("state.json", "state.imported.json"))).toEqual(original);
-    expect(readFileSync(commentsPath.replace("comments.json", "comments.imported.json"))).toEqual(originalComments);
+    expect(legacyExists(files[0]!)).toBe(false);
+    expect(legacyBackup(files[0]!)).toEqual(original);
+    expect(legacyBackup(commentsPath)).toEqual(originalComments);
     expect(result.json.live.state).toBe(broken ? "unavailable" : "serving");
     if (broken) {
       await expect(fetch(new URL("content", opened.live.url))).rejects.toThrow();
       await expect(fetch(new URL("comments", opened.live.url), { method: "POST", headers: { cookie, origin: new URL(opened.live.url).origin, "content-type": "application/json" }, body: JSON.stringify({ ...oldComment, text: "Must remain a browser draft." }) })).rejects.toThrow();
-      expect(existsSync(commentsPath)).toBe(false);
-      expect(readFileSync(commentsPath.replace("comments.json", "comments.imported.json"))).toEqual(originalComments);
+      expect(legacyExists(commentsPath)).toBe(false);
+      expect(legacyBackup(commentsPath)).toEqual(originalComments);
       expect(result.stderr).toContain("content is stored");
       const stored = await cli(w, ["show", "--flow", opened.flow], undefined, { VSTACK_FLOW_HOST: "off" });
       expect(ok(stored).revision).toBe(3);
@@ -107,16 +107,14 @@ test("a pinned supervisor starts a SQLite worker and repeated CLIs recognize its
   expect(ok(await cli(w, ["host", "status"])).host.pid).toBe(before.pid);
   const page = await fetch(opened.live.url), cookie = page.headers.get("set-cookie")!.split(";")[0]!;
   expect((await (await fetch(new URL("content", opened.live.url))).json()).revision).toBe(1);
-  const backup = [...new Bun.Glob(".vstack/tmp/*/flow/*/data/state.imported.json").scanSync({ cwd: w.home, dot: true, absolute: true })][0]!;
-  const bytes = readFileSync(backup);
-  const database = [...new Bun.Glob(".vstack/tmp/*/flow.db").scanSync({ cwd: w.home, dot: true, absolute: true })][0]!;
-  const migrated = Bun.spawnSync([process.execPath, "--eval", `import { Database } from "bun:sqlite"; const db = new Database(${JSON.stringify(database)}); db.transaction(() => db.exec("ALTER TABLE flows ADD COLUMN next_generation TEXT; CREATE TABLE next_generation (flow TEXT)")).immediate(); db.close();`], { env: ENV, stdout: "pipe", stderr: "pipe" });
-  expect(migrated.exitCode).toBe(0);
+  const backup = legacySources(w.home, "state.imported")[0]!;
+  const bytes = legacyBytes(backup);
+  futureDatabase(w.home, w.cwd);
   current(w, true);
   for (let i = 0; i < 3; i++) {
     expect(ok(await cli(w, ["show", "--flow", opened.flow], undefined, { VSTACK_FLOW_HOST: "off" })).revision).toBe(1);
     expect(ok(await cli(w, ["host", "status"])).host.pid).toBe(before.pid);
-    expect(readFileSync(backup)).toEqual(bytes);
+    expect(legacyBytes(backup)).toEqual(bytes);
   }
   const submitted = ok(await cli(w, ["submit"], contribution, { VSTACK_FLOW_HOST: "off" }));
   expect(submitted.revision).toBe(2);
@@ -150,3 +148,21 @@ test("an installed runtime missing its sealed Drizzle bundle refuses before star
   expect(opened.stderr).toContain("incomplete Flow runtime installation");
   await expect(fetch(`http://127.0.0.1:${w.port}/.host/hello`)).rejects.toThrow();
 });
+
+test("validate first refuses legacy import while the sandbox normal-home JSON host keeps serving", async () => {
+  const w = world(); homes.push(w); previous(w);
+  const opened = ok(await cli(w, ["open", "--title", "Validate before cutover", "--skill", "explain"]));
+  const before = ok(await cli(w, ["host", "status"])).host;
+  const source = legacySources(w.home)[0]!, bytes = legacyBytes(source);
+  current(w);
+  const refused = await cli(w, ["validate"], contribution);
+  expect(refused.code).toBe(1);
+  expect(refused.json.ok).toBe(false);
+  expect(refused.stderr).toContain("run any other flow-page command first");
+  expect(storageSnapshot(w.home, w.cwd)).toBeUndefined();
+  expect(legacyBytes(source)).toEqual(bytes);
+  expect((await (await fetch(new URL("content", opened.live.url))).json()).revision).toBe(1);
+  expect(ok(await cli(w, ["host", "status"])).host.pid).toBe(before.pid);
+  expect(ok(await cli(w, ["submit"], contribution)).revision).toBe(2);
+  expect(legacyBackup(source)).toEqual(bytes);
+}, 30_000);

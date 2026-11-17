@@ -101,7 +101,7 @@ if (command === "describe") {
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
 if (command !== "host" && command !== "validate") await prepareStorage(home);
-const store = projectStore(home, process.cwd());
+const store = projectStore(home, process.cwd(), command === "validate");
 const session = (opt.session as string | undefined) ?? process.env.PI_SESSION_ID ?? undefined;
 const agent = (opt.agent as string | undefined) ?? "main";
 const time = nowIso();
@@ -237,12 +237,12 @@ async function main(): Promise<object> {
         if (identity && !store.read(identity.flow)) refuse(`migrate: Flow ${identity.flow} expired or was deleted. The retained historical source cannot recreate that identity. Open a new Flow explicitly`);
         const prior = store.migratedFrom(from);
         if (prior) {
-          return locked(prior.flow.id, (folder, current) => {
+          return locked(prior.flow.id, (write, current) => {
             if (current.migrated!.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${current.flow.id}; continue authoring that Flow instead of overwriting it`);
             const repaired = captureHistoricalImages(current, from, time, migrationIo);
             if (repaired) {
               current.revision++;
-              publish(folder, current);
+              publish(write, current);
             }
             store.registerMigration({ source: from, flow: current.flow.id, sha256: historical.sha256 });
             return { flow: current.flow.id, revision: current.revision, ...(repaired ? { repaired: true } : { repeated: true }) };
@@ -262,9 +262,9 @@ async function main(): Promise<object> {
       if (opt.skill === undefined) usage("open needs --skill, the skill whose run this Stage is");
       if (opt.flow !== undefined) {
         if (opt.title !== undefined || opt.slug !== undefined) usage("--title and --slug start a new Flow; leave them out with --flow");
-        return locked(opt.flow as string, (folder, s) => {
+        return locked(opt.flow as string, (write, s) => {
           const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time, opt.parent as string | undefined);
-          publish(folder, s);
+          publish(write, s);
           return { flow: s.flow.id, stage: stage.id, revision: s.revision, bound: bind(s.flow.id, stage.id) };
         });
       }
@@ -274,10 +274,10 @@ async function main(): Promise<object> {
       if (!SLUG.test(slug)) refuse(`--slug must be lowercase words joined by hyphens, got ${JSON.stringify(slug)}`);
       const probe = newFlow("probe", slug, opt.title as string, time);
       openStage(probe, opt.skill as string, opt.ticket as string | undefined, time);
-      return store.create(slug, (id, folder) => {
+      return store.create(slug, (id, write) => {
         const s = newFlow(id, slug, opt.title as string, time);
         const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time);
-        publish(folder, s);
+        publish(write, s);
         observeAuthoring(s, stage.id);
         return { flow: id, stage: stage.id, revision: s.revision, bound: bind(id, stage.id) };
       });
@@ -285,7 +285,7 @@ async function main(): Promise<object> {
     case "bind": {
       if (opt.flow === undefined || opt.stage === undefined) usage("bind needs --flow and --stage");
       if (!session) refuse("bind needs a session: run from an omp session (which sets PI_SESSION_ID) or give --session");
-      return locked(opt.flow as string, (_folder, s) => {
+      return locked(opt.flow as string, (_write, s) => {
         const stage = stageOf(s, opt.stage as string, "bind");
         if (stage.state === "finished") refuse(`Stage ${stage.id} is finished; open a new Stage to continue the Flow`);
         bind(s.flow.id, stage.id);
@@ -302,11 +302,11 @@ async function main(): Promise<object> {
       } catch (e) {
         throw new ContributionRefusal([{ code: "invalid_json", path: "$", message: `the contribution is not valid JSON (${(e as Error).message})`, allowed: "JSON object" }]);
       }
-      const apply = (folder: FlowWrite | undefined, s: State) => {
+      const apply = (write: FlowWrite | undefined, s: State) => {
         try {
           const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
           if (command === "validate") return { ok: true, diagnostics: [] };
-          if (!repeated) publish(folder!, s);
+          if (!repeated) publish(write!, s);
           return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
         } catch (error) {
           if (error instanceof ContributionRefusal) throw error;
@@ -322,24 +322,24 @@ async function main(): Promise<object> {
     }
     case "alias": {
       const aliases = rest.map(parseAlias);
-      return locked(flowKey(), (folder, s) => {
+      return locked(flowKey(), (write, s) => {
         const added = addAliases(s, aliases);
-        if (added.length) publish(folder, s);
+        if (added.length) publish(write, s);
         return { flow: s.flow.id, revision: s.revision, added, aliases: aliasesOf(s) };
       });
     }
     case "close": {
-      return locked(flowKey(), (folder, s) => {
+      return locked(flowKey(), (write, s) => {
         closeFlow(s, time);
-        publish(folder, s);
+        publish(write, s);
         return { flow: s.flow.id, revision: s.revision, closed: time };
       });
     }
     case "reopen": {
       if (opt.skill === undefined) usage("reopen needs --skill, the skill whose run the new Stage is");
-      return locked(flowKey(), (folder, s) => {
+      return locked(flowKey(), (write, s) => {
         const stage = reopenFlow(s, opt.skill as string, opt.ticket as string | undefined, time, opt.parent as string | undefined);
-        publish(folder, s);
+        publish(write, s);
         return { flow: s.flow.id, stage: stage.id, revision: s.revision, bound: bind(s.flow.id, stage.id) };
       });
     }

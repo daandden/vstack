@@ -10,7 +10,6 @@ const script = join(checkout, "plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-store-compatibility-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
-// Captured from f73626bd before the store prefactor. Only the unchanged model and Scratch dependencies are linked.
 test("previous-release JSON imports once and pre-SQLite code refuses the renamed backups", () => {
   const project = join(root, "project");
   const home = join(root, "home");

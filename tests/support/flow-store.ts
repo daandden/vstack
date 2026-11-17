@@ -1,8 +1,90 @@
-import { mkdirSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { State } from "../../plugin/skills/flow-page/scripts/model.ts";
 import { Database } from "bun:sqlite";
 import { closedAt } from "../../plugin/skills/flow-page/scripts/model.ts";
+import { repoKey } from "../../plugin/skills/vstack-tmp/scripts/scratch.ts";
+import { createHash } from "node:crypto";
+
+export function projectStorage(home: string, cwd: string): string {
+  return join(home, ".vstack/tmp", repoKey(cwd));
+}
+
+export function legacyFlowFixture(home: string, cwd: string, id = "previous-release-ca075c"): { source: string; state: State; folder: string } {
+  const dir = join(projectStorage(home, cwd), "flow");
+  cpSync(join(import.meta.dir, "../fixtures/flow-store-previous/flow"), dir, { recursive: true });
+  const folder = join(dir, id), source = join(folder, "data/state.json");
+  return { source, state: JSON.parse(readFileSync(source, "utf8")), folder };
+}
+
+export function legacyFlow(home: string, cwd: string, id: string, state: State | string): string {
+  const source = join(projectStorage(home, cwd), "flow", id, "data/state.json");
+  mkdirSync(dirname(source), { recursive: true });
+  writeFileSync(source, typeof state === "string" ? state : JSON.stringify(state));
+  return source;
+}
+
+export function legacyBinding(home: string, cwd: string, name: string, value: unknown): string {
+  const source = join(projectStorage(home, cwd), "flow/.bindings", `${name}.json`);
+  mkdirSync(dirname(source), { recursive: true });
+  writeFileSync(source, typeof value === "string" ? value : JSON.stringify(value));
+  return source;
+}
+
+export function pendingDatabase(home: string, cwd: string): void {
+  const path = join(projectStorage(home, cwd), "flow.db");
+  mkdirSync(dirname(path), { recursive: true });
+  const db = new Database(path);
+  const migrations = join(import.meta.dir, "../../plugin/skills/flow-page/scripts/migrations");
+  const initial = readFileSync(join(migrations, "0000_broad_silver_surfer.sql"), "utf8");
+  const journal = JSON.parse(readFileSync(join(migrations, "meta/_journal.json"), "utf8"));
+  db.exec(initial);
+  db.exec("CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)");
+  db.query("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)").run(createHash("sha256").update(initial).digest("hex"), journal.entries[0].when);
+  db.close();
+}
+
+export function storageSnapshot(home: string, cwd: string) {
+  const path = join(projectStorage(home, cwd), "flow.db");
+  return existsSync(path) ? readFileSync(path) : undefined;
+}
+
+export function legacyMetadata(home: string, cwd: string, id: string, name: string, bytes: string): string {
+  const path = name === "migration" ? join(projectStorage(home, cwd), "flow/.migrations", id) : join(projectStorage(home, cwd), "flow", id, "data", `${name}.json`);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, bytes);
+  return path;
+}
+
+export function legacyBytes(source: string): Buffer { return readFileSync(source); }
+export function legacyBackup(source: string): Buffer { return readFileSync(source.replace(/\.json$/, ".imported.json")); }
+export function legacyExists(source: string): boolean { return existsSync(source); }
+export function legacySources(home: string, name = "state"): string[] {
+  return [...new Bun.Glob(`.vstack/tmp/*/flow/*/data/${name}.json`).scanSync({ cwd: home, dot: true, absolute: true })];
+}
+export function legacyCompanion(source: string, name: string): string { return join(dirname(source), `${name}.json`); }
+export function futureDatabase(home: string, cwd: string): void {
+  const db = new Database(join(projectStorage(home, cwd), "flow.db"));
+  db.exec("ALTER TABLE flows ADD COLUMN future_nullable TEXT; ALTER TABLE flows ADD COLUMN future_default TEXT NOT NULL DEFAULT ''; CREATE TABLE future_data (flow TEXT, value TEXT); CREATE INDEX future_index ON future_data(flow)");
+  db.close();
+}
+export function refuseFlowDeletion(home: string, flow: string): void {
+  const { db } = stored(home, flow);
+  db.exec("CREATE TRIGGER refuse_flow_delete BEFORE DELETE ON flows BEGIN SELECT RAISE(ABORT, 'fixture deletion refusal'); END");
+  db.close();
+}
+export function prepareLegacyImport(home: string, cwd: string) {
+  const fixture = legacyFlowFixture(home, cwd);
+  fixture.state.aliases.push("folder:earlier-folder", "ticket:Org/Repo/51");
+  writeFileSync(fixture.source, JSON.stringify(fixture.state));
+  writeFileSync(join(fixture.folder, "observation-project.json"), JSON.stringify({ cwd, stage: "stage-1" }));
+  const comments = { version: 1, comments: [{ id: "imported-comment", stage: "stage-1", result: "historical-result", revision: 1, edit: null, anchor: { kind: "block" }, text: "Saved before SQLite", time: "2026-11-16T00:00:00Z" }] };
+  const learning = { version: 1, attempts: [{ id: "imported-attempt", result: "historical-result", revision: 1, question: "q1", answer: "a", correct: true, time: "2026-11-16T00:00:00Z" }], completed: [{ result: "historical-result", revision: 1 }] };
+  legacyMetadata(home, cwd, fixture.state.flow.id, "comments", JSON.stringify(comments));
+  legacyMetadata(home, cwd, fixture.state.flow.id, "learning", JSON.stringify(learning));
+  writeFileSync(join(projectStorage(home, cwd), "flow/.ids/expired-flow"), "expired-flow");
+  return { ...fixture, comments, learning };
+}
 
 function stored(home: string, flow: string) {
   for (const path of new Bun.Glob(".vstack/tmp/*/flow.db").scanSync({ cwd: home, dot: true, absolute: true })) {

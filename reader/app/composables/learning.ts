@@ -1,4 +1,5 @@
 import type { Quiz } from "#flow/model.ts";
+import type { Learning } from "#flow/host-api.ts";
 
 export type Attempt = { id: string; result: string; revision: number; question: string; answer: string };
 type Saved = { attempts: Attempt[]; accepted: string[] };
@@ -45,7 +46,7 @@ export async function syncLearning() {
       ? { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: 1, attempts: pending }) }
       : { credentials: "same-origin", cache: "no-store" });
     if (!r.ok) throw new Error(`learning sync ${r.status}`);
-    const progress = (await r.json()) as { attempts: Attempt[] };
+    const progress = (await r.json()) as Learning;
     merge(progress.attempts, progress.attempts.map((a) => a.id));
     syncError.value = false;
     save();

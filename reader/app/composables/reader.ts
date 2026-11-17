@@ -1,4 +1,5 @@
 import { flowOf, type Content, type Flow, type Observations } from "~/utils/flow";
+import type { Versions } from "#flow/host-api.ts";
 import { goTo, readingAnchor, restoreReadingAnchor, tab } from "~/composables/navigation";
 import { refreshComments } from "~/composables/comments";
 import { reloadReader } from "~/composables/reload";
@@ -38,7 +39,7 @@ export function startReader() {
   let seenReader = loadedReader;
   const poll = async () => {
     try {
-      const versions = await fetchJson<{ revision: number; observationVersion: string; hostGeneration: string; readerGeneration: string }>("versions");
+      const versions = await fetchJson<Versions>("versions");
       if (seenReader && versions.readerGeneration !== seenReader) {
         try {
           reloadReader();

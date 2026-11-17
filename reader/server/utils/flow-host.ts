@@ -1,5 +1,5 @@
 import { defineEventHandler, type H3Event } from "h3";
-import type { FlowHost } from "#flow/host-api.ts";
+import type { FlowHost } from "#flow/host-entry.ts";
 
 const runtime: { host: FlowHost } = await import(process.env.VSTACK_FLOW_MODULE!);
 export const host = runtime.host;

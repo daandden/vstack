@@ -22,7 +22,6 @@ function open(path: string) {
       Bun.sleepSync(10);
     }
   }
-  // Lock before reading the journal. A concurrent opener waits, then sees the committed schema.
   sqlite.transaction(() => {
     sqlite.exec("CREATE TABLE IF NOT EXISTS __drizzle_migrations (id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)");
     const latest = sqlite.query<{ created_at: number }, []>("SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1").get();
@@ -34,7 +33,15 @@ function open(path: string) {
   }).immediate();
   return { sqlite, db: drizzle(sqlite, { schema }) };
 }
-export function projectDatabase(path: string) {
+export function projectDatabase(path: string, readonly = false) {
+  if (readonly) {
+    const sqlite = new Database(path, { readonly: true, strict: true });
+    try {
+      const latest = sqlite.query<{ created_at: number }, []>("SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1").get();
+      if (migrations.some(migration => !latest || latest.created_at < migration.folderMillis)) throw new Error("pending schema migrations");
+      return { sqlite, db: drizzle(sqlite, { schema }) };
+    } catch (error) { sqlite.close(); throw error; }
+  }
   let connection = connections.get(path);
   if (!connection) { connection = open(path); connections.set(path, connection); }
   return connection;

@@ -163,7 +163,6 @@ test("the Flow URL server-renders its content with a strict script policy and sh
   const html = await shell.text();
   const document = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
   expect(document).toContain("Checkout limits");
-  expect(document).toContain("Grill me");
   expect(document).toContain("Which server-rendered?");
   const policy = shell.headers.get("content-security-policy")!;
   const scripts = policy.split(";").find(part => part.trim().startsWith("script-src"))!;

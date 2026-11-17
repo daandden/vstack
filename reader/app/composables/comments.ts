@@ -1,4 +1,5 @@
 import type { CommentAnchor, ReaderComment } from "#flow/comments.ts";
+import type { Comments, HostError } from "#flow/host-api.ts";
 
 export const readerComments = shallowRef<ReaderComment[]>([]);
 let previous = "";
@@ -8,7 +9,7 @@ export async function refreshComments() {
   if (!response.ok) throw new Error(`Could not load Reader comments (${response.status}).`);
   const raw = await response.text();
   if (raw !== previous) {
-    readerComments.value = (JSON.parse(raw) as { comments: ReaderComment[] }).comments;
+    readerComments.value = (JSON.parse(raw) as Comments).comments;
     previous = raw;
   }
 }
@@ -31,10 +32,10 @@ async function changeComment(input: object) {
     body: JSON.stringify(input), signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) {
-    const body = await response.json() as { error?: string };
+    const body = await response.json() as HostError;
     throw new Error(body.error ?? `Could not save Reader comment (${response.status}).`);
   }
   const body = await response.text();
-  readerComments.value = (JSON.parse(body) as { comments: ReaderComment[] }).comments;
+  readerComments.value = (JSON.parse(body) as Comments).comments;
   previous = body;
 }

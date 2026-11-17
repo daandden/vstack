@@ -29,13 +29,17 @@ export class FlowStore {
   private opened?: ReturnType<typeof projectDatabase>;
   private get connection() {
     if (!this.opened) {
-      this.opened = projectDatabase(join(this.scratch, "flow.db"));
-      this.importJson();
+      try { this.opened = projectDatabase(join(this.scratch, "flow.db"), this.readonly); }
+      catch (error) {
+        if (this.readonly) throw new Refusal(`validate needs prepared storage (${(error as Error).message}); run any other flow-page command first`);
+        throw error;
+      }
+      if (!this.readonly) this.importJson();
     }
     return this.opened;
   }
   private get db() { return this.connection.db; }
-  constructor(private readonly dir: string, private readonly confined = false) {}
+  constructor(private readonly dir: string, private readonly confined = false, private readonly readonly = false) {}
   get scratch(): string { return dirname(this.dir); }
   get key(): string { return basename(this.scratch); }
   contains(path: string): boolean { return path === this.dir || path.startsWith(this.dir + sep); }
@@ -57,6 +61,7 @@ export class FlowStore {
   }
   read(id: string): State | undefined { return this.folder(id) ? upgrade(this.row(id)!.state) : undefined; }
   revision(id: string): number | undefined {
+    if (this.pendingImport(id)) throw new Refusal("validate cannot import legacy JSON; run any other flow-page command first");
     return this.folder(id) ? this.db.select({ revision: flows.revision }).from(flows).where(eq(flows.id, id)).get()?.revision : undefined;
   }
   summary(id: string) {
@@ -64,13 +69,26 @@ export class FlowStore {
     return row && this.folder(id) ? { flow: row.id, revision: row.revision, aliases: this.db.select({ alias: aliases.alias }).from(aliases).where(eq(aliases.flow, id)).orderBy(aliases.position).all().map(a => a.alias) } : undefined;
   }
   hasId(id: string): boolean { return this.db.select().from(identities).where(eq(identities.id, id)).get() !== undefined; }
-  find(alias: string): State[] { return this.findIds(alias).flatMap(({ flow }) => { const state = this.read(flow.id); return state ? [state] : []; }); }
   findIds(alias: string): { flow: { id: string } }[] {
+    if (this.pendingImport(alias)) throw new Refusal("validate cannot import legacy JSON; run any other flow-page command first");
     return this.db.select({ id: aliases.flow }).from(aliases).where(eq(aliases.lookup, lookup(alias))).all().map(row => ({ flow: { id: row.id } }));
   }
   migratedFrom(source: string): State | undefined { const identity = this.migration(source); return identity && this.read(identity.flow); }
   binding(session: string, agent: string): Binding | undefined {
-    if (!this.opened && !existsSync(join(this.scratch, "flow.db")) && !existsSync(join(this.dir, ".bindings"))) return undefined;
+    if (!this.readonly && !this.opened && !existsSync(join(this.scratch, "flow.db")) && !existsSync(join(this.dir, ".bindings"))) return undefined;
+    if (this.readonly) {
+      this.connection;
+      const dir = join(this.dir, ".bindings");
+      for (const name of existsSync(dir) ? readdirSync(dir) : []) {
+        const path = join(dir, name);
+        if (name.endsWith(".imported.json") || !lstatSync(path).isFile()) continue;
+        let saved: Binding;
+        try { saved = JSON.parse(readFileSync(path, "utf8")); } catch { continue; }
+        if (saved?.session === session && saved.agent === agent && typeof saved.flow === "string" && (this.row(saved.flow) || this.pendingImport(saved.flow, true))) {
+          throw new Refusal("validate cannot import legacy JSON; run any other flow-page command first");
+        }
+      }
+    }
     return this.db.select().from(bindings).where(and(eq(bindings.session, session), eq(bindings.agent, agent))).get()?.data;
   }
   bind(binding: Binding): void {
@@ -165,30 +183,62 @@ export class FlowStore {
     const base = realpathSync(join(folder, "assets")), path = join(base, file);
     return base.startsWith(realpathSync(folder) + sep) && lstatSync(path).isFile() && realpathSync(path) === path ? path : undefined;
   }
+  private pendingImport(key: string, binding = false): boolean {
+    if (!this.readonly) return false;
+    this.connection;
+    if (!existsSync(this.dir)) return false;
+    const folder = key.includes(":") ? undefined : this.row(key)?.folder;
+    for (const entry of readdirSync(this.dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || !SLUG.test(entry.name)) continue;
+      const path = join(this.dir, entry.name, "data/state.json");
+      if (!existsSync(path) || !lstatSync(path).isFile() || realpathSync(path) !== path) continue;
+      if (!binding && (entry.name === key || entry.name === folder || lookup(`folder:${entry.name}`) === lookup(key))) return true;
+      try {
+        const state = upgrade(JSON.parse(readFileSync(path, "utf8")));
+        if (!SLUG.test(state.flow.id)) continue;
+        if (!binding && state.flow.id === key) return true;
+        if (binding ? state.flow.id !== key : this.row(state.flow.id) || !aliasesOf(state).some(alias => lookup(alias) === lookup(key))) continue;
+        for (const name of ["data/comments.json", "data/learning.json", "observation-project.json"]) {
+          const source = join(this.dir, entry.name, name);
+          if (!existsSync(source)) continue;
+          if (!lstatSync(source).isFile() || realpathSync(source) !== source) throw new Error("import source is not a regular file");
+          JSON.parse(readFileSync(source, "utf8"));
+        }
+        return true;
+      } catch {}
+    }
+    return false;
+  }
   private importJson(): void {
     if (!existsSync(this.dir)) return;
-    const files = (at: string) => existsSync(at) ? readdirSync(at).map(name => join(at, name)).filter(path => lstatSync(path).isFile()) : [];
+    const files = (at: string) => existsSync(at) ? readdirSync(at).map(name => join(at, name)).filter(path => lstatSync(path).isFile() && !path.endsWith(".imported.json")) : [];
+    const report = (subject: string, path: string, error: unknown) => process.stderr.write(`flow-page.ts: legacy import failed for ${subject} from ${path}: ${String(error instanceof Error ? error.message : error).replace(/[\r\n]+/g, " ")}\n`);
     this.migrating(() => {
       for (const path of files(join(this.dir, ".ids"))) if (SLUG.test(basename(path))) this.db.insert(identities).values({ id: basename(path) }).onConflictDoNothing().run();
-      for (const path of files(join(this.dir, ".migrations"))) {
-        try { const identity = JSON.parse(readFileSync(path, "utf8")) as MigrationIdentity; if (!this.migration(identity.source)) this.registerMigration(identity); } catch {}
-      }
     });
+    for (const path of files(join(this.dir, ".migrations"))) {
+      try {
+        const identity = JSON.parse(readFileSync(path, "utf8")) as MigrationIdentity;
+        this.migrating(() => { if (!this.migration(identity.source)) this.registerMigration(identity); });
+        renameSync(path, `${path}.imported.json`);
+      } catch (error) { report(`migration identity ${basename(path)}`, path, error); }
+    }
     for (const entry of readdirSync(this.dir, { withFileTypes: true })) {
       if (!entry.isDirectory() || !SLUG.test(entry.name)) continue;
       const folder = join(this.dir, entry.name), path = join(folder, "data", "state.json");
       if (!existsSync(path) || !lstatSync(path).isFile() || realpathSync(path) !== path) continue;
+      let source = path;
       try {
         this.migrating(() => {
           if (!existsSync(path)) return;
           const state = upgrade(JSON.parse(readFileSync(path, "utf8")));
           if (!SLUG.test(state.flow.id)) throw new Error("invalid imported Flow id");
           if (!this.row(state.flow.id)) {
-            const data = (name: string) => {
-              const at = join(folder, name);
-              if (!existsSync(at)) return undefined;
-              if (!lstatSync(at).isFile() || realpathSync(at) !== at) throw new Error("import source is not a regular file");
-              return JSON.parse(readFileSync(at, "utf8"));
+            const data = (at: string) => {
+              source = join(folder, at);
+              if (!existsSync(source)) return undefined;
+              if (!lstatSync(source).isFile() || realpathSync(source) !== source) throw new Error("import source is not a regular file");
+              return JSON.parse(readFileSync(source, "utf8"));
             };
             addAliases(state, [`folder:${entry.name}`]);
             this.save(folder, state);
@@ -196,19 +246,21 @@ export class FlowStore {
             if (comments) this.db.insert(readerComments).values({ flow: state.flow.id, data: comments }).run();
             if (learning) this.db.insert(learningProgress).values({ flow: state.flow.id, data: learning }).run();
             if (context) this.saveObservation(state.flow.id, context);
-            for (const binding of files(join(this.dir, ".bindings"))) {
-              const saved = JSON.parse(readFileSync(binding, "utf8")) as Binding;
-              if (saved.flow === state.flow.id) this.bind(saved);
-            }
           }
         });
         for (const name of ["state", "comments", "learning"]) {
-          const source = join(folder, "data", `${name}.json`);
+          source = join(folder, "data", `${name}.json`);
           if (existsSync(source)) renameSync(source, join(folder, "data", `${name}.imported.json`));
         }
-      } catch {
-        // Keep this Flow's source for the next open without blocking other imports.
-      }
+      } catch (error) { report(`Flow ${entry.name}`, source, error); }
+    }
+    for (const path of files(join(this.dir, ".bindings")).filter(path => !path.endsWith(".imported.json"))) {
+      try {
+        const saved = JSON.parse(readFileSync(path, "utf8")) as Binding;
+        if (!this.row(saved.flow)) continue;
+        this.migrating(() => this.bind(saved));
+        renameSync(path, path.replace(/\.json$/, ".imported.json"));
+      } catch (error) { report(`binding ${basename(path)}`, path, error); }
     }
   }
   retention(path: string, st: Stats): FlowRetentionEntry {
@@ -257,7 +309,7 @@ export class FlowStore {
   }
 }
 
-export const projectStore = (home: string, cwd: string): FlowStore => new FlowStore(flowsDir(home, cwd));
+export const projectStore = (home: string, cwd: string, readonly = false): FlowStore => new FlowStore(flowsDir(home, cwd), false, readonly);
 export function hostedStore(home: string, key: string): FlowStore | undefined {
   if (!/^[^./\\\x00][^/\\\x00]*$/.test(key)) return undefined;
   const dir = join(scratchRoot(home), key, FLOW_KIND);

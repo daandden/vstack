@@ -9,7 +9,8 @@ import { comments } from "./comments.ts";
 import { hostedStore } from "./store.ts";
 import { writeAtomic } from "./files.ts";
 import { observations, observationVersion, observing } from "./observations.ts";
-import type { FlowHost, FlowRoute } from "./host-api.ts";
+import type { Content, PickerPresence, Presence, Versions } from "./host-api.ts";
+import type { FlowHost, FlowRoute } from "./host-entry.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });
 const home = values.home!;
@@ -28,7 +29,6 @@ const origin = originOf(port);
 let active = 0;
 let last = Date.now();
 let stopping = false;
-type PickerPresence = { key: string; flow: string; stage: string; session: string; picker: string; questions: string[]; expires: number };
 const pickers = new Map<string, PickerPresence>();
 const pickerKey = (p: Pick<PickerPresence, "key" | "session">) => JSON.stringify([p.key, p.session]);
 function presences(key: string, flow: string): PickerPresence[] {
@@ -184,7 +184,7 @@ async function flow(req: Request, endpoint: FlowRoute): Promise<Response> {
     const observed = observations(store!, key, { flow: { id }, aliases: summary.aliases });
     return response(req.method === "HEAD" ? null : JSON.stringify({
       revision: summary.revision, observationVersion: observationVersion(observed), hostGeneration: instance, readerGeneration: readerVersion,
-    }), 200, { "Content-Type": "application/json" });
+    } satisfies Versions), 200, { "Content-Type": "application/json" });
   }
   const s = store?.read(id);
   if (!store || !s || s.flow.id !== id) return missing();
@@ -201,7 +201,7 @@ async function flow(req: Request, endpoint: FlowRoute): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
   if (endpoint === "shell" || endpoint === "content") {
     const content = view(s);
-    const initial = { ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) };
+    const initial = { ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) } satisfies Content;
     if (endpoint === "content") return json(initial);
     return response(req.method === "HEAD" ? null : JSON.stringify({ content: initial, hostGeneration: instance, readerGeneration: readerVersion }), 200, {
       "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
@@ -209,7 +209,7 @@ async function flow(req: Request, endpoint: FlowRoute): Promise<Response> {
     });
   }
   if (endpoint === "observations") return json(observations(store, key, s));
-  if (endpoint === "presence") return json({ presences: presences(key, id) });
+  if (endpoint === "presence") return json({ presences: presences(key, id) } satisfies Presence);
   if (endpoint !== "assets") return missing();
   let file: string;
   try { file = decodeURIComponent(m[4].slice(8)); } catch { return missing(); }
