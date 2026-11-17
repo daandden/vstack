@@ -16,6 +16,22 @@ tern.css("popup", [[
 	backdrop-filter: var(--modal-filter);
 	box-shadow: var(--modal-shadow, 0 0 0 1px var(--l2)), 0 0 0 4000px var(--modal-dim);
 }
+:root:root:root .tn-pane.pip[aria-label^="Scratch cleanup,"] > .tn-head > :is(.tn-cwd, .tn-git) {
+	display: none;
+}
+.sf-main[data-surface="plugin.vstack-clean.popup"] .sf-tbl-row > .sf-tbl-c:first-child > .sf-tbl-ic {
+	width: 1.15em;
+	height: 1.15em;
+	border-radius: 0.3em;
+}
+.sf-main[data-surface="plugin.vstack-clean.popup"] .sf-tbl-row > .sf-tbl-c:first-child > .sf-tbl-ic[data-tone="accent"] {
+	color: var(--grad-ink);
+	background: var(--grad, var(--accent-fill));
+}
+.sf-main[data-surface="plugin.vstack-clean.popup"] .sf-tbl-row > .sf-tbl-c:first-child > .sf-tbl-ic[data-tone="accent"] .ico {
+	width: 0.8em;
+	height: 0.8em;
+}
 ]])
 
 -- Popup panes whose first focus has landed; a later focus elsewhere closes them. Which panes are popups is read from

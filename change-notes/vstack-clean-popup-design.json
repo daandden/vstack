@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The `/vstack-clean` popup now uses Tern's native components. Stat tiles show the expired count and size, the kept count, the oldest entry, and the selection. Rows sort oldest first, then largest. Each row shows a checkbox, a kind badge, an age dot, and a size bar. The age dot turns orange at twice the age you asked for and red at three times. Delete opens a modal sheet that lists each ticked entry. The outcome shows Deleted, Freed, and Skipped tiles and one row per entry. An empty Scratch shows a `Scratch is clean` card, and a failed listing shows its error with a Retry button. Select all reads Clear all once every row is ticked."
+  ]
+}
