@@ -100,9 +100,9 @@ After changing the database source, schema, or Drizzle version, run `bun scripts
 
 ### Flow reader delivery
 
-The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.
+The reader source and HTTP routes live in one Nuxt project under `reader/`. The reader remains client-rendered. Its production shell and browser assets ship under `plugin/skills/flow-page/reader/`, with the self-contained Nitro Bun server at `server/index.mjs` inside that directory. Installation and normal launch require no build or development server.
 
-When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
+When reader or server source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. `reader/build.ts` generates the client shell, builds Nitro with the Bun preset, and bundles the server's dependencies into one Bun module. The Bun entry preserves the original Request, including its abort signal, for streaming publication holds. `reader/ship.ts` copies the complete output and seals the runtime manifest. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
 
 After changing Flow runtime scripts or their shipped dependencies, run `bun plugin/skills/flow-page/scripts/generation.ts seal`. Commit `plugin/skills/flow-page/runtime.json` with those changes. The reader shipment command also seals this manifest after copying the complete reader. It records every Flow script, reader file, and shipped Scratch and figure script by hash. Do not seal a partial installation.
 
@@ -112,7 +112,9 @@ Nuxt's font provider is local-only, and icons come from the installed Lucide col
 
 Each question shows its current outcome under its title. Explicit picks, readings of written answers, and non-consent remain distinct. Choices jumps to the options. Evidence jumps to the question's context and figures, which stay expanded. A re-asked question links directly to its latest attempt. The outcome uses the same effective answer projection as Overview and `show`, including withdrawn readings.
 
-The installed Local Flow host checks the complete runtime manifest before staging a replacement. Its stable listener keeps forwarding requests to the last good generation until the candidate starts and authenticates. Replacement retains the port, credentials, and Flow links. Failed startup or mismatched installed files leave the last good generation active. Explicit isolated development hosts keep exact-byte compatibility and require their owner's authenticated stop after code changes. Agents have no new authority to restart the normal shared host. Committed content stays committed when the host is unavailable.
+The installed Local Flow host checks the complete runtime manifest before staging a replacement. Its stable listener keeps forwarding requests to the last good generation until the candidate starts and authenticates. The existing `flow-page/scripts/host.ts` generation entry still accepts home, port, and idle arguments, sends the IPC ready message, and attests through hello. It now starts the built Nitro server. The bundled output stays inside the existing reader runtime root, so an older supervisor's fixed file and package copier can stage it without extra installed packages. Replacement retains the port, credentials, and Flow links. Failed startup or mismatched installed files leave the last good generation active. Explicit isolated development hosts keep exact-byte compatibility and require their owner's authenticated stop after code changes. Agents have no new authority to restart the normal shared host. Committed content stays committed when the host is unavailable.
+
+The first SQLite update is the exception to keeping a failed candidate's predecessor. The CLI stops a JSON-only host before import, so it cannot keep serving frozen JSON after a failed launch. A SQLite worker's authenticated `/.host/storage` route stays available through older supervisors. The `versions` route reads the indexed revision and aliases without loading the Flow's State.
 
 Open readers detect host replacement separately from authored revisions and refresh content after reconnect. A changed reader generation reloads the page automatically. The reader saves open Reader comment drafts, their original Result revision and target, the fragment, disclosures, and reading position in tab-local session storage before reload. Restoring a draft never submits it. An in-flight comment write or unavailable recovery storage delays reload and keeps the current page and drafts visible. Automatic reload also retains the visit comparison's original baseline; an ordinary later visit still uses the normal browser-local visit marker.
 
@@ -487,9 +489,9 @@ Consult the skill instead of maintaining a second copy of its procedure here:
 
 Run `bun run test` for the full suite through `scripts/test.ts`. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so the runner passes the timeout to every Bun test command.
 
-The test runner checks the candidate's Nuxt CLI, Playwright, and installed Chromium first. It builds the reader into a temporary directory before running non-browser tests, then runs each browser file in its own process. Missing tools fail early with the required dependency named. A failed preparation or test stops the runner before later phases. When gates sets `VSTACK_GATE_PHASE_REPORT`, the runner records the real candidate-reader readiness, candidate-reader build, non-browser, and browser phases through the same measured report.
+The test runner checks the candidate's Nuxt CLI, Playwright, and installed Chromium first. It builds the shell and Nitro server into a temporary directory before running non-browser tests, then runs each browser file in its own process. Missing tools fail early with the required dependency named. A failed preparation or test stops the runner before later phases. When gates sets `VSTACK_GATE_PHASE_REPORT`, the runner records the real candidate-reader readiness, candidate-reader build, non-browser, and browser phases through the same measured report.
 
-Browser tests receive only the temporary candidate assets. The `readerProof` JSON line records source and asset SHA-256 identities alongside the runtime. Temporary build and asset directories are deleted on completion or failure. Neither `reader/.nuxt`, `reader/.output`, nor the shipped bundle is replaced.
+Browser tests receive only the temporary candidate assets and server. The `readerProof` JSON line records source and asset SHA-256 identities alongside the runtime. Temporary build directories are deleted on completion or failure. Neither `reader/.nuxt`, `reader/.output`, nor the shipped bundle is replaced.
 
 Run a focused browser file through the same preparation route:
 
@@ -497,7 +499,7 @@ Run a focused browser file through the same preparation route:
 bun scripts/test.ts tests/flow-reader-foundation.browser.test.ts
 ```
 
-Direct `bun test` bypasses candidate preparation. It is suitable for focused non-browser tests, not evidence that a reader change works. `FLOW_READER_ASSETS` selects the prepared reader only for isolated `--home` hosts. The final integration still runs `bun run reader:build`, full maintainer gates, and independent verification of the final head.
+Direct `bun test` bypasses candidate preparation. It is suitable for focused non-browser tests, not evidence that a reader change works. `FLOW_READER_ASSETS` and `FLOW_READER_SERVER` select the prepared app only for isolated `--home` hosts. Both are refused for the normal host. The final integration still runs `bun run reader:build`, full maintainer gates, and independent verification of the final head.
 
 The script runs every `*.browser.test.ts` file in its own Bun process after the other tests. Bun 1.3.14 closes Playwright's extra Chromium stdio descriptors a second time during garbage collection, and a later test's subprocess can own those numbers by then ([microsoft/playwright#42692](https://github.com/microsoft/playwright/issues/42692)). On Linux this throws `EBADF` in an unrelated test or leaves its subprocess wait hanging.
 

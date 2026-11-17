@@ -38,7 +38,7 @@ export const readerDir = resolve(process.env.FLOW_READER_ASSETS ?? join(import.m
 /** Every file of the shipped reader by its path relative to `readerDir`, sorted, or an error when it is not built. */
 export function readerBundle(): Map<string, Uint8Array<ArrayBuffer>> {
   const files = new Map<string, Uint8Array<ArrayBuffer>>();
-  try { walkFiles(readerDir, (path, full) => files.set(path, readFileSync(full))); } catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
+  try { walkFiles(readerDir, (path, full) => files.set(path, readFileSync(full)), { skip: name => name === "server" }); } catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
   if (!files.has("index.html")) throw new Error(`the Flow reader is not built: ${join(readerDir, "index.html")} is missing; run vp run reader:build in the vstack checkout`);
   return files;
 }
@@ -47,7 +47,7 @@ export function readerBundle(): Map<string, Uint8Array<ArrayBuffer>> {
 export function version(bundle = readerBundle()): string {
   const hash = createHash("sha256").update(`flow-host-v3\n${Bun.version}\n`);
   for (const [path, bytes] of runtimeFiles(skillsRoot)) {
-    if (!path.startsWith("flow-page/reader/")) hash.update(`source\n${path}\n`).update(bytes);
+    if (!path.startsWith("flow-page/reader/") || path.startsWith("flow-page/reader/server/")) hash.update(`source\n${path}\n`).update(bytes);
   }
   for (const [path, bytes] of bundle) hash.update(`reader\n${path}\n${bytes.length}\n`).update(bytes);
   return hash.digest("hex");
@@ -107,7 +107,7 @@ export async function prepareStorage(home: string): Promise<void> {
 type Ready = { port: number; secret: Secrets };
 async function ensure(home: string): Promise<Ready> {
   mkdirSync(hostDir(home), { recursive: true, mode: 0o700 });
-  if (process.env.FLOW_READER_ASSETS && isNormalHome(home)) throw new Error("FLOW_READER_ASSETS requires an isolated --home; candidate reader proof cannot replace the normal host");
+  if ((process.env.FLOW_READER_ASSETS || process.env.FLOW_READER_SERVER) && isNormalHome(home)) throw new Error("FLOW_READER_ASSETS and FLOW_READER_SERVER require an isolated --home; candidate reader proof cannot replace the normal host");
   return withLock(hostDir(home), async () => {
     const secret = secrets(home);
     const port = record(home)?.port ?? hostPort();
@@ -128,7 +128,7 @@ async function ensure(home: string): Promise<Ready> {
     try {
       const managed = isNormalHome(home);
       child = spawn(process.execPath, [join(import.meta.dir, managed ? "managed-host.ts" : "host.ts"), "--home", home, "--port", String(port), "--idle", String(idleSeconds())], {
-        cwd: hostDir(home), detached: true, stdio: ["ignore", fd, fd], env: { PATH: process.env.PATH, HOME: home, FLOW_READER_ASSETS: process.env.FLOW_READER_ASSETS },
+        cwd: hostDir(home), detached: true, stdio: ["ignore", fd, fd], env: { PATH: process.env.PATH, HOME: home, FLOW_READER_ASSETS: process.env.FLOW_READER_ASSETS, FLOW_READER_SERVER: process.env.FLOW_READER_SERVER },
       });
     } finally { closeSync(fd); }
     let ended: string | undefined;

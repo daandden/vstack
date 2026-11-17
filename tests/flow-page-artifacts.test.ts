@@ -50,7 +50,7 @@ test("an HTML bundle is captured once and runs only on an isolated read-only vie
   expect(await (await fetch(new URL("app.js", viewer))).text()).toBe(readFileSync(join(root, "app.js"), "utf8"));
   writeFileSync(join(root, "app.js"), "throw new Error('changed source');");
   expect(await (await fetch(new URL("app.js", viewer))).text()).not.toContain("changed source");
-  for (const path of ["unregistered.js", "../data/state.json", "/.host/hello", "/author", "/merge", "/_flow-reader/missing.js"]) {
+  for (const path of ["unregistered.js", "../data/state.json", "/.host/hello", new URL(opened.live.url).pathname, `${new URL(opened.live.url).pathname}content`, "/author", "/merge", "/_flow-reader/missing.js"]) {
     expect((await fetch(new URL(path, viewer))).status).toBeGreaterThanOrEqual(400);
   }
   expect((await fetch(viewer, { method: "POST", body: "{}" })).status).toBe(405);

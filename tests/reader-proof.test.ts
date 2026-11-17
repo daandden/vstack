@@ -22,11 +22,28 @@ afterEach(() => { for (const f of fixtures.splice(0)) rmSync(f.dir, { recursive:
 function fixture(dependencies = true) {
   const f = lifecycleFixture(); fixtures.push(f);
   cpSync(join(repo, "plugin"), join(f.root, "plugin"), { recursive: true });
+  cpSync(join(repo, "reader/server"), join(f.root, "reader/server"), { recursive: true });
   const manifest: { scripts: { test: string } } = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
   const script = manifest.scripts.test.replace("scripts/test.ts", join(repo, "scripts/test.ts"));
   writeFiles(f.root, {
     "package.json": JSON.stringify({ type: "module", scripts: { test: script } }),
-    "reader/nuxt.config.ts": `export default defineNuxtConfig({ ssr: false, telemetry: false, devtools: { enabled: false }, app: { buildAssetsDir: '/_flow-reader/' } });`,
+    "reader/build.ts": readFileSync(join(repo, "reader/build.ts"), "utf8"),
+    "reader/nuxt.config.ts": `import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const shell = process.env.FLOW_READER_SHELL === '1';
+export default defineNuxtConfig({
+  ssr: false, telemetry: false, devtools: { enabled: false },
+  experimental: { noVueServer: !shell },
+  app: { buildAssetsDir: '/_flow-reader/' },
+  nitro: {
+    preset: shell ? 'static' : 'bun',
+    ...(!shell ? { entry: new URL('./server/entry.ts', import.meta.url).pathname } : {}),
+    ignore: shell ? ['**/routes/**'] : [], serveStatic: false,
+    esbuild: { options: { target: 'esnext' } },
+    externals: { trace: false },
+    alias: { hookable: createRequire(require.resolve('nitropack/package.json')).resolve('hookable') }
+  }
+});`,
     "tests/control.test.ts": `import { test } from 'bun:test'; import { writeFileSync } from 'node:fs'; test('ordinary fixture phase runs', () => { writeFileSync('ordinary-ran', 'yes'); });`,
     "reader/app/app.vue": `<template><h1>Candidate reader behavior</h1></template>`,
     "plugin/skills/flow-page/reader/index.html": "<h1>Stale shipped behavior</h1>",
@@ -60,7 +77,7 @@ test("maintainer gates render candidate source despite stale shipped assets and 
   const shipped = readFileSync(join(f.root, "plugin/skills/flow-page/reader/index.html"), "utf8");
   const result = await f.run(f.root, ["gates", "--scratch", join(f.dir, "scratch")], f.env);
   if (process.env.READER_PROOF_EVIDENCE) writeFileSync(join(process.env.READER_PROOF_EVIDENCE, "candidate-gates.json"), result.stdout);
-  expect(result.code).toBe(0);
+  expect(result.code, result.stdout + result.stderr).toBe(0);
   const stage = testStage(result.stdout);
   expect(stage.ok).toBe(true);
   const { readerProof: receipt }: { readerProof: ReaderProof } = JSON.parse(stage.output.split("\n").find(line => line.startsWith('{"readerProof":'))!);

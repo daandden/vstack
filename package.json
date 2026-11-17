@@ -8,7 +8,7 @@
     "typecheck": "bun --bun tsc --project tsconfig.bun.json",
     "reader:prepare": "bun --bun nuxt prepare reader",
     "reader:typecheck": "bun run reader:prepare && bun --bun vue-tsc --build reader/tsconfig.json --noEmit",
-    "reader:build": "nuxt generate reader && bun reader/ship.ts"
+    "reader:build": "bun reader/build.ts && bun reader/ship.ts"
   },
   "dependencies": {
     "drizzle-orm": "0.45.1",

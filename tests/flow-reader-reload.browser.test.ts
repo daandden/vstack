@@ -18,6 +18,10 @@ test("served generation swaps refresh unchanged content and reload readers witho
     rmSync(join(skills, "flow-page/reader"), { recursive: true });
     cpSync(process.env.FLOW_READER_ASSETS, join(skills, "flow-page/reader"), { recursive: true });
   }
+  if (process.env.FLOW_READER_SERVER) {
+    mkdirSync(join(skills, "flow-page/reader/server"), { recursive: true });
+    cpSync(process.env.FLOW_READER_SERVER, join(skills, "flow-page/reader/server/index.mjs"));
+  }
   symlinkSync(join(import.meta.dir, "../node_modules"), join(root, "plugin/node_modules"));
   const installed = join(home, ".omp/plugins/node_modules");
   mkdirSync(installed, { recursive: true });
@@ -30,7 +34,7 @@ test("served generation swaps refresh unchanged content and reload readers witho
   const listener = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
   const port = listener.port;
   listener.stop(true);
-  const { FLOW_READER_ASSETS: _candidate, ...envWithoutCandidateReader } = ENV;
+  const { FLOW_READER_ASSETS: _candidateAssets, FLOW_READER_SERVER: _candidateServer, ...envWithoutCandidateReader } = ENV;
   const cli = (args: string[], input?: object): Receipt => {
     const child = Bun.spawnSync([process.execPath, join(skills, "flow-page/scripts/flow-page.ts"), ...args, "--session", "reload-fixture", "--agent", "fixture"], {
       cwd: project, env: { ...envWithoutCandidateReader, HOME: home, PATH: `${bin}:${ENV.PATH}`, VSTACK_FLOW_PORT: String(port) },

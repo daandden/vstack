@@ -61,10 +61,9 @@ try {
     const sourcePaths = ["reader", "plugin/skills/flow-page/scripts", "plugin/skills/vstack-figures/scripts", "package.json", "bun.lock"];
     const source = { root: join(root, "reader"), paths: sourcePaths, sha256: digest(sourcePaths) };
     env = { ...process.env, FLOW_READER_SOURCE_ROOT: root, FLOW_READER_ASSETS: join(candidateReader, ".output/public") };
-    await phase(READER_PREPARATION[1], [process.execPath, cli, "generate", candidateReader], env);
+    await phase(READER_PREPARATION[1], [process.execPath, join(root, "reader/build.ts"), candidateReader], env);
     if (!existsSync(join(env.FLOW_READER_ASSETS!, "index.html")) || !existsSync(join(env.FLOW_READER_ASSETS!, "_flow-reader"))) throw new Error(`Reader proof requires generated index.html and _flow-reader assets in ${env.FLOW_READER_ASSETS}`);
-    cpSync(env.FLOW_READER_ASSETS!, join(out, "assets"), { recursive: true, dereference: true });
-    env.FLOW_READER_ASSETS = join(out, "assets");
+    env.FLOW_READER_SERVER = join(candidateReader, ".output/server/flow.mjs");
     console.log(JSON.stringify({ readerProof: { source, assets: { root: env.FLOW_READER_ASSETS, sha256: digest([resolve(env.FLOW_READER_ASSETS!)]) }, bun: Bun.version } }));
   }
   if (!selected.length || ordinary.length) await phase(NON_BROWSER, [process.execPath, "test", "--timeout", "30000", "--path-ignore-patterns", "**/*.browser.test.ts", ...ordinary]);

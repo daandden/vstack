@@ -1,7 +1,11 @@
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
+import { createRequire } from "node:module";
 
 const sourceRoot = process.env.FLOW_READER_SOURCE_ROOT ?? fileURLToPath(new URL("..", import.meta.url));
+const shell = process.env.FLOW_READER_SHELL === "1";
+const require = createRequire(import.meta.url);
+const nitroRequire = createRequire(require.resolve("nitropack/package.json"));
 
 export default defineNuxtConfig({
   ssr: false,
@@ -10,7 +14,7 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   buildId: "flow-reader",
   // Fragment navigation belongs to the reader. A delayed router commit can overwrite the next keyboard selection.
-  experimental: { appManifest: false, navigationRepaint: false },
+  experimental: { appManifest: false, navigationRepaint: false, noVueServer: !shell },
   modules: ["@nuxt/ui", "@vueuse/nuxt"],
   ui: { theme: { transitions: false }, experimental: { componentDetection: true } },
   fonts: { provider: "local" },
@@ -20,6 +24,16 @@ export default defineNuxtConfig({
   alias: {
     "#flow": join(sourceRoot, "plugin/skills/flow-page/scripts"),
     "#figures": join(sourceRoot, "plugin/skills/vstack-figures/scripts"),
+  },
+  nitro: {
+    preset: shell ? "static" : "bun",
+    ...(!shell ? { entry: fileURLToPath(new URL("./server/entry.ts", import.meta.url)) } : {}),
+    ignore: shell ? ["**/routes/**"] : [],
+    serveStatic: false,
+    esbuild: { options: { target: "esnext" } },
+    externals: { inline: [/.*/], trace: false },
+    // Nitro 2 needs Hookable 5's Promise-returning calls. Nuxt 4 also installs Hookable 6 at the project root.
+    alias: { hookable: nitroRequire.resolve("hookable") },
   },
   app: {
     buildAssetsDir: "/_flow-reader/",

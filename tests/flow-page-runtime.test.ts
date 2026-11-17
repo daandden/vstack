@@ -267,3 +267,50 @@ test("the installed host stages coherent replacements while its last good genera
   expect(runtimeChanged.revision).toBe(before.revision);
   expect(runtimeChanged.readerGeneration).toBe(codeChanged.readerGeneration);
 }, 30_000);
+
+test("missing Nitro output refuses an isolated host without losing committed Flow content", async () => {
+  const w = world();
+  rmSync(join(w.script, "../../reader/server"), { recursive: true, force: true });
+  const opened = await cli(w.script, join(root, "caller-home"), w.cwd, w.port, ["open", "--home", w.home, "--skill", "implement", "--title", "Missing Nitro output"]);
+  expect(opened.code).toBe(0);
+  expect((opened.json as UnavailableReceipt).live.state).toBe("unavailable");
+  expect((opened.json as UnavailableReceipt).live.error).toContain("Nitro");
+  const shown = await cli(w.script, join(root, "caller-home"), w.cwd, w.port, ["show", "--home", w.home, "--flow", (opened.json as FlowReceipt).flow]);
+  expect(shown.code).toBe(0);
+  expect((shown.json as { flow: { title: string } }).flow.title).toBe("Missing Nitro output");
+});
+
+test("the pinned previous-release supervisor swaps its JSON router to self-contained Nitro output and rejects broken or incomplete candidates", async () => {
+  const w = world();
+  const fixture: { commit: string; files: Record<string, string> } = JSON.parse(readFileSync(join(import.meta.dir, "fixtures/flow-supervisor-f73626bd/scripts.json"), "utf8"));
+  expect(fixture.commit).toBe("f73626bdbe8f341f677251daa8bbe4cbf7fd2b04");
+  for (const [name, bytes] of Object.entries(fixture.files)) writeFileSync(join(w.script, "..", name), bytes);
+  seal(w.script);
+  const opened = ok(await cli(w.script, w.home, w.cwd, w.port, ["open", "--skill", "implement", "--title", "Pinned supervisor update"]));
+  const url = opened.live.url;
+  const before = await generations(url);
+  const status = ok<HostReceipt>(await cli(w.script, w.home, w.cwd, w.port, ["host", "status"])).host;
+  const credentials = readFileSync(join(w.home, ".vstack/host/secrets.json"));
+  for (const skill of ["flow-page", "vstack-tmp", "vstack-figures"]) cpSync(join(skills, skill), join(w.script, "../../..", skill), { recursive: true });
+  seal(w.script);
+  const after = await changed(url, before);
+  expect((await content(url)).flow.id).toBe(opened.flow);
+  expect(after.revision).toBe(before.revision);
+  expect(ok<HostReceipt>(await cli(w.script, w.home, w.cwd, w.port, ["host", "status"])).host).toMatchObject({ pid: status.pid, port: status.port, instance: status.instance });
+  expect(readFileSync(join(w.home, ".vstack/host/secrets.json")).equals(credentials)).toBe(true);
+  const entry = join(w.script, "../../reader/server/index.mjs");
+  const good = readFileSync(entry);
+  writeFileSync(entry, "throw new Error('broken Nitro build');\n");
+  seal(w.script);
+  await Bun.sleep(2500);
+  expect(await generations(url)).toEqual(after);
+  expect((await content(url)).flow.id).toBe(opened.flow);
+  writeFileSync(entry, good);
+  seal(w.script);
+  rmSync(entry);
+  await Bun.sleep(2000);
+  expect(await generations(url)).toEqual(after);
+  expect((await content(url)).flow.id).toBe(opened.flow);
+  writeFileSync(entry, good);
+  seal(w.script);
+}, 30_000);
