@@ -56,21 +56,33 @@ Keep the Stage in progress and require a `submit` receipt. To update an existing
 
 ## Read the Flow
 
-Every Wayfinder check reads the Flow this way, including initial charting and a continuation with no saved batch. Looking for a saved batch uses the same read. Run `show --flow <flow>` to locate Stages and pin the Flow id and authored revision. Then read the same Flow's [read-scoped `content` endpoint](../../flow-page/references/host-observations.md#present-the-page), resolved relative to `show`'s `live.url`. Require the same Flow id and authored revision in both reads. If the revisions differ, read both again.
+For every issue-creation check, run `show --flow <flow>` to locate Stages and pin the Flow id and authored revision. Then read the same Flow's [read-scoped `content` endpoint](../../flow-page/references/host-observations.md#present-the-page), resolved relative to `show`'s `live.url`. Require the same Flow id and authored revision in both reads. If the revisions differ, read both again. A first review with no saved batch requires the same reads as a review of a saved draft.
 
 `show` lists Assumed picks only by id, so take decision text from `content`. Collect the applicable close decisions, raw selections, and readings, plus each Assumed pick's current decision, pick, why, and provenance. Include earlier versions when a correction or reopening makes them relevant, and leave out Assumed picks that show `reopened_by`. Keep the conversation and source material as inputs beside the Flow evidence.
 
-For a saved batch, find candidate Wayfinder Stages and their current Document Result ids and `changed` revisions in `show`. Read their titles, summaries, and Document contents from `content`, then match by Stage and Result id.
+When a content read is required, an unavailable reader, failed read, or inconsistent evidence blocks the step. It does not prove that the Flow has no decisions or no saved batch. Follow the existing Local Flow host recovery rules. If decision collection stays blocked, keep the affected issues uncreated and [record the pending creation batch](#record-a-pending-creation-batch) with that blocker.
 
-Treat an unavailable reader, failed read, or inconsistent evidence as a blocker. It does not prove that the Flow has no decisions or no saved batch. Follow the existing Local Flow host recovery rules. If decision collection stays blocked, keep the affected issues uncreated and [record the pending creation batch](#record-a-pending-creation-batch) with that blocker.
+## Find saved-batch candidates
+
+After resolving the Flow identity, run `show --flow <flow>`. Filter the Stage and Result fields regardless of `live` status. Keep only Stages with `skill: wayfinder` that meet the ticket and state rules below and match any supplied Stage or ticket selector. A candidate Stage must have a current Result with `shape: document`.
+
+If supported Flow discovery reports no matching Flow, or `show` rules out every candidate, take the relevant no-match path below without fetching `content`. A failed or ambiguous identity lookup or a failed `show` is not a no-match result.
+
+If any candidate remains, require full `content` for the Flow id and authored revision from `show`, as in [Read the Flow](#read-the-flow). Match each candidate Document by Stage id, Result id, and `changed`. Use the title, summary, and Document contents from `content` to identify the saved batch.
 
 ## Match a ticket batch
 
-Find the Flow by `ticket:<original map id>` using skill://flow-page's discovery rules. Match the current `Wayfinder creation batch` Result on the recorded map id and originating ticket id. Require the recorded source ticket to match the Wayfinder Stage's ticket id. Honor any supplied Stage or ticket as an exact selector. For an explicit resumption, including a named closed ticket, match `Pending creation`, `Publishing <attempt id>`, and `Completed`. For ordinary map-only frontier selection, consider pending and publishing batches, but ignore past completed ones. If an explicit retry cannot identify its batch, report that instead of selecting a new ticket.
+Find the Flow by `ticket:<original map id>` using skill://flow-page's discovery rules. Apply the [saved-batch candidate filter](#find-saved-batch-candidates) to Stages with a ticket. For ordinary work, including map-only frontier selection, keep only `in-progress` Stages. For an explicit resumption, including a named closed ticket, also consider `finished` Stages.
+
+Match the current `Wayfinder creation batch` Result on the recorded map id and originating ticket id. Require the recorded source ticket to match the Wayfinder Stage's ticket id. For ordinary work, match `Pending creation` and `Publishing <attempt id>`. For an explicit resumption, also match `Completed`.
+
+If no batch matches, continue through the ordinary ticket entry path. For an explicit retry with no match, report that and stop instead of selecting a new ticket.
 
 ## Match a chart
 
-Use the caller's Flow or Stage, or this session and agent's binding for the same chart. Look for the current `Wayfinder creation batch` Result in Wayfinder Stages without a ticket. Match the recorded draft identity, map name and Destination, or saved canonical map identity, to the requested chart. Honor a supplied Stage exactly. Include `Pending creation`, `Publishing <attempt id>`, and `Completed` in the match. Start a new chart only when the user requests new charting and discovery establishes that there is no matching saved chart. For an explicit retry with no identifiable batch, stop instead of interviewing again.
+Use the caller's Flow or Stage, or this session and agent's binding for the same chart. Apply the [saved-batch candidate filter](#find-saved-batch-candidates) to `in-progress` and `finished` Stages without a ticket.
+
+Look for the current `Wayfinder creation batch` Result. Match the recorded draft identity, map name and Destination, or saved canonical map identity, to the requested chart. Include `Pending creation`, `Publishing <attempt id>`, and `Completed` in the match. Start a new chart only when the user requests new charting and discovery establishes that there is no matching saved chart. For an explicit retry with no identifiable batch, stop instead of interviewing again.
 
 ## Use the matching batch
 
