@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Route Flow authoring, reader data, and cleanup through one Flow store interface without changing saved files, receipts, links, or retention."
+  ]
+}

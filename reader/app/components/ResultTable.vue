@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { TableColumn } from "@nuxt/ui";
 import { useEventListener } from "@vueuse/core";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import { askLabel, type ResultView } from "~/utils/flow";
 
 type Entry = ResultView["entries"][number];

@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { connection, failure, flow, startReader, updateFailure } from "~/composables/reader";
+import { startReader, useReaderState } from "~/composables/reader";
 import { captureReadingPlace, restoreReadingPlace, goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
 import { startLearning } from "~/composables/learning";
 import { finishReaderRestore, onReaderReload, readReloadState } from "~/composables/reload";
+const { flow, connection, failure, updateFailure } = useReaderState();
+const initial = useRequestEvent()?.context.flowPage?.content;
+if (initial) flow.value = flowOf(initial);
+if (import.meta.client) history.scrollRestoration = "manual";
 
 onReaderReload("place", captureReadingPlace);
 
@@ -10,6 +14,14 @@ useHead(() => ({ title: flow.value ? `Flow: ${flow.value.flow.title}` : "Flow" }
 
 const fragment = () => decodeURIComponent(location.hash.slice(1));
 onMounted(() => {
+  watch(flow, async (f) => {
+    if (!f || arrived) return;
+    arrived = true;
+    startLearning(f.flow.id);
+    await nextTick();
+    if (!(await restoreReadingPlace(readReloadState("place"))) && !(await goTo(fragment(), false))) await openFirstOpenQuestionTab();
+    try { finishReaderRestore(); } catch {}
+  }, { immediate: true });
   startReader();
   addEventListener("keydown", onKey);
   addEventListener("click", onClick);
@@ -20,14 +32,6 @@ onMounted(() => {
 });
 
 let arrived = false;
-watch(flow, async (f) => {
-  if (!f || arrived) return;
-  arrived = true;
-  startLearning(f.flow.id);
-  await nextTick();
-  if (!(await restoreReadingPlace(readReloadState("place"))) && !(await goTo(fragment(), false))) await openFirstOpenQuestionTab();
-  try { finishReaderRestore(); } catch {}
-});
 
 const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b.stage) ?? []);
 </script>

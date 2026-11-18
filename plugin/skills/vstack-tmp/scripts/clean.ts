@@ -15,12 +15,14 @@
 // empty, and prints JSON {root, deleted, skipped: [{path, reason}], pruned}. Exit 2 on a usage error, and on a
 // delete path that is not an entry under the root, before anything is deleted.
 
-import { chmodSync, lstatSync, readFileSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { lstatSync, readFileSync, readdirSync, rmdirSync, type Stats } from "node:fs";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
-import { CLOSED_RETENTION, dropBindings, FLOW_KIND, readState, registerMigration, retentionOf, withLock } from "../../flow-page/scripts/store.ts";
+import { CLOSED_RETENTION, compactFlowDatabase, deleteFlowEntry, FLOW_KIND, flowRetentionEntries, flowRetentionEntry, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
+import { measureEntry, removeEntry } from "../../flow-page/scripts/files.ts";
 import { scratchRoot } from "./scratch.ts";
 import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
+import { prepareStorage } from "../../flow-page/scripts/live.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 
@@ -47,6 +49,7 @@ const m = /^(\d+)([hdw]?)$/.exec(olderThan);
 if (!m) usage(`--older-than must look like 90d, 90, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];
 const home = resolve(values.home);
+await prepareStorage(home);
 const root = scratchRoot(home);
 const now = values.now === undefined ? Date.now() : Date.parse(values.now);
 if (Number.isNaN(now)) usage(`--now must be an ISO date and time, got ${JSON.stringify(values.now)}`);
@@ -67,40 +70,13 @@ for (const part of relative(home, root).split(sep)) {
   const st = lstat(ancestor);
   if (st && !st.isDirectory()) usage(`${ancestor} is not a directory`);
 }
-/** Newest mtime and total size of an entry and everything inside it, without following links. */
-function measure(p: string, st: Stats): { newest: number; size: number } {
-  let newest = st.mtimeMs;
-  let size = st.isDirectory() ? 0 : st.size;
-  if (st.isDirectory()) {
-    for (const name of readdirSync(p)) {
-      const child = join(p, name);
-      const cst = lstat(child);
-      if (!cst) continue;
-      const sub = measure(child, cst);
-      newest = Math.max(newest, sub.newest);
-      size += sub.size;
-    }
-  }
-  return { newest, size };
-}
-
-/** Removes a file, a link, or a directory tree, unlinking links instead of following them. */
-function remove(p: string) {
-  const st = lstatSync(p);
-  if (st.isDirectory()) {
-    if ((st.mode & 0o700) !== 0o700) chmodSync(p, st.mode | 0o700);
-    for (const name of readdirSync(p)) remove(join(p, name));
-    rmdirSync(p);
-  } else {
-    unlinkSync(p);
-  }
-}
 
 type RetentionDecision = { registry: true } | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
 
-function retentionDecision(kind: string, entry: string, path: string, st: Stats): RetentionDecision {
-  if (kind === FLOW_KIND && entry.startsWith(".")) return { registry: true };
-  const { newest, size } = measure(path, st);
+function retentionDecision(kind: string, entry: string, path: string, st: Stats, stored?: FlowRetentionEntry): RetentionDecision {
+  const flowEntry = kind === FLOW_KIND ? stored ?? flowRetentionEntry(path) : undefined;
+  if (flowEntry?.registry) return { registry: true };
+  const { newest, size } = flowEntry ?? measureEntry(path, st);
   if (kind === "grilling" && st.isDirectory() && lstat(join(path, "page.jsonl"))?.isFile()) {
     try {
       const history = parseHistorical(readFileSync(join(path, "page.jsonl"), "utf8"));
@@ -109,7 +85,7 @@ function retentionDecision(kind: string, entry: string, path: string, st: Stats)
       return { due: false, age: now - newest, newest, size, reason: "historical Flow state unreadable" };
     }
   }
-  const flow = kind === FLOW_KIND ? retentionOf(path) : undefined;
+  const flow = flowEntry?.retention;
   if (flow === "unreadable") return { due: false, age: now - newest, newest, size, reason: "Flow state unreadable" };
   if (flow && flow.closed === undefined) return { due: false, age: now - newest, newest, size, flow: flow.flow, reason: "open Flow" };
   if (flow) {
@@ -117,6 +93,12 @@ function retentionDecision(kind: string, entry: string, path: string, st: Stats)
     return { due: age > Math.max(ttl, CLOSED_RETENTION), age, newest, size, flow: flow.flow, closed: flow.closed, reason: "newer than the TTL" };
   }
   return { due: now - newest > ttl, age: now - newest, newest, size, reason: "newer than the TTL" };
+}
+
+function entriesOf(projectScratch: string, kind: string): { path: string; entry: string; stored?: FlowRetentionEntry }[] {
+  if (kind === FLOW_KIND) return flowRetentionEntries(projectScratch).map(stored => ({ path: stored.path, entry: stored.entry, stored }));
+  const dir = join(projectScratch, kind);
+  return readdirSync(dir).sort().map(entry => ({ path: join(dir, entry), entry }));
 }
 
 // Resolves once stdout has taken every byte, so a following process.exit cannot cut a piped listing at the pipe buffer.
@@ -128,11 +110,10 @@ if (!values.delete) {
   if (lstat(root)?.isDirectory()) {
     for (const repoKey of realDirs(root).sort()) {
       for (const kind of realDirs(join(root, repoKey)).sort()) {
-        for (const entry of readdirSync(join(root, repoKey, kind)).sort()) {
-          const path = join(root, repoKey, kind, entry);
+        for (const { entry, path, stored } of entriesOf(join(root, repoKey), kind)) {
           const st = lstat(path);
           if (!st) continue;
-          const v = retentionDecision(kind, entry, path, st);
+          const v = retentionDecision(kind, entry, path, st, stored);
           if (v.registry) continue;
           if (!v.due) {
             kept++;
@@ -168,6 +149,7 @@ const targets = positionals.map((p) => {
 const deleted: string[] = [];
 const skipped: { path: string; reason: string }[] = [];
 const pruned: string[] = [];
+const compact = new Set<string>();
 for (const { path, kind, entry } of targets) {
   const st = lstat(path);
   if (!st) {
@@ -183,22 +165,18 @@ for (const { path, kind, entry } of targets) {
     skipped.push({ path, reason: v.reason });
     continue;
   }
-  if (v.flow) {
-    const flow = v.flow;
-    const reason = await withLock(path, () => {
-      const again = retentionDecision(kind, entry, path, lstatSync(path)) as Exclude<RetentionDecision, { registry: true }>;
-      if (!again.due) return again.reason;
-      const state = readState(path);
-      if (state?.migrated) registerMigration(dirname(path), { source: state.migrated.from, flow, sha256: state.migrated.sha256 });
-      remove(path);
-      dropBindings(dirname(path), flow);
+  if (kind === FLOW_KIND) {
+    const reason = await deleteFlowEntry(path, stored => {
+      const again = retentionDecision(kind, entry, path, lstatSync(path), stored);
+      return again.registry ? "Flow registry" : again.due ? undefined : again.reason;
     });
     if (reason) {
       skipped.push({ path, reason });
       continue;
     }
+    if (v.flow) compact.add(join(path, "..", ".."));
   } else {
-    remove(path);
+    removeEntry(path);
   }
   deleted.push(path);
   const kindDir = join(path, "..");
@@ -208,4 +186,5 @@ for (const { path, kind, entry } of targets) {
     pruned.push(dir);
   }
 }
+for (const projectScratch of compact) compactFlowDatabase(projectScratch);
 await print({ root, deleted, skipped, pruned });

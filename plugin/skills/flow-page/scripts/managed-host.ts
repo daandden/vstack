@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { coherentRuntime, runtimePackages, skillsRoot, stageRuntime } from "./generation.ts";
 import { attest, hostDir, originOf, record, recordPath, same, secrets, type HostRecord } from "./live.ts";
-import { writeAtomic } from "./store.ts";
+import { writeAtomic } from "./files.ts";
 import { installedSkills, isNormalHome } from "./home.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });

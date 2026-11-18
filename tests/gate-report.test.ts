@@ -119,6 +119,7 @@ for (const name of ["non-browser", "candidate-reader-build", "browser:fixture"])
 for (const failure of ["", "FAIL_NON_BROWSER", "FAIL_BROWSER"]) test(`gate timings measure real subprocesses and preserve ${failure || "successful"} propagation`, async () => {
   const f = fixture(), injected = commands(f);
   writeFiles(f.root, {
+    "reader/build.ts": readFileSync(join(import.meta.dir, "../reader/build.ts"), "utf8"),
     "tests/unit.test.ts": 'import { test, expect } from "bun:test"; test("unit", () => expect(process.env.FAIL_NON_BROWSER).not.toBe("yes"));\n',
     "tests/first.browser.test.ts": 'import { test, expect } from "bun:test"; test("browser", () => expect(process.env.FAIL_BROWSER).not.toBe("yes"));\n',
     "tests/second.browser.test.ts": 'import { test } from "bun:test"; test("second browser", () => {});\n',
@@ -131,11 +132,15 @@ for (const failure of ["", "FAIL_NON_BROWSER", "FAIL_BROWSER"]) test(`gate timin
     "node_modules/nuxt/generate.mjs": `
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-if (process.argv[2] !== "generate") throw new Error("Expected generate");
-const output = join(process.argv[3], ".output/public");
-mkdirSync(join(output, "_flow-reader"), { recursive: true });
-writeFileSync(join(output, "index.html"), "<html>Gate timing fixture</html>");
-writeFileSync(join(output, "_flow-reader/app.js"), "console.log('gate timing fixture');");
+const command = process.argv[2];
+if (!["generate", "build"].includes(command)) throw new Error("Expected generate or build");
+const output = join(process.argv[3], command === "generate" ? ".output/public" : ".output/server");
+mkdirSync(output, { recursive: true });
+if (command === "generate") {
+  mkdirSync(join(output, "_flow-reader"), { recursive: true });
+  writeFileSync(join(output, "index.html"), "<html>Gate timing fixture</html>");
+  writeFileSync(join(output, "_flow-reader/app.js"), "console.log('gate timing fixture');");
+} else writeFileSync(join(output, "index.mjs"), "export default {};");
 `,
   });
   symlinkSync(join(import.meta.dir, "../node_modules/playwright-core"), join(f.root, "node_modules/playwright-core"), "dir");

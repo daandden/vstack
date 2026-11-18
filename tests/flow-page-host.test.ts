@@ -151,17 +151,30 @@ test("an authoring command starts the host and serves the Flow live at one URL t
   expect(hostPids(w)).toHaveLength(1);
 });
 
-test("the Flow URL serves the built reader, and the host serves every resource the reader loads without the capability", async () => {
+test("the Flow URL server-renders its content with a strict script policy and shared reader resources", async () => {
   const w = world();
   const opened = ok(open(w));
   const capability = new URL(opened.live.url).pathname.split("/").filter(Boolean).at(-1)!;
+  ok(run(["submit"], w, { session: "s-1", stdin: contribution(round(question("server-rendered"))) }));
   const shell = await fetch(opened.live.url);
   expect(shell.status).toBe(200);
   expect(shell.headers.get("content-type")).toContain("text/html");
   expect(shell.headers.get("set-cookie")).toContain("HttpOnly");
   const html = await shell.text();
-  expect(html).not.toContain(capability);
-  expect(html).not.toContain(opened.flow);
+  const document = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+  expect(document).toContain("Checkout limits");
+  expect(document).toContain("Which server-rendered?");
+  const policy = shell.headers.get("content-security-policy")!;
+  const scripts = policy.split(";").find(part => part.trim().startsWith("script-src"))!;
+  expect(scripts).not.toContain("'unsafe-inline'");
+  expect(scripts).toMatch(/'(?:nonce-|sha256-)/);
+  expect(policy).toContain("base-uri 'none'");
+  expect(policy).toContain("frame-ancestors 'none'");
+  const other = ok(open(w, "other-reader", "A different Flow"));
+  const concurrent = await Promise.all([fetch(opened.live.url).then(r => r.text()), fetch(other.live.url).then(r => r.text())]);
+  expect(concurrent[0]).toContain("Which server-rendered?");
+  expect(concurrent[1]).not.toContain("Which server-rendered?");
+  expect(concurrent[1]).toContain("A different Flow");
   const resources = await shellResources(html);
   expect(resources.some((path) => path.endsWith(".js"))).toBe(true);
   expect(resources.some((path) => path.endsWith(".css"))).toBe(true);
@@ -731,4 +744,54 @@ test("the session target query follows the main binding, the first asked questio
   });
   expect(target().target).toBe(`${opened.live.url}#${opened.stage}`);
   expect((await contentOf(opened.live.url)).revision).toBe(receipt.revision);
+});
+
+test("control routes keep exact paths and methods rather than Nuxt's trailing-slash and HEAD aliases", async () => {
+  const w = world();
+  const opened = ok(open(w));
+  const headers = { authorization: `Bearer ${secrets(w.home).control}`, "x-flow-challenge": "a".repeat(64) };
+  expect((await fetch(new URL("/.host/storage", opened.live.url))).status).toBe(401);
+  expect(await (await fetch(new URL("/.host/storage", opened.live.url), { headers })).json()).toEqual({ storage: "sqlite" });
+  for (const [path, method] of [
+    ["/.host/hello", "HEAD"], ["/.host/hello/", "GET"],
+    ["/.host/hold", "HEAD"], ["/.host/hold/", "GET"],
+    ["/.host/storage", "HEAD"], ["/.host/storage/", "GET"],
+    ["/.host/picker/", "PUT"], ["/.host/stop/", "POST"],
+  ]) {
+    const result = await fetch(new URL(path, opened.live.url), { method, headers, signal: AbortSignal.timeout(1000) });
+    expect([path, method, result.status]).toEqual([path, method, 404]);
+    await result.body?.cancel();
+  }
+  expect((await contentOf(opened.live.url)).flow.id).toBe(opened.flow);
+});
+
+test("Flow endpoint aliases and unknown paths preserve the capability-scoped method refusals", async () => {
+  const w = world();
+  const opened = ok(open(w));
+  for (const [path, method, status] of [
+    ["content/", "GET", 404], ["versions/", "GET", 404], ["comments/", "GET", 404],
+    ["content/", "POST", 405], ["comments/", "POST", 405],
+    ["unregistered", "GET", 404], ["unregistered", "POST", 405], ["unregistered", "PUT", 405],
+  ] as const) {
+    const result = await fetch(new URL(path, opened.live.url), { method });
+    expect([path, method, result.status]).toEqual([path, method, status]);
+  }
+});
+
+test("an isolated host treats changed Nitro bytes as incompatible without changing its public reader generation", async () => {
+  const w = world();
+  const skills = copiedPlugin();
+  const script = join(skills, "flow-page/scripts/flow-page.ts");
+  const opened = ok(run(["open", "--title", "Nitro compatibility", "--skill", "implement"], w, { session: "nitro", script }));
+  const versions = async () => (await (await fetch(new URL("versions", opened.live.url))).json()) as { readerGeneration: string };
+  const before = await versions();
+  const entry = join(skills, "flow-page/reader/server/index.mjs");
+  writeFileSync(entry, Buffer.concat([readFileSync(entry), Buffer.from("\n// new Nitro build\n")]));
+  const shown = run(["show", "--flow", opened.flow], w, { script });
+  expect(shown.json.live.state).toBe("unavailable");
+  expect(shown.json.live.error).toContain("incompatible");
+  expect(await versions()).toEqual(before);
+  ok(run(["host", "stop"], w, { script }));
+  expect(ok(run(["show", "--flow", opened.flow], w, { script })).live.url).toBe(opened.live.url);
+  expect((await versions()).readerGeneration).toBe(before.readerGeneration);
 });

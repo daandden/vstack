@@ -1,19 +1,10 @@
-import { existsSync, lstatSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { fields, Refusal, refuse, text } from "./fields.ts";
 import type { Quiz, State } from "./model.ts";
-import { readState, withLock, writeAtomic } from "./store.ts";
+import type { FlowStore } from "./store.ts";
 
 type Attempt = { id: string; result: string; revision: number; question: string; answer: string; correct: boolean; time: string };
-type Learning = { version: 1; attempts: Attempt[]; completed: { result: string; revision: number }[] };
+export type Learning = { version: 1; attempts: Attempt[]; completed: { result: string; revision: number }[] };
 class Conflict extends Error {}
-const pathOf = (folder: string) => join(folder, "data", "learning.json");
-function read(folder: string): Learning {
-  const path = pathOf(folder);
-  if (!existsSync(path)) return { version: 1, attempts: [], completed: [] };
-  if (!lstatSync(path).isFile() || lstatSync(path).isSymbolicLink()) throw new Error("Learning storage is not a regular file");
-  return JSON.parse(readFileSync(path, "utf8"));
-}
 function question(s: State, a: Attempt) {
   const result = [...s.results, ...s.history].find((r) => r.id === a.result && (r.revision ?? 1) === a.revision);
   return result?.quiz?.questions.find((q) => q.ref === a.question) ?? refuse("learning", "attempt names no captured Quiz question");
@@ -31,9 +22,9 @@ function correct(q: Quiz["questions"][number], answer: string): boolean {
   const normalize = (v: string) => rule.case_sensitive ? v.trim() : v.trim().toLowerCase();
   return rule.text.some((v) => normalize(v) === normalize(answer));
 }
-export async function learning(folder: string, req: Request): Promise<{ status: number; body: unknown }> {
+export async function learning(store: FlowStore, id: string, req: Request): Promise<{ status: number; body: unknown }> {
   try {
-    if (req.method === "GET") return { status: 200, body: read(folder) };
+    if (req.method === "GET") return { status: 200, body: store.readLearning(id) };
     if (req.method !== "POST") return { status: 405, body: { error: "Only GET and POST are supported" } };
     const reader = req.body?.getReader();
     const parts: Uint8Array[] = [];
@@ -47,9 +38,7 @@ export async function learning(folder: string, req: Request): Promise<{ status: 
     }
     const o = fields(JSON.parse(Buffer.concat(parts).toString()), "learning", ["version", "attempts"]);
     if (o.version !== 1 || !Array.isArray(o.attempts) || o.attempts.length > 100) refuse("learning", "needs version 1 and at most 100 attempts");
-    return await withLock(folder, async () => {
-      const s = readState(folder)!;
-      const progress = read(folder);
+    return await store.updateLearning(id, (progress, s) => {
       for (const raw of o.attempts as unknown[]) {
         const a = fields(raw, "attempt", ["id", "result", "revision", "question", "answer"]);
         const id = text(a, "id", "attempt");
@@ -64,7 +53,6 @@ export async function learning(folder: string, req: Request): Promise<{ status: 
         progress.attempts.push({ ...input, correct: correct(question(s, input as Attempt), input.answer), time: new Date().toISOString() });
       }
       progress.completed = [...s.results, ...s.history].filter((r) => r.quiz && r.quiz.questions.every((q) => progress.attempts.some((a) => a.result === r.id && a.revision === (r.revision ?? 1) && a.question === q.ref && a.correct))).map((r) => ({ result: r.id, revision: r.revision ?? 1 }));
-      writeAtomic(pathOf(folder), JSON.stringify(progress));
       return { status: 200, body: progress };
     });
   } catch (e) {

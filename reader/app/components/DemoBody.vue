@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Condition, Demo, DemoLiteral, Effect, Transition } from "#flow/model.ts";
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import type { ResultView } from "~/utils/flow";
 
 const props = defineProps<{ r: ResultView; demo: Demo }>();

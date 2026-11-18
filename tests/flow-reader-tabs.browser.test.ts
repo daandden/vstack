@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
@@ -21,7 +21,12 @@ function cli(args: string[], input?: object) {
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")} exited ${p.exitCode}: ${p.stderr.toString()}`);
-  return JSON.parse(p.stdout.toString());
+  const receipt = JSON.parse(p.stdout.toString());
+  if (receipt.live && receipt.live.state !== "serving") {
+    const log = join(home, ".vstack", "host", "host.log");
+    throw new Error(`flow-page ${args.join(" ")} got live ${JSON.stringify(receipt.live)} on port ${port}; stderr: ${p.stderr.toString()}; host.log: ${existsSync(log) ? readFileSync(log, "utf8").slice(-2000) : "absent"}`);
+  }
+  return receipt;
 }
 
 const submit = (flow: string, stage: string, items: object[]) => cli(["submit", "--flow", flow, "--stage", stage], { version: 1, items });

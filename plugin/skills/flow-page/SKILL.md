@@ -106,7 +106,7 @@ Submitting the Stage's latest contribution again, for example after a lost recei
 
 `validate [<file> | -]` checks the same contribution that `submit` accepts, from a file or stdin. Both commands use the bound Stage, or an explicit `--flow <flow> --stage <id>`. Validation checks against the current Flow, including references, captured files, and revision conflicts. A later concurrent write can change that context before submission.
 
-Validation starts no Stage or host, publishes no assets or content, and leaves the Flow revision and the contribution file unchanged. It returns all independent diagnostics with stable `code`, JSON `path`, `message`, and `allowed` values or an expected type where applicable. Dependent checks wait until their containing field has a valid shape.
+Validation starts no Stage or host, publishes no assets or content, and leaves the Flow revision and the contribution file unchanged. It reads committed state without importing JSON or applying schema migrations. It refuses a missing database, pending schema migrations, or unimported JSON needed for its target Flow or session binding, and tells you to run any other flow-page command first. Failed imports unrelated to that target and bindings whose Flow is missing do not block validation. It never starts or stops a host. It returns all independent diagnostics with stable `code`, JSON `path`, `message`, and `allowed` values or an expected type where applicable. Dependent checks wait until their containing field has a valid shape.
 
 For example, an invalid option's gains can produce:
 

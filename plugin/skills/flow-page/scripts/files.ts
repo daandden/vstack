@@ -1,5 +1,7 @@
-import { createHash } from "node:crypto";
-import { readdirSync, statSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { chmodSync, closeSync, lstatSync, openSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, unlinkSync, writeFileSync, type Stats } from "node:fs";
+import { constants } from "node:os";
+import { dlopen, read } from "bun:ffi";
 import { join } from "node:path";
 
 export const sha256 = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
@@ -29,4 +31,81 @@ export function walkFiles(dir: string, visit: (path: string, full: string) => vo
     }
   };
   walk("");
+}
+
+/** Measures an entry without following symbolic links. */
+export function measureEntry(path: string, st: Stats): { newest: number; size: number } {
+  let newest = st.mtimeMs;
+  let size = st.isDirectory() ? 0 : st.size;
+  if (st.isDirectory()) {
+    for (const name of readdirSync(path)) {
+      const child = join(path, name);
+      let cst: Stats;
+      try { cst = lstatSync(child); } catch { continue; }
+      const sub = measureEntry(child, cst);
+      newest = Math.max(newest, sub.newest);
+      size += sub.size;
+    }
+  }
+  return { newest, size };
+}
+
+/** Removes an entry without following links, including read-only snapshot directories. */
+export function removeEntry(path: string): void {
+  const st = lstatSync(path);
+  if (st.isDirectory()) {
+    if ((st.mode & 0o700) !== 0o700) chmodSync(path, st.mode | 0o700);
+    for (const name of readdirSync(path)) removeEntry(join(path, name));
+    rmdirSync(path);
+  } else {
+    unlinkSync(path);
+  }
+}
+
+/** Replaces `path` in one rename, so a reader sees the old file or the new one and never a partial write. */
+export function writeAtomic(path: string, text: string | Uint8Array): void {
+  const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  try {
+    writeFileSync(tmp, text);
+    renameSync(tmp, path);
+  } finally {
+    rmSync(tmp, { force: true });
+  }
+}
+
+// Closing the descriptor, including at process exit, releases the advisory lock.
+const errnoName = process.platform === "darwin" ? "__error" : "__errno_location";
+const symbols = {
+  flock: { args: ["i32", "i32"], returns: "i32" },
+  [errnoName]: { args: [], returns: "ptr" },
+} as const;
+const libraryNames = process.platform === "darwin" ? ["/usr/lib/libSystem.B.dylib"] : ["libc.so.6", "libc.so"];
+let libc: ReturnType<typeof dlopen<typeof symbols>> | undefined;
+function lib() {
+  if (libc) return libc;
+  for (const name of libraryNames) {
+    try {
+      return (libc = dlopen(name, symbols));
+    } catch (e) {
+      if (name === libraryNames.at(-1)) throw e;
+    }
+  }
+  throw new Error("unreachable");
+}
+const LOCK_EX = 2;
+const LOCK_NB = 4;
+
+export async function withLock<T>(folder: string, fn: () => T): Promise<T> {
+  const fd = openSync(join(folder, ".lock"), "a", 0o600);
+  try {
+    const c = lib();
+    while (c.symbols.flock(fd, LOCK_EX | LOCK_NB) !== 0) {
+      const errno = read.i32(c.symbols[errnoName]()!, 0);
+      if (errno !== constants.errno.EWOULDBLOCK && errno !== constants.errno.EINTR) throw new Error(`flock on ${folder} failed with errno ${errno}`);
+      await Bun.sleep(10);
+    }
+    return await fn();
+  } finally {
+    closeSync(fd);
+  }
 }

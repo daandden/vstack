@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Shrink each project's Flow database after confirmed vstack-clean deletions, without changing retention, confirmation, or cleanup output. Concurrent submits wait for compaction and then commit."
+  ]
+}

@@ -1,4 +1,4 @@
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
 import { savedState } from "~/composables/reload";
 
 export const current = ref<string>();
@@ -12,6 +12,7 @@ const tabs = () => [...document.querySelectorAll<HTMLElement>("[data-tab]")].map
 export const tabOf = (el: Element) => el.closest<HTMLElement>("[data-tab]")?.dataset.tab;
 
 export function resolve(id: string): HTMLElement | null {
+  const { flow } = useReaderState();
   if (!id) return null;
   let el = document.getElementById(id);
   const seen = new Set([id]);
@@ -74,6 +75,7 @@ export async function goTo(id: string, focus: boolean, replaceFragment = false):
 }
 
 export async function openFirstOpenQuestionTab() {
+  const { flow } = useReaderState();
   const first = flow.value?.next[0];
   const el = first ? document.getElementById(first) : null;
   tab.value = (el && tabOf(el)) ?? "overview";
@@ -241,6 +243,7 @@ export function onHashChange() {
 }
 
 export function onKey(e: KeyboardEvent) {
+  const { flow } = useReaderState();
   if (!shortcutEligible(e)) return;
   if (e.key === "m") {
     e.preventDefault();

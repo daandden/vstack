@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Run the Local Flow host through Nuxt server routes and a prebuilt Nitro Bun server, preserving Flow links, host security, isolated artifact viewing, and supervisor generation replacement."
+  ]
+}

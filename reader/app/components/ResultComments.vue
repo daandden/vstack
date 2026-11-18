@@ -64,8 +64,12 @@ async function remove(id: string) {
   }
 }
 const saved = computed(() => readerComments.value.filter((c) => c.result === props.r.id && c.revision === props.r.revision && c.edit !== undefined && c.edit === (props.r.edit ?? null)));
+const selectedTarget = computed({
+  get: () => target.value || "block",
+  set: (value: string) => { target.value = value === "block" ? "" : value; },
+});
 const targets = computed(() => [
-  { label: "Whole Result block", value: "" },
+  { label: "Whole Result block", value: "block" },
   ...props.r.entries.map((e) => ({ label: `${e.id}: ${String(e.title ?? e.claim ?? e.file ?? (e.cells as string[] | undefined)?.[0] ?? e.id)}`, value: e.id })),
   ...(target.value && !props.r.entries.some(e => e.id === target.value) ? [{ label: `${target.value}: original draft target`, value: target.value }] : []),
 ]);
@@ -118,7 +122,7 @@ async function save() {
       <p class="text-muted">Draft for Revision {{ revision }}<template v-if="edit != null"> · Edit {{ edit }}</template>. Saving is a separate action.</p>
       <blockquote v-if="passage" class="whitespace-pre-wrap border-s-2 border-default ps-3">{{ passage }}</blockquote>
       <UFormField v-else-if="!editing" label="Comment target" :name="`${r.anchor}-target`">
-        <USelect v-model="target" :items="targets" class="w-full pointer-coarse:min-h-[44px]" :disabled="pending" />
+        <USelect v-model="selectedTarget" :items="targets" class="w-full pointer-coarse:min-h-[44px]" :disabled="pending" />
       </UFormField>
       <UFormField label="Comment" :name="`${r.anchor}-comment`" required>
         <UTextarea v-model="draft" required :maxlength="4096" :rows="3" class="w-full" :ui="{ base: 'field-sizing-content min-h-[3lh] max-h-[12lh]' }" :disabled="pending" />

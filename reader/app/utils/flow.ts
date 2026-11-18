@@ -1,10 +1,9 @@
 import type { Attachment, QuestionView, ResultView, StageView, View } from "#flow/model.ts";
 import type { Runtimes } from "#flow/live.ts";
-import type { Observations } from "#flow/observations.ts";
+import type { Content, Observations } from "#flow/host-api.ts";
 import { inline } from "./format";
 
-export type { Attachment, QuestionView, ResultView, StageView, Runtimes, Observations };
-export type Content = Omit<View, "questions"> & { questions: QuestionView[]; runtimes: Runtimes };
+export type { Attachment, QuestionView, ResultView, StageView, Runtimes, Observations, Content };
 export type ReadingBlock = View["reading"]["historical"][number];
 
 export type Flow = Content & {

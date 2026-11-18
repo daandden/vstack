@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Server-render Flow pages with their content on the first response, preserving strict script policies, live reading state, diagrams, and comment drafts across reader updates."
+  ]
+}

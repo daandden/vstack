@@ -1,9 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV } from "./support/fixture.ts";
-import { statePathOf } from "./support/flow-store.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-quiz-")));
@@ -37,19 +36,18 @@ const quiz = () => ({ kind: "result", ref: "lesson", shape: "quiz", title: "Safe
 ] });
 const submit = (w: ReturnType<typeof world>, ...items: object[]) => run(w, ["submit"], { version: 1, items });
 
-test("a producer publishes a retained Quiz and invalid answer rules leave its domain record unchanged", () => {
+test("a producer publishes a retained Quiz and invalid answer rules leave its domain record unchanged", async () => {
   const w = world();
   ok(run(w, ["open", "--title", "Quiz lesson", "--skill", "teach"]));
   const sent = ok(submit(w, quiz()));
-  const statePath = statePathOf(w.home, sent.flow);
-  const state = JSON.parse(readFileSync(statePath, "utf8"));
-  expect(state.results[0].quiz.questions.map((q: any) => q.ref)).toEqual(["authority", "sum", "word"]);
-  const before = readFileSync(statePath, "utf8");
+  const content = await (await fetch(new URL("content", sent.live.url))).json() as any;
+  expect(content.stages[0].results[0].quiz.questions.map((q: any) => q.ref)).toEqual(["authority", "sum", "word"]);
+  const before = ok(run(w, ["show", "--flow", sent.flow]));
   const bad = quiz();
   bad.questions[0].answer = { choice: "missing" };
   expect(submit(w, bad).code).toBe(1);
-  expect(readFileSync(statePath, "utf8")).toBe(before);
-  expect(state.answers).toEqual([]);
+  expect(ok(run(w, ["show", "--flow", sent.flow]))).toEqual(before);
+  expect(before.stages.flatMap((s: any) => s.questions)).toEqual([]);
 });
 
 test("learning attempts authenticate, survive restarts, and replay offline batches exactly once without changing authored work", async () => {
@@ -60,8 +58,7 @@ test("learning attempts authenticate, survive restarts, and replay offline batch
   const endpoint = new URL("learning", url);
   const page = await fetch(url);
   const cookie = page.headers.get("set-cookie")?.split(";")[0] ?? "";
-  const statePath = statePathOf(w.home, sent.flow);
-  const before = readFileSync(statePath, "utf8");
+  const before = ok(run(w, ["show", "--flow", sent.flow]));
   const attempt = (id: string, question: string, answer: string) => ({ id, result: sent.refs.lesson, revision: 1, question, answer });
   const batch = { version: 1, attempts: [attempt("attempt-wrong-001", "authority", "quiz"), attempt("attempt-right-002", "authority", "ask"), attempt("attempt-sum-003", "sum", "5"), attempt("attempt-word-004", "word", "FLOW")] };
   const send = (body: unknown, c = cookie, origin = url.origin) => fetch(endpoint, { method: "POST", headers: { cookie: c, origin, "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -85,5 +82,5 @@ test("learning attempts authenticate, survive restarts, and replay offline batch
   const offline = { version: 1, attempts: [attempt("offline-attempt-005", "sum", "4")] };
   expect((await (await send(offline)).json() as any).attempts).toHaveLength(5);
   expect((await (await send(offline)).json() as any).attempts).toHaveLength(5);
-  expect(readFileSync(statePath, "utf8")).toBe(before);
+  expect(ok(run(w, ["show", "--flow", sent.flow]))).toEqual(before);
 });

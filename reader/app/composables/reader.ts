@@ -1,15 +1,18 @@
 import { flowOf, type Content, type Flow, type Observations } from "~/utils/flow";
+import type { Versions } from "#flow/host-api.ts";
 import { goTo, readingAnchor, restoreReadingAnchor, tab } from "~/composables/navigation";
 import { refreshComments } from "~/composables/comments";
 import { reloadReader } from "~/composables/reload";
 
-export const flow = shallowRef<Flow>();
-export const observations = shallowRef<Observations>();
-/** Why the Flow could not be read at all, when it could not. */
-export const failure = ref<string>();
-/** `live` after a successful poll, `reconnecting` while the host is unavailable. */
-export const connection = ref<"connecting" | "live" | "reconnecting">("connecting");
-export const updateFailure = shallowRef<string>();
+export function useReaderState() {
+  return {
+    flow: useState<Flow | undefined>("flow"),
+    observations: useState<Observations | undefined>("flow-observations"),
+    failure: useState<string | undefined>("flow-failure"),
+    connection: useState<"connecting" | "live" | "reconnecting">("flow-connection", () => "connecting"),
+    updateFailure: useState<string | undefined>("flow-update-failure"),
+  };
+}
 
 const here = (path: string) => new URL(path, location.href);
 
@@ -29,13 +32,14 @@ async function keepPlace(change: () => void) {
 }
 
 export function startReader() {
+  const { flow, observations, failure, connection, updateFailure } = useReaderState();
   let seenObservations: string | undefined;
   let seenHost = document.querySelector<HTMLMetaElement>('meta[name="flow-host-generation"]')?.content;
   const loadedReader = document.querySelector<HTMLMetaElement>('meta[name="flow-reader-generation"]')?.content;
   let seenReader = loadedReader;
   const poll = async () => {
     try {
-      const versions = await fetchJson<{ revision: number; observationVersion: string; hostGeneration: string; readerGeneration: string }>("versions");
+      const versions = await fetchJson<Versions>("versions");
       if (seenReader && versions.readerGeneration !== seenReader) {
         try {
           reloadReader();

@@ -50,7 +50,7 @@ test("an HTML bundle is captured once and runs only on an isolated read-only vie
   expect(await (await fetch(new URL("app.js", viewer))).text()).toBe(readFileSync(join(root, "app.js"), "utf8"));
   writeFileSync(join(root, "app.js"), "throw new Error('changed source');");
   expect(await (await fetch(new URL("app.js", viewer))).text()).not.toContain("changed source");
-  for (const path of ["unregistered.js", "../data/state.json", "/.host/hello", "/author", "/merge", "/_flow-reader/missing.js"]) {
+  for (const path of ["unregistered.js", "../data/state.json", "/.host/hello", new URL(opened.live.url).pathname, `${new URL(opened.live.url).pathname}content`, "/author", "/merge", "/_flow-reader/missing.js"]) {
     expect((await fetch(new URL(path, viewer))).status).toBeGreaterThanOrEqual(400);
   }
   expect((await fetch(viewer, { method: "POST", body: "{}" })).status).toBe(405);
@@ -58,7 +58,10 @@ test("an HTML bundle is captured once and runs only on an isolated read-only vie
   expect((await fetch(new URL("content", opened.live.url), { headers: { Origin: new URL(viewer).origin } })).status).toBe(403);
   expect(new URL(viewer).pathname).not.toContain(new URL(opened.live.url).pathname.split("/").filter(Boolean).at(-1)!);
   expect((await fetch(new URL(".host/stop", new URL(viewer).origin), { method: "POST" })).status).not.toBe(200);
-  expect(await (await fetch(opened.live.url)).text()).not.toContain(new URL(viewer).origin);
+  const frames: string[] = [];
+  await new HTMLRewriter().on("iframe", { element(element) { frames.push(element.getAttribute("src")!); } })
+    .transform(await fetch(opened.live.url)).text();
+  expect(frames).toEqual([viewer]);
   const stored = ok(run(home, ["show"])).attachments[0].bundle.files.find((f: any) => f.path === "app.js").file;
   const captured = join(storedFolder(home, sent.flow), "assets", stored);
   unlinkSync(captured);
@@ -229,7 +232,6 @@ test.each([
     ok(submit(home, { ...attachment, ref: "seed", path: "valid.mmd", focus: ["Done"] }, document(["seed"])));
     const before = ok(run(home, ["show"]));
     const folder = storedFolder(home, before.flow.id);
-    const state = readFileSync(join(folder, "data/state.json"), "utf8");
     const assets = readdirSync(join(folder, "assets"), { recursive: true });
     writeFileSync(join(root, "refused.mmd"), source);
     const refused = submit(home,
@@ -246,7 +248,6 @@ test.each([
     expect(exported.stderr.toString()).toContain(message);
     expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining(exported.stderr.toString().trim()) })]) });
     expect(ok(run(home, ["show"]))).toEqual(before);
-    expect(readFileSync(join(folder, "data/state.json"), "utf8")).toBe(state);
     expect(readdirSync(join(folder, "assets"), { recursive: true })).toEqual(assets);
   } finally {
     ok(run(home, ["host", "stop"]));

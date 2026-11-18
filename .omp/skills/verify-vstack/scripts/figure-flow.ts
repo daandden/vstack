@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync, cpSync, existsSync } from "node:fs";
-import { resolve, join, dirname } from "node:path";
-import { flowsDir, folderOfId, statePath } from "../../../../plugin/skills/flow-page/scripts/store.ts";
+import { resolve, join } from "node:path";
+import { projectStore } from "../../../../plugin/skills/flow-page/scripts/store.ts";
 const [checkout, runDir, session, agent] = process.argv.slice(2);
 if (!checkout || !runDir || !session || !agent) throw new Error("Usage: bun scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>");
 const root = resolve(checkout), run = resolve(runDir), home = join(run, "data/figure-home"), evidence = join(run, "figure-flow");
@@ -21,9 +21,9 @@ async function command(args: string[], expected = 0) {
 }
 const opened = await command(["open", "--skill", "grill-with-docs", "--title", "Disposable isolated-home figure verification"]);
 writeFileSync(join(evidence, "open.json"), JSON.stringify(opened, null, 2));
-const store = flowsDir(home, root);
-const folder = folderOfId(store, opened.flow)!;
-const scratch = dirname(store);
+const store = projectStore(home, root);
+const folder = join(evidence, "export");
+const scratch = store.scratch;
 const assets = join(scratch, `figure-fixture-${opened.flow}`); mkdirSync(assets, { recursive: true });
 const svg = join(assets, "order.svg"); copyFileSync(join(run, "figures/one.svg"), svg);
 const original = readFileSync(svg), hash = new Bun.CryptoHasher("sha256").update(original).digest("hex");
@@ -48,22 +48,23 @@ const submitted = await command(["submit", file]);
 writeFileSync(join(evidence, "receipt.json"), JSON.stringify(submitted, null, 2));
 const shown = await command(["show", "--flow", submitted.flow]);
 writeFileSync(join(evidence, "show.json"), JSON.stringify(shown, null, 2));
+const capturedAssets = store.assets(opened.flow);
 function files(path: string): string[] { return readdirSync(path, { withFileTypes: true }).flatMap(e => e.isDirectory() ? files(join(path, e.name)) : [join(path, e.name)]); }
-const captured = files(folder).find(p => p !== svg && p.endsWith(".svg") && readFileSync(p).equals(original));
+const captured = files(capturedAssets).find(p => p !== svg && p.endsWith(".svg") && readFileSync(p).equals(original));
 assert(captured, "Flow did not retain the exact SVG bytes");
 copyFileSync(captured, join(evidence, "captured.svg"));
-const capturedSource = files(folder).find(p => p.endsWith(".mmd") && readFileSync(p, "utf8") === source);
+const capturedSource = files(capturedAssets).find(p => p.endsWith(".mmd") && readFileSync(p, "utf8") === source);
 assert(capturedSource, "Flow did not retain the exact Mermaid source");
 writeFileSync(svg, "changed original source after capture");
 writeFileSync(mermaid, "changed original Mermaid after capture");
 await command(["show", "--flow", submitted.flow]);
 assert(readFileSync(captured).equals(original));
 assert.equal(readFileSync(capturedSource, "utf8"), source);
-const prior = readFileSync(statePath(folder));
+const prior = store.read(opened.flow);
 const invalid = join(evidence, "refused.json");
 writeFileSync(invalid, JSON.stringify({ version: 1, items: [{ kind: "round", questions: [question] }] }));
 await command(["submit", invalid], 1);
-assert(readFileSync(statePath(folder)).equals(prior));
+assert.deepEqual(store.read(opened.flow), prior);
 for (const [name, text, focus, diagnostic] of [
   ["unknown-role", "flowchart LR\n A[Unknown]:::okk\n", [], "Unknown color role: okk"],
   ["authored-paint", "flowchart LR\n A[Paint]\n classDef unused fill:#ff0000\n", [], "The Mermaid sets its own color"],
@@ -77,9 +78,12 @@ for (const [name, text, focus, diagnostic] of [
   ] }));
   await command(["submit", input], 1);
   assert(logs.at(-1)!.stderr.includes(diagnostic), `${name} refused before its intended semantic check`);
-  assert(readFileSync(statePath(folder)).equals(prior), `${name} changed stored Flow state`);
+  assert.deepEqual(store.read(opened.flow), prior, `${name} changed stored Flow state`);
 }
-cpSync(folder, join(evidence, "export"), { recursive: true });
+mkdirSync(join(folder, "data"), { recursive: true });
+writeFileSync(join(folder, "data/state.json"), JSON.stringify(store.read(opened.flow)));
+writeFileSync(join(folder, "observation-project.json"), JSON.stringify(store.readObservation(opened.flow)));
+cpSync(capturedAssets, join(folder, "assets"), { recursive: true });
 const summary = { ok: true, home, flow: submitted.flow, folder, live: submitted.live, hash, sourceHash, bytes: original.length, captured, capturedSource, exactBytesAfterSourceEdit: true, refusedWithoutContentChange: true };
 writeFileSync(join(evidence, "summary.json"), JSON.stringify(summary, null, 2));
 console.log(JSON.stringify(summary));

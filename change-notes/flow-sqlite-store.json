@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Store each project's Flows in SQLite, import existing JSON with byte-preserving backups, and stop a JSON-only normal host before cutover without changing ids, links, receipts, bindings, or retention. Seal the bundled Drizzle database layer so older supervisors can launch it.",
+    "Keep validate read-only and refuse missing storage, pending schema migrations, or imports needed for its target Flow or session binding. Unrelated failed imports and bindings to missing Flows do not block validation. Report each failed legacy import on stderr without changing JSON receipts or blocking healthy Flows."
+  ]
+}

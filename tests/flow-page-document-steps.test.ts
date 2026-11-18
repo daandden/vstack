@@ -1,8 +1,9 @@
 import { afterAll, beforeEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { statePathOf } from "./support/flow-store.ts";
+import type { Block } from "../plugin/skills/flow-page/scripts/model.ts";
+import { flowContent } from "./support/flow-client.ts";
 
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-document-steps-")));
@@ -20,7 +21,7 @@ function cli(args: string[], input?: unknown) {
   });
   return { code: p.exitCode, json: JSON.parse(p.stdout.toString()), stderr: p.stderr.toString() };
 }
-const envelope = (blocks: unknown[]) => ({ version: 1, items: [{ kind: "result", shape: "document", title: "Recovery runbook", sections: [{ heading: "Restore service", blocks }] }] });
+const envelope = <T>(blocks: T[]) => ({ version: 1, items: [{ kind: "result", shape: "document", title: "Recovery runbook", sections: [{ heading: "Restore service", blocks }] }] });
 
 test("Document steps validate, persist in order, and appear in the generated field description", () => {
   const opened = cli(["open", "--skill", "implement", "--title", "Document steps"]);
@@ -29,11 +30,12 @@ test("Document steps validate, persist in order, and appear in the generated fie
     { title: "Inspect `service`", text: "Run `service status` and read [the runbook](https://example.com/runbook)." },
     { title: "Restore service", text: "Restart the worker.\n\nConfirm that requests succeed." },
   ];
-  const input = envelope([{ prose: "Existing introduction." }, { steps }, { list: ["Existing list"], ordered: true }]);
+  const input = envelope([{ prose: "Existing introduction." }, { steps }, { list: ["Existing list"], ordered: true }] satisfies Block[]);
   expect(cli(["validate", "-"], input)).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] } });
   expect(cli(["show"]).json.revision).toBe(opened.json.revision);
   expect(cli(["submit"], input).code).toBe(0);
-  expect(JSON.parse(readFileSync(statePathOf(home, opened.json.flow), "utf8")).results[0].document.sections[0].blocks).toEqual(input.items[0].sections[0].blocks);
+  const content = flowContent(home, root, opened.json.flow);
+  expect(content.stages[0].results[0].doc!.sections[0].blocks).toEqual(input.items[0].sections[0].blocks);
   const described = cli(["describe", "document"]).json;
   expect(described.contract.fields.sections.items.fields.blocks.items.variants.steps).toEqual({
     type: "object", fields: { steps: { type: "array", min: 1, items: {

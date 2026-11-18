@@ -2,7 +2,7 @@ import { afterAll, beforeEach, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { statePathOf } from "./support/flow-store.ts";
+import { flowContent } from "./support/flow-client.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-validation-")));
@@ -36,8 +36,7 @@ const option = (label: string) => ({ label, does: `${label} changes ownership`, 
 
 test("validate reports independent nested errors and submit refuses identically without changing stored content or the file", () => {
   const opened = open();
-  const state = statePathOf(home, opened.flow);
-  const before = readFileSync(state, "utf8");
+  const before = run(["show", "--flow", opened.flow]).json;
   const input = envelope(
     { kind: "round", questions: [{ title: "Which owner?", description: "Choose the owner.", needs: [{ need: "Compare ownership", kind: "prose" }], options: [{ ...option("Local"), gains: 42 }, { ...option("Shared"), costs: [] }] }] },
     { kind: "result", shape: "ledger", title: "Claims", entries: [{ claim: "The change works", status: "maybe", evidence: "No check", missing_proof: "A check", consequence: "Do not ship" }] },
@@ -56,25 +55,24 @@ test("validate reports independent nested errors and submit refuses identically 
   const refused = run(["submit", file]);
   expect(refused.code).toBe(1);
   expect(refused.json).toEqual(checked.json);
-  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(run(["show", "--flow", opened.flow]).json).toEqual(before);
   expect(readFileSync(file, "utf8")).toBe(raw);
 });
 
 test("valid stdin validates without mutation then submits the exact contribution", () => {
   const opened = open();
-  const state = statePathOf(home, opened.flow);
-  const before = readFileSync(state, "utf8");
+  const before = run(["show", "--flow", opened.flow]).json;
   const input = envelope({ kind: "result", shape: "table", title: "Counts", columns: ["Name", "Count"], rows: [{ ref: "one", cells: ["One", "1"] }] });
   const checked = run(["validate", "-"], input);
   expect(checked).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] }, stderr: "" });
-  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(run(["show", "--flow", opened.flow]).json).toEqual(before);
   const submitted = run(["submit"], input);
   expect(submitted.code).toBe(0);
   expect(submitted.json.revision).toBe(opened.revision + 1);
   const shown = run(["show"]).json;
   expect(shown.stages).toHaveLength(1);
   expect(shown.stages[0].results[0]).toMatchObject({ shape: "table", entries: [{ ref: "one", cells: ["One", "1"] }] });
-  expect(JSON.parse(readFileSync(state, "utf8")).results[0]).toMatchObject({ title: "Counts", columns: ["Name", "Count"] });
+  expect(flowContent(home, cwd, opened.flow).stages[0].results[0]).toMatchObject({ title: "Counts", columns: ["Name", "Count"] });
 });
 
 test("validation collects independent table row and reference errors with their exact input paths", () => {
@@ -134,8 +132,7 @@ test("semantic validation collects independent errors inside one Result instead 
 
 test("structural errors do not hide independent Metrics references and malformed siblings are safe", () => {
   const opened = open();
-  const state = statePathOf(home, opened.flow);
-  const before = readFileSync(state, "utf8");
+  const before = run(["show", "--flow", opened.flow]).json;
   const input = envelope({
     kind: "result", shape: "metrics", title: "Latency", workload: "", outcome: "No claim",
     series: [{ ref: "main", label: "Main" }],
@@ -151,7 +148,7 @@ test("structural errors do not hide independent Metrics references and malformed
   ]);
   expect(checked.json.diagnostics[3].allowed).toEqual(["main"]);
   expect(run(["submit"], input)).toMatchObject({ code: 1, json: checked.json });
-  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(run(["show", "--flow", opened.flow]).json).toEqual(before);
 });
 
 test("Metrics reference diagnostics use valid identities rather than malformed presentation fields", () => {

@@ -1,9 +1,10 @@
 import { afterAll, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
+import { flowContent } from "./support/flow-client.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-private-canonical-")));
@@ -40,15 +41,7 @@ const ok = (r: ReturnType<typeof run>) => {
 };
 const doc = (extra: object = {}) => ({ kind: "result", ref: "domain", shape: "document", title: "Domain reference", sections: [{ heading: "Scope", blocks: [{ prose: "The private domain document remains the canonical record." }] }], ...extra });
 const sha = (text: string) => createHash("sha256").update(text).digest("hex");
-function tree(dir: string): Record<string, string> {
-  const files: Record<string, string> = {};
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) Object.assign(files, tree(path));
-    else if (entry.name !== ".lock") files[path] = readFileSync(path, "utf8");
-  }
-  return files;
-}
+const observed = (w: ReturnType<typeof world>) => ok(run(w, w.linked, ["show"]));
 
 test("main and linked checkouts retain one shared Private canonical identity and historical hashes without copying its contents", () => {
   const w = world();
@@ -74,7 +67,7 @@ test("main and linked checkouts retain one shared Private canonical identity and
   const explicit = ok(run(w, w.linked, ["submit"], [doc({ canonical: { file: source }, title: "Linked reference" })]));
   expect(read(w.linked).stages[0].results.find((r: any) => r.id === explicit.refs.domain).canonical).toEqual(revised.canonical);
   expect(existsSync(join(w.linked, "GLOSSARY.md"))).toBe(false);
-  const persisted = Object.values(tree(w.home)).join("\n");
+  const persisted = JSON.stringify(flowContent(w.home, w.main, opened.flow));
   expect(persisted).not.toContain(firstBytes.trim());
   expect(persisted).not.toContain(secondBytes.trim());
   expect(readFileSync(source, "utf8")).toBe(secondBytes);
@@ -103,12 +96,12 @@ test("shared canonical access rejects unrelated files, metadata, non-files and e
     [join(w.shared, "domain", "escape.md"), /symlink/],
     [join(w.shared, "domain", "escape-dir", "outside.md"), /symlink/],
   ] as const) {
-    const before = tree(w.home);
+    const before = observed(w);
     const refused = run(w, w.linked, ["submit"], [doc({ ref: "preliminary", title: "Must not commit" }), doc({ canonical: { file: path } })]);
     expect(refused.code).toBe(1);
     expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
     expect(refused.stderr).toMatch(category);
-    expect(tree(w.home)).toEqual(before);
+    expect(observed(w)).toEqual(before);
   }
 });
 
@@ -120,7 +113,7 @@ test("resolving a shared canonical file grants no new attachment capture permiss
   const opened = ok(run(w, w.linked, ["open", "--skill", "research", "--title", "Reference only"]));
   ok(run(w, w.linked, ["submit"], [doc({ canonical: { file: source } })]));
   for (const path of [source, join(w.linked, "decision.md")]) {
-    const before = tree(w.home);
+    const before = observed(w);
     const refused = run(w, w.linked, ["submit"], [
       { kind: "attachment", ref: "private-file", type: "file", caption: "Private decision", origin: "Shared domain", path },
       doc({ attachments: ["private-file"] }),
@@ -128,7 +121,7 @@ test("resolving a shared canonical file grants no new attachment capture permiss
     expect(refused.code).toBe(1);
     expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
     expect(refused.stderr).toMatch(/outside|symlink/);
-    expect(tree(w.home)).toEqual(before);
+    expect(observed(w)).toEqual(before);
   }
   expect(ok(run(w, w.linked, ["show", "--flow", opened.flow])).attachments).toEqual([]);
 });
@@ -139,9 +132,9 @@ test("a domain directory without Private-mode config is not an admitted shared r
   const source = join(w.shared, "domain", "GLOSSARY.md");
   writeFileSync(source, "Not configured as Private mode.\n");
   ok(run(w, w.linked, ["open", "--skill", "research", "--title", "Standard boundary"]));
-  const before = tree(w.home);
+  const before = observed(w);
   const refused = run(w, w.linked, ["submit"], [doc({ canonical: { file: source } })]);
   expect(refused.code).toBe(1);
   expect(refused.stderr).toMatch(/outside/);
-  expect(tree(w.home)).toEqual(before);
+  expect(observed(w)).toEqual(before);
 });

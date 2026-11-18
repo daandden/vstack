@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 
 const f = computed(() => flow.value!);
 const colorMode = useColorMode();

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { flow } from "~/composables/reader";
+import { useReaderState } from "~/composables/reader";
+const { flow } = useReaderState();
 import { askLabel, type ResultView } from "~/utils/flow";
 
 const props = withDefaults(defineProps<{ r: ResultView; historical?: boolean }>(), { historical: false });
