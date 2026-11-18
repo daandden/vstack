@@ -1,13 +1,13 @@
 # Wayfinder drift check
 
-Use this check only for a proposed issue-creation batch. Follow skill://to-spec/DRIFT-CHECK.md's "Collect the decisions", "Checker brief", and "Fix and show" for decision provenance, source coverage, corrections, and user conflicts. Add the map checks below instead of its implementation-ticket acceptance check. The owning Stage is charting for the initial proposal or the ticket Stage that surfaced a later batch.
+Use this check only for a proposed issue-creation batch. Follow skill://to-spec/DRIFT-CHECK.md's "Collect the decisions", "Checker brief", and "Fix and show" for decision provenance, source coverage, corrections, and user conflicts. Apply its collection rules to the Flow evidence from [Read the Flow](#read-the-flow) in place of its `flow-page show` read. Add the map checks below instead of its implementation-ticket acceptance check. The owning Stage is charting for the initial proposal or the ticket Stage that surfaced a later batch.
 
 ## Prepare the proposal
 
 Supply the checker with:
 
 - The proposed map and chartable child tickets together for initial charting, or the proposed new tickets for a continuation. Include titles, bodies, types, intended parent membership, and blockers.
-- The applicable user decisions, visible assumptions, and source requirements with their identities and provenance. Preserve raw answers, separate readings, and unresolved status. A conversation can be the source, with no source issue.
+- The applicable user decisions, visible assumptions, and source requirements with their identities and provenance, collected as [Read the Flow](#read-the-flow) says. Preserve raw answers, separate readings, and unresolved status. A conversation can be the source, with no source issue.
 - Destination, Notes, Decisions so far, Not yet specified, and Out of scope. For a continuation, read the current map and relevant existing ticket bodies, blockers, and resolutions. Include proposed map updates needed to evaluate the new batch, with the current state available for comparison.
 - Supporting evidence for existing decisions and decision inputs, including source material and applicable domain records.
 
@@ -41,7 +41,7 @@ Publish both tables on the owning Stage, retaining original findings, correction
 
 ## Record a pending creation batch
 
-If the checker cannot start, returns no usable review, or leaves findings unresolved, keep the affected issues uncreated. Existing own-run infrastructure recovery applies. The check blocks issue creation, not the recording of Flow evidence.
+If decision collection is blocked, the checker cannot start, returns no usable review, or leaves findings unresolved, keep the affected issues uncreated. Existing own-run infrastructure recovery applies. The check blocks issue creation, not the recording of Flow evidence.
 
 When a conflict needs `ask`, publish the draft and findings as question context without marking the batch resumable. Save a `Pending creation` marker only when actually returning blocked, not while an `ask` is still pending.
 
@@ -54,9 +54,15 @@ Before returning blocked, save a Document Result titled `Wayfinder creation batc
 
 Keep the Stage in progress and require a `submit` receipt. To update an existing pending Document, submit a `revise` with `base` set to the saved pending Result's `changed` and `set.summary` set to `Pending creation`, followed by the full Document with `revises`, in one contribution. This preserves history and refuses a stale update. Never replace a competing publication marker or a completed outcome with `Pending creation`.
 
-## Read a saved batch
+## Read the Flow
 
-Run `show --flow <flow>` to find candidate Wayfinder Stages and their current Document Result ids and `changed` revisions. For those candidates, read titles, summaries, and Document contents from the same Flow's [read-scoped `content` endpoint](../../flow-page/references/host-observations.md#present-the-page). Resolve `content` relative to `show`'s `live.url`. Require the same Flow id and authored revision in both reads, then match by Stage and Result id. If the revisions differ, read both again. Treat an unavailable reader, failed read, or inconsistent evidence as a blocker, not proof that a batch is absent. Follow the existing Local Flow host recovery rules.
+Every Wayfinder check reads the Flow this way, including initial charting and a continuation with no saved batch. Looking for a saved batch uses the same read. Run `show --flow <flow>` to locate Stages and pin the Flow id and authored revision. Then read the same Flow's [read-scoped `content` endpoint](../../flow-page/references/host-observations.md#present-the-page), resolved relative to `show`'s `live.url`. Require the same Flow id and authored revision in both reads. If the revisions differ, read both again.
+
+`show` lists Assumed picks only by id, so take decision text from `content`. Collect the applicable close decisions, raw selections, and readings, plus each Assumed pick's current decision, pick, why, and provenance. Include earlier versions when a correction or reopening makes them relevant, and leave out Assumed picks that show `reopened_by`. Keep the conversation and source material as inputs beside the Flow evidence.
+
+For a saved batch, find candidate Wayfinder Stages and their current Document Result ids and `changed` revisions in `show`. Read their titles, summaries, and Document contents from `content`, then match by Stage and Result id.
+
+Treat an unavailable reader, failed read, or inconsistent evidence as a blocker. It does not prove that the Flow has no decisions or no saved batch. Follow the existing Local Flow host recovery rules. If decision collection stays blocked, keep the affected issues uncreated and [record the pending creation batch](#record-a-pending-creation-batch) with that blocker.
 
 ## Match a ticket batch
 
