@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Require an independent, blocking decision-coverage and map-consistency review before Wayfinder creates an initial map and child issues or a later new-issue batch. Keep existing-issue edits and resolutions outside this check."
+  ]
+}
