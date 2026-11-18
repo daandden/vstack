@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Move the dependency install policy from the vstack-python rule into its own vstack-dependencies rule. Behavior is unchanged."
+  ]
+}
