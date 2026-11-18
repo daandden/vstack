@@ -122,30 +122,48 @@ Ruling something out of scope is a scoping act, not a step on the route. When a 
 
 Two modes. Either way, never resolve more than one ticket per session, with the exception of research tickets.
 
+### Before creating issues
+
+Check each proposed creation batch before creating any of its issues. The initial map and its chartable child tickets are one proposal. Later batches include newly surfaced tickets in their current map context. Read [the Wayfinder drift check](references/drift-check.md) and skill://to-spec/DRIFT-CHECK.md for the inputs, coverage, map checks, and fix-and-show procedure.
+
+Start a checker only when [the review history](references/drift-check.md#fix-recheck-and-record) calls for a new review attempt. Use the owning session's configured `task` tool for that attempt and any permitted infrastructure retry. If `task` is unavailable, do not launch another omp process, use another agent's binding, or review the batch yourself.
+
+For an eligible new attempt:
+
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): independently review the proposed issues and blockers using both references' checker briefs, the applicable user decisions and visible assumptions with their provenance, source requirements when present, the current map and relevant ticket and resolution evidence, the vstack root. Wait for its result. If it cannot be spawned, stop: leave the affected issues uncreated and [record the pending creation batch](references/drift-check.md#record-a-pending-creation-batch).
+
+The checker is read-only and returns findings and open questions. The parent owns tracker writes and user asks. Research runners do not substitute for this review. [Record the review and recheck corrections](references/drift-check.md#fix-recheck-and-record) with the same checker. If the review passes, [verify the batch immediately before the first create](references/drift-check.md#verify-immediately-before-the-first-create). If creation remains blocked, record the actual outcome on the owning Stage.
+
+This gate does not trigger for edits of existing issues, resolution comments, closing, claims, or pure Flow snapshots. Include proposed existing-map updates as context when they are needed to evaluate new issues, not as a separate trigger.
+
 ### Chart the map
 
-User invokes with a loose idea.
+User invokes with a loose idea or resumes an earlier chart.
 
-1. Name the destination. Use skill://grilling and skill://domain-modeling to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first.
+1. Before interviewing, [look for a saved chart](references/drift-check.md#match-a-chart). Resume a matching pending chart on its existing Stage and skip to step 4. A completed chart returns its saved outcome. A held or ambiguous chart stops here. For new charting, use skill://grilling and skill://domain-modeling to name the destination: the spec, decision, or change this map is for. The destination fixes the scope.
 2. Map the frontier. Grill again, breadth-first this time: range across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. If this surfaces no fog (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop charting and use `ask` on the charting Stage to choose how to proceed.
-3. Create the map (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into Not yet specified. Add the map's alias and publish its Result as [The Flow page](#the-flow-page) says.
-4. Create the tickets you can specify now as child issues of the map, then wire blocking edges in a second pass. Write cross-references in that pass with the real issue ids. A placeholder such as `#<n>` can auto-link to an unrelated issue. Wiring sorts tickets into the frontier and the blocked; everything you cannot specify stays in Not yet specified.
-5. Fire the research runners. Claim each research ticket before work, then use Research runners below to resolve the claimed tickets.
-6. Publish the charted map and dependency Results, then finish the charting Stage. Charting is one session's work; it hand-resolves nothing.
+3. Draft the map and every ticket you can specify now, including their intended blocking relationships. Fill Destination and Notes, leave Decisions-so-far empty, and sketch the remaining fog into Not yet specified.
+4. Run [Before creating issues](#before-creating-issues) on the whole proposal, including on resumption. After the check passes, create the map with the `wayfinder:map` label. Add the map's alias and publish its Result as [The Flow page](#the-flow-page) says.
+5. Create the checked tickets as child issues of the map, then wire blocking edges in a second pass. Write cross-references in that pass with the real issue ids. A placeholder such as `#<n>` can auto-link to an unrelated issue. Wiring sorts tickets into the frontier and the blocked; everything you cannot specify stays in Not yet specified.
+6. Fire the research runners. Claim each research ticket and open its own Wayfinder ticket Stage before work. Use [Research runners](#research-runners) to resolve the claimed tickets.
+7. Publish the charted map and dependency Results. [Record the batch outcome](references/drift-check.md#complete-a-saved-batch) when finishing the charting Stage. Charting hand-resolves no tickets.
 
 ### Work through the map
 
-User invokes with a map (URL or number). A ticket is optional: without one, you pick the next decision, not the user.
+User invokes with a map (URL or number) and an optional ticket.
 
 1. Load the map: the low-res view, not every ticket body.
-2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. Claim it: assign it to the dev driving the map before any work. Open its ticket-specific Stage on the map's Flow page.
-3. Read the ticket's `wayfinder:<type>` label and resolve it as that type. The body alone does not establish the type. For a research ticket, use Research runners below instead of invoking research's background agent. For other tickets, zoom as needed: fetch the full body of any related or closed ticket on demand; use the skills the `## Notes` block names, each as a `skill://<name>` reference. If in doubt, use skill://grilling and skill://domain-modeling.
-4. Once the ticket is resolved, post the answer as a resolution comment, close the issue, and append a context pointer to the map's Decisions-so-far in the same run as the grill's close, without a next-prompt confirmation. A HITL ticket requires live answers to its questions. A headless or unanswered HITL grill writes nothing. Publish the resolution and evidence on the ticket's Stage with its canonical links. Preserve unanswered questions with explicit retirement reasons rather than claiming a decision.
-5. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from Not yet specified so it lives only as its new ticket. If the answer reveals that a ticket (this one or another) sits beyond the destination, rule it out of scope rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.
-6. Publish the refreshed map and dependency Results in this active ticket Stage, preserving the earlier charting snapshot, then finish the ticket Stage.
+2. Before selecting from the frontier, [look for a saved creation batch](references/drift-check.md#match-a-ticket-batch) on the map's Flow. Resume a matching pending batch on its existing Stage and go straight to [Finish the ticket](#finish-the-ticket). For an explicit resumption of a completed batch, return its saved outcome. A held or ambiguous batch stops here. For new work, use the named open ticket or take the first frontier ticket in order. Claim it by assigning it to the dev driving the map before any work. Open its ticket-specific Stage on the map's Flow page.
+3. Read the ticket's `wayfinder:<type>` label and work it as that type. The body alone does not establish the type. For a research ticket, [Research runners](#research-runners) handles resolution and finishing in place of the remaining steps here. For other tickets, zoom as needed: fetch the full body of any related or closed ticket on demand; use the skills the `## Notes` block names, each as a `skill://<name>` reference. If in doubt, use skill://grilling and skill://domain-modeling.
+4. A HITL ticket requires live answers to its questions. A headless or unanswered HITL grill writes nothing. Preserve unanswered questions with explicit retirement reasons rather than claiming a decision. If a ticket sits beyond the Destination, follow [Out of scope](#out-of-scope) instead of recording it as a decision. Otherwise, once the source ticket is resolved, post the answer as a resolution comment, close the issue, and append a context pointer to Decisions so far in the same run as the grill's close, without a next-prompt confirmation. Apply edits to existing issues that the decision requires outside the creation check. Publish the resolution or scope ruling and its evidence on the ticket's Stage with canonical links.
+5. [Finish the ticket](#finish-the-ticket) on its Stage.
 
 The user may run unblocked tickets in parallel, so expect other sessions to be editing the tracker concurrently.
 
+### Finish the ticket
+
+1. After recording the source resolution or scope ruling, draft newly surfaced tickets, their blockers, and the changes to Not yet specified. On resumption, use the saved proposal and refreshed context instead. If there are new issues, run [Before creating issues](#before-creating-issues). Only after the check passes, create the checked tickets and then wire their blockers.
+2. Clear each graduated patch from Not yet specified after its ticket exists. Preserve concurrent edits to the map. Publish the refreshed map and dependency Results and graph snapshot on this ticket Stage, preserving earlier snapshots. [Record the batch outcome](references/drift-check.md#complete-a-saved-batch) when finishing the Stage.
 
 ## Research runners
 
@@ -189,4 +207,4 @@ Once the checkout record exists, remove the landing checkout on every exit, incl
 
 In Private mode, drop the patch. Findings already live under the vstack root; there is no branch or push and the resolution comment carries no asset link.
 
-Post the answer as the resolution comment, linking the findings on `research/<name>` in Standard mode. With no remote, cite the local branch and file path instead. Close the ticket only when its answer resolves the question. Re-read the current map body before appending the gist and ticket link to Decisions so far, preserving concurrent edits. Then graduate newly specifiable fog through the normal create-then-wire steps.
+Post the answer as the resolution comment, linking the findings on `research/<name>` in Standard mode. With no remote, cite the local branch and file path instead. Close the ticket only when its answer resolves the question. Re-read the current map body before appending the gist and ticket link to Decisions so far, preserving concurrent edits. Publish the resolution and evidence on that research ticket's Wayfinder Stage, then use [Finish the ticket](#finish-the-ticket) on the same Stage. If creation is blocked, preserve the pending batch there, not on the caller's Stage. A resumption starts at the shared finishing steps, not at research landing.

@@ -1,6 +1,6 @@
 # Drift check
 
-to-spec and to-tickets check their draft against what the user decided before they publish it or show it. Each caller names its source, its draft, what Covered in names, and its Stage, and starts the checker, a `vstack-explorer`, with the single-subagent line in its own SKILL.md.
+to-spec, to-tickets, and wayfinder check their draft against what the user decided before they publish it or show it. Each caller names its source, its draft, what Covered in names, and its Stage, and starts the checker, a `vstack-explorer`, with the single-subagent line in its own SKILL.md. Wayfinder adds its map checks from skill://wayfinder/references/drift-check.md.
 
 ## Collect the decisions
 
@@ -14,7 +14,7 @@ Compare the draft with each close decision, each Assumed pick, and each requirem
 
 ### Ticket acceptance check
 
-When the draft is a ticket breakdown, also trace every acceptance criterion's prerequisites independently of the author's trace. Include unresolved human decisions, shared fixtures, and capabilities that the criterion's consumer needs. Full requirement coverage alone does not establish that a ticket can satisfy its acceptance.
+When the draft is an implementation-ticket breakdown, also trace every acceptance criterion's prerequisites independently of the author's trace. Include unresolved human decisions, shared fixtures, and capabilities that the criterion's consumer needs. Full requirement coverage alone does not establish that a ticket can satisfy its acceptance.
 
 Return an acceptance prerequisite table with columns Ticket, Criterion, Prerequisite, Supplied by, Blocking path, and Found. Name the affected criterion and concrete prerequisite in every finding. Keep each decision's identity, raw answer, separate reading, and unresolved or Assumed status. For a criterion without external prerequisites, record why its own work is sufficient.
 
@@ -29,6 +29,6 @@ An upstream ticket may own obtaining a still-needed human answer, but assigning 
 1. Fix every miss and contradiction in the draft.
 2. If the checker returns a conflict between two decisions, put it to the user through `ask` following `skill://flow-page`'s "Every ask in a Flow", preserving the raw answer and separate reading. Fix the draft only to an explicit pick or resolved reading.
 3. Submit the coverage table as a table Result on the caller's Stage, with the columns Decision, Covered in, and Found and one row per checker row. Decision names the close decision, Assumed pick, or source requirement, preserving its provenance. Covered in names the part of the draft that covers it after your fixes. Found names the miss or contradiction that you fixed, or "None".
-4. For a ticket breakdown, fix every acceptance prerequisite finding and recheck the corrected draft with the same independent checker. Publish its acceptance prerequisite table beside the coverage table, retaining the original findings and the fixes. Continue only when every criterion can be satisfied by its own work, evidenced existing inputs, and declared blockers. Keep any human answer still needed explicit.
+4. For an implementation-ticket breakdown, fix every acceptance prerequisite finding and recheck the corrected draft with the same independent checker. Publish its acceptance prerequisite table beside the coverage table, retaining the original findings and the fixes. Continue only when every criterion can be satisfied by its own work, evidenced existing inputs, and declared blockers. Keep any human answer still needed explicit.
 
-If the checker does not start, the caller stops as its SKILL.md says, and nothing is published. After the applicable checks and fixes, the caller goes on to publish or show the draft.
+If the checker does not start, stop as the caller's SKILL.md says. Do not publish the deliverable or show it as checked. The caller governs blocker evidence and any clearly marked unpublished draft. After the applicable checks and fixes, the caller goes on to publish or show the checked draft.
