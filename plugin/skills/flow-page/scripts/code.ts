@@ -22,7 +22,10 @@ export function parseDiff(diff: string): { lines: DiffLine[]; hunks: Hunk[] } | 
   let leftNew = 0;
   const ended = () => {
     const h = hunks.length;
-    if (h && (leftOld > 0 || leftNew > 0)) return `hunk ${h} ends early: its header counts ${hunks[h - 1].old.count} old and ${hunks[h - 1].new.count} new lines, but ${leftOld} old and ${leftNew} new lines are missing`;
+    if (h && (leftOld > 0 || leftNew > 0)) {
+      const last = hunks[h - 1]!;
+      return `hunk ${h} ends early: its header counts ${last.old.count} old and ${last.new.count} new lines, but ${leftOld} old and ${leftNew} new lines are missing`;
+    }
     return undefined;
   };
   for (const [i, text] of linesOf(diff).entries()) {
@@ -131,7 +134,7 @@ export function highlighter(language: string | undefined) {
         continue;
       }
       const rest = s.slice(i);
-      const lc = lang.line.find((t) => rest.startsWith(t) && (!lang.hashNeedsSpace || i === 0 || /\s/.test(s[i - 1])));
+      const lc = lang.line.find((t) => rest.startsWith(t) && (!lang.hashNeedsSpace || i === 0 || /\s/.test(s[i - 1]!)));
       if (lc) {
         push(rest, "com");
         break;
@@ -150,7 +153,7 @@ export function highlighter(language: string | undefined) {
         i = Math.min(j + 1, s.length);
         continue;
       }
-      const prev = i > 0 ? s[i - 1] : "";
+      const prev = i > 0 ? s[i - 1]! : "";
       const num = /[\w$]/.test(prev) ? null : rest.match(NUMBER);
       if (num) {
         push(num[0], "num");
@@ -163,7 +166,7 @@ export function highlighter(language: string | undefined) {
         i += word[0].length;
         continue;
       }
-      push(s[i]);
+      push(s[i]!);
       i++;
     }
     return out;

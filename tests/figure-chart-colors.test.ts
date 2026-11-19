@@ -79,7 +79,7 @@ test.each(["gradient", "source", "target"])("Sankey %s mode retains actual endpo
   if (mode === "gradient") {
     const id = /fill="url\(#([^)]*)\)/.exec(link)![1];
     const gradient = new RegExp(`<linearGradient id="${id}"[^>]*>(.*?)</linearGradient>`).exec(r.svg!)![1]!;
-    expect([...gradient.matchAll(/stop-color="([^"]*)"/g)].map((m) => m[1])).toEqual([sourceColor, destination]);
+    expect<(string | undefined)[]>([...gradient.matchAll(/stop-color="([^"]*)"/g)].map((m) => m[1])).toEqual([sourceColor, destination]);
   } else {
     expect(r.svg).not.toContain("<linearGradient");
     expect(link).toContain(`fill="${mode === "source" ? sourceColor : destination}"`);
