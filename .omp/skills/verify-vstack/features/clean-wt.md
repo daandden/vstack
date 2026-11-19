@@ -20,6 +20,7 @@
 - `cwt-discovery` external verifier-session directories reveal saved leased child headers. Git and non-Git invocation directories yield the same global inventory. Native entries outside supported layouts remain visible with protection reasons.
 - `cwt-progress` `--progress` writes JSONL diagnostics to stderr while stdout stays JSON. Diagnostics identify the current phase, actual content reads, and ownership blockers.
 - `cwt-approval-plan` the approval planner turns investigated eligible targets into bounded Flow contributions and preserves their inspected path and fingerprint. Planning never publishes, selects, or deletes targets.
+- `cwt-summary` the summary renderer groups current outcomes and links each question to one Result that keeps its id across revisions. The page shows no raw evidence.
 - `cwt-source-guard` every entry in the full ovnfs listing protects its native, task-wrapper, or ovnfs source, including sources of named and verifier dependents. Removal refreshes this evidence. A stale fingerprint or dirty-work approval cannot override a new dependent.
 
 ## How to get to it (user POV)
@@ -122,14 +123,46 @@ Step `clean-wt-native-completion`: Run `bun test --timeout 30000 tests/clean-wt.
 
 Step `clean-wt-approval-plan`: Run `bun test --timeout 30000 tests/clean-wt-approval.test.ts`. The production planner receives 31 investigated targets and returns contributions with 26 and 5 options. The current Flow CLI validates and submits each contribution in an isolated home. A scripted empty response leaves the first question open. A scripted second-round E pick records target 31's generated label and preserves its original path and fingerprint mapping. These scripted responses are not human consent. Protected, duplicate, noncanonical, or incomplete evidence is rejected without a partial plan. No option is preselected and no target is deleted.
 
+Step `clean-wt-summary`: Run `bun test --timeout 30000 tests/clean-wt-summary.test.ts`. Require the isolated Flow CLI to accept the counts and groups, a whole-Result link from the planner round, and a revision that removes the settled options. The reader host stays off for this check.
+
 Step `clean-wt-read-budget`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'large ignored trees keep fresh cleanup guards'`. Retain the printed workload and per-operation files, bytes, and elapsed milliseconds. These counters cover script-owned content reads, not Git subprocess I/O. The lifecycle must satisfy the fixture's read budget while retaining final content, ownership, history, and fingerprint checks.
 
 Step `clean-wt-parent-vs-head`: Compare the captured red runs with the passing head CLI cases for machine-wide Git and non-Git inventory, native and ovnfs uncertain origins, and full-list source dependency protection. Retain existing comparison evidence for saved external headers, native exclusions, 31-target approval, and the identical ignored-tree workload. Read the base implementation to establish the changed paths. Preserve source revisions and observations separately. A timing sample alone does not establish a general speedup.
+
+## Drive the summary with the Session model
+
+This journey uses the real model, real investigators, the ordinary omp picker, and a live Flow page. Get explicit approval for the Costly seam before launch. Run it with the user available to answer in the new TUI. Script no picks. Without a reachable user picker, stop before any picked removal and record the proof gap.
+
+1. Step `clean-wt-summary-live-isolation`: Make a fresh fixture root `F="$VERIFY_RUN_DIR/data/summary-live"` with a local source repository, a bare remote with a real symbolic HEAD, and two linked worktrees under `"$F/wt"`. Leave one clean and give the other a unique uncommitted draft. Make disjoint, fresh state and mount directories under `F`. In a fresh shell, clear inherited `PI_*` and `OMP_*` session variables, then set these paths for the entire preflight and session:
+
+   ```sh
+   export OMP_WORKTREE_DIR="$F/wt" OVNFS_STATE="$F/ovnfs-state" OVNFS_MOUNT="$F/ovnfs-mount"
+   ovnfs --state "$OVNFS_STATE" --mount "$OVNFS_MOUNT" start
+   ovnfs --state "$OVNFS_STATE" --mount "$OVNFS_MOUNT" status
+   ovnfs --json ls
+   omp worktree list --json
+   bun "$CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts" inventory --progress
+   ```
+
+   Run the listings and inventory from the same fixture project, with the same environment as the model launch. Record all commands, exits, stdout, and stderr separately. Require a running daemon in the fresh namespace, an empty ovnfs listing, and exactly the fixture paths in native and clean-wt inventory. Resolve each path on disk and compare it to the fixture allowlist. Stop before launch on an unknown path, unreadable listing, missing fixture, or unproven daemon isolation. `--base` and a throwaway HOME alone do not isolate ovnfs. Never substitute the real-daemon recipe for this step.
+
+2. Step `clean-wt-summary-live-launch`: Keep real HOME for model credentials. Use the Session model, thinking discovery, and checkout package overlay from [the Flow enrollment recipe](flow-page.md#real-model-enrollment-flow-enrollment). Set the overlay in `PI_CONFIG_FILES` for both preflight and launch. Choose a free `VSTACK_FLOW_PORT` for the isolated host. In a terminal the user can reach, start a new TUI from the fixture source repository:
+
+   ```sh
+   omp --model "$MODEL" --thinking "$THINKING" --cwd "$F/repo" \
+     --session-dir "$F/sessions" --config "$OVERLAY" \
+     --no-extensions -e "$CHECKOUT/plugin" -e "$OMP_TOOLS"
+   ```
+
+   Use the checkout's clean-wt and dependency skills. Keep the preflight's base and ovnfs environment. In the fixture prompt require that every Flow command use `--home "$F/flow-home"` and the new session's own identity. Let the CLI create `.vstack/tmp` inside that home at its canonical path. Keep it a real directory: the reader refuses Flow folders reached through a symlink. Keep run diagnostics in a separate evidence directory. Leave the normal HOME host and binding untouched. This setup tests ordinary `ask` and the linked page, not the Flow panel.
+3. Step `clean-wt-summary-live-picker`: Verify that `task` and the checkout's `vstack-scout` are available. In the new TUI, enter `/skill:clean-wt`. Save the native invocation, initial summary and receipt, and the `task` call and investigator's targeted inventory and result. A direct inventory in the main agent does not prove delegation. At the ordinary picker, compare the option with the actual draft. Require a plain verdict, `~` for HOME, and no preselected option. Confirm the summary and picker use the same label and group. Observe the user's answer without substituting one. A recorded cancellation or empty answer proves non-consent, not deletion with a pick.
+4. Step `clean-wt-summary-live-page`: Read the receipt's live content and open its URL in the Verify browser. Follow the question's link to the entire summary. Capture the ARIA tree and a lossless WebP before and after the picker closes. Require the counts before the outcome lists, the choice on one line, one Result id across revisions, no stale pending rows at the end, and no evidence attachments or process notes. Compare the final summary with the actual verification, Scratch files, and disk, Git, and ovnfs after-state. Capture command and session records and the final chat reply.
+5. Step `clean-wt-summary-live-cleanup`: Preserve logs and native session records outside `data/`. Close only the fixture Flow and browser tab. Stop the owned Flow host with `host stop --home "$F/flow-home"`, and stop ovnfs with the same explicit fresh `--state` and `--mount` as launch. Confirm both owned processes exited. Keep failure evidence. Never stop the shared host or daemon.
 
 ## Gotchas
 
 - Without `--session`, every checkout is `uncertain` and `remove` skips all of them. That proves the lease check, not removal.
 - The stub model's replies are fixed before the drive, so a fingerprint cannot come from an earlier tool result. `fp` reads it inside the same bash command.
 - The fixture lives under `data/`, so Cleanup deletes it. Save the after listing before Cleanup.
-- This feature drives the script through the session. The skill's investigation Fan-out and `ask` step need a model that follows the skill, so report them as skipped.
+- The fixed-reply drive does not exercise the investigation Fan-out or picker. Use the approved Session-model journey for those proof steps.
 - The stub driver answers standalone, tool-less omp capability probes for `17 times 23` with `391` without consuming scenario replies. Require actual `tool_execution_end` evidence for the cleanup commands. Transport success alone does not prove that they ran.
