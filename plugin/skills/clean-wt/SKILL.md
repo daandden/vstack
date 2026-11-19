@@ -16,6 +16,17 @@ Save each inventory, removal, and verification command's exit code, stdout, and 
 
 Step 5's grouped summary is this Stage's Result, not a second report page. Summarize the published outcome in chat.
 
+### Record cleanup progress
+
+At Stage entry, before inventory, submit one `task` with `ref: "cleanup"`, `title: "Clean up unused checkouts"`, and `state: "active"`. Save its ID from the receipt's `refs.cleanup`. For a standalone cleanup Flow, include `{ "kind": "end-state", "requested": "none" }` in that contribution. Cleanup delivers no commit or PR. In a nested Stage, leave the caller's End state unchanged.
+
+Before finishing the Stage on any exit, update the same task by ID. Follow `skill://flow-page`'s "Record progress" contract:
+
+- If cleanup and verification finish without failure or an unverified outcome, set `state: "done"` and give one plain outcome sentence in `evidence`. A run that verifies there was nothing to remove can finish as `done`.
+- If cleanup fails or stops before it can finish, set `state: "skipped"` and give a plain `reason`, such as "Cleanup stopped before verification finished." Use `skipped` as well if verification leaves an outcome unknown.
+
+Keep diagnostics in Scratch. If work pauses at a recoverable blocker, record the blocker and leave the task active. When the blocker clears, resolve it and resume the same task.
+
 ## Script contract
 
 Run from any directory, Git or not. The invocation directory does not restrict discovery or establish a checkout's source repository.
