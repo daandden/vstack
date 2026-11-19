@@ -2,7 +2,7 @@
   "version": 1,
   "files": {
     "flow-page/scripts/assets.ts": "617f245cae28773fd5c063c51d90f263573295dd1824e4b00040fac4eff2e55f",
-    "flow-page/scripts/cli.ts": "7fd9bbe399b4d6f5fc52da41a6b502381c09fe979be3957de3ffa27b46ea5a0f",
+    "flow-page/scripts/cli.ts": "b364ae011a235265fa4b4229086cad50f96f77ffd0b802a6a07600e318c1bf6e",
     "flow-page/scripts/code.ts": "ca3100cf33d86672f8d8305b106545a45dbef75fdbead50f96f50ec82673ee7e",
     "flow-page/scripts/comments.ts": "552c70076945427588dea73b086a59f9c2716f54e2a036bbf7a24e6b9ea8ea41",
     "flow-page/scripts/contracts.ts": "7c8a7adaeaca1b6543fd894843a004bf4712c288698442fb8a00fa706890b7b6",

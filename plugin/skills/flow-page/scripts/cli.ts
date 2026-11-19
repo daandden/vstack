@@ -53,6 +53,21 @@ const refuse = (message: string): never => {
   throw new Refusal(message);
 };
 
+function askFormHtml(questions: NonNullable<ReturnType<typeof contribute>["ask"]>["questions"]): string {
+  let html = "<form>";
+  for (const q of questions) {
+    const name = Bun.escapeHTML(q.id);
+    const type = q.multi ? "checkbox" : "radio";
+    html += `<fieldset><legend>${Bun.escapeHTML(q.question)}</legend>`;
+    for (const [i, option] of q.options.entries()) {
+      const label = Bun.escapeHTML(option.label);
+      html += `<label><input type="${type}" name="${name}" value="${label}"${i === q.recommended ? " checked" : ""}>${label}</label>`;
+    }
+    html += "</fieldset>";
+  }
+  return html + "</form>";
+}
+
 const stringOptions = ["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"] as const;
 let parsed;
 try {
@@ -304,10 +319,10 @@ async function main(): Promise<object> {
       }
       const apply = (write: FlowWrite | undefined, s: State) => {
         try {
-          const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
+          const { revision, repeated, refs, ask } = contribute(s, t.stage, input, time, io);
           if (command === "validate") return { ok: true, diagnostics: [] };
           if (!repeated) publish(write!, s);
-          return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
+          return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), refs, ...(ask ? { ask: { ...ask, html: askFormHtml(ask.questions) } } : {}) };
         } catch (error) {
           if (error instanceof ContributionRefusal) throw error;
           throw new ContributionRefusal([refusalDiagnostic(error, input)]);
