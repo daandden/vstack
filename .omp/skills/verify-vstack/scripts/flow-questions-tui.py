@@ -13,6 +13,7 @@ import select
 import shlex
 import shutil
 import socket
+import sqlite3
 import struct
 import subprocess
 import tempfile
@@ -313,11 +314,23 @@ def main():
     competing = None
     command_log = []
 
-    def flow_folder(flow):
-        for state in home.glob(".vstack/tmp/*/flow/*/data/state.json"):
-            if json.loads(state.read_text()).get("flow", {}).get("id") == flow:
-                return state.parent.parent
+    def stored_flow(flow):
+        for path in home.glob(".vstack/tmp/*/flow.db"):
+            db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
+            try:
+                row = db.execute("SELECT folder, state FROM flows WHERE id = ?", (flow,)).fetchone()
+                if row is not None:
+                    bindings = [json.loads(data) for (data,) in db.execute(
+                        "SELECT data FROM bindings WHERE flow = ?", (flow,))]
+                    return path.parent / "flow" / row[0], json.loads(row[1]), bindings
+            finally:
+                db.close()
         raise RuntimeError(f"No stored Flow {flow} in the owned home")
+
+    def export_flow(folder, state):
+        export = out / "export"
+        shutil.copytree(folder, export)
+        save(export / "data/state.json", state)
 
     def command(argv, label):
         result = subprocess.run(argv, cwd=project, env=env, capture_output=True, text=True, timeout=45)
@@ -382,7 +395,7 @@ def main():
     receipt = None
 
     def published_state():
-        return json.loads((flow_folder(receipt["flow"]) / "data/state.json").read_text())
+        return stored_flow(receipt["flow"])[1]
 
     def live_question():
         nonlocal receipt
@@ -454,8 +467,10 @@ def main():
                 with (out / "model-requests.jsonl").open("a") as log:
                     log.write(json.dumps(requests[-1]) + "\n")
                 last_user = next((m for m in reversed(body.get("messages", [])) if m.get("role") == "user"), {})
-                routing = not body.get("tools") and str(last_user.get("content", "")).startswith("Compress into one routing hint")
-                if routing:
+                probe = str(last_user.get("content", "")).strip() if not body.get("tools") else ""
+                if probe == "What is 17 times 23? Answer with only the number.":
+                    reply = {"text": "391"}
+                elif probe.startswith("Compress into one routing hint"):
                     reply = {"text": "Use this tool when its description matches the task."}
                 elif phase == 0:
                     names = sorted(t.get("function", {}).get("name", t.get("name", "")) for t in body.get("tools", []))
@@ -494,17 +509,21 @@ def main():
                         done.set()
                     elif args.case in ("tui", "retry", "later-round"):
                         assert not result[-1].get("isError"), result[-1]
-                        answers = raw["results"]
-                        assert [a["id"] for a in answers] == [a["id"] for a in receipt["ask"]["questions"]]
-                        assert answers[0]["selectedOptions"] == ["A. Alpha", "B. Beta"], raw
-                        assert "fixture-option-note" in answers[0].get("note", ""), raw
-                        assert answers[1].get("customInput") == "fixture-custom-concern", raw
+                        pick_id, words_id = [question["id"] for question in receipt["ask"]["questions"]]
+                        assert [a["name"] for a in raw["answers"]] == [pick_id, words_id], raw
+                        assert raw["answers"][0]["answer"] == "A. Alpha, B. Beta", raw
+                        assert raw["answers"][1]["answer"] == "Other: fixture-custom-concern", raw
+                        notes = [note["text"] for note in raw["notes"]
+                                 if note["name"] == pick_id and note["option"] == "A. Alpha"]
+                        words = [entry["text"] for entry in raw["other"] if entry["name"] == words_id]
+                        assert notes == ["fixture-option-note"] and words == ["fixture-custom-concern"], raw
+                        option_note, custom_input = notes[0], words[0]
                         assert raw.get("submitNote") == "fixture-submit-note", raw
                         normalized = {"version": 1, "items": [
-                            {"kind": "answer", "question": answers[0]["id"], "response": {
-                                "status": "answered", "picks": ["A", "B"], "text": answers[0]["note"]}},
-                            {"kind": "answer", "question": answers[1]["id"], "response": {
-                                "status": "answered", "text": answers[1]["customInput"] + "\n" + raw["submitNote"]},
+                            {"kind": "answer", "question": pick_id, "response": {
+                                "status": "answered", "picks": ["A", "B"], "text": option_note}},
+                            {"kind": "answer", "question": words_id, "response": {
+                                "status": "answered", "text": custom_input + "\n" + raw["submitNote"]},
                              "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}}]}
                         save(out / "normalized-answers.json", normalized)
                         reply = {"tool": "bash", "args": {"command":
@@ -512,7 +531,7 @@ def main():
                         phase = 4
                     else:
                         assert args.case == "timeout", "Cancellation unexpectedly resumed the model"
-                        assert all(item.get("timedOut") is True for item in raw["results"]), raw
+                        assert raw.get("timedOut") is True, raw
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
                 elif phase == 4 and args.case == "later-round":
@@ -547,7 +566,7 @@ def main():
                     result = asks()
                     assert len(result) == 2 and not result[-1].get("isError"), result
                     save(out / "later-tool-result.json", result[-1])
-                    assert result[-1]["details"]["selectedOptions"] == ["A. Continue"], result[-1]
+                    assert [a["answer"] for a in result[-1]["details"]["answers"]] == ["A. Continue"], result[-1]
                     assert len(published_state()["answers"]) == 2, "Later ask delivery authored an answer"
                     later = json.loads((out / "later-publication.json").read_text())
                     normalized = {"version": 1, "items": [{"kind": "answer",
@@ -656,7 +675,8 @@ def main():
                        "output_byte_offset": len(captured)})
         save(out / "inputs.json", inputs)
         if args.tern:
-            keys = {b"\r": "Enter", b"\x1b": "Escape", b"\x1b[15~": "F5", b" ": "Space", b"\x03": "Ctrl+c"}
+            keys = {b"\r": "Enter", b"\x1b": "Escape", b"\x1b[15~": "F5", b" ": "Space", b"\x03": "Ctrl+c",
+                    b"n": "n", b"j": "j"}
             if value in keys:
                 ctl("key", keys[value])
             else:
@@ -707,27 +727,66 @@ def main():
                 log.write(chunk)
             (out / "terminal.txt").write_text(plain(captured))
 
+    def native_click(label, node):
+        x, y, width, height = node["rect"]
+        point = [str(x + min(8, width / 2)), str(y + min(8, height / 2))]
+        inputs.append({"at_seconds": time.monotonic() - started, "label": label,
+                       "click": point, "output_byte_offset": len(captured)})
+        save(out / "inputs.json", inputs)
+        ctl("click", *point)
+        read_output(0.15)
+
+    def click_option(label):
+        options = ctl("tree", '[role="listbox"] .sf-act')["nodes"]
+        row = next(node for node in options if node.get("text", "").endswith(label))
+        native_click(f"click option {label}", row)
+
     summary = {"ok": False, "case": args.case}
 
     def panel_nodes():
         return [node for node in ctl("tree", PANEL)["nodes"] if node.get("tag") != "a"] if args.tern else []
 
-    def panel_with_picker(name, after=0):
-        wait_for_text("n add note", after=after)
+    def round_receipt(round_file):
+        # The shell redirect creates the file before the CLI writes it, so only a parsed receipt counts.
+        try:
+            current = json.loads((out / round_file).read_text())
+        except (FileNotFoundError, json.JSONDecodeError):
+            return None
+        return current if "ask" in current else None
+
+    def panel_with_picker(name, after=0, round_file="publication.json"):
+        # A later round has its own receipt; its question title and fragment differ from the first round's.
+        current = round_receipt(round_file)
+        if args.tern:
+            deadline = time.monotonic() + 30
+            while (receipt is None or current is None) and time.monotonic() < deadline:
+                read_output(0.1)
+                current = round_receipt(round_file)
+            assert receipt is not None and current is not None, "No publication receipt before native picker"
+        current = current or receipt
+        if args.tern:
+            wait_for_text(current["ask"]["questions"][0]["question"], after=after)
+        else:
+            wait_for_text("n add note", after=after)
         expected = (json.loads((out / "offline-bound.json").read_text())["live"]["error"]
-                    if args.case == "offline" else receipt["live"]["url"])
+                    if args.case == "offline" else current["live"]["url"] + "#" + (
+                        current["stage"] if args.case == "ratchet" else current["ask"]["questions"][0]["id"]))
         wait_for_text(expected, after=after)
         if args.tern:
-            for _ in range(50):
-                if expected in json.dumps(ctl("tree", PANEL)):
+            # Judge one snapshot taken while panel and picker show together: a timeout case can close both
+            # while the screenshot converts.
+            deadline = time.monotonic() + 5
+            while True:
+                tree, panel = ctl("tree"), ctl("tree", PANEL)
+                together = ("Flow page" in json.dumps(panel) and expected in json.dumps(panel)
+                            and "Add note" in json.dumps(tree))
+                if together or time.monotonic() >= deadline:
                     break
                 read_output(0.1)
-            panel = ctl("tree", PANEL)
+            save(out / f"{name}.tree.json", tree)
             save(out / f"{name}.panel.json", panel)
-            assert "Flow page" in json.dumps(panel) and expected in json.dumps(panel), "No Flow panel holds the link"
-            assert "Add note" in json.dumps(ctl("tree")), "The picker is not open beside the Flow panel"
-            save(out / f"{name}.tree.json", ctl("tree"))
             save(out / f"{name}.state.json", ctl("state"))
+            assert together, "No Flow panel holds the link beside the open picker"
             shot = ctl("shot", name)
             subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / f"{name}.webp")], check=True,
                            capture_output=True)
@@ -744,27 +803,42 @@ def main():
         raise AssertionError(f"Flow panel still shown after {label}")
 
     try:
-        panel_with_picker("panel")
+        panel_url = panel_with_picker("panel")
         if args.case != "timeout":
             assert not asks(), "Picker returned before it was shown"
         if args.tern and args.case not in ("offline", "timeout"):
+            before_click = ctl("state")
+            save(out / "before-click.state.json", before_click)
+            omp_pane = before_click["focused"]["id"]
             save(out / "before-click.system.json", ctl("system"))
-            link = next(node for node in ctl("tree", PANEL + " a")["nodes"]
-                        if node.get("tag") == "a" and node.get("text") == receipt["live"]["url"])
+            links = ctl("tree", PANEL + " a")
+            save(out / "panel-links.json", links)
+            link = next(node for node in links["nodes"]
+                        if node.get("tag") == "a" and node.get("text") == panel_url)
             x, y, _, _ = link["rect"]
             save(out / "click-target.json", ctl("pick", str(x + 8), str(y + 8)))
-            ctl("click", str(x + 8), str(y + 8))
-            time.sleep(0.3)
+            native_click("click exact Flow Markdown link", link)
+            deadline = time.monotonic() + 5
+            while True:
+                destination = ctl("tree", ".kit-web-url")
+                after_click = ctl("state")
+                if any(node.get("value") == panel_url for node in destination["nodes"]) or time.monotonic() >= deadline:
+                    break
+                time.sleep(0.1)
             save(out / "after-click.system.json", ctl("system"))
-            save(out / "after-click.state.json", ctl("state"))
+            save(out / "after-click.state.json", after_click)
             save(out / "after-click.tree.json", ctl("tree"))
-            destination = ctl("tree", ".kit-web-url")
             save(out / "click-destination.json", destination)
-            assert any(node.get("value") == receipt["live"]["url"] for node in destination["nodes"]), "Native click opened no matching live URL"
-            shot = ctl("shot", "clicked-link")
-            subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "clicked-link.webp")], check=True,
-                           capture_output=True)
-            ctl("close")
+            if not any(node.get("value") == panel_url for node in destination["nodes"]):
+                summary["click_error"] = "Native click opened no matching live URL"
+            elif after_click["focused"]["id"] == omp_pane:
+                summary["click_error"] = "Native click did not focus a separate browser pane"
+            else:
+                shot = ctl("shot", "clicked-link")
+                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "clicked-link.webp")], check=True,
+                               capture_output=True)
+                ctl("close")
+            assert ctl("state")["focused"]["id"] == omp_pane, "Picker pane is not focused after the link step"
         if args.case == "abort":
             send("cancel the whole turn while the picker and panel are open", b"\x03")
             panel_gone("abort")
@@ -803,8 +877,11 @@ def main():
             send("save option note", b"\r")
             time.sleep(0.2)
             send("pick Alpha", b" ")
-            send("move to Beta", b"j")
-            send("pick Beta", b" ")
+            if args.tern:
+                click_option("B. Beta")
+            else:
+                send("move to Beta", b"j")
+                send("pick Beta", b" ")
             send("advance from the multiselect question", b"\r")
             time.sleep(0.2)
             send("move to Other", b"j")
@@ -827,8 +904,13 @@ def main():
             time.sleep(0.2)
             before_submit = len(captured)
             send("submit real picker", b"\r")
+            if args.case == "tui" and args.tern:
+                panel_gone("submit")
+                after_submit = ctl("tree")
+                save(out / "after-submit.tree.json", after_submit)
+                assert "Add note" not in json.dumps(after_submit), "Submit left the picker open"
         if args.case == "later-round":
-            panel_with_picker("later-panel", after=before_submit)
+            panel_with_picker("later-panel", after=before_submit, round_file="later-publication.json")
             assert len(asks()) == 1, "Later picker returned before it was shown"
             before_later_pick = len(captured)
             send("pick Continue in later round", b"\r")
@@ -868,8 +950,7 @@ def main():
         if args.case != "abort":
             assert len(result) == (2 if args.case in ("retry", "later-round") else 1), result
         opened = json.loads((out / "open.json").read_text())
-        folder = flow_folder(opened["flow"])
-        state = published_state()
+        folder, state, bindings = stored_flow(opened["flow"])
         save(out / "persisted-state.json", state)
         assert len(state["rounds"]) == (2 if args.case == "later-round" else 1), state
         assert len(state["questions"]) == len(receipt["ask"]["questions"]) + (1 if args.case == "later-round" else 0), state
@@ -889,7 +970,7 @@ def main():
             assert not state["answers"], "Cancellation and timeout must not become Flow answers"
             assert state["revision"] == receipt["revision"]
             if args.case == "timeout":
-                assert all(item.get("timedOut") is True for item in result[0]["details"]["results"]), result
+                assert result[0]["details"].get("timedOut") is True, result
             elif args.case == "ratchet":
                 assert "FIRST_APPROVAL" in json.dumps(result)
             elif args.case != "abort":
@@ -909,11 +990,10 @@ def main():
         publications = [c for c in calls if c.get("name") == "bash" and
                         str(out / "contribution.json") in c.get("arguments", {}).get("command", "")]
         assert len(publications) == 1, "Retry must not republish the question round"
-        bindings = [json.loads(file.read_text()) for file in home.glob(".vstack/tmp/*/flow/.bindings/*.json")]
         session_id = (out / "child-session-id.txt").read_text()
         assert any(b["session"] == session_id and b["agent"] == "main" and b["flow"] == opened["flow"] for b in bindings), bindings
         save(out / "bindings.json", bindings)
-        shutil.copytree(folder, out / "export")
+        export_flow(folder, state)
         assertions = ["fresh inventory omits flow_ask", "live content matches the committed question identities",
                       "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
         if args.case != "ratchet":
@@ -938,6 +1018,7 @@ def main():
             assertions.append("configured timeout remains non-consent")
         if args.case == "ratchet":
             assertions.append("native Ratchet approval is reused without a second gate")
+        assert "click_error" not in summary, summary.get("click_error")
         summary.update(ok=True, flow=opened["flow"], folder=str(folder),
                        session_id=session_id, stub_requests=len(requests), live=receipt["live"], assertions=assertions)
     except Exception as error:
@@ -947,11 +1028,12 @@ def main():
         if (out / "open.json").exists():
             try:
                 opened = json.loads((out / "open.json").read_text())
-                folder = flow_folder(opened["flow"])
-                save(out / "persisted-state-final.json", json.loads((folder / "data/state.json").read_text()))
+                folder, state, bindings = stored_flow(opened["flow"])
+                save(out / "persisted-state-final.json", state)
+                save(out / "bindings.json", bindings)
                 save(out / "tool-results-final.json", asks())
                 if not (out / "export").exists():
-                    shutil.copytree(folder, out / "export")
+                    export_flow(folder, state)
             except Exception as error:
                 summary.update(ok=False, export_error=repr(error))
         if competing:
