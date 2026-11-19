@@ -1,9 +1,11 @@
-Button, Badge, Input, Select, and Table are adapted from the shadcn-vue new-york-v4 registry:
+Button, Badge, Input, Select, Table, Textarea, and Field are adapted from the shadcn-vue new-york-v4 registry:
 https://www.shadcn-vue.com/r/styles/new-york-v4/button.json
 https://www.shadcn-vue.com/r/styles/new-york-v4/badge.json
 https://www.shadcn-vue.com/r/styles/new-york-v4/input.json
 https://www.shadcn-vue.com/r/styles/new-york-v4/select.json
 https://www.shadcn-vue.com/r/styles/new-york-v4/table.json
+https://www.shadcn-vue.com/r/styles/new-york-v4/textarea.json
+https://www.shadcn-vue.com/r/styles/new-york-v4/field.json
 
 MIT License
 

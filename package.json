@@ -18,7 +18,9 @@
   "devDependencies": {
     "@iconify-json/lucide": "1.2.150",
     "@nuxt/ui": "4.12.0",
+    "@oh-my-pi/omptype": "19.0.0",
     "@tanstack/charts": "1.5.0",
+    "@tanstack/vue-form": "1.33.5",
     "@tanstack/vue-table": "8.21.3",
     "@types/bun": "^1.4.4",
     "@types/node": "^26.6.6",

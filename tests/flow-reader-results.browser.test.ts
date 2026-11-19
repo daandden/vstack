@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import type { Learning } from "../plugin/skills/flow-page/scripts/host-api.ts";
 
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const proof = process.env.FLOW_READER_EVIDENCE;
@@ -94,12 +95,49 @@ test("all Results retain compact themed rendering, learning progress and isolate
     expect(await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Prototype works" }).isVisible()).toBe(true);
     const quiz = page.locator(`#${seeded.refs.quiz}`);
     await page.route("**/learning", (route) => route.request().method() === "POST" ? route.abort() : route.continue());
-    await quiz.getByLabel("A real ask", { exact: true }).check();
-    await quiz.locator('form[data-question="authority"]').getByRole("button", { name: "Check answer" }).click();
-    await quiz.getByRole("spinbutton").fill("5");
-    await quiz.getByRole("spinbutton").press("Enter");
-    await quiz.getByRole("textbox").fill("Flow");
-    await quiz.getByRole("textbox").press("Enter");
+    const choice = quiz.locator('form[data-question="authority"]');
+    const numeric = quiz.locator('form[data-question="sum"]');
+    const written = quiz.locator('form[data-question="word"]');
+    const radio = choice.getByRole("radio", { name: "A real ask" });
+    const numberAnswer = numeric.getByRole("textbox", { name: "Answer" });
+    const textAnswer = written.getByRole("textbox", { name: "Answer" });
+    for (const [question, message] of [
+      [choice, "Choose an answer."],
+      [written, "Enter an answer."],
+      [numeric, "Enter a number, such as 5 or 2.5."],
+    ] as const) {
+      const error = question.getByText(message, { exact: true });
+      if (question === numeric) await numberAnswer.fill("about 5");
+      expect(await error.isVisible()).toBe(false);
+      await question.getByRole("button", { name: "Check answer" }).click();
+      await error.waitFor({ timeout: 5000 });
+      const fields = question.getByRole(question === choice ? "radio" : "textbox");
+      for (const field of await fields.all()) {
+        expect(await field.getAttribute("aria-invalid")).toBe("true");
+        expect(await field.getAttribute("aria-describedby")).toBe(await error.evaluate(el => el.closest("[role=alert]")?.id ?? null));
+        expect(await field.getAttribute("aria-describedby")).not.toBeNull();
+      }
+    }
+    expect(await numberAnswer.getAttribute("inputmode")).toBe("decimal");
+    expect(await numberAnswer.inputValue()).toBe("about 5");
+    expect(await quiz.getByText(/Attempts:/).count()).toBe(0);
+    await capture(page, "quiz-invalid");
+    await radio.focus();
+    await radio.press("Space");
+    await choice.getByText("Choose an answer.", { exact: true }).waitFor({ state: "hidden" });
+    expect(await radio.getAttribute("aria-invalid")).not.toBe("true");
+    await radio.press("Enter");
+    await choice.getByRole("status").filter({ hasText: "Correct." }).waitFor();
+    await numberAnswer.fill("05.0");
+    await numeric.getByText("Enter a number, such as 5 or 2.5.", { exact: true }).waitFor({ state: "hidden" });
+    expect(await numberAnswer.getAttribute("aria-describedby")).toBeNull();
+    await numberAnswer.press("Enter");
+    await numeric.getByRole("status").filter({ hasText: "Correct." }).waitFor();
+    await textAnswer.fill("Flow");
+    await written.getByText("Enter an answer.", { exact: true }).waitFor({ state: "hidden" });
+    expect(await textAnswer.getAttribute("aria-invalid")).not.toBe("true");
+    await textAnswer.press("Enter");
+    await written.getByRole("status").filter({ hasText: "Correct." }).waitFor();
     await page.waitForFunction((id) => document.getElementById(id)!.textContent!.includes("3 attempt(s) saved"), seeded.refs.quiz);
     expect(await quiz.innerText()).toContain("Lesson complete.");
     await page.reload();
@@ -121,6 +159,10 @@ test("all Results retain compact themed rendering, learning progress and isolate
       await restored.goto(`${opened.live.url}#${seeded.refs.quiz}`);
       await restored.waitForFunction((id) => document.getElementById(id)?.textContent?.includes("Lesson complete."), seeded.refs.quiz);
       expect(await restored.locator(`#${seeded.refs.quiz}`).innerText()).toContain("Attempts: 1.");
+      const response = await restored.request.get(new URL("learning", opened.live.url).href);
+      expect(response.ok()).toBe(true);
+      const { attempts } = await response.json() as Learning;
+      expect(attempts.find(attempt => attempt.question === "sum")?.answer).toBe("5");
     } finally { await fresh.close(); }
     await demo.getByRole("button", { name: "Reset", exact: true }).click();
     expect(await demo.locator("strong").innerText()).toBe("Ready");

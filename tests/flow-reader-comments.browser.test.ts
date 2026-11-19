@@ -30,6 +30,76 @@ test("readers select typed-table text and manage revision-bound comments across 
     await page.goto(`${sent.live.url}#${sent.stage}`);
     let comments = page.getByRole("region", { name: "Reader comments on Restart evidence" });
     await comments.getByRole("button", { name: "Add Reader comment" }).click({ timeout: 5000 });
+    const draft = comments.getByRole("textbox", { name: "Comment" });
+    const save = comments.getByRole("button", { name: "Save comment", exact: true });
+    const tooLong = comments.getByText("Keep the comment to 4,096 characters.", { exact: true });
+    const count = comments.getByText("4,097 / 4,096", { exact: true });
+    await draft.fill(" \n\t ");
+    expect(await save.isDisabled()).toBe(true);
+    expect(await draft.getAttribute("aria-invalid")).not.toBe("true");
+    expect(await tooLong.count()).toBe(0);
+    const atLimit = ` ${"Restart check passed. ".repeat(200).slice(0, 4094)} `;
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.evaluate(text => navigator.clipboard.writeText(text), `${atLimit} `);
+    await draft.selectText();
+    await page.keyboard.press("ControlOrMeta+V");
+    await page.waitForFunction(({ id, length }) => (document.getElementById(id) as HTMLTextAreaElement).value.length === length, { id: (await draft.getAttribute("id"))!, length: 4097 }, { timeout: 5000 });
+    expect(await tooLong.isVisible()).toBe(false);
+    await save.click();
+    await tooLong.waitFor({ timeout: 5000 });
+    await count.waitFor();
+    expect(await draft.getAttribute("aria-invalid")).toBe("true");
+    const errorId = await tooLong.evaluate(el => el.closest("[role=alert]")?.id ?? null);
+    expect(errorId).toBeTruthy();
+    expect(await draft.getAttribute("aria-describedby")).toBe(errorId);
+    for (const theme of ["Light", "Dark"]) {
+      await page.getByRole("button", { name: theme, exact: true }).click();
+      const paint = () => draft.evaluate(el => {
+        const css = getComputedStyle(el);
+        return { border: css.borderTopColor, shadow: css.boxShadow, outline: css.outlineStyle, height: el.getBoundingClientRect().height };
+      });
+      await comments.getByRole("combobox", { name: "Comment target" }).focus();
+      const unfocused = await paint();
+      await page.keyboard.press("Tab");
+      expect(await draft.evaluate(el => el === document.activeElement)).toBe(true);
+      const focused = await paint();
+      expect(focused.border).toBe(unfocused.border);
+      expect(focused.height).toBe(unfocused.height);
+      expect(unfocused.shadow).toBe("none");
+      expect(focused.shadow).toContain("inset");
+      expect(focused.outline).toBe("none");
+      if (process.env.FLOW_READER_EVIDENCE) {
+        const dir = process.env.FLOW_READER_EVIDENCE;
+        const name = `comment-invalid-${theme.toLowerCase()}`;
+        writeFileSync(join(dir, `${name}.json`), JSON.stringify({ unfocused, focused }, null, 2));
+        writeFileSync(join(dir, `${name}.aria.txt`), await comments.ariaSnapshot());
+        await comments.screenshot({ path: join(dir, `${name}.png`) });
+      }
+    }
+    await draft.fill(atLimit);
+    await tooLong.waitFor({ state: "hidden" });
+    expect(await count.count()).toBe(0);
+    expect(await draft.getAttribute("aria-invalid")).not.toBe("true");
+    expect(await draft.getAttribute("aria-describedby")).toBeNull();
+    const failSave = async (route: import("playwright-core").Route) => {
+      if (route.request().method() !== "POST") return route.continue();
+      await route.fulfill({ status: 503, json: { error: "The Local Flow host is unavailable." } });
+    };
+    await page.route("**/comments", failSave);
+    await save.click();
+    const failed = comments.getByRole("alert").filter({ hasText: "The Local Flow host is unavailable." });
+    await failed.waitFor();
+    expect(await draft.inputValue()).toBe(atLimit);
+    expect(await failed.evaluate(el => Boolean(el.compareDocumentPosition(el.closest("form")!.querySelector("[type=submit]")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
+    if (process.env.FLOW_READER_EVIDENCE) {
+      await comments.screenshot({ path: join(process.env.FLOW_READER_EVIDENCE, "comment-save-failed.png") });
+    }
+    await page.unroute("**/comments", failSave);
+    await save.click();
+    const savedAtLimit = comments.getByRole("listitem").filter({ hasText: atLimit.trim() });
+    await savedAtLimit.waitFor();
+    expect(await savedAtLimit.locator("p").allTextContents()).toContain(atLimit);
+    await comments.getByRole("button", { name: "Add Reader comment" }).click();
     await comments.getByRole("textbox", { name: "Comment" }).fill("Keep this evidence <script>literal</script>.");
     await comments.getByRole("button", { name: "Save comment", exact: true }).click();
     await comments.getByText("Keep this evidence <script>literal</script>.", { exact: true }).waitFor();

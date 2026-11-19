@@ -1,15 +1,44 @@
+<script lang="ts">
+import { type } from "@oh-my-pi/omptype";
+
+const COMMENT_LIMIT = 4096;
+const countFormat = new Intl.NumberFormat("en-US");
+const commentSchema = type({
+  text: type("string").atMostLength(COMMENT_LIMIT).narrow(text => text.trim().length > 0)
+    .configure({ message: `Keep the comment to ${countFormat.format(COMMENT_LIMIT)} characters.` }),
+});
+</script>
+
 <script setup lang="ts">
+import { revalidateLogic, useForm } from "@tanstack/vue-form";
 import type { CommentAnchor, ReaderComment } from "#flow/comments.ts";
 import type { ResultView } from "~/utils/flow";
 import { readerComments, saveComment, editComment, removeComment } from "~/composables/comments";
 import { onReaderReload, readReloadState, savedState } from "~/composables/reload";
+import Button from "./ui/Button.vue";
+import Field from "./ui/Field.vue";
+import Select from "./ui/Select.vue";
+import Textarea from "./ui/Textarea.vue";
 
 const props = defineProps<{ r: ResultView; content: HTMLElement | null }>();
 const open = shallowRef(false);
 const target = shallowRef("");
-const draft = shallowRef("");
+const commentForm = useForm({
+  defaultValues: { text: "" },
+  validationLogic: revalidateLogic(),
+  validators: { onDynamic: commentSchema },
+  onSubmit: async ({ value }) => {
+    const parsed = commentSchema(value);
+    if (parsed instanceof type.errors) {
+      saveError.value = parsed.summary;
+      return;
+    }
+    await save(parsed.text);
+  },
+});
 const pending = shallowRef(false);
-const error = shallowRef("");
+const saveError = shallowRef("");
+const removeError = shallowRef("");
 const editing = shallowRef("");
 const removing = shallowRef("");
 const passage = shallowRef("");
@@ -20,13 +49,13 @@ const add = useTemplateRef<{ $el: HTMLButtonElement }>("add");
 const reloadKey = `comment:${props.r.anchor}`;
 onReaderReload(reloadKey, () => {
   if (pending.value) throw new Error("Reader comment write in progress");
-  return open.value ? { target: target.value, draft: draft.value, editing: editing.value, passage: passage.value, revision: revision.value, edit: edit.value } : null;
+  return open.value ? { target: target.value, draft: commentForm.state.values.text, editing: editing.value, passage: passage.value, revision: revision.value, edit: edit.value } : null;
 });
 onMounted(() => {
   const saved = savedState(readReloadState(reloadKey), { target: "string", draft: "string", editing: "string", passage: "string", revision: "number", edit: "number or null" });
   if (!saved) return;
   target.value = saved.target;
-  draft.value = saved.draft;
+  commentForm.reset({ text: saved.draft });
   editing.value = saved.editing;
   passage.value = saved.passage;
   revision.value = saved.revision;
@@ -37,9 +66,10 @@ async function begin(comment?: ReaderComment, quote = "") {
   editing.value = comment?.id ?? "";
   revision.value = props.r.revision;
   edit.value = props.r.edit ?? null;
-  draft.value = comment?.text ?? "";
+  commentForm.reset({ text: comment?.text ?? "" });
   passage.value = quote;
-  error.value = "";
+  saveError.value = "";
+  removeError.value = "";
   open.value = true;
   await nextTick();
   form.value?.querySelector("textarea")?.focus();
@@ -51,14 +81,14 @@ async function close() {
 }
 async function remove(id: string) {
   pending.value = true;
-  error.value = "";
+  removeError.value = "";
   try {
     await removeComment(id);
     removing.value = "";
     await nextTick();
     add.value?.$el.focus();
   } catch (cause) {
-    error.value = (cause as Error).message;
+    removeError.value = (cause as Error).message;
   } finally {
     pending.value = false;
   }
@@ -73,18 +103,17 @@ const targets = computed(() => [
   ...props.r.entries.map((e) => ({ label: `${e.id}: ${String(e.title ?? e.claim ?? e.file ?? (e.cells as string[] | undefined)?.[0] ?? e.id)}`, value: e.id })),
   ...(target.value && !props.r.entries.some(e => e.id === target.value) ? [{ label: `${target.value}: original draft target`, value: target.value }] : []),
 ]);
-async function save() {
-  if (pending.value || !draft.value.trim()) return;
+async function save(text: string) {
+  if (pending.value) return;
   pending.value = true;
-  error.value = "";
+  saveError.value = "";
   try {
     const anchor: CommentAnchor = passage.value ? { kind: "text", quote: passage.value } : target.value ? { kind: "entry", entry: target.value } : { kind: "block" };
-    if (editing.value) await editComment(editing.value, draft.value);
-    else await saveComment(props.r.id, revision.value, edit.value, anchor, draft.value);
-    draft.value = "";
+    if (editing.value) await editComment(editing.value, text);
+    else await saveComment(props.r.id, revision.value, edit.value, anchor, text);
     await close();
   } catch (cause) {
-    error.value = (cause as Error).message;
+    saveError.value = `Could not save the comment: ${(cause as Error).message} Your draft is kept.`;
   } finally {
     pending.value = false;
   }
@@ -102,36 +131,46 @@ async function save() {
         <p class="whitespace-pre-wrap">{{ c.text }}</p>
         <time :datetime="c.time" class="text-muted">{{ formatTime(c.time) }}</time>
         <div class="flex flex-wrap gap-2">
-          <UButton label="Edit comment" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="begin(c)" />
-          <UButton v-if="removing !== c.id" label="Remove comment" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="removing = c.id" />
+          <Button variant="ghost" :disabled="pending" class="u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="begin(c)">Edit comment</Button>
+          <Button v-if="removing !== c.id" variant="ghost" :disabled="pending" class="u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="removing = c.id">Remove comment</Button>
           <template v-else>
             <span>Remove this Reader comment?</span>
-            <UButton label="Confirm removal" color="error" :loading="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="remove(c.id)" />
-            <UButton label="Keep comment" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="removing = ''" />
+            <Button :disabled="pending" :aria-busy="pending || undefined" class="u-max-w-full u-whitespace-normal u-text-start u-text-flow-red pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="remove(c.id)">Confirm removal</Button>
+            <Button variant="ghost" :disabled="pending" class="u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="removing = ''">Keep comment</Button>
           </template>
         </div>
       </li>
     </ul>
     <p v-else class="text-muted">No Reader comments on this revision.</p>
-    <p v-if="error" role="alert" class="text-error">{{ error }}</p>
+    <p v-if="removeError" role="alert" class="u-text-flow-red">{{ removeError }}</p>
     <template v-if="!open">
-      <UButton ref="add" class="w-fit max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" :ui="{ label: 'whitespace-normal text-start' }" variant="soft" color="neutral" label="Add Reader comment" @click="begin()" />
+      <Button ref="add" variant="soft" class="u-w-fit u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="begin()">Add Reader comment</Button>
       <ResultTextSelection :key="`${r.revision}-${r.edit ?? ''}`" :content="content" @select="begin(undefined, $event)" />
     </template>
-    <form v-else ref="form" class="grid min-w-0 gap-3" @submit.prevent="save">
+    <form v-else ref="form" class="u-grid u-min-w-0 u-gap-3" novalidate @submit.prevent.stop="commentForm.handleSubmit()">
       <p class="text-muted">Draft for Revision {{ revision }}<template v-if="edit != null"> · Edit {{ edit }}</template>. Saving is a separate action.</p>
       <blockquote v-if="passage" class="whitespace-pre-wrap border-s-2 border-default ps-3">{{ passage }}</blockquote>
-      <UFormField v-else-if="!editing" label="Comment target" :name="`${r.anchor}-target`">
-        <USelect v-model="selectedTarget" :items="targets" class="w-full pointer-coarse:min-h-[44px]" :disabled="pending" />
-      </UFormField>
-      <UFormField label="Comment" :name="`${r.anchor}-comment`" required>
-        <UTextarea v-model="draft" required :maxlength="4096" :rows="3" class="w-full" :ui="{ base: 'field-sizing-content min-h-[3lh] max-h-[12lh]' }" :disabled="pending" />
-      </UFormField>
-      <p v-if="editing" class="text-muted">Editing preserves the original anchor and revision.</p>
-      <div class="flex flex-wrap gap-2">
-        <UButton type="submit" label="Save comment" :loading="pending" :disabled="!draft.trim()" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" />
-        <UButton type="button" label="Cancel" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="close" />
-      </div>
+      <Field v-else-if="!editing" :id="`${r.anchor}-target`" label="Comment target">
+        <template #default="{ control }">
+          <Select v-bind="control" v-model="selectedTarget" :items="targets" class="u-w-full pointer-coarse:min-h-[44px]" :disabled="pending" />
+        </template>
+      </Field>
+      <component :is="commentForm.Field" v-slot="{ field }" name="text">
+        <Field :id="`${r.anchor}-comment`" label="Comment" required :errors="field.state.value.trim() ? field.state.meta.errors : []">
+          <template #default="{ control }">
+            <Textarea v-bind="control" :model-value="field.state.value" :rows="3" :disabled="pending" class="u-field-sizing-content u-min-h-[3lh] u-max-h-[12lh]" @update:model-value="field.handleChange($event ?? '')" @blur="field.handleBlur()" />
+          </template>
+          <template #error-detail>
+            <p v-if="field.state.value.length > COMMENT_LIMIT" class="u-tabular-nums">{{ countFormat.format(field.state.value.length) }} / {{ countFormat.format(COMMENT_LIMIT) }}</p>
+          </template>
+        </Field>
+        <p v-if="editing" class="u-text-flow-subtext">Editing preserves the original anchor and revision.</p>
+        <p v-if="saveError" role="alert" class="u-text-flow-red">{{ saveError }}</p>
+        <div class="u-flex u-flex-wrap u-gap-2">
+          <Button type="submit" :disabled="pending || !field.state.value.trim()" :aria-busy="pending || undefined" class="u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]">Save comment</Button>
+          <Button variant="ghost" :disabled="pending" class="u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="close">Cancel</Button>
+        </div>
+      </component>
     </form>
   </section>
 </template>

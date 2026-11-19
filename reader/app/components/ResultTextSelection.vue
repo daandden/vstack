@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { useEventListener } from "@vueuse/core";
+import Button from "./ui/Button.vue";
+import Field from "./ui/Field.vue";
+import Textarea from "./ui/Textarea.vue";
 
 const props = defineProps<{ content: HTMLElement | null }>();
 const emit = defineEmits<{ select: [quote: string] }>();
 const quote = shallowRef("");
 const selectable = shallowRef<string>();
+const fieldId = useId();
 useEventListener(document, "selectionchange", () => {
   const selection = window.getSelection();
   if (!selection || selection.isCollapsed || !selection.rangeCount) return;
@@ -24,10 +28,10 @@ function choose() {
 
 <template>
   <div class="grid min-w-0 gap-2">
-    <UButton label="Select text to comment" color="neutral" variant="ghost" :ui="{ label: 'whitespace-normal text-start' }" class="w-fit max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="selectable = content?.innerText ?? ''" />
-    <UFormField v-if="selectable !== undefined" label="Result text for selection" description="Select a passage with Shift and the arrow keys, then choose Comment on selected text.">
-      <UTextarea :model-value="selectable" aria-readonly="true" :rows="5" class="w-full" @beforeinput.prevent @select="selectInField" />
-    </UFormField>
-    <UButton label="Comment on selected text" color="neutral" variant="soft" :disabled="!quote.trim()" :ui="{ label: 'whitespace-normal text-start' }" class="w-fit max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="choose" />
+    <Button variant="ghost" class="u-w-fit u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="selectable = content?.innerText ?? ''">Select text to comment</Button>
+    <Field v-if="selectable !== undefined" :id="fieldId" v-slot="{ control }" label="Result text for selection" description="Select a passage with Shift and the arrow keys, then choose Comment on selected text.">
+      <Textarea v-bind="control" :model-value="selectable" aria-readonly="true" :rows="5" @beforeinput.prevent @select="selectInField" />
+    </Field>
+    <Button variant="soft" :disabled="!quote.trim()" class="u-w-fit u-max-w-full u-whitespace-normal u-text-start pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px]" @click="choose">Comment on selected text</Button>
   </div>
 </template>

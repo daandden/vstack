@@ -28,6 +28,8 @@ export default defineNuxtConfig({
   icon: { provider: "none", serverBundle: false, fallbackToApi: false, clientBundle: { scan: true } },
   colorMode: { preference: "system", fallback: "light", classSuffix: "", dataValue: "theme", storageKey: "flow-reader:theme" },
   css: ["~/assets/main.css"],
+  // Bun resolves omptype's TypeScript export. Bundle it before Nitro's Rollup pass.
+  build: { transpile: ["@oh-my-pi/omptype"] },
   alias: {
     "#flow": join(sourceRoot, "plugin/skills/flow-page/scripts"),
     "#figures": join(sourceRoot, "plugin/skills/vstack-figures/scripts"),
