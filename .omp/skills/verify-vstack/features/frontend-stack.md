@@ -11,6 +11,7 @@ The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt librar
 - `stack-controls`: copied shadcn-vue controls use UnoCSS and UnoCSS icons without a parallel Tailwind pipeline.
 - `stack-form`: TanStack Form and omptype show nested errors, transformed submission output, and repeated validation under a recorded policy.
 - `stack-tooling`: existing lint and format tooling stays intact. Absent tooling uses antfu with appropriate Nuxt ESLint composition.
+- `stack-tests`: an explicit testing request adds the curated component test stack to a fresh Nuxt app and a fresh Vue with Vite app without breaking build or typecheck.
 - `stack-fullstack`: a fresh native consumer creates a Nuxt app with SSR pages and server routes, NuxtHub D1, reviewed migrations, and a deploy checklist.
 - `stack-local-d1`: the generated app writes and reads local D1 through a browser in both Nuxt dev and built workerd.
 - `stack-cloudflare-boundary`: setup makes no remote Cloudflare request. Static-only output uses assets without server Worker code. Other hosts and fullstack Vite stay uncurated.
@@ -50,6 +51,28 @@ Step `frontend-stack-build`: Use native consumers to create a default Nuxt app a
 Step `frontend-stack-combination`: Exercise the critical combination in those apps: official copied shadcn-vue controls adapted to UnoCSS, local UnoCSS icon data, TanStack Form, and omptype. Require a real dialog and menu, nested form paths, invalid field messages, valid local submission, and explicit transformed-output parsing. Keep optional Pinia, Query, and unrelated modules absent. Inspect dependency versions, copied-source provenance, extraction paths, CSS tokens, data variants, animation handling, and adapted icon code. Verify that no Tailwind plugin or stylesheet runs alongside UnoCSS.
 
 Step `frontend-stack-scripts`: Run each generated app's actual package scripts, for example `bun run build`, `bun run typecheck`, and `bun run lint` when those are its configured scripts. Keep full stdout, stderr, exit code, and generated production assets. Check Nuxt's generated ESLint composition and formatting ownership. A command failure remains unmet until repaired and rerun in that same recorded app.
+
+### Add component tests in both framework branches
+
+Step `frontend-stack-tests`: Follow the native preconditions above and the [behavioral proof rule](#bracket-recommendation-behavior). Scaffold a fresh `create-vite` `vue-ts` app and a fresh Nuxt app under `$VERIFY_RUN_DIR/data/`. Before starting the consumers, record passing baselines:
+
+- Vite: `bun run build` runs `vue-tsc -b && vite build` for both typecheck and build.
+- Nuxt: Add `typescript` and `vue-tsc` as development dependencies and set `"typecheck": "nuxt typecheck"`. Choose a TypeScript version supported by `vue-tsc`. TypeScript 7.0.2 fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Run `bun run build` (`nuxt build`) and `bun run typecheck` (`nuxt typecheck`).
+
+Use a fresh consumer for each app. Request component tests without prescribing the packages or script.
+
+Inspect each resulting `package.json`. Require the [curated packages](../../../../plugin/skills/web-fullstack/references/choices.md) for that framework in `devDependencies` only, no Nuxt packages in the Vite manifest, and a `scripts.test` that runs Vitest without watching. Inspect the generated config and test file. Require the Vite test to use `happy-dom` and the Nuxt test to use `nuxt`. If the Nuxt component uses auto-imports, require `mountSuspended`.
+
+Run `bun run test` in each fixture and require at least one passing test of a real app component. Rerun the same baseline commands and require them to pass. Capture the command, stdout, stderr, and exit code for every script run, including the baselines.
+
+Step `frontend-stack-tests-parent-vs-head`: Set `BASE` to the recorded base revision. Read its references without checking out that revision:
+
+```sh
+git show "${BASE}:plugin/skills/web-fullstack/references/choices.md"
+git show "${BASE}:plugin/skills/web-fullstack/references/setup.md"
+```
+
+Record that the parent has no curated Vue with Vite test row, no component-test setup, and no `vitest run` script guidance. Compare that with the curated packages, test environments, and exiting test script observed in `frontend-stack-tests`. Use the existing head evidence without starting another native session.
 
 ### Observe the actual applications
 
@@ -133,7 +156,7 @@ Step `frontend-stack-finish`: Read the actual tarball inventory and the skill an
 ## Gotchas
 
 - Existing suitable dependencies override curated defaults. A recommendation for a second form manager is not a reuse pass.
-- Nuxt-specific modules stay conditional and absent in standalone Vue. Built-in DevTools needs no duplicate install. Test utilities are development dependencies.
+- Nuxt-specific modules stay conditional and absent in standalone Vue. Built-in DevTools needs no duplicate install.
 - shadcn-vue assumes Tailwind. Copied controls require actual UnoCSS adaptation and popup proof, not a renamed CSS package.
 - TanStack Form validates Standard Schema input but does not hand transformed output to submission automatically.
 - A first schema validation does not exercise lazy compilation. Source inspection alone proves neither CSP operation nor frontend bundling.
