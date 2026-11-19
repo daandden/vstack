@@ -11,8 +11,12 @@ afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: 
 function fixture(count: number) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "clean-wt-approval-")));
   roots.push(root);
+  const home = join(root, "home");
+  const outside = join(root, "home-adjacent");
+  mkdirSync(home);
+  mkdirSync(outside);
   const targets = Array.from({ length: count }, (_, i) => {
-    const path = join(root, `checkout-${i + 1}`);
+    const path = join(i === 30 ? outside : home, i === 29 ? "checkout-30\u2028notes" : `checkout-${i + 1}`);
     mkdirSync(path);
     writeFileSync(join(path, "remaining.txt"), `unmerged work ${i + 1}\n`);
     return {
@@ -20,11 +24,15 @@ function fixture(count: number) {
         path, entry: path, kind: "linked-worktree", verdict: "unused", owners: [], reasons: [],
         state: "dirty", automatic: false, unique_history: [], fingerprint: (i + 1).toString(16).padStart(64, "0"),
       },
+      repository: "example-repo",
+      verdict: `Unmerged source changes in checkout ${i + 1}.`,
       contents: [{ category: "source", detail: `remaining.txt contains unmerged work ${i + 1}` }],
       integration: { gap: `remaining.txt differs from verified remote default for checkout ${i + 1}` },
       classification: "unmerged source",
       risk: `Removing checkout ${i + 1} loses its remaining source changes.`,
-      recommendation: { action: i === 30 ? "remove" : "keep", reason: i === 30 ? "The investigator identified a disposable experiment." : "Preserve the unmerged source." },
+      recommendation: [0, 13, 29].includes(i)
+        ? { action: "keep", reason: "Preserve the unmerged source." }
+        : { action: "remove", reason: "The investigator identified a disposable experiment." },
     };
   });
   return { root, input: { version: 1, targets } };
@@ -32,7 +40,8 @@ function fixture(count: number) {
 
 function plan(input: unknown, cwd: string) {
   const result = Bun.spawnSync([process.execPath, SCRIPT, "-"], {
-    cwd, stdin: new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
+    cwd, env: { ...process.env, HOME: join(cwd, "home") },
+    stdin: new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
   });
   return { code: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
@@ -45,50 +54,64 @@ function flow(args: string[], cwd: string, input?: unknown) {
   return { code: result.exitCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() };
 }
 
-test("31 investigated targets produce valid bounded Flow rounds with immutable beyond-first-page mappings and no selection or deletion", () => {
+test("Flow offers one-line remove batches before keep batches without changing what each letter authorizes", () => {
   const { root, input } = fixture(31);
   const before = readdirSync(root).sort();
   const result = plan(input, root);
   expect(result.stderr).toBe("");
   expect(result.code).toBe(0);
   const output = JSON.parse(result.stdout);
-  expect(output.rounds).toHaveLength(2);
-  expect(output.rounds.map((round: any) => round.mapping.length)).toEqual([26, 5]);
+  expect(output.rounds.map((round: any) => round.mapping.length)).toEqual([26, 2, 3]);
   expect(readdirSync(root).sort()).toEqual(before);
   expect(output).not.toHaveProperty("selected");
   expect(output).not.toHaveProperty("approved");
 
-  const first = output.rounds[0].contribution.items;
-  expect(first.map((item: any) => item.kind)).toEqual(["result", "round"]);
-  expect(first[0]).toMatchObject({ shape: "table", columns: ["Checkout", "Inspected fingerprint", "Remaining contents", "Integration evidence or gap", "Classification", "Risk", "Recommendation"] });
-  expect(first[0].rows).toHaveLength(31);
-  expect(first[0].rows[30].cells).toEqual([
-    input.targets[30].checkout.path, "000000000000000000000000000000000000000000000000000000000000001f",
-    "source: remaining.txt contains unmerged work 31", "Gap: remaining.txt differs from verified remote default for checkout 31",
-    "unmerged source", "Removing checkout 31 loses its remaining source changes.", "Remove: The investigator identified a disposable experiment.",
-  ]);
-  expect(output.rounds[1].mapping[4]).toEqual({
-    letter: "E", label: input.targets[30].checkout.path, path: input.targets[30].checkout.path,
-    fingerprint: "000000000000000000000000000000000000000000000000000000000000001f",
+  expect(output.rounds[0].mapping[0]).toEqual({
+    letter: "A", label: "~/checkout-2 · example-repo · Unmerged source changes in checkout 2. · Agent says remove",
+    path: input.targets[1].checkout.path, fingerprint: input.targets[1].checkout.fingerprint,
   });
+  expect(output.rounds[1].mapping[1]).toEqual({
+    letter: "B", label: `${root}/home-adjacent/checkout-31 · example-repo · Unmerged source changes in checkout 31. · Agent says remove`,
+    path: input.targets[30].checkout.path, fingerprint: "000000000000000000000000000000000000000000000000000000000000001f",
+  });
+  expect(output.rounds[2].mapping[0]).toEqual({
+    letter: "A", label: "~/checkout-1 · example-repo · Unmerged source changes in checkout 1. · Agent says keep",
+    path: input.targets[0].checkout.path, fingerprint: input.targets[0].checkout.fingerprint,
+  });
+  const mappedTargets = output.rounds.flatMap((round: any) => round.mapping.map(({ path, fingerprint }: any) => ({ path, fingerprint })));
+  expect(mappedTargets).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 1, 14, 30]
+    .map((n) => {
+      const { path, fingerprint } = input.targets[n - 1].checkout;
+      return { path, fingerprint };
+    }));
 
   const opened = flow(["open", "--skill", "clean-wt", "--title", "Cleanup approval fixture"], root);
   expect(opened.code).toBe(0);
   const { flow: flowId, stage } = JSON.parse(opened.stdout);
   for (const [roundIndex, round] of output.rounds.entries()) {
-    const questions = round.contribution.items.filter((item: any) => item.kind === "round");
-    expect(questions).toHaveLength(1);
-    expect(questions[0].questions).toHaveLength(1);
-    const question = questions[0].questions[0];
+    const items = round.contribution.items;
+    expect(items.map((item: any) => item.kind)).toEqual(["round"]);
+    expect(items[0].questions).toHaveLength(1);
+    const question = items[0].questions[0];
+    const group = roundIndex < 2 ? "Agent says remove" : "Agent says keep";
+    expect(question.title).toContain(group);
+    expect(question.ref).toBe(round.question_ref);
+    expect(question).not.toHaveProperty("results");
+    const visible = JSON.stringify(question);
+    expect(visible).not.toMatch(/remaining\.txt|unmerged source|loses its remaining source|disposable experiment|Preserve the unmerged source/);
     expect(question.multi).toBe(true);
     expect(question.options.length).toBeLessThanOrEqual(26);
+    expect(question.options).toHaveLength(round.mapping.length);
     for (const [i, option] of question.options.entries()) {
-      expect(option.label).toBe(round.mapping[i].path);
-      expect(option).not.toHaveProperty("recommended");
-      expect(option).not.toHaveProperty("selected");
-      expect(option).not.toHaveProperty("checked");
-      expect(option.does).toContain(round.mapping[i].fingerprint);
-      expect(option.costs.join(" ")).toContain("loses its remaining source changes");
+      expect(option.label).toBe(round.mapping[i].label);
+      expect(option.label.endsWith(group)).toBe(true);
+      expect(visible).not.toContain(round.mapping[i].fingerprint);
+      expect(Object.keys(option).sort()).toEqual(["costs", "does", "gains", "label"]);
+      expect(option.gains).toHaveLength(1);
+      expect(option.costs).toHaveLength(1);
+      for (const line of [option.label, option.does, ...option.gains, ...option.costs]) {
+        expect(line).not.toMatch(/[\r\n\u0085\u2028\u2029]/);
+      }
     }
     const validated = flow(["validate", "--flow", flowId, "--stage", stage, "-"], root, round.contribution);
     expect(validated.stderr).toBe("");
@@ -98,24 +121,46 @@ test("31 investigated targets produce valid bounded Flow rounds with immutable b
     expect(published.code).toBe(0);
     const receipt = JSON.parse(published.stdout);
     const asked = receipt.ask.questions[0];
-    const response = roundIndex === 0 ? { status: "empty" } : { status: "answered", picks: ["E"] };
+    expect(asked.multi).toBe(true);
+    expect(asked.options.map(({ label }: any) => label)).toEqual(
+      round.mapping.map(({ letter, label }: any) => `${letter}. ${label}`),
+    );
+    expect(asked.options.every((option: any) => !option.recommended)).toBe(true);
+    const response = roundIndex === 1 ? { status: "answered", picks: ["B"] } : { status: "empty" };
     expect(flow(["submit", "--flow", flowId, "--stage", stage, "-"], root, {
       version: 1, items: [{ kind: "answer", question: asked.id, response }],
     }).code).toBe(0);
     const shown = JSON.parse(flow(["show", "--flow", flowId], root).stdout);
     const recorded = shown.stages.flatMap((stage: any) => stage.questions).find((question: any) => question.id === asked.id);
     expect(recorded.answer.response).toEqual(response);
-    if (roundIndex === 0) expect(recorded.open).toBe(true);
-    else {
-      expect(asked.options[4].label).toBe(`E. ${input.targets[30].checkout.path}`);
-      expect(recorded.answer.picks).toEqual([`E. ${input.targets[30].checkout.path}`]);
+    if (roundIndex === 1) {
+      expect(recorded.answer.picks).toEqual([`B. ${round.mapping[1].label}`]);
       expect(recorded.open).toBe(false);
-    }
+    } else expect(recorded.open).toBe(true);
   }
   for (const target of input.targets) {
     expect(existsSync(target.checkout.path)).toBe(true);
     expect(readFileSync(join(target.checkout.path, "remaining.txt"), "utf8")).toMatch(/^unmerged work /);
   }
+});
+
+test.each([
+  ["verdict", undefined],
+  ["verdict", " \t "],
+  ["verdict", "First line\nsecond line"],
+  ["verdict", "First line\rsecond line"],
+  ["verdict", "First line\u2028second line"],
+  ["repository", undefined],
+  ["repository", " "],
+  ["repository", "repo\nother"],
+] as const)("invalid %s (%j) identifies the checkout and refuses the whole plan", (field, value) => {
+  const { root, input } = fixture(2);
+  const [first, second] = input.targets;
+  const result = plan({ version: 1, targets: [first, { ...second, [field]: value }] }, root);
+  expect(result.code).toBe(2);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toContain(second.checkout.path);
+  expect(result.stderr).toContain(field);
 });
 
 test("the planner rejects duplicate paths, protected records, and malformed investigation evidence without emitting a partial plan", () => {
