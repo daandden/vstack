@@ -25,7 +25,7 @@ Use the row for the task, after checking built-ins and suitable installed altern
 | Content-driven pages | `@nuxt/content`. Check its storage, build, and hosting requirements for the target version. |
 | Readable regular expressions | `magic-regexp` when readable composition benefits the task. A simple literal expression needs no package. |
 | Nuxt development inspection | Nuxt DevTools, or `@nuxt/devtools` when the installed Nuxt version needs it. Inspect built-in activation before adding a duplicate. |
-| Nuxt tests | `@nuxt/test-utils` when testing is requested. Keep it a development dependency, not a production runtime dependency. |
+| Component tests | Only when testing is requested. For Vue with Vite, use `vitest`, `@vue/test-utils`, and `happy-dom`. For Nuxt, add `@nuxt/test-utils` to that stack. Install all as development dependencies. See [component test setup](setup.md#set-up-component-tests). |
 | Linting and formatting | `@antfu/eslint-config` when tooling is absent or migration is explicit. Compose with generated `@nuxt/eslint` where applicable. Keep existing policy otherwise, with one formatting owner per file type. |
 | Server routes and SSR | Nuxt server routes in the same Worker as pages, using Nitro `cloudflare_module` on Workers with Static Assets. See [server and data setup](server-data.md). |
 | Relational data | NuxtHub 0.10 or later with D1 and Drizzle through `@nuxthub/db`. Schemas live in `server/db/`. See [local migration rules](server-data.md#generate-and-apply-local-migrations). |
