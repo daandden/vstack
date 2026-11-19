@@ -7,6 +7,7 @@ export const buttonVariants = cva(
       variant: {
         soft: "u-bg-[var(--mantle)]",
         outline: "u-bg-[var(--base)] u-border u-border-flow-border",
+        ghost: "u-bg-transparent",
       },
     },
   },

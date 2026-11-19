@@ -30,7 +30,7 @@ const { as = "button", asChild, variant = "outline" } = defineProps<PrimitivePro
   outline-width: 3px;
 }
 
-.reader-button[data-variant="soft"]:active:enabled {
+.reader-button:is([data-variant="soft"], [data-variant="ghost"]):active:enabled {
   background: var(--surface0);
 }
 
@@ -39,7 +39,8 @@ const { as = "button", asChild, variant = "outline" } = defineProps<PrimitivePro
     background: color-mix(in oklab, var(--surface0) 75%, transparent);
   }
 
-  .reader-button[data-variant="outline"]:hover:enabled {
+  .reader-button[data-variant="outline"]:hover:enabled,
+  .reader-button[data-variant="ghost"]:hover:enabled:not(:active) {
     background: var(--mantle);
   }
 }

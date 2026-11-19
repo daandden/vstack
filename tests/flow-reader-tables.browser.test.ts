@@ -2,8 +2,18 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "playwright-core";
+import { chromium, type Locator } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+
+const fieldStyle = (control: Locator) => control.evaluate(el => {
+  const style = getComputedStyle(el);
+  const { width, height } = el.getBoundingClientRect();
+  return {
+    width, height, color: style.color, background: style.backgroundColor,
+    border: style.borderColor, shadow: style.boxShadow, outline: style.outlineStyle,
+    padding: style.padding, fontSize: style.fontSize,
+  };
+});
 
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 test("table readers sort, filter, and follow stable row links without persisting their choices", async () => {
@@ -57,8 +67,14 @@ test("table readers sort, filter, and follow stable row links without persisting
     const search = table.getByRole("textbox", { name: "Filter rows", exact: true });
     await search.fill("a");
     const status = table.getByRole("combobox", { name: "Filter Status", exact: true });
+    const idleStatus = await fieldStyle(status);
     await status.focus();
     await page.keyboard.press("Enter");
+    const openedStatus = await fieldStyle(table.getByRole("combobox", { name: "Filter Status", exact: true, includeHidden: true }));
+    if (process.env.FLOW_TABLE_EVIDENCE) {
+      mkdirSync(process.env.FLOW_TABLE_EVIDENCE, { recursive: true });
+      writeFileSync(join(process.env.FLOW_TABLE_EVIDENCE, "status-open.styles.json"), JSON.stringify({ idleStatus, openedStatus }, null, 2));
+    }
     await page.getByRole("option", { name: "Failed", exact: true }).press("Enter");
     await page.waitForFunction(id => document.getElementById(id)?.textContent?.includes("2 of 4 rows"), seeded.refs.table);
     expect(await cells()).toEqual(["Beta", "Zebra"]);
@@ -101,6 +117,22 @@ test("table readers sort, filter, and follow stable row links without persisting
           const name = join(process.env.FLOW_TABLE_EVIDENCE, `${theme.toLowerCase()}-${width}`);
           await table.screenshot({ path: `${name}.png` });
           writeFileSync(`${name}.aria.txt`, await table.ariaSnapshot());
+          writeFileSync(`${name}.styles.json`, JSON.stringify({
+            cell: await fieldStyle(table.getByRole("cell", { name: "Zebra", exact: true })),
+            header: await fieldStyle(table.getByRole("columnheader").first()),
+            sort: await fieldStyle(latency),
+            search: await fieldStyle(search),
+            status: await fieldStyle(status),
+          }, null, 2));
+          if (width === 1280) {
+            await status.click();
+            const popup = page.getByRole("listbox");
+            await popup.screenshot({ path: `${name}-popup.png` });
+            writeFileSync(`${name}-popup.aria.txt`, await popup.ariaSnapshot());
+            writeFileSync(`${name}-popup.styles.json`, JSON.stringify(await fieldStyle(popup), null, 2));
+            await page.keyboard.press("Escape");
+            await popup.waitFor({ state: "hidden" });
+          }
         }
       }
     }
@@ -118,6 +150,9 @@ test("table readers sort, filter, and follow stable row links without persisting
     expect(cli(["show"])).toEqual(before);
     expect(writes).toEqual([]);
     expect(errors).toEqual([]);
+    expect(openedStatus.border).not.toBe(idleStatus.border);
+    expect(openedStatus.shadow).toBe("none");
+    expect(openedStatus.outline).toBe("none");
   } finally {
     await context.close();
     await browser.close();

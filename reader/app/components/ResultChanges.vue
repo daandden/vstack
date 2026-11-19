@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useEventListener } from "@vueuse/core";
+import Select from "~/components/ui/Select.vue";
 import type { ResultView } from "~/utils/flow";
 import { difference, object, type ObjectValue } from "~/utils/difference";
 
@@ -42,9 +43,16 @@ const changes = computed(() => difference(content(earlier.value), content(props.
     <details class="open:grid open:gap-2.5">
       <summary>Compare revisions</summary>
       <div :id="anchor(earlier)" class="grid gap-2.5">
-      <UFormField label="Earlier snapshot" :name="`${r.id}-earlier`" class="max-w-full">
-        <USelect :model-value="earlier.changed" :items="snapshots" class="max-w-full pointer-coarse:min-h-[44px]" @update:model-value="selected = $event" />
-      </UFormField>
+      <div class="snapshot-field u-grid u-max-w-full u-justify-items-start u-gap-1 u-text-sm">
+        <label :for="`${r.id}-earlier`" class="u-font-medium">Earlier snapshot</label>
+        <Select
+          :id="`${r.id}-earlier`"
+          :model-value="earlier.changed"
+          :items="snapshots"
+          class="snapshot-select"
+          @update:model-value="selected = $event"
+        />
+      </div>
       <p class="font-semibold tabular-nums">{{ label(earlier) }} → {{ label(r) }}</p>
       <p class="flex flex-wrap gap-x-4 gap-y-1"><a :href="`#${earlier.anchor}`">Complete earlier snapshot</a><a :href="`#${r.anchor}`">Complete current Result</a></p>
       <p class="quiet">Only changed fields are shown. Removed content is struck through; additions are underlined. Full snapshots keep their citations, attachments, and interactions.</p>
@@ -59,3 +67,23 @@ const changes = computed(() => difference(content(earlier.value), content(props.
     </details>
   </section>
 </template>
+
+<style scoped>
+.snapshot-field :deep(.snapshot-select) {
+  background: var(--base);
+  gap: 0.75rem;
+  line-height: 1.25rem;
+  padding-block: 0.3125rem;
+  padding-inline: 0.5625rem;
+}
+
+.snapshot-field :deep(.snapshot-select:not(:focus-visible, [aria-expanded="true"])) {
+  border-color: var(--overlay0);
+}
+
+@media (pointer: coarse) {
+  .snapshot-field :deep(.snapshot-select) {
+    min-block-size: 44px;
+  }
+}
+</style>
