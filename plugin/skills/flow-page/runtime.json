@@ -2,7 +2,7 @@
   "version": 1,
   "files": {
     "flow-page/scripts/assets.ts": "617f245cae28773fd5c063c51d90f263573295dd1824e4b00040fac4eff2e55f",
-    "flow-page/scripts/cli.ts": "b364ae011a235265fa4b4229086cad50f96f77ffd0b802a6a07600e318c1bf6e",
+    "flow-page/scripts/cli.ts": "79b92fcdb6120eea5b87b9344478cad2d827fc446578f70a3dacc5b74d00b340",
     "flow-page/scripts/code.ts": "ca3100cf33d86672f8d8305b106545a45dbef75fdbead50f96f50ec82673ee7e",
     "flow-page/scripts/comments.ts": "552c70076945427588dea73b086a59f9c2716f54e2a036bbf7a24e6b9ea8ea41",
     "flow-page/scripts/contracts.ts": "7c8a7adaeaca1b6543fd894843a004bf4712c288698442fb8a00fa706890b7b6",
@@ -34,7 +34,7 @@
     "flow-page/scripts/observations.ts": "98b7b2bc5316e5dfd26a4c88d175a0de8514a68b224ca57cb534bdc8f917705b",
     "flow-page/scripts/progress.ts": "11d0a1623d745c6ef035b60bc1c220f6cd8cb773abff0fdc825842a0d98c5615",
     "flow-page/scripts/schema.ts": "1b90e0f53461bdf3bed355e270d141ecaea7a9339cc04b3b5872232f11b76cf3",
-    "flow-page/scripts/store.ts": "a0d0295e3a427596ba2fb11ece261077e5051dce4da72bc8530f9dfead12fc47",
+    "flow-page/scripts/store.ts": "5687b391473fad12d03bd368e7a4c94952e73608ee28cc4a6c6ec2f3385d70de",
     "flow-page/reader/_flow-reader/4ENI8QbU.js": "a882adc24e9e718bc09c687981268bc2dbc869d67c69f6a0ad8dc2310ed35946",
     "flow-page/reader/_flow-reader/A379Mz0i.js": "caac8d711f9e02e0dda944c18a18e7f44d1eadebe6a81f0c4fccd98af79fde7a",
     "flow-page/reader/_flow-reader/B0NS1tLt.js": "d7226ffe15793270bebef5cd4c9e9bc229b3b0eb601bd10550fcc9051c0b124c",

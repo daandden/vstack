@@ -4,7 +4,6 @@ import argparse
 import errno
 import fcntl
 import json
-from html import escape
 from html.parser import HTMLParser
 import os
 from pathlib import Path
@@ -89,17 +88,12 @@ def control_names(html):
 
 
 def fixture_ask(receipt):
-    fields = []
-    for question in receipt["ask"]["questions"]:
-        kind = "checkbox" if question.get("multi") else "radio"
-        name = escape(question["id"], quote=True)
-        fields.append(f'<fieldset><legend>{escape(question["question"])}</legend>')
-        for index, option in enumerate(question["options"]):
-            label = escape(option["label"], quote=True)
-            checked = " checked" if question.get("recommended") == index else ""
-            fields.append(f'<label><input type="{kind}" name="{name}" value="{label}"{checked}>{label}</label>')
-        fields.append("</fieldset>")
-    return {"html": "<form>" + "".join(fields) + "</form>"}
+    return {"html": receipt["ask"]["html"]}
+
+
+def renamed_ask(receipt):
+    first = receipt["ask"]["questions"][0]["id"]
+    return {"html": receipt["ask"]["html"].replace(f'name="{first}"', 'name="renamed-control"')}
 
 
 def html_answers(result):
@@ -197,7 +191,8 @@ def actual_model(args):
                      and block.get("type") == "toolCall" and block.get("name") == "ask"]
         if not ask_calls:
             raise RuntimeError("Visible picker has no ordinary ask call in the native session")
-        expected = control_names(ask_calls[-1].get("arguments", {}).get("html", ""))
+        asked_html = ask_calls[-1].get("arguments", {}).get("html", "")
+        expected = control_names(asked_html)
         receipts = []
         decoder = json.JSONDecoder()
         for message in current:
@@ -226,6 +221,8 @@ def actual_model(args):
         if not receipts:
             raise RuntimeError("Ordinary ask has no matching CLI publication receipt")
         receipt = receipts[-1]
+        if asked_html != receipt["ask"].get("html"):
+            raise RuntimeError("Ordinary ask HTML differs from the matching CLI receipt's ask.html")
         if receipt.get("live", {}).get("state") != "serving":
             raise RuntimeError(f"Question reader is unavailable: {receipt.get('live')}")
         url = receipt["live"]["url"]
@@ -509,6 +506,7 @@ def main():
             return {"tool": "eval", "args": {"language": "py", "code": code, "timeout": 120}}
         return {"tool": "ask", "args": fixture_ask(receipt)}
     done = threading.Event()
+    refusal_observed = threading.Event()
 
     class Model(BaseHTTPRequestHandler):
         def log_message(self, *_):
@@ -543,6 +541,14 @@ def main():
                     phase = 2
                 elif phase == 2:
                     reply = live_question()
+                    phase = 3
+                    if args.case == "tui":
+                        reply = {"tool": "ask", "args": renamed_ask(receipt)}
+                        phase = "guard"
+                elif phase == "guard":
+                    if not refusal_observed.wait(timeout=30):
+                        raise RuntimeError("Native controller did not observe the renamed-control refusal")
+                    reply = {"tool": "ask", "args": fixture_ask(receipt)}
                     phase = 3
                 elif phase == 3:
                     result = asks()
@@ -725,6 +731,7 @@ def main():
         log.write(f"{child.pid} {'tern' if args.tern else 'omp'} flow-questions {args.case}\n")
     captured = bytearray()
     inputs, started = [], time.monotonic()
+    refused_call_id = None
 
     def send(label, value):
         inputs.append({"at_seconds": time.monotonic() - started, "label": label, "bytes_hex": value.hex(),
@@ -753,7 +760,7 @@ def main():
                 return
             if inventory_error:
                 raise AssertionError(inventory_error)
-            failed = next((m for m in asks() if m.get("isError")), None)
+            failed = next((m for m in asks() if m.get("isError") and m["toolCallId"] != refused_call_id), None)
             if failed and args.case not in ("cancel", "retry"):
                 raise RuntimeError(f"ordinary ask failed before the picker: {failed}")
             read_output(0.1)
@@ -859,9 +866,30 @@ def main():
         raise AssertionError(f"Flow panel still shown after {label}")
 
     try:
+        if args.case == "tui":
+            deadline = time.monotonic() + 30
+            while True:
+                read_output(0.1)
+                if args.tern:
+                    tree = ctl("tree")
+                    assert not panel_nodes() and "Add note" not in json.dumps(tree), \
+                        "Renamed control opened a native picker or Flow panel"
+                assert "n add note" not in plain(captured), "Renamed control opened the picker"
+                result = asks()
+                if result or time.monotonic() >= deadline:
+                    break
+            assert len(result) == 1 and result[0].get("isError"), result
+            refusal = "\n".join(part.get("text", "") for part in result[0]["content"])
+            assert all(text in refusal for text in ('"renamed-control"', "not a published question", "ask.html")), refusal
+            refused_call_id = result[0]["toolCallId"]
+            save(out / "guard-refusal.json", result[0])
+            if args.tern:
+                save(out / "guard-refusal.tree.json", tree)
+                save(out / "guard-refusal.panel.json", ctl("tree", PANEL))
+            refusal_observed.set()
         panel_url = panel_with_picker("panel")
         if args.case != "timeout":
-            assert not asks(), "Picker returned before it was shown"
+            assert len(asks()) == (1 if args.case == "tui" else 0), "Picker returned before it was shown"
         if args.tern and args.case not in ("offline", "timeout"):
             before_click = ctl("state")
             save(out / "before-click.state.json", before_click)
@@ -1004,7 +1032,7 @@ def main():
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
         if args.case != "abort":
-            assert len(result) == (2 if args.case in ("retry", "later-round") else 1), result
+            assert len(result) == (2 if args.case in ("tui", "retry", "later-round") else 1), result
         opened = json.loads((out / "open.json").read_text())
         state = published_state(opened)
         stage = published_stage(state, opened)
@@ -1042,8 +1070,9 @@ def main():
         calls_by_id = {c["id"]: c for c in ask_calls}
         for index, outcome in enumerate([] if args.case in ("ratchet", "abort") else result):
             original = calls_by_id[outcome["toolCallId"]]
-            expected = fixture_ask(later if later and index == 1 else receipt)
-            assert original["arguments"] == expected, "Picker changed its published question identities"
+            expected = (renamed_ask(receipt) if args.case == "tui" and index == 0
+                        else fixture_ask(later if later and index == 1 else receipt))
+            assert original["arguments"] == expected, "Ask HTML differs from the expected receipt form"
         if args.case == "retry":
             assert result[0].get("isError") and not result[-1].get("isError"), result
         publications = [c for c in calls if c.get("name") == "bash" and
@@ -1059,7 +1088,9 @@ def main():
         assertions = ["fresh inventory omits flow_ask", "live content matches the committed question identities",
                       "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
         if args.case != "ratchet":
-            assertions.append("ordinary ask retains the receipt's original question identities")
+            assertions.append("ordinary ask sends the receipt's ask.html unchanged")
+        if args.case == "tui":
+            assertions.append("the renamed control is refused without opening the picker or Flow panel")
         if args.case == "abort":
             assertions.append("Ctrl+C closes the picker and removes the Flow panel")
         elif args.case == "offline":
@@ -1086,6 +1117,7 @@ def main():
     except Exception as error:
         summary["error"] = repr(error)
     finally:
+        refusal_observed.set()
         identity_file = out / "child-session-id.txt"
         if (out / "open.json").exists():
             try:

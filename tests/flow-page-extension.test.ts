@@ -206,16 +206,20 @@ async function until(condition: () => boolean, timeout = 10_000) {
 const returnsBefore = (pending: Promise<unknown>, ms = 500) =>
   Promise.race([pending.then(() => "returned"), Bun.sleep(ms).then(() => "held")]);
 
+function flowQuestion(ref: string) {
+  return {
+    ref, title: `Which ${ref}?`, description: `Choose the ${ref} approach.`,
+    needs: [{ need: `Understand the ${ref} trade-offs.`, kind: "prose" }],
+    options: ["Keep", "Change"].map(label => ({
+      label, does: `${label} the ${ref} approach.`, gains: [`${label} benefits ${ref}.`], costs: [`${label} costs ${ref}.`],
+    })),
+  };
+}
+
 async function publishQuestions(w: ReturnType<typeof world>, session: string, ...refs: string[]) {
   return w.ok(["submit", "--session", session], { version: 1, items: [{
     kind: "round",
-    questions: refs.map(ref => ({
-      ref, title: `Which ${ref}?`, description: `Choose the ${ref} approach.`,
-      needs: [{ need: `Understand the ${ref} trade-offs.`, kind: "prose" }],
-      options: ["Keep", "Change"].map(label => ({
-        label, does: `${label} the ${ref} approach.`, gains: [`${label} benefits ${ref}.`], costs: [`${label} costs ${ref}.`],
-      })),
-    })),
+    questions: refs.map(flowQuestion),
   }] });
 }
 
@@ -225,6 +229,153 @@ function askForm(...ids: string[]) {
     `<label><input type="radio" name="${id}" value="change">Change</label></fieldset>`);
   return { html: `<form>${fields.join("")}</form>` };
 }
+
+test("a renamed Flow control is refused before omp's synthetic start can show a panel or presence", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Guarded handoff", "--skill", "implement", "--session", "strict"]);
+  const receipt = await publishQuestions(w, "strict", "first");
+  const h = w.host("strict");
+  const ui = panelUI(h);
+  const call = { toolName: "ask", toolCallId: "renamed" };
+  const args = { html: receipt.ask.html.replaceAll(`name="${receipt.refs.first}"`, 'name="renamed"') };
+  expect(await h.emit("tool_call", { ...call, input: args })).toEqual([{
+    block: true, reason: expect.stringMatching(/"renamed".*not a published question.*publish the round.*ask\.html.*again/is),
+  }]);
+  const lookups = h.execCalls.length;
+  await h.emit("tool_execution_start", { ...call, args });
+  expect(ui.widgets).toEqual([]);
+  expect(h.execCalls).toHaveLength(lookups);
+  expect(await (await fetch(new URL("presence", opened.live.url))).json()).toEqual({ presences: [] });
+  await h.emit("tool_execution_end", { ...call, isError: true });
+  expect(ui.widgets).toEqual([]);
+
+  const valid = { html: receipt.ask.html };
+  expect(await h.emit("tool_call", { ...call, input: valid })).toEqual([undefined]);
+  await h.emit("tool_execution_start", { ...call, args: valid });
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain(`<${opened.live.url}#${receipt.refs.first}>`);
+  await h.emit("tool_execution_end", call);
+  expect(ui.panel()).toBeUndefined();
+});
+
+test("hidden controls are refused even beside a visible askable question with the same name", async () => {
+  const w = setup(true);
+  await w.ok(["open", "--title", "Hidden controls", "--skill", "implement", "--session", "hidden"]);
+  const receipt = await publishQuestions(w, "hidden", "visible");
+  const h = w.host("hidden");
+  panelUI(h);
+  for (const name of ["hidden-extra", receipt.refs.visible]) {
+    const html = receipt.ask.html.replace("</form>", `<input type="hidden" name="${name}" value="A. Keep"></form>`);
+    const result = await h.emit("tool_call", { toolName: "ask", toolCallId: name, input: { html } });
+    expect(result).toEqual([{
+      block: true, reason: expect.stringContaining(`"${name}": hidden controls are not permitted`),
+    }]);
+  }
+});
+
+test("a failed Flow read lets the question reach the picker and shows that error beside it", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Failed read", "--skill", "implement", "--session", "broken"]);
+  const h = w.host("broken");
+  const ui = panelUI(h);
+  const exec = h.pi.exec;
+  const error = "could not read the stored Flow for this question";
+  h.pi.exec = async (...args: any[]) => args[1][1] === "ask-status"
+    ? { code: 1, stdout: "", stderr: error, killed: false }
+    : exec(...args);
+  const call = { toolName: "ask", toolCallId: "recovery" };
+  const args = askForm("recovery");
+  expect(await h.emit("tool_call", { ...call, input: args })).toEqual([undefined]);
+  await h.emit("tool_execution_start", { ...call, args });
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain(error);
+  await h.emit("tool_execution_end", call);
+  expect(ui.panel()).toBeUndefined();
+});
+
+test("the bound Stage accepts only the latest unretired questions with no recorded answer", async () => {
+  const w = setup(true);
+  const opened = await w.ok(["open", "--title", "Strict Stage", "--skill", "implement", "--session", "strict"]);
+  const first = await publishQuestions(w, "strict", "pending", "settled", "timed", "old");
+  const parallel = await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "parallel"]);
+  const other = await publishQuestions(w, "parallel", "foreign");
+  const submit = (...items: unknown[]) => w.ok(["submit", "--session", "strict"], { version: 1, items });
+  await submit(
+    { kind: "answer", question: first.refs.settled, response: { status: "answered", picks: ["A"] } },
+    { kind: "answer", question: first.refs.timed, response: { status: "timed-out", picks: ["A"] } },
+    { kind: "round", questions: [{ ...flowQuestion("newer"), again: first.refs.old }] },
+  );
+  const h = w.host("strict");
+  panelUI(h);
+  const call = (html: string) => h.emit("tool_call", { toolName: "ask", toolCallId: "case", input: { html } });
+  const refuse = async (html: string, ...reasons: string[]) => {
+    const [outcome] = await call(html) as [{ block?: boolean; reason?: string }];
+    expect(outcome?.block).toBe(true);
+    for (const reason of [...reasons, "Publish the round", "ask.html", "again"]) expect(outcome.reason).toContain(reason);
+  };
+  const { pending, settled, timed, old } = first.refs;
+  await refuse(askForm(other.refs.foreign, settled, old).html,
+    `"${other.refs.foreign}": belongs to Stage ${parallel.stage}, not the bound Stage ${opened.stage}`,
+    `"${settled}": already has a recorded answer`, `"${old}": superseded by a re-ask`);
+  await refuse(askForm(pending, "--extra", "extra-two").html,
+    '"--extra": not a published question', '"extra-two": not a published question');
+  await refuse("<form><p>Pick nothing</p></form>", "the form has no controls");
+  await refuse(askForm(timed).html, `"${timed}": already has a recorded answer`);
+  const reasked = await submit({ kind: "round", questions: [{ ...flowQuestion("after-timeout"), again: timed }] });
+  expect(await call(reasked.ask.html)).toEqual([undefined]);
+  expect(await call(reasked.ask.html.replace("A. Keep", "Changed value"))).toEqual([undefined]);
+
+  const last = await publishQuestions(w, "strict", "retiring");
+  const current = await w.ok(["show", "--flow", opened.flow]);
+  const questions = current.stages.find((stage: { id: string }) => stage.id === opened.stage).questions;
+  await submit({ kind: "stage", state: "finished",
+    retire: questions.filter((q: { open: boolean }) => q.open).map((q: { id: string }) => ({ question: q.id, reason: "Stopped work." })) });
+  await refuse(last.ask.html, `"${last.refs.retiring}": question is retired`);
+});
+
+test("the guard checks receipt and unknown controls while the Local Flow host stays stopped", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Hostless read", "--skill", "implement", "--session", "hostless"]);
+  const receipt = await publishQuestions(w, "hostless", "hostless");
+  await w.ok(["host", "stop"]);
+  const h = w.host("hostless");
+  panelUI(h);
+  const call = { toolName: "ask", toolCallId: "hostless" };
+  expect(await h.emit("tool_call", { ...call, input: { html: receipt.ask.html } })).toEqual([undefined]);
+  expect(await h.emit("tool_call", { ...call, input: askForm("unknown") })).toEqual([{
+    block: true, reason: expect.stringContaining('"unknown": not a published question'),
+  }]);
+  const listener = Bun.listen({ hostname: "127.0.0.1", port: Number(w.port), socket: { data() {} } });
+  listener.stop(true);
+});
+
+test("an eval refusal without execution events does not keep a stale denial across turns", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Eval refusal", "--skill", "implement", "--session", "eval"]);
+  const first = await publishQuestions(w, "eval", "first");
+  const h = w.host("eval");
+  const ui = panelUI(h);
+  const id = { toolName: "ask", toolCallId: "eval-id" };
+  expect(await h.emit("tool_call", { ...id, input: askForm("unpublished") })).toEqual([{
+    block: true, reason: expect.stringContaining('"unpublished": not a published question'),
+  }]);
+  await h.emit("agent_end");
+  const args = { html: first.ask.html };
+  await h.emit("tool_execution_start", { ...id, args });
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain(`<${opened.live.url}#${first.refs.first}>`);
+  await h.emit("tool_execution_end", id);
+  expect(ui.panel()).toBeUndefined();
+
+  const retry = { ...id, toolCallId: "lost-picker" };
+  for (const isError of [true, false]) {
+    expect(await h.emit("tool_call", { ...retry, input: args })).toEqual([undefined]);
+    await h.emit("tool_execution_start", { ...retry, args });
+    await until(() => ui.panel() !== undefined);
+    await h.emit("tool_execution_end", { ...retry, isError });
+    expect(ui.panel()).toBeUndefined();
+  }
+});
 
 test("an HTML ask links the Flow panel to the question named by its first control", async () => {
   const w = setup();
@@ -307,12 +458,13 @@ test("an ask with no question id in the bound Flow links to the bound Stage", as
 test("a bound ask shows the Flow panel above the composer while it runs, without holding the picker", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Question handoff", "--skill", "implement", "--session", "panel"]);
+  const receipt = await publishQuestions(w, "panel", "first", "second");
   const current = await w.ok(["bound", "--session", "panel"]);
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("panel");
   const ui = panelUI(h);
   const lookups = holdLookups(h);
-  const input = askForm("a", "b");
+  const input = { html: receipt.ask.html };
   expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "ask-1", input })).toEqual([undefined]);
   lookups.release();
   await Bun.sleep(300);
@@ -331,7 +483,7 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "ask-1", isError: false });
   expect(ui.panel()).toBeUndefined();
   expect(new Set(ui.widgets.map(widget => widget.key)).size).toBe(1);
-  expect(input).toEqual(askForm("a", "b"));
+  expect(input).toEqual({ html: receipt.ask.html });
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
 });
@@ -518,6 +670,7 @@ test("only this main agent's bound interactive TUI gets a panel", async () => {
     ["unbound", undefined, "tui", true],
     ["main", child, "tui", true],
     ["main", undefined, "rpc", true],
+    ["main", undefined, "acp", true],
     ["main", undefined, "print", true],
     ["main", undefined, "json", true],
     ["main", undefined, "tui", false],
@@ -528,6 +681,8 @@ test("only this main agent's bound interactive TUI gets a panel", async () => {
     h.ctx.hasUI = hasUI;
     h.ctx.ui.askDialog = async () => "original";
     await h.emit("session_start");
+    expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "isolated", input: askForm("unpublished") })).toEqual([undefined]);
+    if (session !== "unbound") expect(h.execCalls).toEqual([]);
     expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "isolated", args: {} })).toEqual([undefined]);
     expect(await h.ctx.ui.askDialog([])).toBe("original");
     await Bun.sleep(300);
@@ -557,18 +712,19 @@ test("an unavailable bound host shows its error in the panel without host interf
 test("a disabled host shows its state in the panel with no model or session presentation", async () => {
   const w = setup(true);
   await w.ok(["open", "--title", "Host off", "--skill", "implement", "--session", "off"]);
+  const receipt = await publishQuestions(w, "off", "host-off");
   const h = w.host("off");
   const ui = panelUI(h);
   await h.emit("session_start");
   const entries = h.ctx.sessionManager.getEntries();
   await h.emit("before_agent_start");
-  const input = askForm("host-off");
+  const input = { html: receipt.ask.html };
   expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "off", input })).toEqual([undefined]);
   expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "off", args: input })).toEqual([undefined]);
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain("off");
   expect(h.ctx.sessionManager.getEntries()).toEqual(entries);
-  expect(input).toEqual(askForm("host-off"));
+  expect(input).toEqual({ html: receipt.ask.html });
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
   const history = [{ role: "user", content: "Continue?" }];

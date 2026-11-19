@@ -1,5 +1,5 @@
 import type { TSchema } from "@oh-my-pi/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
 import { parseHtmlForm } from "@oh-my-pi/pi-tui/html-form/parse";
@@ -52,11 +52,10 @@ function registerFlowContext(pi: ExtensionAPI): void {
   });
 }
 
-function askControlNames(html: unknown): string[] {
-  if (typeof html !== "string") return [];
-  const names = new Set<string>();
-  for (const field of parseHtmlForm(html).fields) if (field.name) names.add(field.name);
-  return [...names];
+function askControlNames(html: unknown): { names: string[]; hidden: string[] } {
+  if (typeof html !== "string") return { names: [], hidden: [] };
+  const { fields, hidden } = parseHtmlForm(html);
+  return { names: [...new Set(fields.map(field => field.name))], hidden: [...new Set(hidden.map(([name]) => name))] };
 }
 
 function registerFlowQuestions(pi: ExtensionAPI): void {
@@ -92,27 +91,31 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     write();
   };
   let shownIn: ExtensionContext | undefined;
-  const showPanel = async (ctx: ExtensionContext, picker: symbol, ids: readonly string[] = []) => {
+  const showPanel = async (ctx: ExtensionContext, picker: symbol, ids: readonly string[] = [], readError?: string) => {
     pickers.add(picker);
     startPresence(ctx, picker, ids);
     let text: string;
-    try {
-      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
-      if (!current.binding) return;
-      if (current.live?.state === "serving" && current.live.url) {
-        let target = current.binding.stage;
-        if (ids.length) {
-          const response = await fetch(new URL("content", current.live.url));
-          if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
-          const content = await response.json() as { questions: { id: string }[] };
-          target = ids.find(id => content.questions.some(saved => saved.id === id)) ?? target;
+    if (readError !== undefined) {
+      text = `Flow question lookup failed: ${readError}`;
+    } else {
+      try {
+        const current = await flowPage<Bound>(pi, ctx, ["bound"]);
+        if (!current.binding) return;
+        if (current.live?.state === "serving" && current.live.url) {
+          let target = current.binding.stage;
+          if (ids.length) {
+            const response = await fetch(new URL("content", current.live.url));
+            if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
+            const content = await response.json() as { questions: { id: string }[] };
+            target = ids.find(id => content.questions.some(saved => saved.id === id)) ?? target;
+          }
+          text = `<${current.live.url}#${target}>`;
+        } else {
+          text = `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
         }
-        text = `<${current.live.url}#${target}>`;
-      } else {
-        text = `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+      } catch (error) {
+        text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
       }
-    } catch (error) {
-      text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
     }
     const { Markdown } = await import("@oh-my-pi/pi-tui");
     const { OverlayPanel } = await import("@oh-my-pi/pi-tui/chrome");
@@ -137,18 +140,56 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     shownIn = undefined;
   };
   const ordinary = new Map<string, symbol>();
+  const denied = new Set<string>();
+  const readErrors = new Map<string, string>();
+  pi.on("tool_call", async (event: ToolCallEvent, ctx: ExtensionContext) => {
+    if (event.toolName !== "ask" || !interactive(ctx)) return;
+    const { toolCallId } = event;
+    denied.delete(toolCallId);
+    readErrors.delete(toolCallId);
+    const { names, hidden } = askControlNames(event.input.html);
+    let current: { binding: null } | { binding: { stage: string }; refusals: string[] };
+    try {
+      current = await flowPage(pi, ctx, ["ask-status"], flowIdentity(ctx), names);
+    } catch (error) {
+      readErrors.set(toolCallId, error instanceof Error ? error.message : String(error));
+      return;
+    }
+    if (!current.binding) return;
+    const reasons = current.refusals;
+    for (const name of hidden) reasons.push(`${JSON.stringify(name)}: hidden controls are not permitted`);
+    if (!names.length && !hidden.length) reasons.push("the form has no controls");
+    if (!reasons.length) return;
+    denied.add(toolCallId);
+    return {
+      block: true,
+      reason: `Flow ask refused for ${current.binding.stage}: ${reasons.join("; ")}. Publish the round and pass the receipt's ask.html unchanged to ask. For a re-ask, publish with again.`,
+    };
+  });
   pi.on("tool_execution_start", (event, ctx) => {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
+    // omp emits a synthetic start and end even when its tool loop never opened a picker.
+    if (denied.delete(event.toolCallId)) return;
+    const readError = readErrors.get(event.toolCallId);
+    readErrors.delete(event.toolCallId);
     const picker = Symbol(event.toolCallId);
     ordinary.set(event.toolCallId, picker);
-    void showPanel(ctx, picker, askControlNames(event.args?.html));
+    void showPanel(ctx, picker, askControlNames(event.args?.html).names, readError);
   });
   pi.on("tool_execution_end", event => {
+    denied.delete(event.toolCallId);
+    readErrors.delete(event.toolCallId);
     const picker = ordinary.get(event.toolCallId);
     ordinary.delete(event.toolCallId);
     if (picker) hidePanel(picker);
   });
-  pi.on("agent_end", () => { ordinary.clear(); hidePanel(); });
+  const resetPickers = () => {
+    denied.clear();
+    readErrors.clear();
+    ordinary.clear();
+    hidePanel();
+  };
+  pi.on("agent_end", resetPickers);
   type Dialog = NonNullable<ExtensionContext["ui"]["askDialog"]>;
   type Route = { ctx: ExtensionContext; depth: number; enabled: boolean; wrappers: Set<Dialog> };
   const routeKey = Symbol("vstack.flow-questions");
@@ -183,8 +224,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     ctx.ui.askDialog = wrapped;
   };
   const stop = () => {
-    ordinary.clear();
-    hidePanel();
+    resetPickers();
     if (active) active.enabled = false;
   };
   pi.on("session_start", install);
