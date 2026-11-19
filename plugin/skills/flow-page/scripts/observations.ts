@@ -50,7 +50,7 @@ function config(dir: string, kind: "code-host" | "ci"): Config {
   const row = text.match(/^- Flow observation: (.+)$/m);
   let c: any;
   if (row) {
-    try { c = JSON.parse(row[1]); } catch { throw new Error("Invalid observation configuration"); }
+    try { c = JSON.parse(row[1]!); } catch { throw new Error("Invalid observation configuration"); }
   } else {
     const repo = text.match(/^- Repo: `?([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)`?\s*$/m)?.[1];
     const provider = kind === "code-host" ? /^- Host: GitHub(?: \(`github\.com`\))?\s*$/m.test(text) : /^- CI service: GitHub Actions\s*$/m.test(text);
@@ -125,7 +125,7 @@ export function observations(store: FlowStore, key: string, s: { flow: { id: str
         const git = Bun.spawnSync(["git", "rev-parse", "--show-toplevel", "--path-format=absolute", "--git-common-dir"], { cwd: candidate, stdout: "pipe", stderr: "ignore", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
         if (git.exitCode !== 0) continue;
         const [root, common] = git.stdout.toString().trim().split("\n");
-        project = { root, common, expires: Date.now() + 15000 };
+        project = { root: root!, common: common!, expires: Date.now() + 15000 };
         projects.set(id, project);
       }
       selected = { context, project };

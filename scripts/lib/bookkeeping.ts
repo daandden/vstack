@@ -49,7 +49,7 @@ export function yamlBookkeeping(source: string) {
     if (isDeepStrictEqual(node.toJSON(), next)) return node;
     const token = node.srcToken as CST.Token & { indent: number };
     if (isMap(node) && next && !Array.isArray(next) && typeof next === "object") {
-      const previous = node.items;
+      const { items: previous, flow } = node;
       node.items = Object.entries(next).map(([key, val]) => {
         const pair = previous.find(p => isScalar(p.key) && p.key.value === key);
         if (pair) {
@@ -57,7 +57,7 @@ export function yamlBookkeeping(source: string) {
           pair.srcToken!.value = (pair.value as Node).srcToken;
           return pair;
         }
-        const addition = document.createNode({ [key]: val }); addition.flow = node.flow;
+        const addition = document.createNode({ [key]: val }); addition.flow = flow;
         const map = fragment(addition, token.indent) as YAMLMap;
         return map.items[0]!;
       });
@@ -70,6 +70,7 @@ export function yamlBookkeeping(source: string) {
         return node;
       }
     } else if (isSeq(node) && Array.isArray(next)) {
+      const { flow } = node;
       const original = node.items as Node[];
       const previous = [...original];
       const oldEntries = (token as CST.BlockSequence | CST.FlowCollection).items;
@@ -78,7 +79,7 @@ export function yamlBookkeeping(source: string) {
         let index = previous.findIndex(item => isMap(item) && val?.id ? item.get("id") === val.id : isDeepStrictEqual(item.toJSON(), val));
         if (index < 0 && original.length === next.length && isScalar(original[position]) && (val === null || typeof val !== "object")) index = previous.indexOf(original[position]!);
         if (index >= 0) return sync(previous.splice(index, 1)[0]!, val);
-        const addition = document.createNode([val]); addition.flow = node.flow;
+        const addition = document.createNode([val]); addition.flow = flow;
         const seq = fragment(addition, token.indent) as YAMLSeq;
         const item = seq.items[0] as Node;
         entriesByNode.set(item, (seq.srcToken as CST.BlockSequence | CST.FlowCollection).items[0]!);

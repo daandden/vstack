@@ -16,7 +16,8 @@ function fixture() {
     writeFileSync(file, "#!/bin/sh\nexit 0\n");
     chmodSync(file, 0o755);
   }
-  return { dir, env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ENV_FILE: join(dir, ".env") } };
+  const env: NodeJS.ProcessEnv & { PATH: string; ENV_FILE: string } = { ...process.env, PATH: `${bin}:${process.env.PATH}`, ENV_FILE: join(dir, ".env") };
+  return { dir, env };
 }
 
 const template = join(import.meta.dir, "../plugin/skills/wizard/template.sh");
