@@ -115,8 +115,26 @@ test("readers select typed-table text and manage revision-bound comments across 
     await page.keyboard.press("Enter");
     await otherPage.getByText("Keep the selected passage.", { exact: true }).waitFor();
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.getByRole("button", { name: "Copy feedback", exact: true }).focus();
-    await page.keyboard.press("Enter");
+    const copyFeedback = page.getByRole("button", { name: "Copy feedback", exact: true });
+    const pending = Promise.withResolvers<void>();
+    await page.route("**/comments", async (route) => {
+      await pending.promise;
+      await route.continue();
+    });
+    try {
+      await copyFeedback.focus();
+      await page.keyboard.press("Enter");
+      expect(await copyFeedback.getAttribute("aria-busy")).toBe("true");
+      expect(await copyFeedback.isDisabled()).toBe(true);
+      const icon = copyFeedback.locator("[aria-hidden=true]");
+      expect(await icon.evaluate((el) => {
+        const { width, height } = el.getBoundingClientRect();
+        return width > 0 && height > 0 && getComputedStyle(el).maskImage !== "none";
+      })).toBe(true);
+    } finally {
+      pending.resolve();
+      await page.unrouteAll({ behavior: "wait" });
+    }
     await page.getByRole("status").filter({ hasText: "Feedback copied" }).waitFor();
     const feedback = await page.evaluate(() => navigator.clipboard.readText());
     expect(feedback).toContain("Stage stage-1");

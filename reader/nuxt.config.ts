@@ -16,7 +16,13 @@ export default defineNuxtConfig({
   buildDir: fileURLToPath(new URL("./.nuxt", import.meta.url)),
   // Fragment navigation belongs to the reader. A delayed router commit can overwrite the next keyboard selection.
   experimental: { appManifest: false, navigationRepaint: false },
-  modules: ["@nuxt/ui", "@vueuse/nuxt"],
+  modules: ["@unocss/nuxt", "@nuxt/ui", "@vueuse/nuxt"],
+  unocss: {
+    configFile: fileURLToPath(new URL("./uno.config.ts", import.meta.url)),
+    wind3: false,
+    components: false,
+    disableNuxtInlineStyle: false,
+  },
   ui: { theme: { transitions: false }, experimental: { componentDetection: true } },
   fonts: { provider: "local" },
   icon: { provider: "none", serverBundle: false, fallbackToApi: false, clientBundle: { scan: true } },

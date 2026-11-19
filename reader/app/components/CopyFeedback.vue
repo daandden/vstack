@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useReaderState } from "~/composables/reader";
+import Button from "./ui/Button.vue";
 const { flow } = useReaderState();
 import { readerComments, refreshComments } from "~/composables/comments";
 
@@ -35,9 +36,22 @@ async function copy() {
 
 <template>
   <div v-if="readerComments.length" class="grid gap-1 text-small [overflow-wrap:anywhere]">
-    <UButton label="Copy feedback" color="neutral" variant="soft" :loading="pending" class="w-fit max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="copy" />
+    <Button variant="soft" :aria-busy="pending || undefined" :disabled="pending" class="u-w-fit u-max-w-full u-whitespace-normal [@media(pointer:coarse)]:u-min-h-[44px] [@media(pointer:coarse)]:u-min-w-[44px]" @click="copy">
+      <span v-if="pending" class="copy-spinner i-lucide-loader-circle u-shrink-0 u-text-base" aria-hidden="true" />
+      Copy feedback
+    </Button>
     <p v-if="readerComments.some(c => c.version_unknown)" class="text-warning">Some saved Reader comments have an unknown captured version. Copy feedback includes them without attaching them to current content.</p>
     <p v-if="status" role="status">{{ status }}</p>
     <p v-if="error" role="alert" class="text-error">{{ error }}</p>
   </div>
 </template>
+
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .copy-spinner { animation: copy-spin 1s linear infinite; }
+}
+
+@keyframes copy-spin {
+  to { transform: rotate(1turn); }
+}
+</style>

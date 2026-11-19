@@ -3,6 +3,7 @@ import { highlighter, markTrailing } from "#flow/code.ts";
 import type { DocView } from "#flow/model.ts";
 import type { Cites } from "~/utils/format";
 import type { ResultView } from "~/utils/flow";
+import Badge from "./ui/Badge.vue";
 
 const props = defineProps<{ r: ResultView; doc: DocView; historical: boolean }>();
 const cites = computed<Cites>(() => new Map(props.doc.citations.map((c) => [c.ref, { anchor: c.anchor, n: c.n }])));
@@ -26,7 +27,7 @@ const stop = computed(() => (props.historical ? undefined : ""));
         </component>
         <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="list-none ps-3">
           <li v-for="(step, j) in b.steps" :key="j" class="relative grid gap-1.5 border-s border-flow-line ps-5 pbe-4 last:border-s-transparent last:pbe-0">
-            <UBadge color="primary" variant="soft" class="absolute -inset-s-3 inset-bs-0 flex size-6 justify-center rounded-full p-0 tabular-nums">{{ j + 1 }}</UBadge>
+            <Badge class="u-absolute u-[inset-inline-start:-0.75rem] u-inset-bs-0 u-size-6 u-tabular-nums">{{ j + 1 }}</Badge>
             <h4 class="font-semibold" v-html="inline(step.title, cites)" />
             <div class="grid gap-1.5" v-html="prose(step.text, cites)" />
           </li>
