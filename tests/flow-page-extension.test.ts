@@ -2,7 +2,7 @@ import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import "./support/extension-mocks.ts";
+import { withToolApprovalScope } from "./support/extension-mocks.ts";
 import { fakeHost, type FakeAgent } from "./support/extension-host.ts";
 import { ENV, git } from "./support/fixture.ts";
 
@@ -258,6 +258,23 @@ test("a renamed Flow control is refused before omp's synthetic start can show a 
   expect(ui.panel()).toBeUndefined();
 });
 
+test("a published radio group cannot share its answer key with another logical field", async () => {
+  const w = setup(true);
+  await w.ok(["open", "--title", "Repeated controls", "--skill", "implement", "--session", "duplicates"]);
+  const receipt = await publishQuestions(w, "duplicates", "first");
+  const h = w.host("duplicates");
+  panelUI(h);
+  const name = receipt.refs.first;
+  const call = (html: string) => h.emit("tool_call", { toolName: "ask", toolCallId: "duplicate", input: { html } });
+  expect(await call(receipt.ask.html)).toEqual([undefined]);
+  for (const type of ["text", "checkbox"]) {
+    const html = receipt.ask.html.replace("</form>", `<input type="${type}" name="${name}" value="extra"></form>`);
+    expect(await call(html)).toEqual([{
+      block: true, reason: expect.stringContaining(`"${name}": more than one field uses this name`),
+    }]);
+  }
+});
+
 test("hidden controls are refused even beside a visible askable question with the same name", async () => {
   const w = setup(true);
   await w.ok(["open", "--title", "Hidden controls", "--skill", "implement", "--session", "hidden"]);
@@ -269,6 +286,23 @@ test("hidden controls are refused even beside a visible askable question with th
     const result = await h.emit("tool_call", { toolName: "ask", toolCallId: name, input: { html } });
     expect(result).toEqual([{
       block: true, reason: expect.stringContaining(`"${name}": hidden controls are not permitted`),
+    }]);
+  }
+});
+
+test("a nameless hidden input is refused beside a visible askable question", async () => {
+  const w = setup(true);
+  await w.ok(["open", "--title", "Nameless controls", "--skill", "implement", "--session", "hidden"]);
+  const receipt = await publishQuestions(w, "hidden", "visible");
+  const h = w.host("hidden");
+  panelUI(h);
+  const call = (extra: string) => h.emit("tool_call", { toolName: "ask", toolCallId: "nameless", input: {
+    html: receipt.ask.html.replace("</form>", `${extra}</form>`),
+  } });
+  expect(await call("<!-- <input type=hidden> -->")).toEqual([undefined]);
+  for (const input of ["<input type=hidden>", '<INPUT TyPe="HIDDEN" name="">']) {
+    expect(await call(input)).toEqual([{
+      block: true, reason: expect.stringContaining("unnamed input: hidden controls are not permitted"),
     }]);
   }
 });
@@ -291,6 +325,46 @@ test("a failed Flow read lets the question reach the picker and shows that error
   expect(ui.panel()).toContain(error);
   await h.emit("tool_execution_end", call);
   expect(ui.panel()).toBeUndefined();
+});
+
+test.each([false, true])("a bridged ask gets its own picker panel (failed Flow read: %s)", async (failedRead) => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Eval question", "--skill", "implement", "--session", "eval-picker"]);
+  const receipt = await publishQuestions(w, "eval-picker", "first");
+  const h = w.host("eval-picker");
+  const ui = panelUI(h);
+  const error = "injected failure reading ask status";
+  const exec = h.pi.exec;
+  if (failedRead) {
+    h.pi.exec = async (...args: any[]) => args[1][1] === "ask-status"
+      ? { code: 1, stdout: "", stderr: error, killed: false }
+      : exec(...args);
+  }
+  const picker = Promise.withResolvers<string>();
+  h.ctx.ui.custom = (factory: () => unknown) => factory();
+  await h.emit("session_start");
+  await withToolApprovalScope(async () => {
+    const input = { html: receipt.ask.html };
+    const call = { toolName: "ask", toolCallId: "js-ask-bridged", input };
+    expect(await h.emit("tool_call", call)).toEqual([undefined]);
+    expect(await withToolApprovalScope(() => h.ctx.ui.custom(() => "unrelated"))).toBe("unrelated");
+    expect(ui.widgets).toEqual([]);
+
+    const result = h.ctx.ui.custom(() => picker.promise);
+    const body = failedRead ? error : `<${opened.live.url}#${receipt.refs.first}>`;
+    await until(() => ui.panel()?.includes(body) === true, 2000);
+    if (failedRead) {
+      picker.resolve("closed");
+      expect(await result).toBe("closed");
+      expect(ui.panel()).toBeUndefined();
+    }
+    await h.emit("tool_result", { ...call, isError: failedRead });
+    expect(ui.panel()).toBeUndefined();
+    picker.resolve("closed");
+    expect(await result).toBe("closed");
+    expect(await h.ctx.ui.custom(() => "later")).toBe("later");
+    expect(ui.shown()).toBe(1);
+  });
 });
 
 test("the bound Stage accepts only the latest unretired questions with no recorded answer", async () => {

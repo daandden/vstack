@@ -317,7 +317,7 @@ def main():
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--omp-tools", required=True, help="omp-tools checkout or installed plugin link")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "offline", "abort", "ratchet", "cancelled", "empty", "later-round"], default="tui")
+    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "offline", "abort", "ratchet", "cancelled", "empty", "later-round", "eval"], default="tui")
     parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
     parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
     parser.add_argument("--config", help="Actual-model isolation overlay")
@@ -330,6 +330,8 @@ def main():
         return actual_model(args)
     if args.case in ("cancelled", "empty"):
         parser.error("--case cancelled|empty requires an actual-model --prompt and --config")
+    if args.case == "eval" and not args.tern:
+        parser.error("--case eval requires --tern for native panel and picker snapshots")
     checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
     for root, name in [(checkout / "plugin", "vstack"), (tools, "omp-tools")]:
         if json.loads((root / "package.json").read_text())["name"] != name:
@@ -364,6 +366,23 @@ def main():
         free.bind(("127.0.0.1", 0))
         env["VSTACK_FLOW_PORT"] = str(free.getsockname()[1])
     cli = checkout / "plugin/skills/flow-page/scripts/flow-page.ts"
+    read_error = "fixture: ask-status could not read the bound Flow"
+    failures_path = out / "ask-status-failures.txt"
+    if args.case == "eval":
+        bun = Path(shutil.which("bun")).resolve()
+        bin_dir = outside / "bin"
+        bin_dir.mkdir()
+        shim = bin_dir / "bun"
+        shim.write_text("#!/bin/sh\n"
+                        'case "$1:$2" in\n'
+                        "  */flow-page/scripts/flow-page.ts:ask-status)\n"
+                        f"    printf '%s\\n' {shlex.quote(read_error)} >&2\n"
+                        f"    printf '%s\\n' \"$*\" >> {shlex.quote(str(failures_path))}\n"
+                        "    exit 1;;\n"
+                        "esac\n"
+                        f'exec {shlex.quote(str(bun))} "$@"\n')
+        shim.chmod(0o755)
+        env["PATH"] = str(bin_dir) + os.pathsep + env["PATH"]
     competing = None
     command_log = []
 
@@ -418,6 +437,10 @@ def main():
                 {"label": "Abort", "does": "Stop the disposable run.", "gains": ["No approval"], "costs": ["No continuation"]},
             ],
         }]
+    if args.case == "eval":
+        question = contribution["items"][1]["questions"][0]
+        del question["multi"]
+        contribution["items"][1]["questions"] = [question]
     save(out / "contribution.json", contribution)
     session_dir = out / "sessions"
     session_dir.mkdir()
@@ -427,8 +450,8 @@ def main():
                 if entry.get("type") == "message"]
 
     def asks():
-        return [m for m in messages() if m.get("role") == "toolResult" and
-                m.get("toolName") == ("eval" if args.case == "ratchet" else "ask")]
+        names = {"ratchet": {"eval"}, "eval": {"ask", "eval"}}.get(args.case, {"ask"})
+        return [m for m in messages() if m.get("role") == "toolResult" and m.get("toolName") in names]
 
     q = shlex.quote
     identity = '--session "$PI_SESSION_ID" --agent main'
@@ -507,6 +530,7 @@ def main():
         return {"tool": "ask", "args": fixture_ask(receipt)}
     done = threading.Event()
     refusal_observed = threading.Event()
+    direct_close_observed = threading.Event()
 
     class Model(BaseHTTPRequestHandler):
         def log_message(self, *_):
@@ -568,6 +592,15 @@ def main():
                         save(out / "ratchet-outcomes.json", outcomes)
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
+                    elif args.case == "eval":
+                        assert result[-1]["toolName"] == "ask" and not result[-1].get("isError"), result
+                        assert html_answers(result[-1]) == {receipt["refs"]["pick"]: "A. Alpha"}, result[-1]
+                        if not direct_close_observed.wait(timeout=30):
+                            raise RuntimeError("Native controller did not observe the direct recovery picker close")
+                        code = ('const result = await tool.ask(' + json.dumps(fixture_ask(receipt)) + '); '
+                                'print(result.text);')
+                        reply = {"tool": "eval", "args": {"language": "js", "code": code}}
+                        phase = 4
                     elif args.case in ("tui", "retry", "later-round"):
                         assert not result[-1].get("isError"), result[-1]
                         pick_id, words_id = [question["id"] for question in receipt["ask"]["questions"]]
@@ -583,8 +616,11 @@ def main():
                             {"kind": "answer", "question": pick_id, "response": {
                                 "status": "answered", "picks": ["A", "B"], "text": option_note}},
                             {"kind": "answer", "question": words_id, "response": {
-                                "status": "answered", "text": custom_input + "\n" + raw["submitNote"]},
-                             "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}}]}
+                                "status": "answered", "text": custom_input},
+                             "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}},
+                            {"kind": "result", "shape": "document", "title": "Note on all answers",
+                             "sections": [{"heading": "Submit note", "blocks": [{"prose": raw["submitNote"]}]}]},
+                        ]}
                         save(out / "normalized-answers.json", normalized)
                         reply = {"tool": "bash", "args": {"command":
                             f'bun {q(str(cli))} submit {q(str(out / "normalized-answers.json"))} --home "$HOME" {identity} > {q(str(out / "answers-receipt.json"))}'}}
@@ -594,6 +630,15 @@ def main():
                         assert raw.get("timedOut") is True, raw
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
+                elif phase == 4 and args.case == "eval":
+                    result = asks()
+                    assert len(result) == 2 and result[-1]["toolName"] == "eval" and not result[-1].get("isError"), result
+                    text = "\n".join(part.get("text", "") for part in result[-1]["content"])
+                    answer = text.partition("User answers:\n")[2]
+                    assert answer and json.JSONDecoder().raw_decode(answer)[0] == {
+                        receipt["refs"]["pick"]: "A. Alpha"}, result[-1]
+                    reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
+                    done.set()
                 elif phase == 4 and args.case == "later-round":
                     assert len(recorded_answers(published_stage(published_state(receipt), receipt))) == 2, \
                         "First answers were not separately recorded"
@@ -831,9 +876,13 @@ def main():
             wait_for_text(current["ask"]["questions"][0]["question"], after=after)
         else:
             wait_for_text("n add note", after=after)
-        expected = (json.loads((out / "offline-bound.json").read_text())["live"]["error"]
-                    if args.case == "offline" else current["live"]["url"] + "#" + (
-                        current["stage"] if args.case == "ratchet" else current["ask"]["questions"][0]["id"]))
+        if args.case == "offline":
+            expected = json.loads((out / "offline-bound.json").read_text())["live"]["error"]
+        elif args.case == "eval":
+            expected = read_error
+        else:
+            fragment = current["stage"] if args.case == "ratchet" else current["ask"]["questions"][0]["id"]
+            expected = current["live"]["url"] + "#" + fragment
         wait_for_text(expected, after=after)
         if args.tern:
             # Judge one snapshot taken while panel and picker show together: a timeout case can close both
@@ -849,7 +898,7 @@ def main():
             save(out / f"{name}.tree.json", tree)
             save(out / f"{name}.panel.json", panel)
             save(out / f"{name}.state.json", ctl("state"))
-            assert together, "No Flow panel holds the link beside the open picker"
+            assert together, "No Flow panel holds the expected text beside the open picker"
             shot = ctl("shot", name)
             subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / f"{name}.webp")], check=True,
                            capture_output=True)
@@ -887,10 +936,10 @@ def main():
                 save(out / "guard-refusal.tree.json", tree)
                 save(out / "guard-refusal.panel.json", ctl("tree", PANEL))
             refusal_observed.set()
-        panel_url = panel_with_picker("panel")
+        panel_url = panel_with_picker("direct-panel" if args.case == "eval" else "panel")
         if args.case != "timeout":
             assert len(asks()) == (1 if args.case == "tui" else 0), "Picker returned before it was shown"
-        if args.tern and args.case not in ("offline", "timeout"):
+        if args.tern and args.case not in ("offline", "timeout", "eval"):
             before_click = ctl("state")
             save(out / "before-click.state.json", before_click)
             omp_pane = before_click["focused"]["id"]
@@ -953,6 +1002,21 @@ def main():
                 before_retry = len(captured)
                 send("F5 native retry of the aborted turn", b"\x1b[15~")
                 panel_with_picker("retry-panel", after=before_retry)
+        if args.case == "eval":
+            for route in ("direct", "eval"):
+                if route == "eval":
+                    panel_with_picker("eval-panel", after=before_eval)
+                    assert len(asks()) == 1, "Eval picker returned before it was shown"
+                send(f"select Alpha and submit {route} recovery picker", b"\r")
+                panel_gone(f"{route}-submit")
+                tree = ctl("tree")
+                save(out / f"after-{route}-submit.tree.json", tree)
+                assert "Add note" not in json.dumps(tree), f"{route} recovery picker remained open"
+                if route == "direct":
+                    direct_failures = len(failures_path.read_text().splitlines())
+                    assert direct_failures > 0, "No failed ask-status call during the direct picker"
+                    before_eval = len(captured)
+                    direct_close_observed.set()
         if args.case in ("tui", "retry", "later-round"):
             send("open Alpha option note", b"n")
             wait_for_text("Note for")
@@ -1007,6 +1071,8 @@ def main():
         deadline = time.monotonic() + 90
         while not done.is_set() and time.monotonic() < deadline:
             read_output(0.1)
+            if args.case == "eval" and handler_errors:
+                raise RuntimeError(f"Recovery picker fixture did not complete: {handler_errors[0]}")
             if child.poll() is not None:
                 raise RuntimeError("omp exited before fixture completion")
         assert done.is_set(), "provider never reached completion; inspect repeated picker or missing tool result"
@@ -1032,7 +1098,7 @@ def main():
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
         if args.case != "abort":
-            assert len(result) == (2 if args.case in ("tui", "retry", "later-round") else 1), result
+            assert len(result) == (2 if args.case in ("tui", "retry", "later-round", "eval") else 1), result
         opened = json.loads((out / "open.json").read_text())
         state = published_state(opened)
         stage = published_stage(state, opened)
@@ -1043,24 +1109,36 @@ def main():
         if later:
             expected_ids.append(later["ask"]["questions"][0]["id"])
         assert [q["id"] for q in stage["questions"]] == expected_ids, stage
-        assert [r["id"] for r in stage["results"]] == [receipt["refs"]["fixture"]], stage
         answers = recorded_answers(stage)
         if args.case in ("tui", "retry", "later-round"):
+            with urlopen(receipt["live"]["url"].rstrip("/") + "/content", timeout=10) as response:
+                content = json.load(response)
+            save(out / "answered-live-content.json", content)
+            results = published_stage(content, receipt)["results"]
+            assert [result["title"] for result in results] == ["Disposable picker fixture", "Note on all answers"], results
+            note = results[1]
+            assert note["shape"] == "document" and [
+                block["prose"] for section in note["doc"]["sections"] for block in section["blocks"]
+            ] == ["fixture-submit-note"], note
             assert set(answers) == set(expected_ids), answers
             pick, words = (answers[receipt["refs"][ref]] for ref in ("pick", "words"))
             assert pick["response"]["picks"] == ["A", "B"], pick
             assert pick["response"]["text"] == "fixture-option-note", pick
-            assert words["response"]["text"] == "fixture-custom-concern\nfixture-submit-note", words
+            assert words["response"]["text"] == "fixture-custom-concern", words
             assert words["reading"]["outcome"] == "concern", words
             if later:
                 assert answers[later["refs"]["later"]]["response"]["picks"] == ["A"], answers
         else:
-            assert not answers, "Cancellation and timeout must not become Flow answers"
+            assert [r["id"] for r in stage["results"]] == [receipt["refs"]["fixture"]], stage
+            assert not answers, "Picker delivery must not record Flow answers"
             assert state["revision"] == receipt["revision"]
             if args.case == "timeout":
                 assert result[0]["details"].get("timedOut") is True, result
             elif args.case == "ratchet":
                 assert "FIRST_APPROVAL" in json.dumps(result)
+            elif args.case == "eval":
+                failures = failures_path.read_text().splitlines()
+                assert len(failures) > direct_failures and all("ask-status --session " in call for call in failures), failures
             elif args.case != "abort":
                 assert result[0].get("isError"), result
         calls = [c for m in messages() if m.get("role") == "assistant"
@@ -1068,7 +1146,7 @@ def main():
         ask_calls = [c for c in calls if c.get("name") == "ask"]
         save(out / "ask-calls.json", ask_calls)
         calls_by_id = {c["id"]: c for c in ask_calls}
-        for index, outcome in enumerate([] if args.case in ("ratchet", "abort") else result):
+        for index, outcome in enumerate(r for r in result if r["toolName"] == "ask"):
             original = calls_by_id[outcome["toolCallId"]]
             expected = (renamed_ask(receipt) if args.case == "tui" and index == 0
                         else fixture_ask(later if later and index == 1 else receipt))
@@ -1095,6 +1173,9 @@ def main():
             assertions.append("Ctrl+C closes the picker and removes the Flow panel")
         elif args.case == "offline":
             assertions.append("actual host error appears in the Flow panel beside the picker and cancellation grants no consent")
+        elif args.case == "eval":
+            assertions.append("the same failed ask-status error appears beside both the direct and eval recovery pickers")
+            assertions.append("each recovery picker and its panel close before the next action")
         else:
             assertions.append("Flow panel URL is on screen while the picker is open, with no dismissal step")
             if args.tern and args.case != "timeout":
@@ -1102,7 +1183,7 @@ def main():
         if args.tern:
             assertions.append("Flow panel is gone once the picker closes")
         if args.case in ("tui", "retry", "later-round"):
-            assertions.append("explicit picks, option note, Other words and submit note recorded separately through CLI")
+            assertions.append("picks, option note, and Other words recorded as answers; submit note recorded once as a Document Result")
         if args.case == "retry":
             assertions.append("F5 retry shows a fresh Flow panel and preserves the question identities without republication")
         if args.case == "later-round":
@@ -1118,6 +1199,7 @@ def main():
         summary["error"] = repr(error)
     finally:
         refusal_observed.set()
+        direct_close_observed.set()
         identity_file = out / "child-session-id.txt"
         if (out / "open.json").exists():
             try:

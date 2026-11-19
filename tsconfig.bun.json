@@ -16,6 +16,7 @@
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "plugin/**/*.ts",
+    "types/**/*.d.ts",
     ".omp/skills/verify-vstack/**/*.ts",
     "reader/ship.ts"
   ],
