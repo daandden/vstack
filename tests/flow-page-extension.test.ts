@@ -28,7 +28,7 @@ function world(hostOff = false) {
   const run = async (args: string[], input?: unknown) => {
     running++;
     try {
-      const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
+      const p = Bun.spawn([process.execPath, script, "--home", home, ...args], {
         cwd: project, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
         stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
       });
@@ -219,6 +219,25 @@ async function publishQuestions(w: ReturnType<typeof world>, session: string, ..
   }] });
 }
 
+function askForm(...ids: string[]) {
+  const fields = ids.map(id => `<fieldset><legend>Choose for ${id}</legend>` +
+    `<label><input type="radio" name="${id}" value="keep">Keep</label>` +
+    `<label><input type="radio" name="${id}" value="change">Change</label></fieldset>`);
+  return { html: `<form>${fields.join("")}</form>` };
+}
+
+test("an HTML ask links the Flow panel to the question named by its first control", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "HTML ask", "--skill", "implement", "--session", "html"]);
+  const receipt = await publishQuestions(w, "html", "first");
+  const h = w.host("html");
+  const ui = panelUI(h);
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "html", args: askForm(receipt.refs.first) });
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain(`<${opened.live.url}#${receipt.refs.first}>`);
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "html" });
+});
+
 test("an ordinary ask links to its receipt question rather than the newest Stage", async () => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Asked ticket", "--skill", "implement", "--session", "asked"]);
@@ -229,11 +248,11 @@ test("an ordinary ask links to its receipt question rather than the newest Stage
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("asked");
   const ui = panelUI(h);
-  const input = structuredClone(receipt.ask);
+  const input = askForm(receipt.refs.asked);
   await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "targeted", args: input });
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain(`<${current.live.url}#${receipt.ask.questions[0].id}>`);
-  expect(input).toEqual(receipt.ask);
+  expect(input).toEqual(askForm(receipt.refs.asked));
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
   await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "targeted" });
@@ -249,11 +268,12 @@ test("a multi-question picker links to its first asked question, not the first o
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("ordered");
   const ui = panelUI(h);
-  for (const questions of [receipt.ask.questions, receipt.ask.questions.toReversed()]) {
-    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "multi", args: { questions } });
+  const ids = [receipt.refs.first, receipt.refs.second];
+  for (const [first, second] of [ids, ids.toReversed()]) {
+    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "multi", args: askForm("unrelated", first, second) });
     await until(() => ui.panel() !== undefined);
-    expect(ui.panel()).toContain(`<${current.live.url}#${questions[0].id}>`);
-    expect(ui.panel()).not.toContain(`#${questions[1].id}`);
+    expect(ui.panel()).toContain(`<${current.live.url}#${first}>`);
+    expect(ui.panel()).not.toContain(`#${second}`);
     await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "multi" });
     expect(ui.panel()).toBeUndefined();
   }
@@ -271,8 +291,8 @@ test("an ask with no question id in the bound Flow links to the bound Stage", as
   const h = w.host("fallback");
   const ui = panelUI(h);
   for (const [index, args] of [
-    {}, { questions: [{ question: "No id" }] }, { questions: [{ id: opened.stage }] },
-    { questions: [{ id: "question-999" }] }, { questions: [foreign.ask.questions[1]] },
+    askForm(), askForm("unrelated"), askForm(opened.stage),
+    askForm("question-999"), askForm(foreign.refs["foreign-second"]),
   ].entries()) {
     const toolCallId = `fallback-${index}`;
     await h.emit("tool_execution_start", { toolName: "ask", toolCallId, args });
@@ -292,7 +312,7 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   const h = w.host("panel");
   const ui = panelUI(h);
   const lookups = holdLookups(h);
-  const input = { questions: [{ id: "a" }, { id: "b" }] };
+  const input = askForm("a", "b");
   expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "ask-1", input })).toEqual([undefined]);
   lookups.release();
   await Bun.sleep(300);
@@ -311,7 +331,7 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "ask-1", isError: false });
   expect(ui.panel()).toBeUndefined();
   expect(new Set(ui.widgets.map(widget => widget.key)).size).toBe(1);
-  expect(input).toEqual({ questions: [{ id: "a" }, { id: "b" }] });
+  expect(input).toEqual(askForm("a", "b"));
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
 });
@@ -432,9 +452,9 @@ test("each retry gets one fresh panel that leaves when its delegated dialog clos
   h.ctx.ui.askDialog = async () => { picks++; return new Promise<undefined>(resolve => { close = () => resolve(undefined); }); };
   await h.emit("session_start");
   for (const index of [0, 1, 2]) {
-    const call = { toolName: "ask", toolCallId: `retry-${index}`, args: { questions: [{ id: "same" }] } };
+    const call = { toolName: "ask", toolCallId: `retry-${index}`, args: askForm("same") };
     await h.emit("tool_execution_start", call);
-    const dialog = h.ctx.ui.askDialog(call.args.questions);
+    const dialog = h.ctx.ui.askDialog([]);
     await until(() => ui.panel() !== undefined);
     await Bun.sleep(300);
     expect(ui.shown()).toBe(index + 1);
@@ -542,13 +562,13 @@ test("a disabled host shows its state in the panel with no model or session pres
   await h.emit("session_start");
   const entries = h.ctx.sessionManager.getEntries();
   await h.emit("before_agent_start");
-  const input = { questions: [{ id: "host-off", question: "Continue?" }] };
+  const input = askForm("host-off");
   expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "off", input })).toEqual([undefined]);
   expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "off", args: input })).toEqual([undefined]);
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain("off");
   expect(h.ctx.sessionManager.getEntries()).toEqual(entries);
-  expect(input).toEqual({ questions: [{ id: "host-off", question: "Continue?" }] });
+  expect(input).toEqual(askForm("host-off"));
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
   const history = [{ role: "user", content: "Continue?" }];
@@ -582,19 +602,21 @@ test("a main picker publishes presence and clears it on answer, cancellation, ti
     expect(records).toHaveLength(count);
     return records;
   };
+  const ids = [receipt.refs.second, receipt.refs.first];
   for (const outcome of ["answer", "cancel", "timeout", "failure", "ratchet"]) {
-    const call = { toolName: "ask", toolCallId: outcome, args: receipt.ask };
+    const call = { toolName: "ask", toolCallId: outcome, args: askForm("--home", ...ids) };
     if (outcome !== "ratchet") await h.emit("tool_execution_start", call);
-    const pending = h.ctx.ui.askDialog(outcome === "ratchet" ? [] : receipt.ask.questions);
+    const pending = h.ctx.ui.askDialog([]);
     const [presence] = await waitPresence(1);
     expect(presence).toMatchObject({
       session: "present", flow: opened.flow, stage: opened.stage,
-      questions: outcome === "ratchet" ? [] : receipt.ask.questions.map((q: any) => q.id),
+      questions: outcome === "ratchet" ? [] : ids,
     });
     expect(presence.expires).toBeGreaterThan(Date.now());
     const target = await w.ok(["target", "--session", "present"]);
-    expect(target.target).toBe(`${opened.live.url}#${outcome === "ratchet" ? opened.stage : receipt.refs.first}`);
+    expect(target.target).toBe(`${opened.live.url}#${outcome === "ratchet" ? opened.stage : ids[0]}`);
     await until(() => ui.panel() !== undefined);
+    expect(ui.panel()).toContain(`<${target.target}>`);
     if (outcome === "failure") {
       void pending.catch(() => {});
       fail(new Error("picker failed"));
@@ -690,10 +712,10 @@ test("a delayed old presence write never replaces a newer picker's presence", as
       return await exec(...args);
     } finally { inFlight--; }
   };
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "old", args: { questions: [receipt.ask.questions[0]] } });
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "old", args: askForm(receipt.refs.old) });
   await until(() => held && ui.panel() !== undefined);
   await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "old" });
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "new", args: { questions: [receipt.ask.questions[1]] } });
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "new", args: askForm(receipt.refs.new) });
   await until(() => ui.panel() !== undefined);
   await Bun.sleep(100);
   release();

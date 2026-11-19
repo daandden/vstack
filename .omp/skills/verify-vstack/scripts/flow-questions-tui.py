@@ -4,6 +4,8 @@ import argparse
 import errno
 import fcntl
 import json
+from html import escape
+from html.parser import HTMLParser
 import os
 from pathlib import Path
 import pty
@@ -13,7 +15,6 @@ import select
 import shlex
 import shutil
 import socket
-import sqlite3
 import struct
 import subprocess
 import tempfile
@@ -50,6 +51,67 @@ def plain(data):
     text = re.sub(r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)", "", text)
     text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)
     return re.sub(r"\x1b[^\n]", "", text).replace("\r", "")
+
+
+def control_names(html):
+    if not isinstance(html, str):
+        return []
+
+    class Controls(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.all_names = {}
+            self.form_names = None
+            self.in_form = False
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "form" and self.form_names is None:
+                self.form_names = {}
+                self.in_form = True
+            attrs = dict(attrs)
+            if tag in ("input", "select", "textarea") and attrs.get("name"):
+                if tag == "input" and (attrs.get("type") or "").lower() in (
+                    "hidden", "button", "file", "submit", "reset", "image",
+                ):
+                    return
+                self.all_names[attrs["name"]] = None
+                if self.in_form:
+                    self.form_names[attrs["name"]] = None
+
+        def handle_endtag(self, tag):
+            if tag == "form":
+                self.in_form = False
+
+    parser = Controls()
+    parser.feed(html)
+    parser.close()
+    return list(parser.form_names if parser.form_names is not None else parser.all_names)
+
+
+def fixture_ask(receipt):
+    fields = []
+    for question in receipt["ask"]["questions"]:
+        kind = "checkbox" if question.get("multi") else "radio"
+        name = escape(question["id"], quote=True)
+        fields.append(f'<fieldset><legend>{escape(question["question"])}</legend>')
+        for index, option in enumerate(question["options"]):
+            label = escape(option["label"], quote=True)
+            checked = " checked" if question.get("recommended") == index else ""
+            fields.append(f'<label><input type="{kind}" name="{name}" value="{label}"{checked}>{label}</label>')
+        fields.append("</fieldset>")
+    return {"html": "<form>" + "".join(fields) + "</form>"}
+
+
+def html_answers(result):
+    text = result["content"][0]["text"]
+    header = "User answers:\n"
+    assert text.startswith(header), text
+    return json.JSONDecoder().raw_decode(text[len(header):])[0]
+
+
+def recorded_answers(stage):
+    return {question["id"]: question["answer"] for question in stage["questions"]
+            if "response" in question["answer"]}
 
 
 def actual_model(args):
@@ -135,13 +197,7 @@ def actual_model(args):
                      and block.get("type") == "toolCall" and block.get("name") == "ask"]
         if not ask_calls:
             raise RuntimeError("Visible picker has no ordinary ask call in the native session")
-        def identities(payload):
-            return [{"id": question.get("id"), "question": question.get("question"),
-                     "labels": [option.get("label") for option in question.get("options", [])],
-                     "multi": question.get("multi", False)}
-                    for question in payload.get("questions", [])]
-
-        expected = identities(ask_calls[-1].get("arguments", {}))
+        expected = control_names(ask_calls[-1].get("arguments", {}).get("html", ""))
         receipts = []
         decoder = json.JSONDecoder()
         for message in current:
@@ -165,7 +221,7 @@ def actual_model(args):
                     except json.JSONDecodeError:
                         continue
                     if (isinstance(receipt, dict) and isinstance(receipt.get("ask"), dict)
-                            and identities(receipt["ask"]) == expected):
+                            and expected and [q["id"] for q in receipt["ask"].get("questions", [])] == expected):
                         receipts.append(receipt)
         if not receipts:
             raise RuntimeError("Ordinary ask has no matching CLI publication receipt")
@@ -314,32 +370,26 @@ def main():
     competing = None
     command_log = []
 
-    def stored_flow(flow):
-        for path in home.glob(".vstack/tmp/*/flow.db"):
-            db = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True)
-            try:
-                row = db.execute("SELECT folder, state FROM flows WHERE id = ?", (flow,)).fetchone()
-                if row is not None:
-                    bindings = [json.loads(data) for (data,) in db.execute(
-                        "SELECT data FROM bindings WHERE flow = ?", (flow,))]
-                    return path.parent / "flow" / row[0], json.loads(row[1]), bindings
-            finally:
-                db.close()
-        raise RuntimeError(f"No stored Flow {flow} in the owned home")
-
-    def export_flow(folder, state):
-        export = out / "export"
-        shutil.copytree(folder, export)
-        save(export / "data/state.json", state)
-
-    def command(argv, label):
-        result = subprocess.run(argv, cwd=project, env=env, capture_output=True, text=True, timeout=45)
+    def command(argv, label, *, connect=True):
+        command_env = env if connect else {**env, "VSTACK_FLOW_HOST": "off"}
+        result = subprocess.run(argv, cwd=project, env=command_env, capture_output=True, text=True, timeout=45)
         command_log.append({"argv": argv, "cwd": str(project), "exit": result.returncode,
                             "stdout": result.stdout, "stderr": result.stderr})
         save(out / "commands.json", command_log)
         if result.returncode:
             raise RuntimeError(f"{label} failed: {result.stderr}")
         return result.stdout
+
+    def flow_read(*args):
+        session = (out / "child-session-id.txt").read_text()
+        argv = ["bun", str(cli), *args, "--home", str(home), "--session", session, "--agent", "main"]
+        return json.loads(command(argv, f"read Flow {args[0]}", connect=False))
+
+    def export_flow(state, binding):
+        export = out / "export"
+        export.mkdir(exist_ok=True)
+        save(export / "show.json", state)
+        save(export / "bound.json", binding)
 
     command(["omp", "plugin", "link", str(checkout / "plugin")], "link vstack")
     command(["omp", "plugin", "link", str(tools)], "link omp-tools")
@@ -349,7 +399,7 @@ def main():
          "bun": str(Path(shutil.which("bun")).resolve()),
          "plugins": command(["omp", "plugin", "list"], "list plugins")})
     contribution = {"version": 1, "items": [
-        {"kind": "result", "shape": "document", "title": "Disposable picker fixture",
+        {"kind": "result", "shape": "document", "ref": "fixture", "title": "Disposable picker fixture",
          "sections": [{"heading": "Context", "blocks": [{"prose": "Fixture evidence, not a real user decision."}]}]},
         {"kind": "round", "questions": [
             {"ref": "pick", "title": "Pick fixture paths", "description": "Full authored context retained on Flow.", "multi": True,
@@ -394,8 +444,13 @@ def main():
     inventory_error = None
     receipt = None
 
-    def published_state():
-        return stored_flow(receipt["flow"])[1]
+    def published_state(opened):
+        shown = flow_read("show", "--flow", opened["flow"])
+        assert shown["flow"]["id"] == opened["flow"], shown
+        return shown
+
+    def published_stage(state, opened):
+        return next(stage for stage in state["stages"] if stage["id"] == opened["stage"])
 
     def live_question():
         nonlocal receipt
@@ -452,7 +507,7 @@ def main():
                     f'print("FIRST_APPROVAL", json.dumps({approval}))\n'
                     f'print("REUSED_APPROVAL", json.dumps({approval}))')
             return {"tool": "eval", "args": {"language": "py", "code": code, "timeout": 120}}
-        return {"tool": "ask", "args": receipt["ask"]}
+        return {"tool": "ask", "args": fixture_ask(receipt)}
     done = threading.Event()
 
     class Model(BaseHTTPRequestHandler):
@@ -493,9 +548,9 @@ def main():
                     result = asks()
                     assert result, "No ordinary ask tool result"
                     raw = result[-1].get("details", {})
-                    committed = published_state()
+                    committed = published_state(receipt)
                     save(out / "committed-before-answers.json", committed)
-                    assert not committed["answers"], "Ask delivery must not author Flow answers"
+                    assert not recorded_answers(published_stage(committed, receipt)), "Ask delivery must not author Flow answers"
                     if args.case == "ratchet":
                         save(out / "ratchet-results.json", result)
                         assert not result[-1].get("isError"), result[-1]
@@ -510,9 +565,8 @@ def main():
                     elif args.case in ("tui", "retry", "later-round"):
                         assert not result[-1].get("isError"), result[-1]
                         pick_id, words_id = [question["id"] for question in receipt["ask"]["questions"]]
-                        assert [a["name"] for a in raw["answers"]] == [pick_id, words_id], raw
-                        assert raw["answers"][0]["answer"] == "A. Alpha, B. Beta", raw
-                        assert raw["answers"][1]["answer"] == "Other: fixture-custom-concern", raw
+                        values = html_answers(result[-1])
+                        assert values == {pick_id: ["A. Alpha", "B. Beta"], words_id: "fixture-custom-concern"}, values
                         notes = [note["text"] for note in raw["notes"]
                                  if note["name"] == pick_id and note["option"] == "A. Alpha"]
                         words = [entry["text"] for entry in raw["other"] if entry["name"] == words_id]
@@ -535,7 +589,8 @@ def main():
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
                 elif phase == 4 and args.case == "later-round":
-                    assert len(published_state()["answers"]) == 2, "First answers were not separately recorded"
+                    assert len(recorded_answers(published_stage(published_state(receipt), receipt))) == 2, \
+                        "First answers were not separately recorded"
                     later = {"version": 1, "items": [{"kind": "round", "questions": [{
                         "ref": "later", "title": "Choose the later fixture path",
                         "description": "This is a new authored round, not a retry of the first picker.",
@@ -560,15 +615,16 @@ def main():
                     assert [q["id"] for q in content["questions"]] == expected_ids, content
                     assert "This is a new authored round" in json.dumps(content), content
                     save(out / "later-live-content.json", content)
-                    reply = {"tool": "ask", "args": later["ask"]}
+                    reply = {"tool": "ask", "args": fixture_ask(later)}
                     phase = 6
                 elif phase == 6 and args.case == "later-round":
                     result = asks()
                     assert len(result) == 2 and not result[-1].get("isError"), result
                     save(out / "later-tool-result.json", result[-1])
-                    assert [a["answer"] for a in result[-1]["details"]["answers"]] == ["A. Continue"], result[-1]
-                    assert len(published_state()["answers"]) == 2, "Later ask delivery authored an answer"
                     later = json.loads((out / "later-publication.json").read_text())
+                    assert html_answers(result[-1]) == {later["ask"]["questions"][0]["id"]: "A. Continue"}, result[-1]
+                    assert len(recorded_answers(published_stage(published_state(receipt), receipt))) == 2, \
+                        "Later ask delivery authored an answer"
                     normalized = {"version": 1, "items": [{"kind": "answer",
                         "question": later["ask"]["questions"][0]["id"],
                         "response": {"status": "answered", "picks": ["A"]}}]}
@@ -857,9 +913,9 @@ def main():
             while not asks() and time.monotonic() < deadline:
                 read_output(0.1)
             assert asks() and asks()[-1].get("isError"), "Escape did not produce an aborted ask result"
-            cancelled = published_state()
+            cancelled = published_state(receipt)
             save(out / "cancelled-state.json", cancelled)
-            assert not cancelled["answers"], "Cancellation must not record consent"
+            assert not recorded_answers(published_stage(cancelled, receipt)), "Cancellation must not record consent"
             panel_gone("cancel")
             if args.case in ("cancel", "offline"):
                 done.set()
@@ -950,24 +1006,28 @@ def main():
         if args.case != "abort":
             assert len(result) == (2 if args.case in ("retry", "later-round") else 1), result
         opened = json.loads((out / "open.json").read_text())
-        folder, state, bindings = stored_flow(opened["flow"])
+        state = published_state(opened)
+        stage = published_stage(state, opened)
         save(out / "persisted-state.json", state)
-        assert len(state["rounds"]) == (2 if args.case == "later-round" else 1), state
-        assert len(state["questions"]) == len(receipt["ask"]["questions"]) + (1 if args.case == "later-round" else 0), state
-        assert len(state["results"]) == 1 and state["results"][0]["title"] == "Disposable picker fixture", state
+        later = json.loads((out / "later-publication.json").read_text()) if args.case == "later-round" else None
+        assert len(stage["rounds"]) == (2 if later else 1), state
+        expected_ids = [q["id"] for q in receipt["ask"]["questions"]]
+        if later:
+            expected_ids.append(later["ask"]["questions"][0]["id"])
+        assert [q["id"] for q in stage["questions"]] == expected_ids, stage
+        assert [r["id"] for r in stage["results"]] == [receipt["refs"]["fixture"]], stage
+        answers = recorded_answers(stage)
         if args.case in ("tui", "retry", "later-round"):
-            assert len(state["answers"]) == (3 if args.case == "later-round" else 2), state
-            assert state["answers"][0]["response"]["picks"] == ["A", "B"], state
-            assert "fixture-option-note" in state["answers"][0]["response"]["text"]
-            assert "fixture-custom-concern" in state["answers"][1]["response"]["text"]
-            assert "fixture-submit-note" in state["answers"][1]["response"]["text"]
-            assert state["answers"][1]["reading"]["outcome"] == "concern"
-            if args.case == "later-round":
-                later = json.loads((out / "later-publication.json").read_text())
-                assert state["answers"][2]["question"] == later["ask"]["questions"][0]["id"], state
-                assert state["answers"][2]["response"]["picks"] == ["A"], state
+            assert set(answers) == set(expected_ids), answers
+            pick, words = (answers[receipt["refs"][ref]] for ref in ("pick", "words"))
+            assert pick["response"]["picks"] == ["A", "B"], pick
+            assert pick["response"]["text"] == "fixture-option-note", pick
+            assert words["response"]["text"] == "fixture-custom-concern\nfixture-submit-note", words
+            assert words["reading"]["outcome"] == "concern", words
+            if later:
+                assert answers[later["refs"]["later"]]["response"]["picks"] == ["A"], answers
         else:
-            assert not state["answers"], "Cancellation and timeout must not become Flow answers"
+            assert not answers, "Cancellation and timeout must not become Flow answers"
             assert state["revision"] == receipt["revision"]
             if args.case == "timeout":
                 assert result[0]["details"].get("timedOut") is True, result
@@ -982,8 +1042,7 @@ def main():
         calls_by_id = {c["id"]: c for c in ask_calls}
         for index, outcome in enumerate([] if args.case in ("ratchet", "abort") else result):
             original = calls_by_id[outcome["toolCallId"]]
-            expected = (json.loads((out / "later-publication.json").read_text())["ask"]
-                        if args.case == "later-round" and index == 1 else receipt["ask"])
+            expected = fixture_ask(later if later and index == 1 else receipt)
             assert original["arguments"] == expected, "Picker changed its published question identities"
         if args.case == "retry":
             assert result[0].get("isError") and not result[-1].get("isError"), result
@@ -991,9 +1050,12 @@ def main():
                         str(out / "contribution.json") in c.get("arguments", {}).get("command", "")]
         assert len(publications) == 1, "Retry must not republish the question round"
         session_id = (out / "child-session-id.txt").read_text()
-        assert any(b["session"] == session_id and b["agent"] == "main" and b["flow"] == opened["flow"] for b in bindings), bindings
-        save(out / "bindings.json", bindings)
-        export_flow(folder, state)
+        bound = flow_read("bound")
+        binding = bound["binding"]
+        assert (binding["session"], binding["agent"], binding["flow"], binding["stage"]) == (
+            session_id, "main", opened["flow"], opened["stage"]), binding
+        save(out / "binding.json", bound)
+        export_flow(state, bound)
         assertions = ["fresh inventory omits flow_ask", "live content matches the committed question identities",
                       "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
         if args.case != "ratchet":
@@ -1019,7 +1081,7 @@ def main():
         if args.case == "ratchet":
             assertions.append("native Ratchet approval is reused without a second gate")
         assert "click_error" not in summary, summary.get("click_error")
-        summary.update(ok=True, flow=opened["flow"], folder=str(folder),
+        summary.update(ok=True, flow=opened["flow"],
                        session_id=session_id, stub_requests=len(requests), live=receipt["live"], assertions=assertions)
     except Exception as error:
         summary["error"] = repr(error)
@@ -1028,12 +1090,13 @@ def main():
         if (out / "open.json").exists():
             try:
                 opened = json.loads((out / "open.json").read_text())
-                folder, state, bindings = stored_flow(opened["flow"])
+                state = published_state(opened)
+                bound = flow_read("bound")
                 save(out / "persisted-state-final.json", state)
-                save(out / "bindings.json", bindings)
+                save(out / "binding.json", bound)
                 save(out / "tool-results-final.json", asks())
                 if not (out / "export").exists():
-                    export_flow(folder, state)
+                    export_flow(state, bound)
             except Exception as error:
                 summary.update(ok=False, export_error=repr(error))
         if competing:
@@ -1059,7 +1122,6 @@ def main():
         server.server_close()
         try:
             stop = ["bun", str(cli), "host", "stop", "--home", str(home)]
-            identity_file = out / "child-session-id.txt"
             if identity_file.exists():
                 stop += ["--session", identity_file.read_text(), "--agent", "main"]
             command(stop, "stop owned Flow host")

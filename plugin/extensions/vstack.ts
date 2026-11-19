@@ -2,6 +2,7 @@ import type { TSchema } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
+import { parseHtmlForm } from "@oh-my-pi/pi-tui/html-form/parse";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
@@ -24,8 +25,8 @@ const flowIdentity = (ctx: ExtensionContext) => [
   "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
 ];
 
-async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[], identity = flowIdentity(ctx)): Promise<T> {
-  const result = await pi.exec("bun", [flowScript, ...args, ...identity], { cwd: ctx.cwd });
+async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[], identity = flowIdentity(ctx), positionals: readonly string[] = []): Promise<T> {
+  const result = await pi.exec("bun", [flowScript, ...args, ...identity, "--", ...positionals], { cwd: ctx.cwd });
   if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow command exited ${result.code}`);
   return JSON.parse(result.stdout);
 }
@@ -51,6 +52,13 @@ function registerFlowContext(pi: ExtensionAPI): void {
   });
 }
 
+function askControlNames(html: unknown): string[] {
+  if (typeof html !== "string") return [];
+  const names = new Set<string>();
+  for (const field of parseHtmlForm(html).fields) if (field.name) names.add(field.name);
+  return [...names];
+}
+
 function registerFlowQuestions(pi: ExtensionAPI): void {
   type Bound = { binding: { flow: string; stage: string } | null; live?: { state: string; url?: string; error?: string } };
   const interactive = (ctx: ExtensionContext) => ctx.mode === "tui" && ctx.hasUI && ctx.agent.kind === "main";
@@ -62,16 +70,15 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     presenceWrites = presenceWrites.then(write).catch(() => {});
     return presenceWrites;
   };
-  const startPresence = (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
+  const startPresence = (ctx: ExtensionContext, picker: symbol, ids: readonly string[]) => {
     const identity = flowIdentity(ctx);
     const token = randomUUID();
-    const ids = Array.isArray(questions) ? questions.flatMap(q => typeof q?.id === "string" ? [q.id] : []) : [];
     let closed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let pending: Promise<unknown>;
     const write = () => {
       pending = writePresence(async () => {
-        if (!closed) await flowPage(pi, ctx, ["picker", "open", "--picker", token, ...ids], identity);
+        if (!closed) await flowPage(pi, ctx, ["picker", "open", "--picker", token], identity, ids);
       });
       void pending.then(() => {
         if (!closed) { timer = setTimeout(write, 10_000); timer.unref(); }
@@ -85,20 +92,20 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     write();
   };
   let shownIn: ExtensionContext | undefined;
-  const showPanel = async (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
+  const showPanel = async (ctx: ExtensionContext, picker: symbol, ids: readonly string[] = []) => {
     pickers.add(picker);
-    startPresence(ctx, picker, questions);
+    startPresence(ctx, picker, ids);
     let text: string;
     try {
       const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (!current.binding) return;
       if (current.live?.state === "serving" && current.live.url) {
         let target = current.binding.stage;
-        if (Array.isArray(questions) && questions.some(question => typeof question?.id === "string")) {
+        if (ids.length) {
           const response = await fetch(new URL("content", current.live.url));
           if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
           const content = await response.json() as { questions: { id: string }[] };
-          target = questions.find(question => content.questions.some(saved => saved.id === question?.id))?.id ?? target;
+          target = ids.find(id => content.questions.some(saved => saved.id === id)) ?? target;
         }
         text = `<${current.live.url}#${target}>`;
       } else {
@@ -134,7 +141,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
     const picker = Symbol(event.toolCallId);
     ordinary.set(event.toolCallId, picker);
-    void showPanel(ctx, picker, event.args?.questions);
+    void showPanel(ctx, picker, askControlNames(event.args?.html));
   });
   pi.on("tool_execution_end", event => {
     const picker = ordinary.get(event.toolCallId);

@@ -61,6 +61,8 @@ When the host serves the Flow, `target` is its live URL with the first asked que
 
 `picker` is an opaque identity for the open picker, or null when none is known. It changes when a new picker opens, even if its URL target is unchanged, and stays the same during lease renewal. Consumers can distinguish a picker opening from its closure without following a closure back to the Stage.
 
+For an HTML `ask`, the extension reads the picker's control names in form order. It uses the first name that matches a question in the bound Flow for the panel link.
+
 The extension owns `picker open --picker <opaque-id> [<question-id>...]` and `picker clear --picker <opaque-id>`. These commands use the session's main binding and never write Flow content. Subagent writes are ignored. Open retains only question ids present in the bound Flow. Clear removes only the matching picker identity, so an older picker cannot clear a newer one.
 
 The host accepts presence writes only at `/.host/picker`, authenticated with its control secret. A Flow's read capability can read `{presences:[...]}` at the page-relative `presence` route, but cannot write it. Each record contains the project `key`, `flow`, `stage`, `session`, `picker`, ordered `questions`, and an `expires` Unix timestamp in milliseconds.
