@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, resolve, sep } from "node:path";
+import { dirname, resolve } from "node:path";
+import type { ApprovalChoice, ApprovalPlan } from "./approval.ts";
+import { displayField, FIELD_SEPARATOR, shortPath } from "./display.ts";
 
 type CommandOutput = { exit_code: number | null; file: string };
 type Checkout = {
@@ -27,14 +28,6 @@ type Observation = {
   branch_preserved?: boolean | null;
 };
 type Offer = { question_ref: string; picked?: string[] };
-type Plan = {
-  version: 1;
-  rounds: {
-    question_ref: string;
-    mapping: { path: string; label: string }[];
-    contribution: { version: 1; items: [{ kind: "round"; questions: [{ ref: string; results?: string[] }] }] };
-  }[];
-};
 type RemovalResult = { path: string; method?: string; reason?: string; error?: string };
 type RemovalReport = Record<"removed" | "skipped" | "failed", RemovalResult[]>;
 type AttemptRecord = { origin: Attempt["origin"]; repository: string; output?: CommandOutput; status?: keyof RemovalReport; outcome?: RemovalResult };
@@ -54,6 +47,7 @@ const HEADINGS = {
   unique: "Kept, unique commits",
   uncertain: "Kept, not safe to judge",
   notPicked: "Offered but not picked",
+  removalPending: "Removal pending",
   failed: "Removal failed",
   automaticSkip: "Automatic removal skipped",
   notInvestigated: "Not investigated",
@@ -61,7 +55,7 @@ const HEADINGS = {
   notAttempted: "Kept, no removal attempted",
 } as const;
 type Group = keyof typeof HEADINGS;
-type Outcome = { group: Group | "needsPick"; reason: string };
+type Outcome = { group: Group | "needsPick"; reason: string; verificationGap?: string };
 
 const SAFETY_REASONS = [
   "Unsupported checkout layout",
@@ -86,19 +80,11 @@ const STOP_MESSAGES = {
   other: "The cleanup stopped early.",
 } as const;
 
-const home = resolve(homedir());
-const homePrefix = home.endsWith(sep) ? home : home + sep;
-
-function shortPath(path: string): string {
-  const short = path === home ? "~" : path.startsWith(homePrefix) ? `~${sep}${path.slice(homePrefix.length)}` : path;
-  return short.replace(/[\\\x00-\x1f\x7f\u0085\u2028\u2029]/g, (char) =>
-    char === "\\" ? "\\\\" : `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
-}
+const DOCUMENT_INLINE_MARKUP = /`[^`]+`|\[@[a-z0-9][a-z0-9-]*\]|\[[^\]]*\]\([^)\s]*\)/;
 
 function rows(heading: string, list: string[]): Section {
-  // Document lists interpret inline markup. Keep checkout text literal when it uses the same syntax.
-  const inline = /`[^`]+`|\[@[a-z0-9][a-z0-9-]*\]|\[[^\]]*\]\([^)\s]*\)/;
-  return { heading, blocks: [list.some((line) => inline.test(line)) ? { code: list.join("\n") } : { list }] };
+  const hasDocumentInlineMarkup = list.some((line) => DOCUMENT_INLINE_MARKUP.test(line));
+  return { heading, blocks: [hasDocumentInlineMarkup ? { code: list.join("\n") } : { list }] };
 }
 
 type Records = {
@@ -226,7 +212,7 @@ function keptVerification({ inventory, observation }: CheckoutRecord["verificati
   if (observation?.disk !== "present") return "presence on disk was not verified";
 }
 
-function classify(record: CheckoutRecord, current: Checkout, phase: Records["phase"], verificationStatus: VerificationStatus, pending?: string): Outcome {
+function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pick<Records, "phase" | "stop">, verificationStatus: VerificationStatus, pending?: string): Outcome {
   const { investigation, offer, removals, verification } = record;
   const attempt = removals.findLast(({ status }) => status === "removed") ?? removals.at(-1);
   if (attempt?.status === "removed") {
@@ -235,16 +221,25 @@ function classify(record: CheckoutRecord, current: Checkout, phase: Records["pha
   }
   if (attempt?.status === "skipped") {
     const picked = attempt.origin === "picked";
-    return { group: picked ? "pickedSkip" : "automaticSkip", reason: skipReason(attempt.outcome?.reason, picked) };
+    let verificationGap: string | undefined;
+    if (phase === "finished") {
+      if (verification.observation?.disk !== "present") verificationGap = "presence not verified";
+      else if (verificationStatus !== "complete" || !verification.inventory || verification.inventory.verdict === "uncertain") {
+        verificationGap = "ownership not verified";
+      }
+    }
+    return { group: picked ? "pickedSkip" : "automaticSkip", reason: skipReason(attempt.outcome?.reason, picked), verificationGap };
   }
   if (attempt?.status === "failed") return { group: "failed", reason: "the removal command reported a failure" };
+  if (offer.picked && (!attempt || (phase !== "finished" && !attempt.output))) {
+    return { group: "removalPending", reason: phase === "finished" ? "picked, but removal did not run" : "picked for removal" };
+  }
   if (attempt) return { group: "unverified", reason: "no removal outcome was recorded" };
-  if (offer.picked) return { group: "unverified", reason: "picked, but removal did not run" };
-  if (phase === "finished") {
+  if (phase === "finished" && (!stop || verificationStatus === "complete")) {
     const reason = keptVerification(verification, verificationStatus);
     if (reason) return { group: "unverified", reason };
     if (verification.inventory) {
-      if (current.verdict === "owned" && verification.inventory.verdict === "uncertain") {
+      if (current.verdict !== "uncertain" && verification.inventory.verdict === "uncertain") {
         return { group: "unverified", reason: "ownership could not be verified" };
       }
       const change = ownershipChange(current, verification.inventory);
@@ -282,15 +277,16 @@ function render(records: Records, directory: string, revises?: string) {
     return { checkouts: [], contribution: contribution(noInventory(records)) };
   }
 
-  const plan = records.approval_plan ? readJson(directory, records.approval_plan) as Plan : undefined;
-  const pending = new Map<string, string>();
+  const plan = records.approval_plan ? readJson(directory, records.approval_plan) as ApprovalPlan : undefined;
+  const pending = new Map<string, ApprovalChoice>();
   const offers = new Map<string, CheckoutRecord["offer"]>();
   const recordedOffers = new Map(records.offers?.map((offer) => [offer.question_ref, offer]));
   for (const { question_ref, mapping } of plan?.rounds ?? []) {
     const received = recordedOffers.get(question_ref);
     const picked = new Set(received?.picked);
-    for (const { path, label } of mapping) {
-      if (records.phase === "picking" && received?.picked === undefined) pending.set(path, label);
+    for (const choice of mapping) {
+      const { path } = choice;
+      if (records.phase === "picking" && received?.picked === undefined) pending.set(path, choice);
       if (received) offers.set(path, { question_ref, offered: true, settled: received.picked !== undefined, picked: picked.has(path) });
     }
   }
@@ -319,31 +315,39 @@ function render(records: Records, directory: string, revises?: string) {
       verification: { inventory: verificationInventory.get(path), observation: observations.get(path) },
     };
     const current = record.investigation.status === "complete" ? record.investigation.checkout : discovery;
-    const outcome = classify(record, current, records.phase, verificationStatus, pending.get(path));
-    const { group, reason } = outcome;
+    const outcome = classify(record, current, records, verificationStatus, pending.get(path)?.label);
+    const { group, reason, verificationGap } = outcome;
     if (group === "needsPick") actionable.add(path);
     else if (group === "uncertain" || ((group === "unverified" || group === "ownershipChanged") && isUnsafe(current))) {
       const reasons = counts.get(group) ?? new Map<string, number>();
       reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
       counts.set(group, reasons);
     } else {
-      const row = `${shortPath(path)} · ${reason}`;
+      const row = `${shortPath(path)}${FIELD_SEPARATOR}${displayField(reason)}${verificationGap ? FIELD_SEPARATOR + verificationGap : ""}`;
       const groupLines = lines.get(group);
       if (groupLines) groupLines.push(row);
       else lines.set(group, [row]);
     }
-    if (group !== "needsPick" && group !== "removed" && group !== "pickedSkip" && group !== "automaticSkip" && group !== "failed" && group !== "unverified") kept++;
+    switch (group) {
+      case "inUse":
+      case "ownershipChanged":
+      case "unique":
+      case "uncertain":
+      case "notPicked":
+      case "notInvestigated":
+      case "notAttempted":
+        kept++;
+    }
     return { ...record, outcome };
   });
   if (actionable.size) {
     sections.push({ heading: "Needs your pick", blocks: [{ prose: "Select only the checkouts you want removed." }] });
-    const remove: string[] = [];
-    const keep: string[] = [];
-    for (const [path, label] of pending) {
-      if (actionable.has(path)) (label.endsWith(" · Agent says remove") ? remove : keep).push(label);
+    const labels = { remove: [] as string[], keep: [] as string[] };
+    for (const [path, { label, recommendation }] of pending) {
+      if (actionable.has(path)) labels[recommendation].push(label);
     }
-    if (remove.length) sections.push(rows("Agent says remove", remove));
-    if (keep.length) sections.push(rows("Agent says keep", keep));
+    if (labels.remove.length) sections.push(rows("Agent says remove", labels.remove));
+    if (labels.keep.length) sections.push(rows("Agent says keep", labels.keep));
   }
   for (const [group, heading] of Object.entries(HEADINGS) as [Group, string][]) {
     const list = lines.get(group) ?? [];
@@ -364,7 +368,7 @@ function render(records: Records, directory: string, revises?: string) {
 }
 
 function linkedRound(file: string, ref: string, resultId: string) {
-  const plan = JSON.parse(readFileSync(file, "utf8")) as Plan;
+  const plan = JSON.parse(readFileSync(file, "utf8")) as ApprovalPlan;
   const round = plan.rounds.find(({ question_ref }) => question_ref === ref);
   if (!round) throw new Error(`no approval round named ${ref}`);
   const question = round.contribution.items[0].questions[0];

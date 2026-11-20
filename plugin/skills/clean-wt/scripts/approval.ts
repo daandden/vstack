@@ -1,21 +1,31 @@
 import { readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { isAbsolute, parse, resolve, sep } from "node:path";
+import { isAbsolute, parse, resolve } from "node:path";
 import type { Option, Question } from "../../flow-page/scripts/model.ts";
+import { displayField, FIELD_SEPARATOR, shortPath } from "./display.ts";
 
 const CATEGORIES = ["source", "configuration", "scratch", "design", "generated-metadata", "other"] as const;
+type Recommendation = "keep" | "remove";
 type InspectedTarget = {
   readonly path: string;
   readonly fingerprint: string;
   readonly repository: string;
   readonly verdict: string;
-  readonly action: "keep" | "remove";
+  readonly action: Recommendation;
 };
 type ApprovalQuestion = Pick<Question, "title" | "description" | "needs"> & {
   ref: string;
+  results?: string[];
   multi: true;
   options: Omit<Option, "recommended" | "preview">[];
 };
+
+export type ApprovalChoice = { letter: string; label: string; path: string; fingerprint: string; recommendation: Recommendation };
+type ApprovalRound = {
+  question_ref: string;
+  mapping: ApprovalChoice[];
+  contribution: { version: 1; items: [{ kind: "round"; questions: [ApprovalQuestion] }] };
+};
+export type ApprovalPlan = { version: 1; rounds: ApprovalRound[] };
 
 function object(value: unknown, at: string): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error(`${at} must be an object`);
@@ -79,21 +89,16 @@ function readTargets(value: unknown): InspectedTarget[] {
   });
 }
 
-function plan(targets: InspectedTarget[]) {
-  const rounds = [];
-  const home = resolve(homedir());
-  const homePrefix = home.endsWith(sep) ? home : home + sep;
+function plan(targets: InspectedTarget[]): ApprovalPlan {
+  const rounds: ApprovalRound[] = [];
   for (const action of ["remove", "keep"] as const) {
     const group = targets.filter((target) => target.action === action);
     const groupName = `Agent says ${action}`;
     for (let offset = 0; offset < group.length; offset += 26) {
       const number = rounds.length + 1;
       const mapping = group.slice(offset, offset + 26).map(({ path, fingerprint, repository, verdict }, i) => {
-        const shortPath = path === home ? "~" : path.startsWith(homePrefix) ? `~${sep}${path.slice(homePrefix.length)}` : path;
-        const displayPath = shortPath.replace(/[\\\u0085\u2028\u2029]/g, (char) =>
-          char === "\\" ? "\\\\" : `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
-        const label = `${displayPath} · ${repository} · ${verdict} · ${groupName}`;
-        return { letter: String.fromCharCode(65 + i), label, path, fingerprint };
+        const label = [shortPath(path), displayField(repository), displayField(verdict), groupName].join(FIELD_SEPARATOR);
+        return { letter: String.fromCharCode(65 + i), label, path, fingerprint, recommendation: action };
       });
       const question: ApprovalQuestion = {
         ref: `cleanup-approval-${number}`,

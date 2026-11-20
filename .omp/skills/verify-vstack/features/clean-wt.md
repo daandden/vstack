@@ -121,7 +121,7 @@ Step `clean-wt-task-source-chains`: Run `bun test --timeout 30000 tests/clean-wt
 
 Step `clean-wt-native-completion`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'ovnfs removal waits for mounted directory visibility'`. The native boundary fixture retires the listing before its mounted directory disappears. Cleanup must wait for disappearance, preserve the snapshot, and issue removal only once. The real ovnfs approved/final journey remains required alongside this deterministic regression.
 
-Step `clean-wt-approval-plan`: Run `bun test --timeout 30000 tests/clean-wt-approval.test.ts`. The production planner receives 31 investigated targets and returns contributions with 26 and 5 options. The current Flow CLI validates and submits each contribution in an isolated home. A scripted empty response leaves the first question open. A scripted second-round E pick records target 31's generated label and preserves its original path and fingerprint mapping. These scripted responses are not human consent. Protected, duplicate, noncanonical, or incomplete evidence is rejected without a partial plan. No option is preselected and no target is deleted.
+Step `clean-wt-approval-plan`: Run `bun test --timeout 30000 tests/clean-wt-approval.test.ts`. The planner groups 31 targets into two remove batches of 26 and 2, then a keep batch of 3. The real Flow CLI validates and submits each contribution in an isolated home. A scripted empty response leaves the first question open. A scripted second-round `B` pick records target 31's generated label and preserves its original path and fingerprint mapping. These scripted responses are not human consent. Protected, duplicate, noncanonical, or incomplete evidence is rejected without a partial plan. No option is preselected and no target is deleted.
 
 Step `clean-wt-summary`: Run `bun test --timeout 30000 tests/clean-wt-summary.test.ts`. Require the isolated Flow CLI to accept the counts and groups, a whole-Result link from the planner round, and a revision that removes the settled options. The reader host stays off for this check.
 
@@ -133,10 +133,12 @@ Step `clean-wt-parent-vs-head`: Compare the captured red runs with the passing h
 
 This journey uses the real model, real investigators, the ordinary omp picker, and a live Flow page. Get explicit approval for the Costly seam before launch. Run it with the user available to answer in the new TUI. Script no picks. Without a reachable user picker, stop before any picked removal and record the proof gap.
 
-1. Step `clean-wt-summary-live-isolation`: Make a fresh fixture root `F="$VERIFY_RUN_DIR/data/summary-live"` with a local source repository, a bare remote with a real symbolic HEAD, and two linked worktrees under `"$F/wt"`. Leave one clean and give the other a unique uncommitted draft. Make disjoint, fresh state and mount directories under `F`. In a fresh shell, clear inherited `PI_*` and `OMP_*` session variables, then set these paths for the entire preflight and session:
+1. Step `clean-wt-summary-live-isolation`: Make a fresh, owned fixture root `F` at `<Scratch dir>/clean-wt-live/<short-run-id>`. Use the proven layout `clean-wt-live/r540/s` for state and `clean-wt-live/r540/m` for the mount, with a new short run ID. Do not put daemon state under the longer Verify evidence path. macOS can refuse a Unix socket at that length. Use canonical paths and keep logs in `VERIFY_RUN_DIR`.
+
+   Create a local repository, a bare remote with a real symbolic HEAD, and two linked worktrees under `"$F/wt"`. Leave one clean and give the other a unique uncommitted draft. In a fresh shell, clear inherited `PI_*` and `OMP_*` session variables. Set the same paths for preflight and launch:
 
    ```sh
-   export OMP_WORKTREE_DIR="$F/wt" OVNFS_STATE="$F/ovnfs-state" OVNFS_MOUNT="$F/ovnfs-mount"
+   export OMP_WORKTREE_DIR="$F/wt" OVNFS_STATE="$F/s" OVNFS_MOUNT="$F/m"
    ovnfs --state "$OVNFS_STATE" --mount "$OVNFS_MOUNT" start
    ovnfs --state "$OVNFS_STATE" --mount "$OVNFS_MOUNT" status
    ovnfs --json ls
@@ -144,7 +146,9 @@ This journey uses the real model, real investigators, the ordinary omp picker, a
    bun "$CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts" inventory --progress
    ```
 
-   Run the listings and inventory from the same fixture project, with the same environment as the model launch. Record all commands, exits, stdout, and stderr separately. Require a running daemon in the fresh namespace, an empty ovnfs listing, and exactly the fixture paths in native and clean-wt inventory. Resolve each path on disk and compare it to the fixture allowlist. Stop before launch on an unknown path, unreadable listing, missing fixture, or unproven daemon isolation. `--base` and a throwaway HOME alone do not isolate ovnfs. Never substitute the real-daemon recipe for this step.
+   Record each command, exit code, stdout, and stderr. Before launch, require `status` to report the PID printed by `start` and an uptime. Check that the PID is live with `kill -0`. Require `state`, `mount`, and `socket` to match `$OVNFS_STATE`, `$OVNFS_MOUNT`, and `$OVNFS_STATE/admin.sock` exactly. If `proto` is NFS, require `nfs:$OVNFS_STATE/nfs.sock`. Do not rely on a `running` string.
+
+   Run the listings and inventory from the fixture repository with the exact launch environment. Require an empty ovnfs listing and exactly the fixture paths in native and clean-wt inventory. Resolve each path on disk and compare it to the fixture allowlist. Stop before launch on an unknown path, unreadable listing, missing fixture, or unproven daemon isolation. `--base` and a throwaway HOME alone do not isolate ovnfs. Never substitute the real-daemon recipe for this step.
 
 2. Step `clean-wt-summary-live-launch`: Keep real HOME for model credentials. Use the Session model, thinking discovery, and checkout package overlay from [the Flow enrollment recipe](flow-page.md#real-model-enrollment-flow-enrollment). Set the overlay in `PI_CONFIG_FILES` for both preflight and launch. Choose a free `VSTACK_FLOW_PORT` for the isolated host. In a terminal the user can reach, start a new TUI from the fixture source repository:
 

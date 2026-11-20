@@ -69,14 +69,17 @@ test("Flow offers one-line remove batches before keep batches without changing w
   expect(output.rounds[0].mapping[0]).toEqual({
     letter: "A", label: "~/checkout-2 · example-repo · Unmerged source changes in checkout 2. · Agent says remove",
     path: input.targets[1].checkout.path, fingerprint: input.targets[1].checkout.fingerprint,
+    recommendation: "remove",
   });
   expect(output.rounds[1].mapping[1]).toEqual({
     letter: "B", label: `${root}/home-adjacent/checkout-31 · example-repo · Unmerged source changes in checkout 31. · Agent says remove`,
     path: input.targets[30].checkout.path, fingerprint: "000000000000000000000000000000000000000000000000000000000000001f",
+    recommendation: "remove",
   });
   expect(output.rounds[2].mapping[0]).toEqual({
     letter: "A", label: "~/checkout-1 · example-repo · Unmerged source changes in checkout 1. · Agent says keep",
     path: input.targets[0].checkout.path, fingerprint: input.targets[0].checkout.fingerprint,
+    recommendation: "keep",
   });
   const mappedTargets = output.rounds.flatMap((round: any) => round.mapping.map(({ path, fingerprint }: any) => ({ path, fingerprint })));
   expect(mappedTargets).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 1, 14, 30]

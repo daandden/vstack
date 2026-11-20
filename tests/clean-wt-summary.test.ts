@@ -96,7 +96,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
     failed: [{ path: p("failed"), error: "PRIVATE" }],
   });
   const mapped = ["picked-skip", "failed", "gone-unverified", "keep", "not-offered"].map((name) => ({
-    path: p(name), label: `~/${name} · actual-repo · Draft. · Agent says keep`, fingerprint: "PRIVATE",
+    path: p(name), label: `~/${name} · actual-repo · Draft. · Agent says keep`, fingerprint: "PRIVATE", recommendation: "keep",
   }));
   const approval_plan = f.save("approval-plan.json", { version: 1, rounds: [
     { question_ref: "cleanup-approval-1", mapping: mapped.slice(0, 4) },
@@ -153,6 +153,42 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   expect(accounting.checkouts.find(({ discovery }: any) => discovery.path === p("gone-unverified")).verification.observation.ovnfs_listed).toBeNull();
 });
 
+test("guarded skips still count once when final verification cannot confirm presence or ownership", () => {
+  const f = fixture();
+  const targets = ["confirmed", "missing", "uncertain"].map((name) => ({
+    path: join(f.home, name), repository: "example",
+  }));
+  const [confirmed, missing, uncertain] = targets;
+  const checkouts = targets.map(({ path }) => checkout(path));
+  f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
+  const contribution = f.render({
+    version: 1, phase: "finished",
+    inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) },
+    removals: [{
+      origin: "picked", targets,
+      output: { exit_code: 0, file: f.save("remove.json", {
+        removed: [], failed: [],
+        skipped: targets.map(({ path }) => ({ path, reason: "it changed since the inventory" })),
+      }) },
+    }],
+    verification: {
+      inventory: { exit_code: 0, file: f.save("verify.json", { evidence_gaps: [], checkouts: [
+        checkout(confirmed.path), checkout(uncertain.path, { verdict: "uncertain" }),
+      ] }) },
+      observations: [{ path: confirmed.path, disk: "present" }, { path: missing.path, disk: "absent" }, { path: uncertain.path, disk: "present" }],
+    },
+  });
+  f.publish(contribution);
+  expect(contribution.items[0]).toMatchObject({
+    summary: "0 removed · 0 needs your pick · 3 skipped · 0 kept",
+    sections: [{ heading: "Skipped", blocks: [{ list: [
+      "~/confirmed · changed since it was investigated",
+      "~/missing · changed since it was investigated · presence not verified",
+      "~/uncertain · changed since it was investigated · ownership not verified",
+    ] }] }],
+  });
+});
+
 test("planner labels and order survive whole-summary links as settled pick rows leave", () => {
   const f = fixture();
   const targets = (["keep", "remove", "remove"] as const).map((action, i) => ({
@@ -199,17 +235,38 @@ test("planner labels and order survive whole-summary links as settled pick rows 
 
   const offers = [{ question_ref: round.question_ref, picked: [round.mapping[0].path] }];
   const afterPick = f.render({ ...records, phase: "picking", offers }, resultId);
+  f.publish(afterPick);
   expect(afterPick.items[0].summary).toBe("0 removed · 1 needs your pick · 0 skipped · 1 kept");
   expect(afterPick.items[0].sections.some(({ heading }: any) => heading === "Agent says remove")).toBe(false);
-  f.publish(afterPick);
+  const pendingRemoval = { heading: "Removal pending", blocks: [{ list: ["~/draft-1 · picked for removal"] }] };
+  expect(afterPick.items[0].sections).toContainEqual(pendingRemoval);
 
-  const final = f.render({ ...records, phase: "finished", stop: "removal", offers }, resultId);
+  const attempt = { origin: "picked", targets: [{ path: round.mapping[0].path, repository: "example" }] };
+  const inFlight = f.render({ ...records, phase: "picking", offers, removals: [attempt] }, resultId);
+  expect(f.publish(inFlight).repeated).toBe(true);
+  expect(inFlight.items[0].sections).toContainEqual(pendingRemoval);
+
+  const output = { exit_code: 0, file: f.save("remove-picked.json", {
+    removed: [], failed: [], skipped: [{ path: round.mapping[0].path, reason: "it changed since the inventory" }],
+  }) };
+  const removals = [{ ...attempt, output }];
+  const afterReport = f.render({ ...records, phase: "picking", offers, removals }, resultId);
+  f.publish(afterReport);
+  expect(afterReport.items[0].sections).toContainEqual({
+    heading: "Skipped", blocks: [{ list: ["~/draft-1 · changed since it was investigated"] }],
+  });
+  expect(afterReport.items[0].sections).not.toContainEqual(expect.objectContaining({ heading: "Removal pending" }));
+  expect(afterReport.items[0].summary).toBe("0 removed · 1 needs your pick · 1 skipped · 1 kept");
+
+  const final = f.render({ ...records, phase: "finished", stop: "removal", offers, removals }, resultId);
   expect(final.items[0].sections).toContainEqual({
-    heading: "Outcome not verified", blocks: [{ code: [
-      "~/draft-0 · verification did not run",
-      "~/draft-1 · picked, but removal did not run",
-      "~/draft-2[@notes] · verification did not run",
-    ].join("\n") }],
+    heading: "Skipped", blocks: [{ list: ["~/draft-1 · changed since it was investigated · presence not verified"] }],
+  });
+  expect(final.items[0].sections).toContainEqual({
+    heading: "Offered but not picked", blocks: [{ code: "~/draft-2[@notes] · not selected for removal" }],
+  });
+  expect(final.items[0].sections).toContainEqual({
+    heading: "Kept, no removal attempted", blocks: [{ list: ["~/draft-0 · not offered for removal"] }],
   });
   expect(final.items[0].sections).not.toContainEqual(expect.objectContaining({ heading: "Needs your pick" }));
   expect(final.items[0].sections).toContainEqual({
@@ -218,16 +275,21 @@ test("planner labels and order survive whole-summary links as settled pick rows 
   f.publish(final);
   const shown = f.flow(["show"]);
   expect(shown.stages[0].results).toHaveLength(1);
-  expect(shown.stages[0].results[0]).toMatchObject({ id: resultId, revision: 4, questions: [question.id] });
+  expect(shown.stages[0].results[0]).toMatchObject({ id: resultId, revision: 5, questions: [question.id] });
   expect(shown.stages[0].questions[0].results).toEqual([resultId]);
 });
 
-test("an exit before verification does not turn a reported removal into a verified one", () => {
+test("an early exit preserves inventory classifications without confirming a reported removal", () => {
   const f = fixture();
   const path = join(f.home, "reported-removed");
   const records = {
     version: 1,
-    inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts: [checkout(path, { automatic: true })], evidence_gaps: [] }) },
+    inventory: { exit_code: 0, file: f.save("inventory.json", { evidence_gaps: [], checkouts: [
+      checkout(path, { automatic: true }),
+      checkout(join(f.home, "uninvestigated")),
+      checkout(join(f.home, "protected-private"), { kind: "excluded", verdict: "uncertain" }),
+      checkout(join(f.home, "uncertain-private"), { verdict: "uncertain", reasons: ["cannot establish source repository PRIVATE"] }),
+    ] }) },
     removals: [{
       origin: "automatic", targets: [{ path, repository: "example" }],
       output: { exit_code: 0, file: f.save("remove.json", { removed: [{ path, method: "git worktree remove" }], skipped: [], failed: [] }) },
@@ -235,14 +297,18 @@ test("an exit before verification does not turn a reported removal into a verifi
   };
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const initial = f.render({ ...records, phase: "running" });
-  expect(initial.items[0].summary).toBe("1 removed · 0 needs your pick · 0 skipped · 0 kept");
+  expect(initial.items[0].summary).toBe("1 removed · 0 needs your pick · 0 skipped · 3 kept");
   const { refs } = f.publish(initial);
   const stopped = f.render({ ...records, phase: "finished", stop: "investigation" }, refs["cleanup-summary"]);
+  f.publish(stopped);
+  expect(stopped.items[0].summary).toBe("0 removed · 0 needs your pick · 0 skipped · 3 kept");
   expect(stopped.items[0].sections).toEqual([
+    { heading: "Kept, not safe to judge", blocks: [{ list: ["1 · Unsupported checkout layout", "1 · Unknown source repository"] }] },
+    { heading: "Not investigated", blocks: [{ list: ["~/uninvestigated · investigation did not run"] }] },
     { heading: "Outcome not verified", blocks: [{ list: ["~/reported-removed · removal reported, but verification did not run"] }] },
     { heading: "Run status", blocks: [{ prose: "The cleanup stopped during investigation." }] },
   ]);
-  f.publish(stopped);
+  expect(JSON.stringify(stopped)).not.toMatch(/PRIVATE|protected-private|uncertain-private/);
 });
 
 test("the final summary reports ownership changes and does not confirm unobserved kept checkouts", () => {
@@ -305,4 +371,93 @@ test("an incomplete verification does not confirm a kept outcome even if the pat
   });
   expect(JSON.stringify(contribution)).not.toContain("PRIVATE");
   f.publish(contribution);
+});
+
+test("newly uncertain ownership is not counted as kept even when disk presence is verified", () => {
+  const f = fixture();
+  const path = join(f.home, "draft");
+  const before = checkout(path);
+  const after = checkout(path, { verdict: "uncertain", state: "not checked", reasons: ["source for ovnfs checkouts: PRIVATE"] });
+  const inventory = (file: string, record: typeof before) => ({ exit_code: 0, file: f.save(file, {
+    checkouts: [record], evidence_gaps: [],
+  }) });
+  f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
+  const contribution = f.render({
+    version: 1, phase: "finished", inventory: inventory("inventory.json", before),
+    verification: { inventory: inventory("verify.json", after), observations: [{ path, disk: "present" }] },
+  });
+  f.publish(contribution);
+  expect(contribution.items[0]).toMatchObject({
+    summary: "0 removed · 0 needs your pick · 0 skipped · 0 kept",
+    sections: [{ heading: "Outcome not verified", blocks: [{ list: ["~/draft · ownership could not be verified"] }] }],
+  });
+});
+
+test("separator characters in checkout fields do not make distinct choices look the same", () => {
+  const f = fixture();
+  const targets = [
+    ["wt-alpha", "demo · upstream", "current · draft"],
+    ["wt-alpha · demo", "upstream · current", "draft"],
+    [String.raw`wt-alpha \u00b7 demo`, "upstream · current", "draft"],
+  ].map(([name, repository, verdict], i) => ({
+    checkout: checkout(join(f.home, name), { automatic: false, fingerprint: String(i + 1).repeat(64) }),
+    repository, verdict,
+    contents: [{ category: "source", detail: "PRIVATE" }],
+    integration: { gap: "PRIVATE" }, classification: "PRIVATE", risk: "PRIVATE",
+    recommendation: { action: "keep", reason: "PRIVATE" },
+  }));
+  const plan = f.run(join(CLEAN, "approval.ts"), ["-"], { version: 1, targets });
+  const records = {
+    version: 1, approval_plan: f.save("approval-plan.json", plan),
+    inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts: targets.map(({ checkout }) => checkout), evidence_gaps: [] }) },
+    investigations: targets.map(({ checkout }) => ({ path: checkout.path, status: "complete", checkout })),
+  };
+  f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
+  const summary = f.render({ ...records, phase: "picking" });
+  const { refs } = f.publish(summary);
+  const { question_ref } = plan.rounds[0];
+  const linked = f.run(join(CLEAN, "summary.ts"), ["link-round", records.approval_plan, question_ref, refs["cleanup-summary"]]);
+  const receipt = f.publish(linked);
+  const [question] = receipt.ask.questions;
+  const labels = [
+    "~/wt-alpha · demo \\u00b7 upstream · current \\u00b7 draft · Agent says keep",
+    "~/wt-alpha \\u00b7 demo · upstream \\u00b7 current · draft · Agent says keep",
+    "~/wt-alpha \\\\u00b7 demo · upstream \\u00b7 current · draft · Agent says keep",
+  ];
+  expect(question.options.map(({ label }: { label: string }) => label)).toEqual(labels.map((label, i) => `${"ABC"[i]}. ${label}`));
+  expect(summary.items[0].sections).toContainEqual({ heading: "Agent says keep", blocks: [{ list: labels }] });
+
+  const { checkout: { path }, repository } = targets[1];
+  f.publish({ version: 1, items: [{ kind: "answer", question: question.id, response: { status: "answered", picks: ["B"] } }] });
+  const reported = f.render({
+    ...records, phase: "picking", offers: [{ question_ref, picked: [path] }],
+    removals: [{
+      origin: "picked", targets: [{ path, repository }],
+      output: { exit_code: 0, file: f.save("remove.json", { removed: [{ path }], skipped: [], failed: [] }) },
+    }],
+  }, refs["cleanup-summary"]);
+  f.publish(reported);
+  expect(reported.items[0].sections).toContainEqual({
+    heading: "Removed", blocks: [{ list: ["~/wt-alpha \\u00b7 demo · upstream \\u00b7 current"] }],
+  });
+});
+
+test("the summary groups a saved recommendation independently of label wording", () => {
+  const f = fixture();
+  const path = join(f.home, "draft");
+  const draft = checkout(path);
+  const label = "~/draft · example · Changes already landed. · Agent says remove.";
+  const rounds = [{
+    question_ref: "cleanup-approval-1",
+    mapping: [{ letter: "A", path, fingerprint: "a".repeat(64), label, recommendation: "remove" }],
+  }];
+  f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
+  const summary = f.render({
+    version: 1, phase: "picking",
+    approval_plan: f.save("approval-plan.json", { version: 1, rounds }),
+    inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts: [draft], evidence_gaps: [] }) },
+    investigations: [{ path, checkout: draft, status: "complete" }],
+  });
+  f.publish(summary);
+  expect(summary.items[0].sections).toContainEqual({ heading: "Agent says remove", blocks: [{ list: [label] }] });
 });

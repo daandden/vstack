@@ -14,7 +14,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line" before inventory. The page 
 
 Before inventory, create a `clean-wt` Scratch entry and start `summary-records.json` as described in [Summary records](references/summary-records.md). Keep raw command results, investigator reports, approval mappings, and checkout accounting there. Publish no evidence attachments or process Topic notes.
 
-Publish the renderer's contribution after the first automatic removals. Revise that same Result when pick rounds open, as choices settle, and at every exit, including one before any summary or completed verification. Validate and submit the script output, not an agent-written report. Do this before finishing the Stage. When publication is unavailable, retain the contribution in Scratch and report the failure.
+Validate and submit the renderer's contribution, not an agent-written report. Do this before finishing the Stage. When publication is unavailable, retain the contribution in Scratch and report the failure.
 
 ### Record cleanup progress
 
@@ -89,7 +89,7 @@ Separate the remaining records into automatic candidates and unresolved work. Ev
 
 Run `remove` without `--approve` for every initial `automatic` candidate, using its path and fingerprint. Complete these clean removals before preparing remote facts or comparing dirty checkouts.
 
-Publish the first summary after recording these removal outcomes, even if there were no candidates. A changed target needs a fresh inventory and investigation, not a substituted fingerprint under an old selection.
+Record each removal command's outcome and publish or revise the summary. If there were no candidates, publish the first summary anyway. A changed target needs a fresh inventory and investigation, not a substituted fingerprint under an old selection.
 
 ## 3. Compare remaining inactive work
 
@@ -127,7 +127,7 @@ Investigators use the Session model unless the user configures `task.agentModelO
 
 Save every investigator's raw targeted inventory, fingerprint, and returned diagnostics in Scratch, including interrupted attempts. Update the investigation records with completed, failed, and unrun work.
 
-With no checkouts, skip investigation and approval. Run `remove` without `--approve` for every newly `automatic` target, using its targeted fingerprint. Save the outcomes before the approval step. An investigator's judgment alone does not bypass the script's guards. Keep other cases unresolved for step 4.
+With no checkouts, skip investigation and approval. Run `remove` without `--approve` for every newly `automatic` target, using its targeted fingerprint. Record each command's outcome and revise the summary before the approval step. An investigator's judgment alone does not bypass the script's guards. Keep other cases unresolved for step 4.
 
 ## 4. Ask once per bounded batch
 
@@ -135,7 +135,7 @@ Report protected owners, uncertain records, excluded entries, and unique-history
 
 Save `{version: 1, targets: [...]}` as `investigated-evidence.json` in this run's `clean-wt` Scratch entry. Each target contains `checkout`, the unchanged authoritative targeted inventory record, plus `repository`, `verdict`, `contents`, `integration`, `classification`, `risk`, and `recommendation` from step 3. Run `approval.ts` with that file and save stdout as `approval-plan.json`. A rejected plan grants no permission. Treat an invalid or absent repository or one-line verdict as missing investigation evidence. Repair the investigation evidence, not the inventory's eligibility fields or fingerprint.
 
-The planner emits `rounds`. Each round has a Flow `contribution` with one self-contained question, a `question_ref`, and a `mapping` with each option's `letter`, `label`, full `path`, and original `fingerprint`. The label shows the short path, repository, verdict, and recommendation. Process the remove-recommended batches first, then the keep-recommended batches. Keep the structured investigation evidence in Scratch.
+The planner emits `rounds`. Each round has a Flow `contribution` with one self-contained question, a `question_ref`, and a `mapping`. Each mapping entry holds the option's `letter`, `label`, full `path`, original `fingerprint`, and `recommendation` (`keep` or `remove`). The label shows the short path, repository, verdict, and recommendation. Process the remove-recommended batches first, then the keep-recommended batches. Keep the structured investigation evidence in Scratch.
 
 Save the valid plan in the summary records. If there are no rounds, skip `ask`. Otherwise publish the `picking` summary before the first round, and process rounds in order. For each round, use `summary.ts link-round` with the saved plan, `question_ref`, and the summary's Result id. Save the complete output contribution. Validate it for this Stage, then submit it unchanged. Record the offered round in Scratch after submission. Follow `skill://flow-page`'s "Every ask in a Flow" contract, including its current-content check. Use the receipt's generated question and options unchanged. Nothing is preselected or marked `recommended`.
 
@@ -144,6 +144,8 @@ Record each observed response separately through Flow `answer`, preserving cance
 Record the picked paths in the offered round's Scratch record, then revise the summary. Record an empty path list for a finished round that gave no permission. The Flow answer record remains separate from this list.
 
 Run `remove` with `--approve <path>` only for explicitly selected unresolved checkouts. Pass only each selected target and its original mapped fingerprint as `<path>=<fingerprint>`. Never substitute a refreshed fingerprint under an earlier selection. The runtime's fresh ownership, identity, contents, integration, history, and snapshot guards still apply. Report each skip or failure.
+
+After each removal command reports, record its outcome and revise the summary before continuing to another batch or to verification.
 
 ## 5. Verify and summarize
 

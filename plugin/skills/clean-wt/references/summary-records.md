@@ -13,8 +13,12 @@ Set `phase: "finished"` at every exit. On an early exit, also set `stop` to the 
 
 ## Publish the summary
 
-Render after recording the first automatic removals, before the first pick round, after a round settles, and on exit. Render on an early exit even if inventory never ran. Save stdout and validate it against this Stage. Submit it unchanged after validation. The first submit receipt assigns `refs["cleanup-summary"]`. Save that id, and pass it as `--revises <result-id>` on every later render. Do not create a second Result.
+Save the renderer's stdout. Validate it against this Stage, then submit it unchanged. The first submit receipt assigns `refs["cleanup-summary"]`. Save that id and pass it as `--revises <result-id>` on later renders. Do not create a second Result.
 
-`summary.ts` saves `checkout-accounting.json` beside the input. It records the full paths, raw records and reasons, offer and pick status, removal attempts, and verification facts behind the summary. The skipped count covers both kinds of guarded skip. At intermediate steps, the removed count reflects what the guard reported. The final summary counts a reported removal only when verified. It counts a checkout as kept only when verification lists it and a separate check confirms it is still on disk. If the owners changed, the final summary reports the change instead of showing the earlier owner type. If presence or ownership cannot be verified, the summary leaves the checkout out of the kept count. Entries that were not safe to judge still appear only as counts.
+`summary.ts` saves `checkout-accounting.json` beside the input. It records full paths, raw records and reasons, offer and pick status, removal attempts, and verification facts.
+
+The skipped count covers both kinds of guarded skip. A final skip row notes missing presence or ownership evidence without changing that count. While cleanup is running, the removed count reflects what the guard reported. The final count includes only verified removals.
+
+After a verification attempt, a normal finish does not count a checkout as kept unless verification lists it and a separate check confirms its disk presence. The summary reports changes in confirmed ownership and excludes newly uncertain ownership from the kept count. If cleanup stops before verification finishes, the summary preserves the inventory and investigation classifications without treating them as verified. Checkouts classified as not safe to judge appear only as counts.
 
 If the run is not enrolled in a Flow, still keep the Scratch records and render the summary. Give the outcome directly in chat.
