@@ -442,6 +442,23 @@ test("separator characters in checkout fields do not make distinct choices look 
   });
 });
 
+test("summary outcome rows expose non-printing Unicode in paths and reasons", () => {
+  const f = fixture();
+  const checkouts = ["wt-alpha", "wt-\u200balpha"].map((name) => checkout(join(f.home, name), {
+    unique_history: [{ ref: "refs/heads/draft\u0080\u034f\u202e\u2069\u202f\u{e0001}\ufe0f\ufeff-end" }],
+  }));
+  const summary = f.render({
+    version: 1,
+    phase: "running",
+    inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) },
+  });
+  const reason = "refs/heads/draft\\u0080\\u034f\\u202e\\u2069\\u202f\\u{e0001}\\ufe0f\\ufeff-end";
+  expect(summary.items[0].sections).toContainEqual({
+    heading: "Kept, unique commits",
+    blocks: [{ list: [`~/wt-alpha · ${reason}`, `~/wt-\\u200balpha · ${reason}`] }],
+  });
+});
+
 test("the summary groups a saved recommendation independently of label wording", () => {
   const f = fixture();
   const path = join(f.home, "draft");

@@ -8,7 +8,7 @@ const FLOW = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scrip
 const roots: string[] = [];
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
-function fixture(count: number) {
+function fixture(count: number, names: string[] = []) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "clean-wt-approval-")));
   roots.push(root);
   const home = join(root, "home");
@@ -16,7 +16,8 @@ function fixture(count: number) {
   mkdirSync(home);
   mkdirSync(outside);
   const targets = Array.from({ length: count }, (_, i) => {
-    const path = join(i === 30 ? outside : home, i === 29 ? "checkout-30\u2028notes" : `checkout-${i + 1}`);
+    const name = names[i] ?? (i === 29 ? "checkout-30\u2028notes" : `checkout-${i + 1}`);
+    const path = join(i === 30 ? outside : home, name);
     mkdirSync(path);
     writeFileSync(join(path, "remaining.txt"), `unmerged work ${i + 1}\n`);
     return {
@@ -145,6 +146,34 @@ test("Flow offers one-line remove batches before keep batches without changing w
     expect(existsSync(target.checkout.path)).toBe(true);
     expect(readFileSync(join(target.checkout.path, "remaining.txt"), "utf8")).toMatch(/^unmerged work /);
   }
+});
+
+test("Flow receipt labels expose invisible path characters without changing the pick identities", () => {
+  const { root, input } = fixture(2, ["wt-alpha", "wt-\u200balpha"]);
+  for (const target of input.targets) {
+    target.verdict = "Unmerged changes";
+    target.recommendation = { action: "remove", reason: "The investigator identified a disposable experiment." };
+  }
+  const planned = plan(input, root);
+  expect(planned.stderr).toBe("");
+  expect(planned.code).toBe(0);
+  const [round] = JSON.parse(planned.stdout).rounds;
+
+  const opened = flow(["open", "--skill", "clean-wt", "--title", "Cleanup approval fixture"], root);
+  expect(opened.code).toBe(0);
+  const { flow: flowId, stage } = JSON.parse(opened.stdout);
+  const published = flow(["submit", "--flow", flowId, "--stage", stage, "-"], root, round.contribution);
+  expect(published.stderr).toBe("");
+  expect(published.code).toBe(0);
+  const [asked] = JSON.parse(published.stdout).ask.questions;
+  const labels = [
+    "A. ~/wt-alpha · example-repo · Unmerged changes · Agent says remove",
+    "B. ~/wt-\\u200balpha · example-repo · Unmerged changes · Agent says remove",
+  ];
+  expect(asked.options.map(({ label }: { label: string }) => label)).toEqual(labels);
+  expect(round.mapping).toEqual(input.targets.map(({ checkout: { path, fingerprint } }, i) => ({
+    letter: labels[i][0], label: labels[i].slice(3), path, fingerprint, recommendation: "remove",
+  })));
 });
 
 test.each([
