@@ -13,6 +13,7 @@ import secrets
 import select
 import shlex
 import shutil
+import signal
 import socket
 import struct
 import subprocess
@@ -24,6 +25,61 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import urlopen
 
 PANEL = '[data-role="vstack.flow-panel"]'
+
+
+def owned_processes(home, port):
+    # A detached CLI or worker no longer has omp as its parent. Match the unique run HOME instead.
+    home_arg = re.escape(str(home))
+    namespace = re.compile(rf"(?<!\S)HOME={home_arg}(?!\S)")
+    host = re.compile(rf"/(?:managed-host|host)\.ts --home {home_arg} --port {port}(?!\S)")
+    result = subprocess.run(["ps", "axeww", "-o", "pid=,stat=,command="], check=True,
+                            capture_output=True, text=True, errors="replace", timeout=5)
+    processes = []
+    for line in result.stdout.splitlines():
+        pid, state, command = line.split(maxsplit=2)
+        if not state.startswith("Z") and namespace.search(command):
+            processes.append({"pid": int(pid), "kind": "host" if host.search(command) else "client"})
+    return processes
+
+
+def stop_host_clients(home, port, stopped):
+    sent = set()
+    start = time.monotonic()
+    while True:
+        clients = [p["pid"] for p in owned_processes(home, port) if p["kind"] == "client"]
+        if not clients:
+            return
+        elapsed = time.monotonic() - start
+        if elapsed >= 5:
+            raise RuntimeError(f"Flow host clients still running: {clients}")
+        sig = signal.SIGTERM if elapsed < 1 else signal.SIGKILL
+        for pid in clients:
+            if (pid, sig) not in sent:
+                try:
+                    os.kill(pid, sig)
+                except ProcessLookupError:
+                    continue
+                sent.add((pid, sig))
+                stopped.append({"pid": pid, "signal": sig.name})
+        time.sleep(0.05)
+
+
+def verify_host_stopped(home, port, cleanup):
+    deadline = time.monotonic() + 5
+    while True:
+        cleanup["remaining_processes"] = owned_processes(home, port)
+        with socket.socket() as probe:
+            probe.settimeout(1)
+            result = probe.connect_ex(("127.0.0.1", port))
+        if result not in (0, errno.ECONNREFUSED):
+            raise OSError(result, f"Cannot inspect Flow host port {port}: {os.strerror(result)}")
+        cleanup["port_listening"] = result == 0
+        if not cleanup["port_listening"] and not cleanup["remaining_processes"]:
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"Flow host port {port} listening: {cleanup['port_listening']}; "
+                               f"run processes still present: {cleanup['remaining_processes']}")
+        time.sleep(0.05)
 
 
 def save(path, value):
@@ -364,7 +420,8 @@ def main():
     env = {"PATH": os.environ.get("PATH", ""), "HOME": str(home), "TERM": "xterm-256color"}
     with socket.socket() as free:
         free.bind(("127.0.0.1", 0))
-        env["VSTACK_FLOW_PORT"] = str(free.getsockname()[1])
+        port = free.getsockname()[1]
+        env["VSTACK_FLOW_PORT"] = str(port)
     cli = checkout / "plugin/skills/flow-page/scripts/flow-page.ts"
     read_error = "fixture: ask-status could not read the bound Flow"
     failures_path = out / "ask-status-failures.txt"
@@ -517,6 +574,10 @@ def main():
                                        "--session", (out / "child-session-id.txt").read_text(), "--agent", "main"], "offline binding"))
             save(out / "offline-bound.json", bound)
             assert bound["live"]["state"] == "unavailable"
+            committed = published_state(receipt)
+            assert committed["revision"] == receipt["revision"], committed
+            assert not recorded_answers(published_stage(committed, receipt)), committed
+            save(out / "committed-before-answers.json", committed)
         if args.case == "ratchet":
             (project / "cases.jsonl").write_text('{"id":"fixture"}\n')
             (project / "harness.ts").write_text("\n")
@@ -533,6 +594,8 @@ def main():
     direct_close_observed = threading.Event()
 
     class Model(BaseHTTPRequestHandler):
+        timeout = 10
+
         def log_message(self, *_):
             pass
 
@@ -711,6 +774,7 @@ def main():
                 self.send_error(500, str(error))
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Model)
+    server.daemon_threads = False  # Join provider requests that can still issue Flow CLI calls.
     threading.Thread(target=server.serve_forever, daemon=True).start()
     (home / ".omp/agent/models.yml").write_text(f"""providers:
   stub:
@@ -733,47 +797,49 @@ def main():
     argv = ["omp", "--no-title", "--model", "stub/stub-model", "--session-dir", str(session_dir),
             "Run the disposable Flow questions fixture through the scripted provider."]
     save(out / "launch.json", {"argv": argv, "cwd": str(project), "case": args.case})
-    master = None
-    tern_control = None
-    tern_log = None
-    if args.tern:
-        with socket.socket() as free:
-            free.bind(("127.0.0.1", 0))
-            tern_control = str(free.getsockname()[1])
-        tern_env = {**os.environ, "TERN_CONFIG_DIR": str(out / "tern-config")}
-        tern_log = (out / "tern.log").open("w")
-        child = subprocess.Popen(["tern", "serve", "--control", tern_control, "--out", str(out), str(project)],
-                                 env=tern_env, stdout=tern_log, stderr=tern_log)
+    child = master = tern_control = tern_log = None
 
-        def ctl(*words):
-            result = subprocess.run(["tern", "ctl", "--control", tern_control, *words],
-                                    capture_output=True, text=True, timeout=30)
-            if result.returncode:
-                raise RuntimeError(f"tern ctl {words}: {result.stdout} {result.stderr}")
-            value = json.loads(result.stdout)
-            if not value.get("ok"):
-                raise RuntimeError(f"tern ctl {words}: {value}")
-            return value
+    def ctl(*words):
+        result = subprocess.run(["tern", "ctl", "--control", tern_control, *words],
+                                capture_output=True, text=True, timeout=30)
+        if result.returncode:
+            raise RuntimeError(f"tern ctl {words}: {result.stdout} {result.stderr}")
+        value = json.loads(result.stdout)
+        if not value.get("ok"):
+            raise RuntimeError(f"tern ctl {words}: {value}")
+        return value
 
-        deadline = time.monotonic() + 30
-        while time.monotonic() < deadline:
+    def launch_native():
+        nonlocal child, master, tern_control, tern_log
+        if args.tern:
+            with socket.socket() as free:
+                free.bind(("127.0.0.1", 0))
+                tern_control = str(free.getsockname()[1])
+            tern_env = {**os.environ, "TERN_CONFIG_DIR": str(out / "tern-config")}
+            tern_log = (out / "tern.log").open("w")
+            child = subprocess.Popen(["tern", "serve", "--control", tern_control, "--out", str(out), str(project)],
+                                     env=tern_env, stdout=tern_log, stderr=tern_log)
+            deadline = time.monotonic() + 30
+            while time.monotonic() < deadline:
+                try:
+                    ctl("state")
+                    break
+                except (RuntimeError, json.JSONDecodeError):
+                    time.sleep(0.1)
+            ctl("size", "1600", "1000")
+            launch = "env -i " + " ".join(q(k + "=" + v) for k, v in env.items()) + " " + shlex.join(argv)
+            ctl("run", json.dumps(launch))
+            save(out / "tern-control.json", {"endpoint": tern_control, "pid": child.pid, "launch": launch})
+        else:
+            master, slave = pty.openpty()
             try:
-                ctl("state")
-                break
-            except (RuntimeError, json.JSONDecodeError):
-                time.sleep(0.1)
-        ctl("size", "1600", "1000")
-        launch = "env -i " + " ".join(q(k + "=" + v) for k, v in env.items()) + " " + shlex.join(argv)
-        ctl("run", json.dumps(launch))
-        save(out / "tern-control.json", {"endpoint": tern_control, "pid": child.pid, "launch": launch})
-    else:
-        master, slave = pty.openpty()
-        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
-        child = subprocess.Popen(argv, cwd=project, env=env, stdin=slave, stdout=slave, stderr=slave,
-                                 start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
-        os.close(slave)
-    with (data / "pids").open("a") as log:
-        log.write(f"{child.pid} {'tern' if args.tern else 'omp'} flow-questions {args.case}\n")
+                fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
+                child = subprocess.Popen(argv, cwd=project, env=env, stdin=slave, stdout=slave, stderr=slave,
+                                         start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
+            finally:
+                os.close(slave)
+        with (data / "pids").open("a") as log:
+            log.write(f"{child.pid} {'tern' if args.tern else 'omp'} flow-questions {args.case}\n")
     captured = bytearray()
     inputs, started = [], time.monotonic()
     refused_call_id = None
@@ -915,6 +981,7 @@ def main():
         raise AssertionError(f"Flow panel still shown after {label}")
 
     try:
+        launch_native()
         if args.case == "tui":
             deadline = time.monotonic() + 30
             while True:
@@ -1213,34 +1280,57 @@ def main():
                     export_flow(state, bound)
             except Exception as error:
                 summary.update(ok=False, export_error=repr(error))
-        if competing:
-            competing.shutdown()
-            competing.server_close()
-        if master is not None:
-            os.close(master)
-        if args.tern:
+        cleanup = {"ok": False, "port": port, "stopped_processes": [], "errors": []}
+        summary["cleanup"] = cleanup
+
+        def cleanup_step(label, action):
             try:
-                ctl("quit")
+                action()
+                return True
             except Exception as error:
-                summary.update(ok=False, tern_cleanup_error=repr(error))
-        if child.poll() is None:
-            child.terminate()
+                cleanup["errors"].append(f"{label}: {error!r}")
+                return False
+
+        def stop_child():
+            if child.poll() is not None:
+                return
+            if not args.tern:
+                child.terminate()
             try:
                 child.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 child.kill()
-                child.wait()
-        server.shutdown()
-        if tern_log:
-            tern_log.close()
-        server.server_close()
-        try:
+                child.wait(timeout=5)
+
+        def stop_host():
             stop = ["bun", str(cli), "host", "stop", "--home", str(home)]
             if identity_file.exists():
                 stop += ["--session", identity_file.read_text(), "--agent", "main"]
-            command(stop, "stop owned Flow host")
-        except Exception as error:
-            summary.update(ok=False, cleanup_error=repr(error))
+            host = json.loads(command(stop, "stop owned Flow host"))["host"]
+            cleanup["host_stop"] = host
+            if host["state"] != "stopped":
+                raise RuntimeError(f"Flow host stop did not report stopped: {host}")
+
+        cleanup_step("stop accepting provider requests", server.shutdown)
+        if master is not None:
+            cleanup_step("close PTY", lambda: os.close(master))
+        if child is not None:
+            if args.tern and child.poll() is None:
+                cleanup_step("quit owned Tern", lambda: ctl("quit"))
+            cleanup_step("stop native child", stop_child)
+        cleanup_step("join provider requests", server.server_close)
+        if tern_log:
+            cleanup_step("close Tern log", tern_log.close)
+        if competing:
+            cleanup_step("stop competing listener", competing.shutdown)
+            cleanup_step("close competing listener", competing.server_close)
+        # Closing the picker can queue a detached `picker clear`, which can start another host.
+        if cleanup_step("stop host clients", lambda: stop_host_clients(home, port, cleanup["stopped_processes"])):
+            cleanup_step("authenticate and stop owned Flow host", stop_host)
+        cleanup_step("verify Flow shutdown", lambda: verify_host_stopped(home, port, cleanup))
+        cleanup["ok"] = not cleanup["errors"]
+        if not cleanup["ok"]:
+            summary.update(ok=False, cleanup_error="; ".join(cleanup["errors"]))
         save(out / "summary.json", summary)
         print(json.dumps(summary, indent=2))
     return 0 if summary["ok"] else 1
