@@ -30,6 +30,39 @@ For server routes or data, follow [server and data setup](server-data.md). For a
 
 For sign-in, also follow [Better Auth setup](auth.md). Keep auth absent for tasks without sign-in.
 
+## Set up component tests
+
+When testing is requested, use the app's existing suitable test setup. For a new test setup, use the [curated component test stack](choices.md).
+
+### Vue with Vite
+
+Set `test.environment` to `'happy-dom'` in the Vite config with `defineConfig` from `vitest/config`. If you use a separate `vitest.config.ts`, merge the existing Vite config:
+
+```ts
+import { defineConfig, mergeConfig } from 'vitest/config'
+import viteConfig from './vite.config'
+
+export default mergeConfig(viteConfig, defineConfig({
+	test: { environment: 'happy-dom' },
+}))
+```
+
+If the Vite config exports a function, follow the [Vitest config callback example](https://vitest.dev/config/) to pass it `configEnv` before merging. Mount the component with `mount` from `@vue/test-utils`.
+
+Inspect the scaffold's build script and TypeScript configs. The `create-vite` `vue-ts` template runs `vue-tsc -b` during build, and `tsconfig.app.json` includes `src/**/*.ts`. For a new setup, put specs in a top-level `tests/` directory if the scaffold's TypeScript configs do not include it. Vitest runs those specs, and `vue-tsc -b` leaves them out.
+
+If the app config includes the spec files, exclude them from it. Follow the `create-vue` layout: put those specs and their Vitest types in `tsconfig.vitest.json` and reference that file from the root `tsconfig.json`. Give it a separate `tsBuildInfoFile` if it inherits the app's path.
+
+### Nuxt
+
+In `vitest.config.ts`, use `defineVitestConfig` from `@nuxt/test-utils/config` and set `test.environment` to `'nuxt'`. The Nuxt environment uses happy-dom by default. For components that use Nuxt auto-imports, await `mountSuspended` from `@nuxt/test-utils/runtime`. If plain unit tests need a separate Node environment alongside Nuxt-runtime tests, use the [documented `test.projects` split](https://nuxt.com/docs/4.x/getting-started/testing) with `defineVitestProject` for the Nuxt project.
+
+### Run the test script
+
+Keep the app's existing suitable test script unchanged. For a new curated test setup, set `"test": "vitest run"` in `package.json`. Bare `vitest` watches in an interactive terminal outside CI. Run the app's script through its package manager, for example `bun run test`. `bun test` starts Bun's own test runner.
+
+For test setup, require a passing test that mounts a real app component through the app's test script. The app's build and typecheck must still pass.
+
 ## Keep one lint and format policy
 
 Preserve existing ESLint, Prettier, Biome, or other tooling unless migration is explicit. When tooling is absent, use compatible ESLint and `@antfu/eslint-config` development dependencies. In Nuxt, compose antfu with the generated Nuxt configuration rather than creating a parallel Vue or TypeScript ruleset:

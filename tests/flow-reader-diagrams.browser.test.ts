@@ -113,7 +113,7 @@ test("stored flowcharts redraw with export step routes, boxed edge labels, and t
     await page.goto(opened.live.url);
     await page.reload();
     await page.locator(`nav[aria-label="Flow tabs"] a[href="#${opened.stage}"]`).click();
-    for (const [theme, background] of [["Light", [239, 241, 245]], ["Dark", [30, 30, 46]]] as const) {
+    for (const [theme, background] of [["Light", [239, 241, 245]], ["Dark", [30, 30, 46]]] satisfies [string, [number, number, number]][]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const name of Object.keys(sources)) {
         const figure = page.getByRole("img", { name, exact: true });

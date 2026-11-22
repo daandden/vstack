@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { applyRows, parseHouseStyle, selectRows } from "../scripts/lib/house-style.ts";
 
 const UPSTREAMS = new Set(["matt", "pstack", "css"]);
-const doc = Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "house-style.yaml"), "utf8"));
+const doc = Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "house-style.yaml"), "utf8")) as { rules: unknown };
 const { houseStyle, problems } = parseHouseStyle(doc, UPSTREAMS);
 const rows = houseStyle.replacements;
 
