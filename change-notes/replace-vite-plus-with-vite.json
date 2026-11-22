@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The Flow reader builds with plain Vite. vstack drops the Vite+ dev dependency and the override that swapped `vite` for Vite+'s core fork, because the build used none of Vite+'s features. The Local Flow host's \"not built\" errors now tell you to run `bun run reader:build` (ADR 20261119-the-flow-reader-builds-with-plain-vite, #530)."
+  ]
+}

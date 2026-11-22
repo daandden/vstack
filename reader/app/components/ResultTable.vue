@@ -19,7 +19,7 @@ const linked = computed(() => props.r.entries.some(e => e.questions.length));
 const askName = (id: string) => askLabel(flow.value!, id);
 const ask = (id: string) => flow.value?.question.get(id);
 const columns = computed<TableColumn<Entry>[]>(() => [
-  ...labels.value.map(c => ({
+  ...labels.value.map<TableColumn<Entry>>(c => ({
     id: c.id,
     accessorFn: (entry: Entry) => cells(entry)[c.index],
     header: c.label,

@@ -39,7 +39,7 @@ export const readerDir = resolve(process.env.FLOW_READER_ASSETS ?? join(import.m
 export function readerBundle(): Map<string, Uint8Array<ArrayBuffer>> {
   const files = new Map<string, Uint8Array<ArrayBuffer>>();
   try { walkFiles(readerDir, (path, full) => files.set(path, readFileSync(full)), { skip: name => name === "server" }); } catch (e) { if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e; }
-  if (!files.has("index.html")) throw new Error(`the Flow reader is not built: ${join(readerDir, "index.html")} is missing; run vp run reader:build in the vstack checkout`);
+  if (!files.has("index.html")) throw new Error(`the Flow reader is not built: ${join(readerDir, "index.html")} is missing; run bun run reader:build in the vstack checkout`);
   return files;
 }
 

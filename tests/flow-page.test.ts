@@ -116,7 +116,7 @@ test.each([
   expect(snapshot.path.spec).toBeDefined();
   expect(snapshot.path.grill.skills).toEqual(stages.some(([skill]) => skill === "grill-me") ? ["grill-me"] : stages.some(([skill]) => skill === "grill-with-docs") ? ["grill-with-docs"] : ["grill-with-docs", "grill-me"]);
   const steps = [snapshot.path.grill, snapshot.path.spec, ...snapshot.path.branches.flatMap((b: any) => b.steps)];
-  expect(steps.map((s: any) => [s.id, s.state])).toEqual(expected);
+  expect<readonly (readonly [string, string])[]>(steps.map((s: any) => [s.id, s.state])).toEqual(expected);
   expect(steps.flatMap((s: any) => s.stages)).toEqual(expect.arrayContaining(
     snapshot.stages.map((s: any) => ({ id: s.id, skill: s.skill, state: s.state })),
   ));

@@ -100,7 +100,7 @@ export async function withLock<T>(folder: string, fn: () => T): Promise<T> {
   try {
     const c = lib();
     while (c.symbols.flock(fd, LOCK_EX | LOCK_NB) !== 0) {
-      const errno = read.i32(c.symbols[errnoName]()!, 0);
+      const errno = read.i32(c.symbols[errnoName]!()!, 0);
       if (errno !== constants.errno.EWOULDBLOCK && errno !== constants.errno.EINTR) throw new Error(`flock on ${folder} failed with errno ${errno}`);
       await Bun.sleep(10);
     }

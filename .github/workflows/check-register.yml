@@ -43,13 +43,13 @@ jobs:
           node-version: 24.15.0
 
       - name: Rebuild the Flow reader
-        run: ./node_modules/.bin/vp run reader:build
+        run: bun run reader:build
 
       - name: Check the committed Flow reader is fresh
         run: |
           git add --intent-to-add plugin/skills/flow-page/reader
           git diff --exit-code --stat -- plugin/skills/flow-page/reader || {
-            echo "plugin/skills/flow-page/reader is stale: run vp run reader:build and commit its output" >&2
+            echo "plugin/skills/flow-page/reader is stale: run bun run reader:build and commit its output" >&2
             exit 1
           }
 

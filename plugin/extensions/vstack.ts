@@ -1,4 +1,4 @@
-import type { TSchema } from "@oh-my-pi/pi-ai";
+import type { JudgmentState, TSchema } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
@@ -215,7 +215,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     }
     if (call?.state === "open") return;
     if (call?.state === "ready") openAsk(event.toolCallId, ctx, call.names, call.readError);
-    else openAsk(event.toolCallId, ctx, askControlNames(event.args?.html).names);
+    else openAsk(event.toolCallId, ctx, askControlNames((event.args as { html?: unknown } | undefined)?.html).names);
   });
   const finishAsk = (event: { toolName: string; toolCallId: string }) => {
     if (event.toolName === "ask") closeAsk(event.toolCallId);
@@ -332,17 +332,17 @@ function startsMidSession(branch: readonly any[]): boolean {
     (entry.type === "message" && (entry.message?.role === "user" || entry.message?.role === "assistant")));
 }
 
-async function pickAddons(ctx: ExtensionContext, state: object, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
+async function pickAddons(ctx: ExtensionContext, state: JudgmentState, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
   try {
     const judge = resolveJudge({
       settings, registry: ctx.modelRegistry, sessionId: ctx.sessionManager.getSessionId(), purpose: "vstack-addons",
       onUsage: journalJudgmentUsage(ctx.sessionManager), cache: sharedJudgmentCache(),
     });
     const result = await judge.withCandidate((candidate, kind) =>
-      kind === "native" ? candidate.judge({ state, questions }, { signal }) : undefined, { signal });
+      kind === "native" ? candidate.judge({ state, questions }, { signal }) : Promise.resolve(undefined), { signal });
     if (!result || signal.aborted) return [];
     return Object.keys(questions).filter(name => {
-      const answer: any = result.answers?.[name];
+      const answer = result.answers?.[name];
       return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
     });
   } catch {
