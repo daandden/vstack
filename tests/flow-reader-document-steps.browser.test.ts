@@ -47,7 +47,20 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
     expect(await steps.nth(0).locator("code").allTextContents()).toEqual(["service", "service status"]);
     expect(await steps.nth(0).getByRole("link", { name: "the runbook" }).getAttribute("href")).toBe("https://example.com/runbook");
     expect(await steps.nth(1).locator("p").allTextContents()).toEqual(["Restart the worker [1].", "Confirm that requests succeed."]);
-    expect(await steps.nth(0).evaluate(el => parseFloat(getComputedStyle(el).borderInlineStartWidth))).toBeGreaterThan(0);
+    const marker = (index: number) => steps.nth(index).getByText(String(index + 1), { exact: true });
+    const firstMarker = (await marker(0).boundingBox())!;
+    const nextMarker = (await marker(1).boundingBox())!;
+    const connector = steps.nth(0).locator('[aria-hidden="true"]');
+    expect(await connector.count()).toBe(1);
+    const joint = (await connector.boundingBox())!;
+    expect(await connector.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    expect(joint.width).toBe(1);
+    expect(joint.height).toBeGreaterThan(0);
+    expect(joint.y).toBeCloseTo(firstMarker.y + firstMarker.height);
+    expect(joint.y + joint.height).toBeCloseTo(nextMarker.y);
+    expect(joint.x + joint.width / 2).toBeCloseTo(firstMarker.x + firstMarker.width / 2, 0);
+    expect(nextMarker.x + nextMarker.width / 2).toBeCloseTo(firstMarker.x + firstMarker.width / 2);
+    expect(await steps.nth(1).locator('[aria-hidden="true"]').count()).toBe(0);
     expect(await steps.nth(1).getByRole("link", { name: "Citation 1" }).count()).toBe(1);
     expect(await page.locator(`#${seeded.refs.runbook}`).getByRole("link", { name: "Cited in Restore service" }).count()).toBe(1);
     const legacy = page.locator(`#${seeded.refs.legacy}`);
@@ -71,6 +84,7 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
           mkdirSync(proof, { recursive: true });
           await page.screenshot({ path: join(proof, `steps-${theme.toLowerCase()}-${width}.png`), fullPage: true });
           writeFileSync(join(proof, `steps-${theme.toLowerCase()}-${width}.aria.txt`), await page.locator("body").ariaSnapshot());
+          if (width === 1280) await procedure.screenshot({ path: join(proof, `procedure-${theme.toLowerCase()}.png`) });
         }
       }
     }
@@ -78,12 +92,16 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
     await procedure.waitFor();
     expect(await steps.count()).toBe(2);
     expect(await page.locator(`#${seeded.refs.single}`).getByRole("listitem").count()).toBe(1);
+    expect(await page.locator(`#${seeded.refs.single}`).getByRole("listitem").locator('[aria-hidden="true"]').count()).toBe(0);
     const large = cli(["submit"], [{ kind: "result", ref: "large", shape: "document", title: "Long recovery procedure", sections: [{ heading: "Restore partitions", blocks: [{ steps: Array.from({ length: 1000 }, (_, i) => ({ title: `Restore partition ${i + 1}`, text: "Confirm the partition is healthy." })) }] }] }]);
     await page.goto(`${opened.live.url}#${large.refs.large}`);
     const largeSteps = page.locator(`#${large.refs.large}`).getByRole("listitem");
     await largeSteps.nth(999).waitFor({ state: "attached" });
     expect(await largeSteps.count()).toBe(1000);
     expect(await largeSteps.nth(999).innerText()).toContain("1000");
+    const early = (await largeSteps.nth(0).getByText("1", { exact: true }).boundingBox())!;
+    const late = (await largeSteps.nth(999).getByText("1000", { exact: true }).boundingBox())!;
+    expect(early.x + early.width / 2).toBeCloseTo(late.x + late.width / 2);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

@@ -15,7 +15,7 @@
 - `cwt-integrated` targeted inventory can qualify dirty tracked contents and untracked files or links for automatic removal when their bytes and modes match the fetched remote HEAD commit, including squash-equivalent changes. Unique or unverified artifacts remain protected. Remote HEAD can differ from the branch checked out in the source repository.
 - `cwt-phases` plain inventory discovers inactive work without remote comparisons. Clean automatic removal finishes before source-fact preparation. Separate targeted comparisons share the same prepared source facts.
 - `cwt-hidden-index` skip-worktree and assume-unchanged cannot hide unique tracked bytes or post-inventory replacements from inspection or fingerprints. Unavailable verification protects the checkout.
-- `cwt-ovnfs` inventories `omp-*` ovnfs checkouts across repositories and follows their source chains. Native `parentRepo`, task-session ancestry, and Git alternates also establish origins. Missing or cyclic origins remain uncertain. Named and verifier entries remain visible but excluded from removal. Private Git state and history override an empty ovnfs diff. Removal uses ovnfs's `rm` operation and keeps snapshots, including on ovnfs v0.3.0 and later, where `rm` deletes them by default.
+- `cwt-ovnfs` inventories `omp-*` ovnfs checkouts across repositories and follows their source chains. Native `parentRepo`, task-session ancestry, and Git alternates also establish origins. Missing or cyclic origins remain uncertain. Named and verifier entries remain visible but excluded from removal. Private Git state and history override an empty ovnfs diff. Removal uses `ovnfs --json rm --force --sticky-snapshots` and keeps snapshots.
 - `cwt-native-completion` native removal can finish before mounted metadata disappears. The script observes bounded directory disappearance without repeating removal and rechecks native identity before reporting success.
 - `cwt-discovery` external verifier-session directories reveal saved leased child headers. Git and non-Git invocation directories yield the same global inventory. Native entries outside supported layouts remain visible with protection reasons.
 - `cwt-progress` `--progress` writes JSONL diagnostics to stderr while stdout stays JSON. Diagnostics identify the current phase, actual content reads, and ownership blockers.
@@ -93,7 +93,7 @@ Preconditions: real omp 18.17, an installed ovnfs with its daemon running, and D
 
 Step `clean-wt-ovnfs-fixture`: Use a disposable source Git repository under `$VERIFY_RUN_DIR/data/`, with a committed tracked file and a separate empty omp base. Create a checkout with `ovnfs --json new <source> --name omp-cwt-<run-id>` and save the returned name and path. This fixture uses omp's naming without creating or deleting another run's checkout. Keep the checkout after creation and write an untracked `draft.txt` there. Then run `ovnfs --json snap omp-cwt-<run-id> -m cwt --wait` and save the snapshot id.
 
-Drive the checkout's clean-wt CLI through `drive.ts --session` in a new omp process. Give each bash call `cwd` set to the disposable source repository, an explicit `--base`, and `timeout: 0`. Prefix the CLI commands with `OVNFS_STATE=<real-daemon-state> OVNFS_MOUNT=<real-mount>`, so the throwaway HOME uses the installed daemon rather than starting another one.
+Drive the checkout's clean-wt CLI through `drive.ts --session` in a new omp process. Give each bash call `cwd` set to the disposable source repository, an explicit `--base`, and `timeout: 0`. Capture `ovnfs --json status` under the calling home. Prefix the CLI commands with its `state` as `OVNFS_STATE` and `mount` as `OVNFS_MOUNT`, so the throwaway HOME uses the same running daemon.
 
 1. Step `clean-wt-ovnfs-inventory`: Run `inventory` and save its JSON. The kept checkout is `kind: ovnfs`, `verdict: unused`, `state: dirty`, and `automatic: false`. Its `changes.untracked` contains `draft.txt`, and its `source_git_dir` identifies the disposable source. Before any removal, save the exact commands, stdout, stderr, and exit codes for `cat "<checkout>/.git"`, `git -C "<checkout>" rev-parse --path-format=absolute --git-dir`, and `test -d "<resolved-private-git-dir>"`. Require a `.git` file, a resolved private Git directory distinct from the disposable source's Git directory, and an existence check that exits 0. Preserve that absolute private Git path outside `data/` for the after-removal check.
 2. Step `clean-wt-ovnfs-skip`: Run `remove <path>=<fingerprint>` without approval. It reports no removal and skips the dirty checkout. Read `draft.txt` separately to prove its bytes remain.
@@ -101,6 +101,47 @@ Drive the checkout's clean-wt CLI through `drive.ts --session` in a new omp proc
 4. Step `clean-wt-ovnfs-final`: Save a final inventory, a real `ovnfs --json ls`, and a directory-existence check. The checkout is absent from all three, and removal reports method `ovnfs rm`. Run `test -d "<resolved-private-git-dir>"` against the exact path captured before removal and retain its command, stdout, stderr, and exit code. Require that private Git directory to be absent after removal. The snapshot saved before step 1 remains in the listing's `snapshots`. Drop that snapshot with `ovnfs drop <id>` after saving the evidence. Leave unrelated checkouts, snapshots, and session archives unchanged.
 
 The common CLI suite covers legacy APFS copies and linked worktrees alongside these ovnfs cases. Keep the legacy live recipe above. Never use `omp worktree clear` for this proof.
+
+## Drive a verified squash draft
+
+Step `clean-wt-ovnfs-squash-fixture`: Use a separate disposable fixture under `"$VERIFY_RUN_DIR/data/squash"`. Use a new `NAME=omp-cwt-squash-<run-id>`. Make the established source, a local bare origin, and a standalone checkout under the fixture's omp base:
+
+```sh
+	F="$VERIFY_RUN_DIR/data/squash"
+	B="$F/wt"
+	S="$F/source"
+	N="$B/wt-standalone"
+	g() { git -C "$1" -c user.name=Verify -c user.email=verify@example.invalid "${@:2}"; }
+	mkdir -p "$F" "$B"
+	git init -q -b main "$S"
+	printf 'base\n' > "$S/content.txt"
+	g "$S" add content.txt
+	g "$S" commit -qm base
+	git clone -q --shared "$S" "$N"
+	g "$N" remote remove origin
+	git init -q --bare -b main "$F/origin.git"
+	g "$S" remote add origin "$F/origin.git"
+	ovnfs --json new "$N" --name "$NAME" > "$VERIFY_RUN_DIR/squash-open.json"
+	P=$(jq -er .checkout.path "$VERIFY_RUN_DIR/squash-open.json")
+	printf 'feature\n' > "$P/content.txt"
+	g "$P" commit -qam feature
+	g "$S" fetch "$P" HEAD:refs/tags/preserved-draft
+	g "$S" merge --squash preserved-draft
+	printf 'integrated draft\n' > "$S/draft.txt"
+	g "$S" add draft.txt
+	g "$S" commit -qm squash
+	g "$S" push -q origin main
+	cp "$S/draft.txt" "$P/draft.txt"
+	ovnfs --json snap "$NAME" -m cwt-squash --wait > "$VERIFY_RUN_DIR/squash-snapshot.json"
+```
+
+Preserve the ref outputs: `git -C "$S" rev-parse preserved-draft` equals the checkout's draft commit. `git -C "$N" for-each-ref --contains <draft-commit>` is empty. The established source preserves the exact history under its own tag, while ovnfs checks the direct source. The squash commit on remote `main` independently preserves the contents.
+
+Step `clean-wt-ovnfs-squash-refuses-plain`: Run `ovnfs --json rm --sticky-snapshots "$NAME"` against only this fixture. Require ovnfs to refuse and leave the checkout and snapshot intact. Stop if it does not. Save its exit code and output.
+
+Step `clean-wt-ovnfs-squash-remove`: In a fresh `drive.ts --session`, use the status-derived namespace and `$B` as in the prior ovnfs recipe. Run `inventory --prepare-source "$S/.git"` and save the JSON. Run `inventory --target "$P" --source-facts <saved JSON>` and retain its JSON. Require `kind: ovnfs`, `automatic: true`, `integration.status: verified`, `source_git_dir` equal to `"$S/.git"`, and empty `unique_history`. Run `remove <path>=<targeted-fingerprint>` with no `--approve`. Require a successful removal and a later listing and directory check to show the checkout absent. Require the saved snapshot ID still present and the tag unchanged. Drop only the fixture snapshot after retaining the evidence.
+
+Step `clean-wt-ovnfs-unsupported-flags`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'unsupported ovnfs rm flags'`. The process-boundary fixture rejects the new flags. Require the exact error to reach the `failed` entry, no second removal attempt, and the checkout and snapshot to remain. This does not require an older daemon.
 
 ## Drive recovery and bounded approval
 

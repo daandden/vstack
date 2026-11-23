@@ -186,6 +186,14 @@ function findFocus(key: string) {
   return matches.length === 1 ? matches[0] : undefined;
 }
 
+function findLegacyFocus(id: string, hasSelection: boolean) {
+  if (!generatedId.test(id)) return document.getElementById(id);
+  // Generated IDs changed with the form controls. Only one restored draft can identify the editor.
+  if (!hasSelection) return;
+  const editors = document.querySelectorAll<HTMLTextAreaElement>("textarea[data-reload-focus]");
+  return editors.length === 1 ? editors[0] : undefined;
+}
+
 function revealAncestors(el: HTMLElement | null | undefined) {
   for (let fold = el && hidingDisclosure(el); fold; fold = hidingDisclosure(fold)) fold.open = true;
 }
@@ -229,7 +237,7 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
   }
   const anchor = findTarget(id);
   revealAncestors(anchor);
-  const field = saved.focusKey ? findFocus(saved.focusKey) : saved.focus ? document.getElementById(saved.focus) : null;
+  const field = saved.focusKey ? findFocus(saved.focusKey) : saved.focus ? findLegacyFocus(saved.focus, !!saved.selection) : null;
   revealAncestors(field);
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));

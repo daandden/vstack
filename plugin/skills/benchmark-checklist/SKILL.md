@@ -33,7 +33,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line" for a measurement-review ru
 - Lead with the verdict: faster, slower, no measurable difference, or inconclusive.
 - Give the number with its unit, the run count, the range, and the limiter. For example, "p50 41 ms -> 33 ms, median of 7 runs per side, range 32 to 35 ms after, bound by JSON parsing on one core."
 - Call the verdict inconclusive when you claim a difference but cannot name the limiter, when a side ran untuned, or when you could not check questions 4 and 7. Name the gap.
-- Keep a PR body to one primary number, per skill://open-pr. Put the runs, range, and limiter evidence in a linked artifact or notes file.
+- Keep a PR body to one primary number. Put the runs, range, and limiter evidence in a linked artifact or notes file.
 
 Publish a Metrics Result containing the workload, environment, baseline series, numeric measurements, units, sample counts, ranges or other uncertainty, and the reported verdict. Use a missing value with its reason when a measurement is unavailable, not zero. Put the limiter and the seven checks' evidence or gaps in a Document Result. A Comparison Result records alternatives, criteria, assessments, and an inconclusive verdict when a winner is not supported. Attach the redacted raw samples and commands to the Results, keeping their original files. Redact attachments before capture. The reply summarizes the Results without a Flow link or a separate report page. Keep PR evidence links under skill://open-pr's contract.
 

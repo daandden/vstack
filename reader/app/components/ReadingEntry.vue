@@ -19,9 +19,9 @@ const ordinal = computed(() => (props.position === undefined || question.value ?
 </script>
 
 <template>
-  <div class="entry grid gap-2 [&+.entry]:border-bs [&+.entry]:border-muted" :class="question && !question.open ? 'py-1' : '[padding-block:var(--entry-space)]'" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
+  <div class="entry grid gap-2 [&+.entry]:border-bs [&+.entry]:border-flow-line" :class="question && !question.open ? 'py-1' : 'py-entry'" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
     <p v-if="!question" class="meta">
-      <span v-if="ordinal" class="text-toned font-bold tabular-nums" :title="`First published at position ${position}`">{{ ordinal }}</span>
+      <span v-if="ordinal" class="text-flow-toned font-bold tabular-nums" :title="`First published at position ${position}`">{{ ordinal }}</span>
       <span v-if="result">{{ SHAPE_LABELS[result.demo ? "demo" : result.shape] ?? result.shape }} · revision {{ result.revision }}</span>
       <span v-else-if="topic">Topic note</span>
       <span v-else-if="block.kind === 'background'">Background</span>

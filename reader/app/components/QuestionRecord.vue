@@ -27,9 +27,9 @@ watch(() => q.open, open => {
     <details :id="`${q.id}-fold`" ref="disclosure" data-reading-fold :open="q.open || expanded" @toggle="expanded = !q.open && disclosure?.open === true">
       <summary v-show="!q.open" class="min-h-8 py-1 [overflow-wrap:anywhere]">
         <template v-if="!expanded">
-          <span class="text-default"><span class="tabular-nums">Q{{ q.q }}: </span><span v-html="inline(q.title)" /></span>
-          <span class="text-small font-normal text-muted"> · {{ outcome }}</span>
-          <span v-if="q.context.correction || q.answer.correction" class="text-small text-warning"> · Corrected</span>
+          <span class="text-flow-text"><span class="tabular-nums">Q{{ q.q }}: </span><span v-html="inline(q.title)" /></span>
+          <span class="text-small font-normal text-flow-subtext"> · {{ outcome }}</span>
+          <span v-if="q.context.correction || q.answer.correction" class="text-small text-flow-peach"> · Corrected</span>
           <template v-if="latest"> · <a :href="`#${latest.id}`" class="text-small font-normal">Latest attempt: {{ latestLabel }}</a></template>
         </template>
         <template v-else>Collapse question</template>

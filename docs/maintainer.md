@@ -26,15 +26,14 @@ Only `plugin/` ships. Plugin Upstreams are fetched when needed, never stored in 
 
 ### Reader development skills
 
-Six repo-only skills live under `.omp/skills/`: `nuxt-ui` from `nuxt/ui`, `vue-best-practices`, `vue-debug-guides`, `vue-testing-best-practices`, and `create-adaptable-composable` from `vuejs-ai/skills`, and `vueuse-functions` from `vueuse/skills`. `skills-lock.json` records their upstream paths and content hashes. They do not ship in `plugin/` and have no Pin or Decision register row.
+Five repo-only skills live under `.omp/skills/`: `vue-best-practices`, `vue-debug-guides`, `vue-testing-best-practices`, and `create-adaptable-composable` from `vuejs-ai/skills`, and `vueuse-functions` from `vueuse/skills`. `skills-lock.json` records their upstream paths and content hashes. They do not ship in `plugin/` and have no Pin or Decision register row.
 
-The skills CLI 1.7.6 has no `omp` agent target. Its `pi` target installs project skills into `.agents/skills/`. The initial installation used these commands, then moved the six directories into `.omp/skills/`:
+The skills CLI 1.7.6 has no `omp` agent target. Its `pi` target installs project skills into `.agents/skills/`. To install the five skills from their upstreams, run these commands from the repo root. The `mv` command moves the five directories into `.omp/skills/`:
 
 ```sh
-npx --yes skills@1.7.6 add nuxt/ui --skill nuxt-ui --agent pi --copy --yes
 npx --yes skills@1.7.6 add vuejs-ai/skills --skill vue-best-practices vue-debug-guides vue-testing-best-practices create-adaptable-composable --agent pi --copy --yes
 npx --yes skills@1.7.6 add vueuse/skills --skill vueuse-functions --agent pi --copy --yes
-mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+mv .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
 rmdir .agents/skills .agents
 ```
 
@@ -43,7 +42,7 @@ The skill files are tracked, so a normal checkout already has them. To restore m
 ```sh
 npx --yes skills@1.7.6 experimental_install --frozen-lockfile --agent pi
 mkdir -p .omp/skills
-mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+mv .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
 rmdir .agents/skills .agents
 ```
 
@@ -106,9 +105,9 @@ When reader or server source changes, run `bun run reader:build` and commit its 
 
 After changing Flow runtime scripts or their shipped dependencies, run `bun plugin/skills/flow-page/scripts/generation.ts seal`. Commit `plugin/skills/flow-page/runtime.json` with those changes. The reader shipment command also seals this manifest after copying the complete reader. It records every Flow script, reader file, and shipped Scratch and figure script by hash. Do not seal a partial installation.
 
-The reader uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` loads them, and `theme.css` owns the Catppuccin Latte/Mocha palette, compact sizing, IosevkaTerm font stacks, Nuxt UI semantic colors, and Pele variables. Components use Nuxt UI and Tailwind utilities; no legacy question or Result stylesheet remains. Do not add another palette.
+The desktop reader uses UnoCSS presetWind4, copied shadcn-vue controls, and VueUse. The Doop compact design supplies the Catppuccin Latte and Mocha tokens in `reader/app/assets/theme.css`. Keep spacing, typography, and control sizing on those tokens. TanStack Form uses omptype schemas for comments and quiz answers. Result tables use TanStack Table, and Metrics charts use Unovis.
 
-Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
+The reader uses installed IosevkaTerm fonts when available and ships no fonts. UnoCSS generates icon masks from the local Lucide collection. `@nuxtjs/color-mode` keeps the browser's existing `flow-reader:theme` preference. The shipped reader makes no external font, icon, or color-mode requests and runs under the host's existing CSP.
 
 The rendering hook authenticates the capability and checks Flow availability before Nuxt receives content. Initial Flow state belongs to the request and hydrates from Nuxt's escaped payload, so concurrent page responses cannot share Flow data. The final HTML response hashes its executable inline scripts into the existing CSP. Scripts receive neither `unsafe-inline` nor `unsafe-eval`. Preserve Nuxt's payload escaping when changing response hooks. Diagram drawing and historical figure caption enhancement run only after hydration.
 
@@ -125,6 +124,8 @@ The installed Local Flow host checks the complete runtime manifest before stagin
 The first SQLite update is the exception to keeping a failed candidate's predecessor. The CLI stops a JSON-only host before import, so it cannot keep serving frozen JSON after a failed launch. A SQLite worker's authenticated `/.host/storage` route stays available through older supervisors. The `versions` route reads the indexed revision and aliases without loading the Flow's State.
 
 Open readers detect host replacement separately from authored revisions and refresh content after reconnect. A changed reader generation reloads the page automatically. Before reloading, the reader saves open Reader comment drafts, their original Result revision and target, the fragment, disclosures, focus, and reading position in tab-local session storage. Older readers saved some disclosures by position. The new reader ignores those positions and opens the disclosures that contain the restored anchor or focus target. Restoring a draft never submits it. An in-flight comment write or unavailable recovery storage delays reload and keeps the current page and drafts visible. Automatic reload also retains the visit comparison's original baseline; an ordinary later visit still uses the normal browser-local visit marker.
+
+Older readers also saved generated IDs for comment editors. The current reader restores focus and the text selection for a generated ID only if it restores one comment draft. It leaves focus alone when several drafts could own the selection.
 
 The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge labels keep Pele's background-colored label boxes. Cluster labels use a background-colored outline. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.
 
@@ -165,9 +166,9 @@ The executing caller chooses visuals from each question's reader needs and choos
 
 ## Architecture agreement provenance
 
-At the current pstack Pin, `pstack/architect` contributes grounding, visual alternatives, screening, and rationale to `grill-with-docs` and shared `codebase-design`. Its merged register row does not ship a standalone architect command or its implementation phase. The Matt rows retain their existing owners, and DESIGN-IT-TWICE keeps its detailed-interface workflow. This feature moves no Pin.
+`pstack/architect` contributes grounding, two architectural sketches, and screening to `grill-with-docs` and shared `codebase-design`. The grill uses `compare-attempts` for a large or contested design and records agreement before to-spec. The merged row ships no standalone architect command or implementation phase. DESIGN-IT-TWICE keeps its detailed-interface workflow.
 
-[Architecture agreement belongs in the grill](adr/0053-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. Published main owns ADRs 0047 through 0052, so the architecture record moves to 0053 without changing its accepted bytes. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) retains the separate enrollment policy.
+[Architecture agreement belongs in the grill](adr/0053-architecture-agreement-belongs-in-the-grill.md) records the agreement and brief. [ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts](adr/20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts.md) amends when and how `grill-with-docs` compares designs. The [research note](research/architecture-design-in-grilling.md) is background, not policy. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) still governs enrollment.
 
 Published main's release notes through 9.0.4 remain intact. The architecture feature and reconciliation notes belong to 9.0.5, a compatibility Hand edit above both branch tips. The reconciliation preserves the UI upstream's Pin, register rows, and package metadata. It changes no approved target action or Disposition, and updates architecture references only for the ADR's number.
 
@@ -186,11 +187,11 @@ Each entry's `items:` list says which tree entries at the Pin are Upstream items
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c`. Its `skills/*` pattern discovers eighteen items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. The original ten retain their companion references and existing implementation, review, verification, and evidence owners. `choreograph` adds coordinated-motion guidance and recipes; `gestures` adds direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `64eb3deb9a5fbfa041faf783e0bc3fd635872e9c`. Its `skills/*` pattern discovers twenty items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. Existing implementation, review, verification, and evidence owners keep their roles. `choreograph` covers coordinated motion, and `gestures` covers direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
 
 `code-review` conditionally reaches motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md), as amended by [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md), governs applicability.
 
-All twelve selected items ship as adaptations. None remains deferred.
+None of the twelve adaptations is deferred. `ask-emil` is rejected as a second UI router. `learn-taste` merges its design-correction signals into `session`, which keeps its own approval and editing routes.
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains owned by the default branch; UI integration preserves its current version.
 
@@ -206,7 +207,7 @@ The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mo
 
 The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
 
-The Update to Matt `v1.3.2`, pstack `c742dd61706fbacc1b95f1a20b7b988cf096ce6c`, and the UI Pin above leaves css at `92d436ba1937d1b1407c47e35abb3e199eaace2e`. Motion shorthand performance findings apply before Motion 14.2; layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Browser acceleration still needs scenario-specific evidence.
+The Update moves pstack to `0b46ec399d55f2829e88822998f53b84944837d3` and emil to the UI Pin above. Matt stays at `v1.3.2` and css at `92d436ba1937d1b1407c47e35abb3e199eaace2e`. Motion shorthand performance findings apply before Motion 14.2; layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Browser acceleration still needs scenario-specific evidence.
 
 `interrogate` is an answer-only Utility skill, not a review axis or End state step. It uses three isolated Session-model adversaries by default, independently reruns findings, merges shared root causes, reports dropped counts, and applies no fix. Failed starts or missing isolation stop its review; only started failures drop out, with at least two substantive candidates required. Existing review and final Verifier ownership remains unchanged.
 
@@ -214,7 +215,7 @@ Selection-only trigger evals across the twelve UI descriptions and interrogate, 
 
 ### Web stack Utility
 
-`web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader's Nuxt UI and Tailwind choice remains application-specific under ADR 0072.
+`web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader follows its frontend choices under [ADR 20261119](adr/20261119-the-flow-reader-uses-web-fullstack-frontend-choices-and-the-doop-compact-design.md); its local server does not use the Cloudflare recipe.
 
 The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. Its conditional recipes cover framework and manager choice, copied shadcn-vue controls adapted to UnoCSS, UnoCSS icons, and TanStack Form with omptype. Optional state and query tools stay conditional.
 

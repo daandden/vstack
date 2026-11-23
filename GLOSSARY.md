@@ -132,6 +132,10 @@ _Avoid_: original branch, main checkout (for this), parent checkout
 omp's private copy of a checkout for one subagent, with its own repository metadata, so moving HEAD there leaves the Shared checkout alone. Its changes come back only as a patch or branch that the parent chooses to apply.
 _Avoid_: sandbox, worktree (for this), isolated checkout
 
+**Merger**:
+The subagent that lands one patch on implement-spec's integration branch. It commits a ticket or stages a non-maintain review-fix wave for the later shared commit. It owns path scope, conflict resolution, and checks on unproven trees. Content review belongs to code-review.
+_Avoid_: merge agent, lander, reviewer (for this)
+
 **Headless run**:
 A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the Session model.
 _Avoid_: eval subagent, runner (unqualified)
@@ -209,8 +213,8 @@ The Local Flow host's short-lived record that one omp session has a question pic
 _Avoid_: open ask, asking state, active ask
 
 **Map panel**:
-The Flow page panel that the `m` key opens, with one tab for the Matt flow path, one for the Stage tree, and, in a Flow with a wayfinder map, one for the ticket graph.
-_Avoid_: Stage tree (for the whole panel), Stages popup, path banner
+The Flow page dialog that the `m` key opens. It shows the Matt flow path when present, the graph of Stage relationships, and the Wayfinder ticket graph when present.
+_Avoid_: Stage tree, Stages popup, path banner
 
 **Local Flow host**:
 The detached local server for one operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The normal host uses the user's home namespace, while an explicit isolated `--home` namespace has its own host identity.
@@ -237,7 +241,7 @@ Content that a later Stage publishes to correct an earlier block of the same Flo
 _Avoid_: erratum, superseding block, retraction, amendment
 
 **Architecture assessment**:
-A grill's determination of whether a consequential architecture choice remains unsettled and needs agreement before dependent implementation.
+A grill's trace of the systems a change touches and the two shapes it sketches for the change, at the level of owners, modules, and contracts, before the user agrees one.
 _Avoid_: architecture gate, complexity score
 
 **Architecture brief**:

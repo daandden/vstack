@@ -50,6 +50,103 @@ async function capture(page: Page, name: string) {
   writeFileSync(join(proof, `${name}.aria.txt`), await page.locator("body").ariaSnapshot());
 }
 
+test("the reader shows a compact reconnecting notice without dropping the rendered Flow", async () => {
+  const { live } = cli(["open", "--skill", "implement", "--title", "Reader connection states"]);
+  const versions = new URL("versions", live.url).href;
+  for (const theme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await Promise.all([page.waitForResponse(versions, { timeout: 5_000 }), page.goto(live.url)]);
+      const title = page.getByRole("heading", { name: "Reader connection states" });
+      await title.waitFor({ timeout: 5_000 });
+      await page.route(versions, route => route.abort());
+      const notice = page.getByRole("status").filter({ hasText: "The Local Flow host stopped answering" });
+      await notice.waitFor({ timeout: 5_000 });
+      expect(await notice.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [
+          el.getBoundingClientRect().width, css.paddingInlineStart, css.borderRadius,
+          css.borderInlineStartWidth, css.borderBlockStartWidth, css.borderInlineStartColor, css.backgroundColor,
+        ];
+      })).toEqual([
+        1024, "8px", "4px", "2px", "0px",
+        theme === "light" ? "oklch(0.692 0.204 42.4)" : "oklch(0.824 0.101 52.6)",
+        theme === "light" ? "oklch(0.933 0.009 264.5)" : "oklch(0.216 0.025 284.1)",
+      ]);
+      expect(await title.isVisible()).toBe(true);
+      await capture(page, `reconnecting/${theme}`);
+      await page.unroute(versions);
+      await notice.waitFor({ state: "hidden", timeout: 5_000 });
+      expect(await title.isVisible()).toBe(true);
+    } finally { await context.close(); }
+  }
+});
+
+test("completed and reopened Flows keep lifecycle metadata, topic links, and compact context notes", async () => {
+  const opened = cli(["open", "--skill", "implement-spec", "--title", "Checkout limits"]);
+  const seeded = cli(["submit"], [
+    { kind: "background", title: "Where the checkout cap applies", summary: "Each cart has its own cap.", sections: [{ heading: "Today", body: "A separate cap applies on each cart." }], sources: ["Checkout policy"] },
+    { kind: "topic", ref: "cap", title: "Per-cart cap", summary: "The limit applies at checkout, including gift cards.", body: "Each cart has its own cap.", sources: ["Checkout policy"] },
+    { kind: "result", ref: "limits", shape: "document", title: "Boundary checks", sections: [{ heading: "Cart sizes", blocks: [{ prose: "Five items pass. Six items block checkout." }] }] },
+    { kind: "round", now: "The checkout policy sets one cap per cart.", questions: [{ ref: "scope", title: "Apply the cap to each cart?", brief: decisionBrief("the per-cart cap"), description: "Related carts may be checked out separately.", topics: ["cap"], terms: [{ term: "Cap", text: "The maximum number of items one cart can contain." }], results: ["limits"], needs: [{ need: "Read the boundary checks.", kind: "prose" }], options: [{ label: "Per cart", does: "Apply one cap to each cart.", gains: ["Predictable checkout"], costs: ["No shop-wide quota"] }] }] },
+    { kind: "task", title: "Check the cart limit", state: "done", evidence: ["Checked one cart at the limit and one over."] },
+    { kind: "end-state", requested: "none" },
+  ]);
+  cli(["submit"], [
+    { kind: "answer", question: seeded.refs.scope, response: { status: "answered", picks: ["A"] } },
+    { kind: "stage", state: "finished" },
+  ]);
+  cli(["close", "--flow", opened.flow]);
+  for (const theme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${opened.live.url}#overview`);
+      const status = page.getByRole("contentinfo").getByText(/^Closed /);
+      await page.locator('[id="overview:progress-row"]').click();
+      await status.waitFor();
+      await page.getByRole("region", { name: "Read-only observations" }).getByText("Git", { exact: true }).waitFor();
+      expect(await page.getByRole("region", { name: "Authored progress" }).innerText()).toContain("Complete: every task is settled");
+      await capture(page, `closed/${theme}`);
+      const notes = page.getByText("Context and related notes", { exact: true });
+      await notes.focus();
+      await page.keyboard.press("Enter");
+      const backgrounds = page.getByRole("region", { name: "Backgrounds" });
+      await backgrounds.getByRole("link", { name: "Where the checkout cap applies" }).waitFor();
+      expect(await page.getByRole("region", { name: "Term notes" }).getByText("Cap", { exact: true }).isVisible()).toBe(true);
+      expect(await page.getByRole("region", { name: "Backlinks" }).getByRole("link", { name: "Boundary checks" }).isVisible()).toBe(true);
+      expect(await notes.evaluate(el => getComputedStyle(el.parentElement!).paddingBlockEnd)).toBe("8px");
+      expect(await backgrounds.getByRole("list").evaluate(el => getComputedStyle(el).paddingInlineStart)).toBe("12px");
+      await capture(page, `context/${theme}`);
+      await notes.click();
+      await page.getByRole("button", { name: "Stages", exact: true }).click();
+      await page.getByRole("tabpanel", { name: "Stages", exact: true }).getByRole("link", { name: "Topics", exact: true }).click();
+      const topics = page.getByRole("region", { name: "Topic notes", exact: true });
+      const topic = topics.getByRole("link", { name: "Per-cart cap", exact: true });
+      await topic.waitFor();
+      expect(await topics.getByRole("list").evaluate(el => getComputedStyle(el).paddingInlineStart)).toBe("12px");
+      await capture(page, `topics/${theme}`);
+      await topic.click();
+      await page.getByRole("heading", { name: "Per-cart cap", exact: true }).waitFor();
+    } finally { await context.close(); }
+  }
+  const reopened = cli(["reopen", "--flow", opened.flow, "--skill", "implement", "--parent", opened.stage]);
+  for (const theme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${reopened.live.url}#overview`);
+      await page.getByRole("contentinfo").getByText(/^Reopened /).waitFor();
+      await page.locator('[id="overview:progress-row"]').click();
+      expect(await page.getByRole("region", { name: "Authored progress" }).innerText()).toContain("Complete: every task is settled");
+      await page.locator('[id="overview:stages-row"]').click();
+      expect(await page.locator(`#overview-${reopened.stage}`).getByRole("link", { name: "Implement", exact: true }).isVisible()).toBe(true);
+      await capture(page, `reopened/${theme}`);
+    } finally { await context.close(); }
+  }
+});
+
 test("the offline reader foundation keeps Catppuccin shell, navigation and diagrams under the host CSP", async () => {
   const opened = cli(["open", "--skill", "implement", "--title", "Reader foundation"]);
   writeFileSync(join(root, "reader.mmd"), 'flowchart LR\n  reader["Read the Flow"] --> choice["Choose deliberately"]\n');
@@ -116,14 +213,30 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
       await page.getByRole("button", { name: label, exact: true }).click();
       expect(await bodyColor(page)).toBe(expected);
       expect(await page.getByRole("button", { name: label, exact: true }).getAttribute("aria-pressed")).toBe("true");
+      expect(await page.getByRole("button", { name: label, exact: true }).evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart, css.borderRadius, css.borderTopColor];
+      })).toEqual(["28px", "8px", "4px", label === "Light" ? "oklch(0.559 0.226 262.1)" : "oklch(0.766 0.111 259.9)"]);
+      expect(await page.getByRole("heading", { name: "Keep the compact reader?", exact: false }).evaluate(el => {
+        const css = getComputedStyle(el);
+        const entry = getComputedStyle(el.closest("[data-reading]")!);
+        return [css.fontSize, css.lineHeight, entry.paddingBlockStart, entry.paddingBlockEnd];
+      })).toEqual(["17px", "22.95px", "16px", "16px"]);
       await page.mouse.move(0, 0);
       await page.evaluate(async () => { await Promise.all(document.getAnimations().map((animation) => animation.finished)); });
       expect(await colorOf(page, ".theme button:first-child", "color")).toBe(label === "Light" ? "#5c5f77" : "#bac2de");
       colors[label!] = await drawing!.evaluate((el) => getComputedStyle(el.querySelector("text")!).fill);
       await capture(page, `${label!.toLowerCase()}-stage`);
       await page.getByRole("navigation", { name: "Flow navigation", exact: true }).locator('a[href="#overview"]').click();
+      const progress = page.getByRole("region", { name: "Authored progress" });
+      if (!(await progress.isVisible())) await page.locator('[id="overview:progress-row"]').click();
       await page.locator("#observations").waitFor();
       expect(await page.locator("#progress").innerText()).toContain("1 active");
+      expect(await overview.getByText(/^Keys:/).isVisible()).toBe(true);
+      expect(await page.getByRole("region", { name: "Authored progress" }).evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.padding, css.borderTopWidth, css.borderRadius, css.boxShadow, el.getBoundingClientRect().width];
+      })).toEqual(["8px", "1px", "4px", "none", 1024]);
       await capture(page, `${label!.toLowerCase()}-overview`);
       await page.getByRole("button", { name: "Stages", exact: true }).click();
       await page.getByRole("tabpanel", { name: "Stages", exact: true }).getByRole("link", { name: "Implement", exact: true }).click();
@@ -148,10 +261,13 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     }
     expect(await page.evaluate(() => (window as any).policyViolations)).toEqual([]);
     expect(errors).toEqual([]);
+    const css = await page.evaluate(() => [...document.styleSheets].flatMap(sheet => [...sheet.cssRules].map(rule => rule.cssText)).join("\n"));
+    expect(css).not.toMatch(/pointer:\s*coarse|pointer-coarse/);
+    if (proof) writeFileSync(join(proof, "browser-css.txt"), css);
     expect(outside).toEqual([]);
     const tokens = await page.locator("html").evaluate((el) => {
       const style = getComputedStyle(el);
-      return Object.fromEntries(["--ui-bg", "--ui-text", "--ui-primary"].map((key) => [key, style.getPropertyValue(key).trim()]));
+      return Object.fromEntries(["--color-base", "--color-text", "--color-mauve"].map((key) => [key, style.getPropertyValue(key).trim()]));
     });
     if (proof) writeFileSync(join(proof, "runtime.json"), JSON.stringify({ policy, outside, errors, tokens, colors }, null, 2));
     for (const token of Object.values(tokens)) expect(token).not.toBe("");
@@ -176,3 +292,31 @@ test("Flow lifecycle notices remain outside the identity-only masthead", async (
     await page.close();
   }
 }, 30_000);
+
+test("the footer theme follows the system on first load and preserves an explicit theme on reload", async () => {
+  const opened = cli(["open", "--skill", "implement", "--title", "Reader theme preference"]);
+  for (const [colorScheme, initialColor, picked, pickedColor] of [
+    ["light", "#eff1f5", "dark", "#1e1e2e"],
+    ["dark", "#1e1e2e", "light", "#eff1f5"],
+  ] as const) {
+    const context = await browser.newContext({ colorScheme });
+    try {
+      const page = await context.newPage();
+      await page.goto(opened.live.url);
+      const system = page.getByRole("contentinfo").getByRole("button", { name: "System", exact: true });
+      const theme = page.getByRole("contentinfo").getByRole("button", { name: new RegExp(`^${picked}$`, "i") });
+      await system.waitFor();
+      expect(await system.getAttribute("aria-pressed")).toBe("true");
+      expect(await page.locator("html").getAttribute("data-theme")).toBe(colorScheme);
+      expect(await bodyColor(page)).toBe(initialColor);
+      await theme.click();
+      expect(await bodyColor(page)).toBe(pickedColor);
+      expect(await page.evaluate(() => localStorage.getItem("flow-reader:theme"))).toBe(picked);
+      await page.reload();
+      await theme.waitFor();
+      expect(await theme.getAttribute("aria-pressed")).toBe("true");
+      expect(await page.locator("html").getAttribute("data-theme")).toBe(picked);
+      expect(await bodyColor(page)).toBe(pickedColor);
+    } finally { await context.close(); }
+  }
+});

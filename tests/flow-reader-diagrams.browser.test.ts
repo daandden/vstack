@@ -396,7 +396,7 @@ test("figures retain caption, formatted description and Source when a question s
     expect(await figures.count()).toBe(5);
     const body = await page.evaluate(() => {
       const probe = document.body.appendChild(document.createElement("span"));
-      probe.style.background = "var(--mantle)";
+      probe.style.background = "var(--color-mantle)";
       const mantle = getComputedStyle(probe).backgroundColor;
       probe.remove();
       return { color: getComputedStyle(document.body).color, size: parseFloat(getComputedStyle(document.body).fontSize), mantle };

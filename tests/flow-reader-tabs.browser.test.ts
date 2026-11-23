@@ -316,6 +316,17 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     await page.locator(`#${research.refs.doc}`).waitFor();
     expect(await selected(page)).toBe(stageB);
     expect(await clearance()).toBeGreaterThanOrEqual(0);
+    if (process.env.FLOW_READER_EVIDENCE) {
+      const dir = process.env.FLOW_READER_EVIDENCE;
+      mkdirSync(dir, { recursive: true });
+      for (const theme of ["Light", "Dark"]) {
+        await page.getByRole("button", { name: theme, exact: true }).click();
+        await page.evaluate(() => scrollTo(0, 0));
+        const name = join(dir, `${theme.toLowerCase()}-research`);
+        await page.screenshot({ path: `${name}.png`, fullPage: true });
+        writeFileSync(`${name}.aria.txt`, await page.locator("body").ariaSnapshot());
+      }
+    }
     for (let i = 0; i < 3; i++) {
       await page.reload();
       await page.locator(`#${research.refs.doc}`).waitFor();
@@ -344,7 +355,7 @@ test("Jump lists the latest attempts, one Assumed-picks entry, and exact reading
     { kind: "background", ref: "context", title: "Deployment context", summary: "Context.", sections: [{ heading: "Today", body: "One route." }], sources: ["GLOSSARY.md"] },
     assumed("first-pick", "Keep captured evidence"),
     assumed("second-pick", "Preserve Đặng Thị Ngọc Hân's review notes"),
-    doc("long", "Decision evidence", 30),
+    doc("long", "Decision [`evidence`](https://example.test/evidence)", 30),
     assumed("third-pick", "Retain the European production environment"),
     { kind: "round", now: "The routing options are ready for review.", questions: [question("original", "Keep the deployment route?"), question("cross", "Keep the fallback?")] },
   ]).refs;
@@ -370,6 +381,26 @@ test("Jump lists the latest attempts, one Assumed-picks entry, and exact reading
     );
     expect(await jump.getByRole("link", { name: /Revisit the deployment route.*Your pick: A/ }).isVisible()).toBe(true);
     expect(await jump.getByRole("link", { name: "Decision evidence", exact: true }).getAttribute("aria-current")).toBe("location");
+    const formatted = jump.getByRole("link", { name: "Decision evidence", exact: true });
+    expect(await formatted.locator("code").innerText()).toBe("evidence");
+    expect(await formatted.locator("a").count()).toBe(0);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    for (const link of [formatted, jump.getByRole("link", { name: "Assumed picks", exact: true })]) {
+      const { height, padding } = await link.evaluate(el => {
+        const { paddingInlineStart, paddingInlineEnd } = getComputedStyle(el);
+        return { height: el.getBoundingClientRect().height, padding: [paddingInlineStart, paddingInlineEnd] };
+      });
+      expect(height, `Hit height of ${await link.textContent()}`).toBeGreaterThanOrEqual(28);
+      expect(padding).toEqual(["8px", "8px"]);
+    }
+    const gap = await formatted.locator("code").evaluate(code => {
+      const prose = code.previousSibling as Text;
+      const range = document.createRange();
+      range.setStart(prose, 0);
+      range.setEnd(prose, prose.data.trimEnd().length);
+      return code.getBoundingClientRect().left - range.getBoundingClientRect().right;
+    });
+    expect(gap, "Rendered space between Decision and the inline code").toBeGreaterThan(1);
     await jump.getByRole("link", { name: "Assumed picks", exact: true }).click();
     await jump.waitFor({ state: "hidden" });
     expect(await hash(page)).toBe(`${first["first-pick"]}-batch`);
@@ -467,6 +498,17 @@ test("with no open question the page opens on Overview", async () => {
     expect(await selected(page)).toBe("overview");
     expect(await page.locator("#overview").isVisible()).toBe(true);
     expect(await page.getByText("No open decisions.", { exact: true }).isVisible()).toBe(true);
+    await page.keyboard.press("g");
+    const jump = page.getByRole("dialog", { name: "Jump", exact: true });
+    await jump.waitFor();
+    for (const name of ["Progress", "Observations", "All Stages"]) {
+      expect(await jump.getByRole("link", { name, exact: true }).isVisible()).toBe(true);
+    }
+    await jump.getByRole("link", { name: "All Stages", exact: true }).click();
+    await jump.waitFor({ state: "hidden" });
+    expect(await hash(page)).toBe("overview:stages-row");
+    await page.keyboard.press("g");
+    expect(await jump.getByRole("link", { name: "All Stages", exact: true }).getAttribute("aria-current")).toBe("location");
   } finally {
     await context.close();
   }
@@ -723,6 +765,8 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
   const a = cli(["open", "--skill", "grill-me", "--title", "Map keyboard controls"]);
   const pending = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("map-q", "Keep the map controls?")] }]);
   const children = Array.from({ length: 24 }, () => cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]));
+  const grandchild = cli(["open", "--skill", "prototype", "--flow", a.flow, "--parent", children[0].stage]);
+  submit(a.flow, grandchild.stage, [{ kind: "stage", state: "finished" }]);
   const context = await browser.newContext({ viewport: { width: 320, height: 700 } });
   try {
     const page = await context.newPage();
@@ -745,12 +789,25 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
     expect(await map.getByRole("region", { name: "Waiting for an answer" }).getByText("In progress · 1 open", { exact: true }).isVisible()).toBe(true);
     expect(await map.getByRole("region", { name: "No open questions" }).getByRole("link").count()).toBe(24);
+    for (const [i, child] of children.entries()) {
+      const link = stageLinks.nth(i + 1);
+      expect(await link.getAttribute("href")).toBe(`#${child.stage}`);
+      expect(await link.getAttribute("aria-description")).toBe("Parent Stage: Grill me");
+    }
+    const finished = map.getByRole("region", { name: "Finished", exact: true });
+    await finished.getByText("Ticketless · 1 Stage", { exact: true }).click();
+    const finishedLink = finished.getByRole("link");
+    expect(await finishedLink.getAttribute("href")).toBe(`#${grandchild.stage}`);
+    expect(await finishedLink.getAttribute("aria-description")).toBe("Parent Stage: Research");
+    expect(await finished.getByText("Finished · 0 open", { exact: true }).isVisible()).toBe(true);
+    await finished.getByText("Ticketless · 1 Stage", { exact: true }).click();
+    await stageLinks.first().focus();
     await page.keyboard.press("j");
     expect(await stageLinks.nth(1).evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("k");
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
     const close = map.getByRole("button", { name: "Close", exact: true });
-    for (const [start, bound, link] of [["j", "k", stageLinks.first()], ["k", "j", stageLinks.last()]] as const) {
+    for (const [start, bound, link] of [["j", "k", stageLinks.first()], ["k", "j", finished.getByText("Ticketless · 1 Stage", { exact: true })]] as const) {
       await close.focus();
       await page.keyboard.press(start);
       expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
@@ -793,6 +850,55 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     await page.keyboard.press("n");
     expect(await hash(page)).toBe(pending.refs["map-q"]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("Escape returns focus to the Stages Map trigger after keyboard opening", async () => {
+  const a = cli(["open", "--skill", "research", "--title", "Map focus return"]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    const trigger = page.getByRole("button", { name: "Stages", exact: true });
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    expect(await trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    for (const openWith of ["m", "Enter"] as const) {
+      if (openWith === "Enter") await trigger.focus();
+      await page.keyboard.press(openWith);
+      await map.waitFor();
+      await page.keyboard.press("Escape");
+      await map.waitFor({ state: "hidden" });
+      await trigger.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+      expect(await trigger.evaluate((el) => el === document.activeElement)).toBe(true);
+    }
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("a queued Map close does not take focus back from the Flow title link", async () => {
+  const a = cli(["open", "--skill", "research", "--title", "Map focus after dismissal"]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    const nav = barOf(page);
+    const overview = nav.locator('a[href="#overview"]');
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    await nav.waitFor();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    await page.keyboard.press("m");
+    await map.waitFor();
+    const overviewLink = await overview.elementHandle();
+    await map.evaluate(async (el, link) => {
+      const closed = new Promise<void>((done) => el.addEventListener("close", () => done(), { once: true }));
+      (el as HTMLDialogElement).close();
+      link.focus();
+      await closed;
+    }, overviewLink);
+    expect(await overview.evaluate((el) => el === document.activeElement)).toBe(true);
   } finally {
     await context.close();
   }

@@ -1084,20 +1084,69 @@ test("inventory finds omp ovnfs checkouts outside the base and protects unknown 
   expect(inv[custom].reasons.length).toBeGreaterThan(0);
 });
 
-test.each([
-  ["ovnfs v0.3.0, whose rm deletes snapshots by default", {}],
-  ["an older daemon that rejects the keep-snapshots field", { FAKE_OVNFS_OLD_DAEMON: "1" }],
-])("clean unused ovnfs checkouts are removed through ovnfs rm and keep their snapshots on %s", (_, env: Record<string, string>) => {
+test("clean unused ovnfs checkouts are removed through the public CLI and keep their snapshots", () => {
   const path = ovnfsCheckout("omp-clean-123");
   const snapshot = { id: "s1", checkout: "omp-clean-123" };
   writeFileSync(join(ovnfsRoot, "snapshots.json"), JSON.stringify([snapshot]));
-  const c = inventory(env)[path];
-  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], env);
+  const c = inventory()[path];
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`]);
   expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
   expect(existsSync(path)).toBe(false);
   expect(JSON.parse(readFileSync(join(ovnfsRoot, "checkouts.json"), "utf8"))).toEqual([]);
   expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
   expect(git(repo, "status", "--porcelain")).toBe("");
+});
+
+test("a verified ovnfs squash draft with history saved outside its direct source is eligible and keeps its snapshot", () => {
+  const name = "omp-squash-draft";
+  const directSource = join(base, "wt-standalone");
+  git(repo, "clone", "-q", "--shared", repo, directSource);
+  git(directSource, "remote", "remove", "origin");
+  const path = ovnfsCheckout(name, directSource);
+  const snapshot = { id: "squash-snapshot", checkout: name };
+  writeFileSync(join(ovnfsRoot, "snapshots.json"), JSON.stringify([snapshot]));
+  writeFileSync(join(path, "feature.txt"), "feature\n");
+  git(path, "add", "feature.txt");
+  git(path, "commit", "-qm", "draft");
+  const draft = git(path, "rev-parse", "HEAD");
+  git(repo, "fetch", "-q", path, "HEAD:refs/tags/saved-draft");
+  git(repo, "merge", "--squash", "saved-draft");
+  writeFileSync(join(path, "README.md"), "landed draft\n");
+  git(path, "add", "README.md");
+  writeFileSync(join(repo, "README.md"), "landed draft\n");
+  git(repo, "add", "README.md");
+  git(repo, "commit", "-qm", "squashed review");
+  publishDefault("main");
+  expect(git(directSource, "for-each-ref", "--contains", draft)).toBe("");
+  expect(git(repo, "rev-parse", "saved-draft")).toBe(draft);
+  const plain = Bun.spawnSync(["bun", FAKE_OVNFS, "--json", "rm", "--sticky-snapshots", name], {
+    env: { ...ENV, FAKE_OVNFS_ROOT: ovnfsRoot, FAKE_GIT: Bun.which("git")!, FAKE_OVNFS_PROTECT_COMMITS: "1" },
+  });
+  expect(plain.exitCode).toBe(1);
+  expect(plain.stderr.toString()).toContain("unsaved commits");
+  const c = comparedCheckout(path);
+  expect(c).toMatchObject({ automatic: true, unique_history: [], integration: { status: "verified" } });
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], { FAKE_OVNFS_PROTECT_COMMITS: "1" });
+  expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  expect(existsSync(path)).toBe(false);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
+});
+
+test("unsupported ovnfs rm flags fail closed without retrying or dropping a snapshot", () => {
+  const name = "omp-unsupported-rm";
+  const path = ovnfsCheckout(name);
+  const snapshot = { id: "saved-snapshot", checkout: name };
+  writeFileSync(join(ovnfsRoot, "snapshots.json"), JSON.stringify([snapshot]));
+  const c = inventory()[path];
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], { FAKE_OVNFS_UNSUPPORTED_RM_FLAGS: "1" });
+  expect(out.code).toBe(0);
+  expect(out.json).toEqual({ removed: [], skipped: [], failed: [{ path, error: "fixture: unknown flag --force" }] });
+  expect(existsSync(path)).toBe(true);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "checkouts.json"), "utf8"))).toMatchObject([{ name, path }]);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
+  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  expect(calls.filter(call => call.args.includes("rm")).map(call => call.args))
+    .toEqual([["--json", "rm", "--force", "--sticky-snapshots", name]]);
 });
 
 test("ovnfs removal waits for mounted directory visibility without repeating deletion", async () => {
@@ -1118,7 +1167,8 @@ test("ovnfs removal waits for mounted directory visibility without repeating del
   expect(await observer.exited).toBe(0);
   expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
   const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
-  expect(calls.filter(call => call.args[0] === "ctl" && call.args[1] === "rm")).toHaveLength(1);
+  expect(calls.filter(call => call.args.includes("rm")).map(call => call.args))
+    .toEqual([["--json", "rm", "--force", "--sticky-snapshots", name]]);
 }, 30000);
 
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {

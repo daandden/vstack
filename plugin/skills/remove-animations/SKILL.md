@@ -7,7 +7,7 @@ description: "Use when identifying unnecessary web animation, removing or reduci
 
 Identify unnecessary motion and guide only authorized subtraction through the existing implementation owner. During an audit this Utility skill is read-only. The current owner retains explicit selection, edits, delegation, Flow, review, Verify, and delivery. This is neither a separate executor nor permission to remove every animation.
 
-Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/remove-animations). The [MIT notice](LICENSE) ships with the adaptation.
+Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/remove-animations). The [MIT notice](LICENSE) ships with the adaptation.
 
 Read skill://improve-animations for survey, vetting, selection, and existing-owner requirements. Use skill://find-animation-opportunities for additive proposals. Retuning a useful animation's easing, spring, origin, or driver belongs to the appropriate existing task using skill://animate and skill://animation-performance, not to a subtraction selection.
 
@@ -20,7 +20,7 @@ Survey keyboard/high-frequency actions, decorative reveals and loops, functional
 1. Keyboard-initiated or 100+/day actions should be instant. Remove motion that delays these responses.
 2. Functional data should remain stable for reading and action. A real user-triggered value change can justify motion. Replaying a chart or number entrance on every mount generally cannot.
 3. Name feedback, spatial continuity, state indication, preventing a jarring change, or explanation. Rare or first-time delight can also justify an effect. Otherwise propose deletion.
-4. For useful tens/day motion, consider a much smaller version or deletion. Occasional motion within its applicable budget can stay. Marketing explanation has more latitude than repeated product navigation or section reveals.
+4. For useful tens/day motion, consider a much smaller version or deletion. Occasional motion within its applicable budget can stay. Use the component budgets in skill://review-animations/STANDARDS.md. Marketing explanation has more latitude than repeated product navigation or section reveals.
 
 Inspect command palettes, tab switches, repeated list hovers, route transitions, scroll-reveal initial styles, decorative card lifts, persistent pulses, mount-time chart drawing, count-ups, and repeated list stagger. A loading indicator that flashes on a sub-300ms operation may be distracting, but establish actual latency before deleting meaningful pending feedback. `transition: all` invites investigation, not a replacement unrelated to the selected scope.
 
@@ -40,7 +40,7 @@ If subtraction would remove the only useful continuity cue or expose a layout ju
 
 ## Check removal hazards before editing
 
-For every selected Delete or Reduce, inspect the actual dependency chain:
+For every selected Delete or Reduce, inspect the actual dependency chain and state when none of these hazards applies:
 
 - Hidden initial states. Remove obsolete opacity zero, transforms, reveal classes, fill-mode reliance, or library `initial` props with the effect. The final static content must be visible when open and genuinely hidden when closed.
 - Animation waits. Find `animationend`, `transitionend`, completion callbacks, and duration-sized timers. Move required functional work to the state transition, remove obsolete waits, and preserve exactly-once effects.
@@ -59,4 +59,4 @@ Reuse the owner's tests and Verify recipe. Observe open/closed visibility, entry
 
 Every browser open uses `app: { tern: false }`, including delegated diagnostics, and records returned backend and engine. Retain ARIA, full-resolution screenshots, observations, actual dependency facts, and unassessed engines under the owner's Scratch.
 
-Return removed/reduced rows with location, previous effect, exact change, deciding branch, authorization, and evidence. Include a kept section naming the useful motion and documented decisions preserved, plus retained-but-flawed motion left for another task. Name obsolete code removed, dependencies inspected, any proposed uninstall awaiting approval, actual checks, and remaining uncertainty. Do not inflate source inspection into a claim of observed behavior.
+Return removed/reduced rows with location, previous effect, exact change, deciding branch, authorization, and evidence. State when there are no such rows. Include a kept section naming the useful motion and documented decisions preserved, plus retained-but-flawed motion left for another task. State when nothing qualified to keep. Name obsolete code removed, dependencies inspected, any proposed uninstall awaiting approval, actual checks, and remaining uncertainty. Do not inflate source inspection into a claim of observed behavior.

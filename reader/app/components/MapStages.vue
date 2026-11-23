@@ -35,7 +35,7 @@ const groups = computed(() => {
       <h3 id="map-finished" class="eyebrow">Finished</h3>
       <details v-for="[ticket, stages] in groups.finished" :key="ticket" data-navigation-fold>
         <summary class="py-2 wrap-anywhere" data-map-item>{{ ticket ? `#${ticket}` : 'Ticketless' }} · {{ stages.length }} {{ stages.length === 1 ? 'Stage' : 'Stages' }}</summary>
-        <ul class="grid list-none border-s border-default ps-3"><StageMapItem v-for="st in stages" :key="st.id" :stage="st" /></ul>
+        <ul class="grid list-none border-s border-flow-line ps-3"><StageMapItem v-for="st in stages" :key="st.id" :stage="st" /></ul>
       </details>
     </section>
     <p v-if="!flow!.stages.length" class="quiet">No Stages recorded.</p>

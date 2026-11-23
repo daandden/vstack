@@ -35,15 +35,15 @@ onMounted(() => {
   <ArtifactView v-if="a.type === 'artifact'" :a="a" :runtime="f.runtimes[a.id]" :anchor="anchor" />
   <figure v-else :id="anchor" class="figure attachment grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5" :data-type="a.type" :data-availability="a.availability">
     <FigureCaption :a="a" :anchor="anchor" />
-    <p v-if="a.availability === 'unavailable'" class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-error">Not captured</span> <span v-html="inline(a.reason ?? '')" /></p>
+    <p v-if="a.availability === 'unavailable'" class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-flow-red">Not captured</span> <span v-html="inline(a.reason ?? '')" /></p>
     <div v-else-if="a.availability === 'external'" class="grid gap-1.5">
-      <p class="font-semibold text-muted">How to run it</p>
+      <p class="font-semibold text-flow-subtext">How to run it</p>
       <div class="grid gap-1.5" v-html="prose(a.launch ?? '')" />
       <p v-if="a.url"><a :href="a.url" rel="noreferrer">{{ a.url }}</a></p>
     </div>
-    <img v-else-if="a.type === 'image'" class="rounded bg-accented" :src="src" :alt="a.caption" loading="lazy">
+    <img v-else-if="a.type === 'image'" class="rounded bg-flow-accented" :src="src" :alt="a.caption" loading="lazy">
     <DiagramFigure v-else-if="a.type === 'svg' || a.type === 'mermaid'" :a="a" />
-    <video v-else-if="a.type === 'video'" ref="video" class="rounded bg-accented" :src="src" controls preload="metadata" :aria-label="a.caption" />
-    <p v-else class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><a :href="src" :download="a.name" target="_blank" rel="noopener">{{ a.name }}</a> <span class="text-small text-muted">{{ size(a.size ?? 0) }}</span></p>
+    <video v-else-if="a.type === 'video'" ref="video" class="rounded bg-flow-accented" :src="src" controls preload="metadata" :aria-label="a.caption" />
+    <p v-else class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><a :href="src" :download="a.name" target="_blank" rel="noopener">{{ a.name }}</a> <span class="text-small text-flow-subtext">{{ size(a.size ?? 0) }}</span></p>
   </figure>
 </template>

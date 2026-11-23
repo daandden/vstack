@@ -26,7 +26,7 @@ function source(doc: Document, a: Attachment | undefined, key: string): HTMLDeta
   details.append(add("summary", "Source"));
   if (a) {
     const facts = sourceFacts(a);
-    const meta = add("p", "", "flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted");
+    const meta = add("p", "", "flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext");
     meta.append(add("span", TYPE_LABELS[a.type] ?? a.type, "font-semibold text-flow-teal"), add("span", facts.state));
     if (facts.revision) meta.append(add("span", `Revision ${facts.revision}`));
     if (facts.from) meta.append(add("span", `From ${facts.from}`));
@@ -55,7 +55,7 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
     label.className = "figure-caption grid justify-self-stretch gap-1";
     const previous = media.previousElementSibling;
     const heading = previous && withoutQuestionNumber(previous.textContent ?? "") === title ? previous : doc.createElement("p");
-    heading.className = "figure-title font-heading text-body leading-[1.35] font-[650] text-default text-balance";
+    heading.className = "figure-title font-heading text-body leading-heading [font-weight:var(--font-weight-heading)] text-flow-text text-balance";
     heading.textContent = title;
     label.append(heading);
     if (part === "complete") label.append(source(doc, a, key));
@@ -69,15 +69,15 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
   <template v-for="fig in figures ?? []" :key="fig.id">
     <template v-if="part === 'source'">
       <FigureSource v-if="'attachment' in fig && attachment(fig.attachment)" :id="`${fig.id}-source`" :a="attachment(fig.attachment)!" />
-      <div v-else-if="'html' in fig && withImages(fig.html)" class="grid gap-1.5" v-html="historical(fig)" />
+      <div v-else-if="'html' in fig && withImages(fig.html)" class="grid gap-1" v-html="historical(fig)" />
     </template>
-    <div v-else-if="'text' in fig" :id="displayId(fig.id)" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-elevated px-3 py-2.5" :tabindex="part === 'complete' ? undefined : 0" @keydown="part !== 'complete' && $event.stopPropagation()"><pre>{{ fig.text }}</pre></div>
-    <div v-else-if="'html' in fig" :id="displayId(fig.id)" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-accented [&_video]:rounded [&_video]:bg-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-elevated px-3 py-2.5'" v-html="historical(fig)" />
+    <div v-else-if="'text' in fig" :id="displayId(fig.id)" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 overflow-x-auto rounded-md bg-flow-muted p-2" :tabindex="part === 'complete' ? undefined : 0" @keydown="part !== 'complete' && $event.stopPropagation()"><pre>{{ fig.text }}</pre></div>
+    <div v-else-if="'html' in fig" :id="displayId(fig.id)" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 [&_img]:rounded [&_img]:bg-flow-accented [&_video]:rounded [&_video]:bg-flow-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-flow-muted p-2'" v-html="historical(fig)" />
     <figure v-else :id="displayId(fig.id)" class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">
       <FigureCaption v-if="attachment(fig.attachment)" :a="attachment(fig.attachment)!" :anchor="displayId(fig.id)" :hide-source="part !== 'complete'" />
       <DiagramFigure v-if="attachment(fig.attachment)?.availability === 'captured' && attachment(fig.attachment)!.type !== 'image'" :a="attachment(fig.attachment)!" />
-      <img v-else-if="attachment(fig.attachment)?.availability === 'captured'" class="rounded bg-accented" :src="`assets/${attachment(fig.attachment)!.file}`" :alt="attachment(fig.attachment)!.caption">
-      <p v-else class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-error">Figure unavailable</span> <span v-html="inline(attachment(fig.attachment)?.reason ?? 'The attachment is missing.')" /></p>
+      <img v-else-if="attachment(fig.attachment)?.availability === 'captured'" class="rounded bg-flow-accented" :src="`assets/${attachment(fig.attachment)!.file}`" :alt="attachment(fig.attachment)!.caption">
+      <p v-else class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-flow-red">Figure unavailable</span> <span v-html="inline(attachment(fig.attachment)?.reason ?? 'The attachment is missing.')" /></p>
     </figure>
   </template>
 </template>

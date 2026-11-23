@@ -41,14 +41,14 @@ const groups = computed(() => {
     <p v-if="!groups.length" class="quiet">No open decisions.</p>
     <section v-for="group in groups" :key="group.stage.id" class="grid gap-1">
       <h4 class="font-semibold" dir="auto">{{ group.name }} <span v-if="group.name !== group.stage.label" class="quiet">{{ group.stage.label }}</span></h4>
-      <ol class="grid list-none divide-y divide-muted rounded-md border border-default bg-muted">
+      <ol class="grid list-none divide-y divide-flow-line rounded-md border border-flow-line bg-flow-muted">
         <li v-for="{ q, lead, status, time, timestamp } in group.decisions" :key="q.id" class="grid gap-1 px-3 py-2">
           <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <a :href="`#${q.id}`" class="font-semibold" dir="auto">{{ q.title }}</a>
-            <span class="quiet" :class="status === 'Open' ? '' : 'font-semibold text-warning'">{{ status }}</span>
+            <span class="quiet" :class="status === 'Open' ? '' : 'font-semibold text-flow-peach'">{{ status }}</span>
             <time v-if="time" :datetime="time" :title="eventTime(time)">{{ readingAge(timestamp, now) }}</time>
           </div>
-          <p v-if="lead" class="text-toned" dir="auto" v-html="inline(lead)" />
+          <p v-if="lead" class="text-flow-toned" dir="auto" v-html="inline(lead)" />
         </li>
       </ol>
     </section>

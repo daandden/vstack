@@ -9,7 +9,7 @@ const facts = computed(() => sourceFacts(a));
   <details class="source disclosure">
     <summary>Source</summary>
     <p class="meta">
-      <span class="kind font-semibold" :class="a.availability === 'unavailable' ? 'text-error' : a.availability === 'external' ? 'text-warning' : 'text-flow-teal'">{{ TYPE_LABELS[a.type] }}</span>
+      <span class="kind font-semibold" :class="a.availability === 'unavailable' ? 'text-flow-red' : a.availability === 'external' ? 'text-flow-peach' : 'text-flow-teal'">{{ TYPE_LABELS[a.type] }}</span>
       <span>{{ facts.state }}</span>
       <span v-if="facts.revision">Revision <code>{{ facts.revision }}</code></span>
       <span v-if="facts.from">From <code>{{ facts.from }}</code></span>

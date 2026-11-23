@@ -3,7 +3,7 @@ import { tab } from "~/composables/navigation";
 </script>
 
 <template>
-  <section id="overview" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default [&>details]:border-bs [&>details]:border-default [&>details>summary]:min-h-9 [&>details>summary]:py-2" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
+  <section id="overview" class="panel grid gap-3 py-entry border-bs border-flow-line [&>details]:border-bs [&>details]:border-flow-line [&>details>summary]:min-h-9 [&>details>summary]:py-2" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
     <h2 id="overview-title">Overview</h2>
     <OpenDecisions />
     <details id="overview:progress" class="open:grid open:gap-2" data-reading-fold>

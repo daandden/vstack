@@ -2,14 +2,14 @@
 
 Use these patterns only for the interaction selected under [SKILL.md](SKILL.md). Values are starting points. Reuse installed dependencies and check their versions before using APIs. Every recipe retains semantic state, keyboard behavior, reduced motion, cancellation, and unmount cleanup through the current task owner.
 
-## Overlap with CSS indexed delays
+## Overlap with CSS per-item delays
 
-For a rare one-shot entrance, give the title and first paragraph the same index, then assign later beats to support. A per-element `--i` and shared step can compute the delay without a class for each item:
+For a rare one-shot entrance, give the title and first paragraph `--delay: 0ms`, then set `--delay: 120ms` on the supporting paragraph and `--delay: 200ms` on the final beat. Put the values on the items. The gaps shrink without needing a class for every item.
 
 ```css
 .entrance > * {
 	animation: enter 0.6s ease both;
-	animation-delay: calc(120ms * var(--i));
+	animation-delay: var(--delay, 0ms);
 }
 @keyframes enter {
 	from { opacity: 0; transform: translateY(10px); }
@@ -25,7 +25,7 @@ Keep resting styles visible. `backwards` holds the first keyframe during a delay
 
 When the installed Motion API supports it, a parent variant can use `delayChildren: stagger(0.06, { ease: "easeOut" })`. The helper's `from` can express center-out or an initiating item's index. Older versions can expose `staggerChildren` instead. Confirm the actual API.
 
-Role variants control distance and duration separately from start delay. A rare lead can rise 12px over 0.5s, support 6px over 0.4s, and decoration only fade over 0.3s. Those marketing values do not replace the shorter product budgets. Cap long-list delays around the first six items, keeping the total product group near 300ms. Remove movement and delay under reduced motion.
+Role variants control distance and duration separately from start delay. A rare lead can rise 12px over 0.5s, support 6px over 0.4s, and decoration only fade over 0.3s. Use the [stagger timing rules](SKILL.md#set-timing-by-role-and-event) for product groups and long lists. Remove movement and delay under reduced motion.
 
 ## Together on item removal
 
@@ -33,11 +33,13 @@ In a compatible Motion list, use `AnimatePresence mode="popLayout" initial={fals
 
 Without a library, read the item's current offset and size before removal. Retain the exit as absolutely positioned in a positioned parent and let siblings reflow, or use the project's existing FLIP mechanism. Preserve focus transfer and prevent an exiting control from remaining unintentionally interactive. Remove the retained node after completion and on cancellation or unmount.
 
+In compatible Motion versions, the default `sync` allows enter and exit together without managing layout overlap. `wait` delays the next view until its predecessor exits. `popLayout` takes the exiting item out of flow so siblings can reflow while it exits. Choose the mode by the layout and sequencing the interaction needs.
+
 ## Together in a resizing container
 
 Measure the new content using the project's existing measurement mechanism. Compare its height with the previous committed measurement. A fade duration in seconds can use `min(max(abs(newHeight - oldHeight) / 500, 0.15), 0.27)`. Keep measurement bookkeeping out of render-time mutation. Match the container's timing family, with a lighter content curve where needed.
 
-A compatible Motion implementation can crossfade stable keyed children in `AnimatePresence mode="popLayout" initial={false}` while animating the measured container height. Use the actual framework's lifecycle and cancel stale completion handlers. Include the surrounding drawer's timing when the container is one part of it. Height animation is a measured layout trade-off, not proof of compositor playback.
+A compatible Motion implementation can crossfade stable keyed children in `AnimatePresence` while animating the measured container height. Use `popLayout` only when the exit must leave document flow. Use the actual framework's lifecycle and cancel stale completion handlers. Include the surrounding drawer's timing when the container is one part of it. Height animation is a measured layout trade-off, not proof of compositor playback.
 
 ## Direction-aware steps
 

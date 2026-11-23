@@ -7,7 +7,7 @@ description: "Use when diagnosing web animation stutter, dropped frames, renderi
 
 Use this reference inside the current diagnosis or implementation task. The existing vstack owner retains probes, edits, review, verification, and evidence. Report findings without applying fixes unless the task authorizes them. This Utility skill creates no executor or separate animation plan.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/animation-performance). The [MIT notice](LICENSE) ships here. For frequency, purpose, easing, interruption, and reduced motion, read skill://animate.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/animation-performance). The [MIT notice](LICENSE) ships here. For frequency, purpose, easing, interruption, and reduced motion, read skill://animate.
 
 ## Measure the symptom first
 
@@ -42,7 +42,9 @@ Name a falsifiable cause before changing code. If the cause is unclear, follow t
 
 Layout determines geometry, paint draws pixels, and compositing combines layers. Transform and opacity are good initial choices because they can avoid layout and paint. They do not guarantee a promoted layer or smooth output. A blocked JavaScript frame loop can still stutter while writing only transform.
 
-Other properties depend on engine, value, element, and workload. Filter, clip-path, and background-color may have accelerated paths in some browsers. Test the actual scenario. `box-shadow`, border-radius, and text color often require paint. Height and width can require layout, but a small disclosure can still meet its frame budget. Scaling is not equivalent when text must retain size or adjacent content must reflow. Replacing display with opacity alone leaves hidden controls focusable unless the lifecycle handles them.
+Other properties depend on engine, value, element, and workload. Filter, clip-path, and background-color may have accelerated paths in some browsers. Test the actual scenario. `box-shadow`, border-radius, and text color often require paint. Height and width can require layout, but a small disclosure can still meet its frame budget. Scaling is not equivalent when text must retain size or adjacent content must reflow.
+
+Opacity alone leaves controls focusable. Use the component's semantic close and focus restoration rather than making opacity the open state. At exit completion, unmount the closed node or hide it so it cannot receive focus or appear in the accessibility tree. Cancel pending cleanup on reopen.
 
 For a shadow, compare a retained shadow faded by opacity or a supported drop-shadow filter against the original, including visual fidelity and measured cost. A filter is not universally cheaper. Keep blur and layer area small. The upstream's under-20px blur advice is a starting point, not an engine-independent threshold.
 

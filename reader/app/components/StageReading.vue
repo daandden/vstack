@@ -40,14 +40,14 @@ const sections = computed(() => {
 
 <template>
   <template v-for="part in sections" :key="part.id">
-    <section v-if="part.type === 'round'" :aria-labelledby="`${part.id}-title`" class="entry grid pbs-[var(--entry-space)] [&+.entry]:border-bs [&+.entry]:border-muted">
+    <section v-if="part.type === 'round'" :aria-labelledby="`${part.id}-title`" class="entry grid pbs-entry [&+.entry]:border-bs [&+.entry]:border-flow-line">
       <RoundHeader :round="part.round" :numbers="part.numbers" />
       <ReadingEntry v-for="b in part.blocks" :key="b.id" :block="b" :position="b.position" />
     </section>
-    <details v-else-if="part.type === 'assumed'" :id="`${part.id}-batch`" class="entry py-1 [&+.entry]:border-bs [&+.entry]:border-muted" data-reading-fold data-stop>
+    <details v-else-if="part.type === 'assumed'" :id="`${part.id}-batch`" class="entry py-1 [&+.entry]:border-bs [&+.entry]:border-flow-line" data-reading-fold data-stop>
       <summary class="min-h-8 py-1 [overflow-wrap:anywhere]">
-        <span class="text-default">{{ part.blocks.length }} {{ part.blocks.length === 1 ? "decision" : "decisions" }} the agent made</span>
-        <span class="text-small font-normal text-muted"> · To reopen one, name it in a picker note.</span>
+        <span class="text-flow-text">{{ part.blocks.length }} {{ part.blocks.length === 1 ? "decision" : "decisions" }} the agent made</span>
+        <span class="text-small font-normal text-flow-subtext"> · To reopen one, name it in a picker note.</span>
       </summary>
       <ReadingEntry v-for="b in part.blocks" :key="b.id" :block="b" :position="b.position" />
     </details>

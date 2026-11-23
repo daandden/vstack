@@ -20,15 +20,15 @@ const earlier = computed(() => [...props.r.history].reverse());
 </script>
 
 <template>
-  <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2.5" :class="historical ? 'border-s-2 border-default ps-3' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
+  <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2" :class="historical ? 'border-s-2 border-flow-border ps-2' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
     <span v-if="r.review && !historical" :id="`${r.stage}-review`" />
-    <div ref="content" class="grid min-w-0 gap-2.5">
+    <div ref="content" class="grid min-w-0 gap-2">
     <CorrectionNotice :notice="r" />
     <header class="grid gap-1">
       <h2 :id="`${r.anchor}-title`" v-html="inline(r.title)" />
-      <p v-if="r.summary" class="text-toned" v-html="inline(r.summary)" />
-      <p class="text-small text-muted">Revision {{ r.revision }}<template v-if="r.edit !== undefined"> · Edit {{ r.edit }}</template><template v-if="r.captured">, <time :datetime="r.captured">{{ formatTime(r.captured) }}</time></template><span v-html="canonical" /></p>
-      <p v-if="r.questions.length" class="text-small text-muted">Asked in <template v-for="(id, i) in r.questions" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">{{ askLabel(f, id) }}<template v-if="f.question.get(id)?.stage !== r.stage"> in {{ f.stage.get(f.question.get(id)!.stage)?.label }}</template></a></template></p>
+      <p v-if="r.summary" class="text-flow-toned" v-html="inline(r.summary)" />
+      <p class="text-small text-flow-subtext">Revision {{ r.revision }}<template v-if="r.edit !== undefined"> · Edit {{ r.edit }}</template><template v-if="r.captured">, <time :datetime="r.captured">{{ formatTime(r.captured) }}</time></template><span v-html="canonical" /></p>
+      <p v-if="r.questions.length" class="text-small text-flow-subtext">Asked in <template v-for="(id, i) in r.questions" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">{{ askLabel(f, id) }}<template v-if="f.question.get(id)?.stage !== r.stage"> in {{ f.stage.get(f.question.get(id)!.stage)?.label }}</template></a></template></p>
     </header>
     <ReviewSummary v-if="r.review" :rows="r.review" />
     <DocumentBody v-if="r.doc" :r="r" :doc="r.doc" :historical="historical" />
@@ -38,14 +38,14 @@ const earlier = computed(() => [...props.r.history].reverse());
     <MetricsBody v-else-if="r.metrics" :m="r.metrics" />
     <QuizBody v-else-if="r.quiz" :r="r" />
     <ResultEntries v-else :r="r" />
-    <div v-if="listed.length" class="grid gap-2.5">
-      <p class="font-semibold text-muted">Attachments</p>
+    <div v-if="listed.length" class="grid gap-2">
+      <p class="font-semibold text-flow-subtext">Attachments</p>
       <AttachmentFigure v-for="a in listed" :key="a.id" :a="a" :anchor="`${r.anchor}-${a.id}`" />
     </div>
     </div>
     <ResultChanges v-if="!historical && r.history.length" :r="r" />
     <ResultComments :r="r" :content="content" />
-    <details v-if="r.history.length" :id="`${r.anchor}-history`" class="text-small open:grid open:gap-4 [&>:not(summary)]:text-body">
+    <details v-if="r.history.length" :id="`${r.anchor}-history`" class="text-small open:grid open:gap-2 [&>:not(summary)]:text-body">
       <summary>Earlier revisions ({{ r.history.length }})</summary>
       <ResultBlock v-for="h in earlier" :key="h.anchor" :r="h" historical />
     </details>

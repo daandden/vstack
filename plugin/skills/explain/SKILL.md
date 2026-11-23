@@ -16,11 +16,11 @@ Check enrollment through `skill://flow-page`'s "Stage entry/exit line" before an
 
 ## Step 2. Let how and why investigate
 
-For a subsystem, run both. A small change can need just one. Keep why narrow unless the reasons are the question. Put the narrowing in its brief so its coverage map records the skipped categories. Do not request a Preserve / Change / Avoid / Risk tail for an explanation.
+For a subsystem, run both. A small change can need just one.
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per skill (how, why). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: run `skill://how` or `skill://why` on the scoped target and return its output unedited with citations and confidence language, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report the explanation as not written, because it has no how or why findings.
+Fan-out (skill://vstack-fan-out): parts: one per skill (how, why). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: run `skill://how` or `skill://why` on the target and return its output unedited with citations, inference labels, and any figure points, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report the explanation as not written, because it has no how or why findings.
 
 Wait for both results before blending them. For a single selected skill, read and run it yourself.
 
@@ -28,7 +28,7 @@ Wait for both results before blending them. For a single selected skill, read an
 
 Start with a plain definition and tie it to this code. Then explain the mechanism, deeper reasons, and edge cases. Use cited findings instead of repeating the investigation.
 Give the smallest complete answer first. Describe what happens as the person uses the thing when that makes the flow clear. Function lists are reference, not an explanation.
-Reword freely, except for why's confidence language. Keep its hedges and separate evidence from inference.
+Reword for clarity. Keep cited evidence, labeled inferences, and gaps distinct.
 
 ## Step 4. Keep it conversational
 
@@ -36,7 +36,7 @@ No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natu
 
 ## Step 5. Build the picture on one page
 
-In a Flow, publish the explanation as a Document Result through `flow-page submit`. Use headed `sections` with prose, lists, code with source locations, and numbered citations. Keep evidence and why's confidence language beside the claims. Follow-up ad-hoc answers in this Flow are Documents too, not separate report pages. Revise the same explanation with `revises` when correcting or extending it during this run.
+In a Flow, publish the explanation as a Document Result through `flow-page submit`. Use headed `sections` with prose, lists, code with source locations, and numbered citations. Keep citations and inference labels beside the claims. Follow-up ad-hoc answers in this Flow are Documents too, not separate report pages. Revise the same explanation with `revises` when correcting or extending it during this run.
 
 Draw every figure through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. Use this run's Scratch entry and a unique basename per figure. In a Flow, capture each source as a `mermaid` attachment and place `figure` blocks in reading order. The reader draws them with Pele. In chat, include the rendered figures with the explanation. Keep an unavailable figure's reason visible instead of substituting a drawing.
 

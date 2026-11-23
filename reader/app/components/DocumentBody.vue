@@ -3,6 +3,7 @@ import { highlighter, markTrailing } from "#flow/code.ts";
 import type { DocView } from "#flow/model.ts";
 import type { Cites } from "~/utils/format";
 import type { ResultView } from "~/utils/flow";
+import Badge from "./ui/Badge.vue";
 
 const props = defineProps<{ r: ResultView; doc: DocView; historical: boolean }>();
 const cites = computed<Cites>(() => new Map(props.doc.citations.map((c) => [c.ref, { anchor: c.anchor, n: c.n }])));
@@ -16,19 +17,24 @@ const stop = computed(() => (props.historical ? undefined : ""));
 </script>
 
 <template>
-  <div class="grid gap-2.5 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-dimmed">
-    <section v-for="sec in doc.sections" :id="sec.anchor" :key="sec.anchor" class="doc-section grid gap-2.5 target:bg-accented" :aria-labelledby="`${sec.anchor}-title`" :data-stop="stop">
-      <h3 :id="`${sec.anchor}-title`" class="text-secondary" v-html="inline(sec.heading)" />
+  <div class="grid gap-2 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-flow-dimmed">
+    <section v-for="sec in doc.sections" :id="sec.anchor" :key="sec.anchor" class="doc-section grid gap-2 target:bg-flow-accented" :aria-labelledby="`${sec.anchor}-title`" :data-stop="stop">
+      <h3 :id="`${sec.anchor}-title`" v-html="inline(sec.heading)" />
       <template v-for="(b, i) in sec.blocks" :key="i">
         <div v-if="'prose' in b" class="grid gap-1.5" v-html="prose(b.prose, cites)" />
-        <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid gap-0.5 ps-5 marker:text-dimmed" :class="b.ordered ? 'list-decimal' : 'list-disc'">
+        <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid gap-0.5 ps-5 marker:text-flow-dimmed" :class="b.ordered ? 'list-decimal' : 'list-disc'">
           <li v-for="(t, j) in b.list" :key="j" v-html="inline(t, cites)" />
         </component>
-        <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="list-none ps-3">
-          <li v-for="(step, j) in b.steps" :key="j" class="relative grid gap-1.5 border-s border-flow-line ps-5 pbe-4 last:border-s-transparent last:pbe-0">
-            <UBadge color="primary" variant="soft" class="absolute -inset-s-3 inset-bs-0 flex size-6 justify-center rounded-full p-0 tabular-nums">{{ j + 1 }}</UBadge>
-            <h4 class="font-semibold" v-html="inline(step.title, cites)" />
-            <div class="grid gap-1.5" v-html="prose(step.text, cites)" />
+        <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="grid list-none grid-cols-[auto_minmax(0,1fr)] gap-x-2">
+          <li v-for="(step, j) in b.steps" :key="j" class="procedure-step col-span-2 grid">
+            <div class="flex flex-col items-center">
+              <Badge class="min-h-5 min-w-5 px-1 tabular-nums">{{ j + 1 }}</Badge>
+              <span v-if="j < b.steps.length - 1" class="w-px flex-1 bg-flow-line" aria-hidden="true" />
+            </div>
+            <div class="grid gap-1">
+              <h4 class="font-semibold" v-html="inline(step.title, cites)" />
+              <div class="grid gap-1" v-html="prose(step.text, cites)" />
+            </div>
           </li>
         </ol>
         <figure v-else-if="'code' in b && b.language === 'mermaid'" class="figure grid grid-cols-[minmax(0,1fr)] gap-1.5 justify-items-start">
@@ -46,12 +52,12 @@ const stop = computed(() => (props.historical ? undefined : ""));
       </template>
     </section>
     <section v-if="doc.limitations.length" :id="doc.limitationsAnchor" class="grid gap-1.5" :data-stop="stop">
-      <p class="font-semibold text-warning">Limitations</p>
-      <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><li v-for="(l, i) in doc.limitations" :key="i" v-html="inline(l)" /></ul>
+      <p class="font-semibold">Limitations</p>
+      <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><li v-for="(l, i) in doc.limitations" :key="i" v-html="inline(l)" /></ul>
     </section>
     <section v-if="doc.citations.length" :id="doc.citationsAnchor" class="grid gap-1.5" aria-label="Citations" :data-stop="stop">
-      <p class="font-semibold text-[var(--pink)]">Citations</p>
-      <ol class="grid list-decimal gap-0.5 ps-5 marker:text-dimmed">
+      <p class="font-semibold">Citations</p>
+      <ol class="grid list-decimal gap-0.5 ps-5 marker:text-flow-dimmed">
         <li v-for="c in doc.citations" :id="c.anchor" :key="c.anchor">
           <span v-html="inline(c.text)" />
           <a v-for="s in c.cited_in" :key="s" class="text-small font-semibold tabular-nums no-underline" :href="`#${s}`"> Cited in <span v-html="inline(heading(s))" /></a>
@@ -60,7 +66,17 @@ const stop = computed(() => (props.historical ? undefined : ""));
     </section>
     <details v-if="doc.sources.length" :id="doc.sourcesAnchor" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
       <summary>Sources ({{ doc.sources.length }})</summary>
-      <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><li v-for="(x, i) in doc.sourceTexts" :key="i" v-html="inline(x)" /></ul>
+      <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><li v-for="(x, i) in doc.sourceTexts" :key="i" v-html="inline(x)" /></ul>
     </details>
   </div>
 </template>
+
+<style scoped>
+.procedure-step {
+  grid-template-columns: subgrid;
+}
+
+.procedure-step:not(:last-child) > :last-child {
+  padding-block-end: var(--spacing-2);
+}
+</style>

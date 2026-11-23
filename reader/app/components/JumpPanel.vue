@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import Button from "~/components/ui/Button.vue";
 import { current, jumpOpen, nextReadingIndex, shortcutEligible, tab } from "~/composables/navigation";
 import { useReadingDialog, focusReadingItem } from "~/composables/reading-dialog";
 import { useReaderState } from "~/composables/reader";
 import { blockLabel, foldedQuestionOutcome, questionHasConcern, stageWorkName } from "~/utils/flow";
+import { inlineLinkLabel } from "~/utils/format";
 
 const { flow } = useReaderState();
 const f = computed(() => flow.value!);
@@ -61,19 +63,19 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="m-auto [inline-size:min(40rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-default bg-muted p-0 text-default open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)]" aria-labelledby="jump-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (jumpOpen = false)">
+  <dialog ref="dialog" class="m-auto [inline-size:min(40rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-flow-line bg-flow-muted p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--color-base)_70%,transparent)]" aria-labelledby="jump-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (jumpOpen = false)">
     <header class="flex flex-none items-center justify-between gap-3 border-be border-flow-line px-4 py-2">
       <div class="min-w-0">
         <h2 id="jump-title">Jump</h2>
         <p class="quiet truncate" :title="label">{{ label }}</p>
       </div>
-      <UButton color="neutral" variant="outline" class="min-h-11" @click="jumpOpen = false">Close</UButton>
+      <Button @click="jumpOpen = false">Close</Button>
     </header>
     <div class="min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable] px-4 py-3">
       <ul v-if="entries.length" class="grid list-none gap-1">
         <li v-for="entry in entries" :key="entry.id">
-          <a :href="`#${entry.id}`" :aria-current="entry.id === at ? 'location' : undefined" class="grid gap-x-3 sm:grid-cols-[1fr_auto] rounded px-2 py-2 wrap-anywhere no-underline text-toned aria-[current]:bg-accented aria-[current]:text-primary focus-visible:-outline-offset-2">
-            <span v-html="inline(entry.label)" /><span v-if="entry.state" class="quiet">{{ entry.state }}</span>
+          <a :href="`#${entry.id}`" :aria-current="entry.id === at ? 'location' : undefined" class="grid gap-x-3 sm:grid-cols-[1fr_auto] reader-control items-center py-2 wrap-anywhere no-underline text-flow-toned aria-[current]:bg-flow-accented aria-[current]:text-flow-blue focus-visible:-outline-offset-2">
+            <span v-html="inlineLinkLabel(entry.label)" /><span v-if="entry.state" class="quiet">{{ entry.state }}</span>
           </a>
         </li>
       </ul>

@@ -16,12 +16,17 @@ export default defineNuxtConfig({
   buildDir: fileURLToPath(new URL("./.nuxt", import.meta.url)),
   // Fragment navigation belongs to the reader. A delayed router commit can overwrite the next keyboard selection.
   experimental: { appManifest: false, navigationRepaint: false },
-  modules: ["@nuxt/ui", "@vueuse/nuxt"],
-  ui: { theme: { transitions: false }, experimental: { componentDetection: true } },
-  fonts: { provider: "local" },
-  icon: { provider: "none", serverBundle: false, fallbackToApi: false, clientBundle: { scan: true } },
-  colorMode: { preference: "system", fallback: "light", classSuffix: "", dataValue: "theme", storageKey: "flow-reader:theme" },
+  modules: ["@unocss/nuxt", "@nuxtjs/color-mode", "@vueuse/nuxt"],
+  unocss: {
+    configFile: fileURLToPath(new URL("./uno.config.ts", import.meta.url)),
+    wind3: false,
+    components: false,
+    disableNuxtInlineStyle: false,
+  },
+  colorMode: { preference: "system", fallback: "light", classSuffix: "", dataValue: "theme", storageKey: "flow-reader:theme", disableTransition: true },
   css: ["~/assets/main.css"],
+  // Bun resolves omptype's TypeScript export. Bundle it before Nitro's Rollup pass.
+  build: { transpile: ["@oh-my-pi/omptype", "reka-ui"] },
   alias: {
     "#flow": join(sourceRoot, "plugin/skills/flow-page/scripts"),
     "#figures": join(sourceRoot, "plugin/skills/vstack-figures/scripts"),
@@ -61,6 +66,7 @@ export default defineNuxtConfig({
   },
   app: {
     buildAssetsDir: "/_flow-reader/",
+    rootAttrs: { class: "isolate" },
     head: {
       htmlAttrs: { lang: "en" },
       title: "Flow",

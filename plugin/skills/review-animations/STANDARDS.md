@@ -32,10 +32,11 @@ Built-in easings can be too weak for a deliberate effect. Their presence alone d
 | Press feedback | 100–160ms |
 | Tooltip or small popover | 125–200ms |
 | Dropdown or select | 150–250ms |
-| Modal or drawer | 200–500ms, justified by size and distance |
+| Modal, drawer, or sheet | 200–500ms, justified by size and distance |
+| Toast | Match the component and interruption needs. Sonner's 400ms with built-in `ease` is an example, not a default. |
 | Explanatory marketing motion | Can be longer when it serves comprehension |
 
-Keep ordinary UI animation below 300ms by default. The drawer range is a qualified exception, not a contradiction to resolve by blocking every longer drawer. Once a tooltip is open, adjacent tooltips should skip the first delay and animation. A faster spinner can change perceived wait, not actual completion time. Keep pending state honest.
+Keep ordinary UI animation below 300ms by default. Apply the relevant component budget before flagging a longer effect. Once a tooltip is open, adjacent tooltips should skip the first delay and animation. A faster spinner can change perceived wait, not actual completion time. Keep pending state honest.
 
 ## Physicality
 
@@ -75,8 +76,6 @@ For drag:
 
 Transform and opacity are preferred starting points because they can avoid layout and paint. Compositing depends on the browser, effect, layer state, and surrounding work. Animated width, height, padding, margin, and positional properties commonly cause layout or paint. Establish the measured cost and user impact in this context before blocking them for performance.
 
-The broad upstream GPU-only rule conflicts with its own clip-path, blur, and list-height examples. Resolve that disagreement through browser support and observed behavior, not by deleting the examples or prohibiting every other property.
-
 - `clip-path: inset(...)` can reveal content, fill a hold overlay, clip an active tab copy, or drive a comparison slider. Observe interpolation, endpoints, reversal, and reduced motion in the target engine. Browser support alone does not prove off-main-thread execution.
 - WAAPI can control browser-native effects without a library. For example:
 
@@ -96,7 +95,7 @@ The broad upstream GPU-only rule conflicts with its own clip-path, blur, and lis
 
 ## Stagger, accessibility, and cohesion
 
-A group entrance can use 30–80ms offsets. Longer delays feel slow. Stagger is decorative and must not gate interaction. Omit it under reduced motion and on high-frequency or keyboard paths. An all-at-once entrance is not automatically a defect.
+An occasional group entrance can use 30–80ms offsets. Read skill://choreograph to assess non-uniform delays and the total group duration. Stagger is decorative and must not gate interaction. Omit it under reduced motion and on high-frequency or keyboard paths. An all-at-once entrance is not automatically a defect.
 
 Under `prefers-reduced-motion: reduce`, remove movement, scaling, positional changes, and decorative stagger. A brief opacity or color change can aid comprehension, but an instant change is valid. A pure fade is not a physicality failure in this branch. Guard hover motion with `@media (hover: hover) and (pointer: fine)` so touch does not acquire false hover effects. Preserve semantic controls, focus, accessible names, cancellation, and status feedback.
 

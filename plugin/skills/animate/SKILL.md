@@ -7,7 +7,7 @@ description: "Use when building web animations, choosing purposeful motion, or d
 
 Apply this knowledge inside the frontend task already in progress. The running vstack skill and its workers own implementation, planning, review, verification, and evidence. Keep the existing stack and scope. This Utility skill starts no separate flow or animation-plan file.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/animate). The [MIT notice](LICENSE) ships here.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/animate). The [MIT notice](LICENSE) ships here.
 
 ## Decide in this order
 

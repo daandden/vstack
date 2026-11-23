@@ -13,8 +13,8 @@ const READY = {
   ],
 };
 const trigger = (pane: string, age: string) => `${HOME}/.vstack/clean-popup/${pane}/${age}`;
-const handled = (path: string): Exec => ({ stdout: "", stderr: `tern open: ${path} cannot open in a file block\n`, code: 1, killed: false });
 const ok = (value: unknown): Exec => ({ stdout: JSON.stringify(value), stderr: "", code: 0, killed: false });
+const handled = (_path: string): Exec => ok({ blocks: [], discarded: false });
 
 const saved = { ...process.env };
 beforeEach(() => {
@@ -34,7 +34,7 @@ function host(options: { plugins?: Exec; open?: (path: string) => Exec; hasUI?: 
     hasUI: options.hasUI ?? true,
     exec: async (_command, args) => {
       if (args[0] === "plugin") return options.plugins ?? ok(READY);
-      if (args[0] === "open") return (options.open ?? handled)(args[1]!);
+      if (args[0] === "open" && args[1] === "--json") return (options.open ?? handled)(args[2]!);
       throw new Error(`unexpected Tern call ${args.join(" ")}`);
     },
   });
@@ -46,7 +46,7 @@ test("inside Tern with the plugin ready, the Command opens the popup over its pa
   await h.callCommand("vstack-clean");
   expect(h.execCalls).toEqual([
     { command: TERN, args: ["plugin", "list", "--json"] },
-    { command: TERN, args: ["open", trigger("7", "15d")] },
+    { command: TERN, args: ["open", "--json", trigger("7", "15d")] },
   ]);
   expect(h.uiCalls.filter(call => call.method === "select")).toEqual([]);
   expect(notes(h).every(note => note.level !== "error")).toBe(true);
@@ -56,7 +56,7 @@ test("inside Tern with the plugin ready, the Command opens the popup over its pa
 test("an age argument travels to the popup", async () => {
   const h = host();
   await h.callCommand("vstack-clean", " 30d ");
-  expect(h.execCalls.at(-1)).toEqual({ command: TERN, args: ["open", trigger("7", "30d")] });
+  expect(h.execCalls.at(-1)).toEqual({ command: TERN, args: ["open", "--json", trigger("7", "30d")] });
 });
 
 test("a TERN_EXE that no longer exists falls back to tern on PATH", async () => {
@@ -102,9 +102,9 @@ test("a plugin list that fails is reported and no open is tried", async () => {
 });
 
 test.each([
-  ["an unclaimed open (exit 0)", (_path: string): Exec => ({ stdout: "", stderr: "", code: 0, killed: false })],
+  ["an unclaimed open that opened a file block", (_path: string): Exec => ok({ blocks: [6481105649732], discarded: false })],
   ["another tern open error", (_path: string): Exec => ({ stdout: "", stderr: "tern open: no window\n", code: 1, killed: false })],
-  ["a crash", (path: string): Exec => ({ ...handled(path), code: 2 })],
+  ["a crash", (_path: string): Exec => ({ stdout: "", stderr: "", code: 2, killed: false })],
 ])("%s after a ready preflight is reported as a launch failure", async (_case, open) => {
   const h = host({ open });
   await h.callCommand("vstack-clean");

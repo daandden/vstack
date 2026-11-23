@@ -101,12 +101,12 @@ const lines = computed(() => {
 </script>
 
 <template>
-  <div class="@container grid gap-2.5 wrap-anywhere">
+  <div class="question-body grid gap-2.5 wrap-anywhere">
     <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
     <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
       <h2 class="wrap-anywhere text-[1.0625rem] text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
       <section aria-label="Current outcome" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small wrap-anywhere">
-        <p class="w-fit rounded border border-flow-line bg-muted px-2" :class="outcome.cls" v-html="outcome.html" />
+        <p class="w-fit rounded border border-flow-line bg-flow-muted px-2" :class="outcome.cls" v-html="outcome.html" />
         <p v-if="outcome.previous" :class="outcome.previous.cls" v-html="outcome.previous.html" />
         <template v-if="latestAttempt">
           <a :href="`#${latestAttempt.id}`">Latest attempt: {{ askLabel(f, latestAttempt.id) }}{{ askedIn(latestAttempt.id) }}</a>
@@ -145,19 +145,19 @@ const lines = computed(() => {
       <a v-if="q.decided_in" :href="`#${q.decided_in}`">Decision in the summary</a>
     </p>
     <div v-if="!q.brief && q.today?.length" class="labelled">
-      <p class="font-semibold text-[var(--pink)]">Today</p>
+      <p class="font-semibold text-flow-pink">Today</p>
       <ul class="bullets">
         <li v-for="(fact, i) in q.today" :key="i" v-html="inline(fact.text)" />
       </ul>
     </div>
     <div v-if="q.example" class="labelled">
-      <p class="font-semibold text-[var(--pink)]">Example</p>
+      <p class="font-semibold text-flow-pink">Example</p>
       <p class="whitespace-pre-wrap" v-html="inline(q.example)" />
     </div>
-    <div class="grid items-start gap-4 pbs-1.5" :class="visuals.deciding && '@min-[48rem]:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]'">
+    <div class="grid items-start gap-4 pbs-1.5" :class="{ 'with-deciding-figure': visuals.deciding }">
       <ol :id="`${q.id}-choices`" aria-label="Choices" class="options grid list-none gap-4 ps-0">
         <li v-for="o in q.options" :key="o.label" class="option group/option grid gap-1" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
-          <h3 class="font-semibold text-info group-data-picked/option:font-bold group-data-picked/option:text-flow-yellow">
+          <h3 class="font-semibold group-data-[picked]/option:font-bold group-data-[picked]/option:text-flow-yellow">
             <span v-html="inline(o.label)" />
             <span v-if="o.recommended" class="ms-2 font-bold text-flow-yellow" aria-hidden="true">*</span><span v-if="o.recommended" class="sr-only"> (recommended)</span>
             <span v-if="picks.has(o.label)" class="sr-only"> (your answer)</span>
@@ -165,10 +165,10 @@ const lines = computed(() => {
           <FigureList v-if="o.preview" :figures="[o.preview]" />
           <p v-html="inline(o.does)" />
           <ul class="grid list-none ps-0">
-            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-success before:content-['+']" v-html="inline(g)" />
-            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-error before:content-['−']" v-html="inline(c)" />
+            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-green before:content-['+']" v-html="inline(g)" />
+            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-red before:content-['−']" v-html="inline(c)" />
           </ul>
-          <p v-if="o.recommended && !q.brief" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
+          <p v-if="o.recommended && !q.brief" class="text-small text-flow-subtext">Recommended: <span v-html="inline(o.recommended)" /></p>
         </li>
       </ol>
       <QuestionFigure v-if="visuals.deciding" :figure="visuals.deciding" :attachment="visuals.attachment" />
@@ -185,7 +185,7 @@ const lines = computed(() => {
           <p v-else v-html="inline(q.answer.recorded_reading.unresolved)" />
         </details>
       </section>
-      <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2">
+      <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-flow-border px-3 py-2">
         <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
       </div>
     </div>
@@ -220,3 +220,13 @@ const lines = computed(() => {
     <EarlierAttempt v-if="earlier" :id="`${q.id}-earlier-attempt`" :question="earlier" :label="`Q${earlier.q}${askedIn(earlier.id)}`" />
   </div>
 </template>
+
+<style scoped>
+.question-body { container-type: inline-size; }
+
+@container (min-width: 48rem) {
+  .with-deciding-figure {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+  }
+}
+</style>

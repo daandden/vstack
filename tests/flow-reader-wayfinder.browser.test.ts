@@ -35,7 +35,7 @@ afterAll(async () => {
 });
 
 test("the wayfinder Map tab draws blocking links and states, and Enter opens the selected ticket", async () => {
-  const tickets = [ticket("scope", "resolved"), ticket("storage"), ticket("reader", "blocked", ["storage"]), ticket("auth", "claimed"), ticket("billing", "out-of-scope")];
+  const tickets = [ticket("scope", "resolved"), ticket("storage", "frontier", ["scope"]), ticket("reader", "blocked", ["storage", "scope"]), ticket("auth", "claimed"), ticket("billing", "out-of-scope")];
   const opened = publish(tickets);
   const context = await browser.newContext();
   try {
@@ -51,8 +51,40 @@ test("the wayfinder Map tab draws blocking links and states, and Enter opens the
     const pane = page.getByRole("tabpanel", { name: "Wayfinder map" });
     expect(await pane.locator("[data-map-item]").allTextContents()).toEqual(tickets.map((t) => t.title));
     expect(await pane.locator("[data-map-state]").allTextContents()).toEqual(["Resolved", "On the frontier", "Blocked", "Claimed", "Out of scope"]);
-    await pane.locator('path[data-blocker="storage"][data-ticket="reader"]').waitFor();
-    expect(await pane.getByText("Blocked by Decide storage", { exact: true }).isVisible()).toBe(true);
+    const edges = pane.getByRole("img", { name: "Blocking links point from a blocker to the ticket it blocks" }).locator("path[data-blocker]");
+    await edges.last().waitFor({ state: "attached" });
+    expect(await edges.evaluateAll(paths => paths.map(path => [
+      path.getAttribute("data-blocker"), path.getAttribute("data-ticket"),
+    ]))).toEqual([["scope", "storage"], ["storage", "reader"], ["scope", "reader"]]);
+    expect(await pane.getByText("Blocked by Decide storage, Decide scope", { exact: true }).isVisible()).toBe(true);
+    const crossing = await edges.evaluateAll(paths => {
+      const box = (id: string) => document.querySelector(`[data-ticket-node="${id}"]`)!.getBoundingClientRect();
+      const storage = box("storage");
+      return (paths as SVGPathElement[]).map(path => {
+        const length = path.getTotalLength(), matrix = path.getScreenCTM()!;
+        const start = path.getPointAtLength(0).matrixTransform(matrix);
+        const end = path.getPointAtLength(length).matrixTransform(matrix);
+        const from = box(path.dataset.blocker!), to = box(path.dataset.ticket!);
+        let coversStorage = false;
+        if (path.dataset.blocker === "scope" && path.dataset.ticket === "reader") {
+          for (let i = 0; i < length; i += 1) {
+            const point = path.getPointAtLength(i).matrixTransform(matrix);
+            if (point.x > storage.left && point.x < storage.right && point.y > storage.top && point.y < storage.bottom) coversStorage = true;
+          }
+        }
+        return {
+          fromBorder: Math.abs(from.right - start.x) < 1 && start.y > from.top && start.y < from.bottom,
+          toBorder: Math.abs(to.left - end.x) < 1 && end.y > to.top && end.y < to.bottom,
+          coversStorage,
+        };
+      });
+    });
+    expect(crossing).toEqual(tickets.slice(0, 3).map(() => ({ fromBorder: true, toBorder: true, coversStorage: false })));
+    const firstCard = pane.getByRole("list", { name: "Wayfinder tickets" }).getByRole("listitem").first();
+    expect(await firstCard.evaluate(el => {
+      const rect = el.getBoundingClientRect(), css = getComputedStyle(el);
+      return { width: rect.width, minHeight: css.minBlockSize, padding: css.padding, radius: css.borderRadius };
+    })).toEqual({ width: 220, minHeight: "92px", padding: "8px", radius: "4px" });
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Decide scope");
     await page.keyboard.press("j");
     expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Decide storage");

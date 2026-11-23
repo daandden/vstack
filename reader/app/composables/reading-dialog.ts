@@ -25,7 +25,7 @@ export function useReadingDialog(
     if (location.hash !== openingHash) return;
     const focus = document.activeElement;
     if (focus && focus !== document.body && focus !== opener && !dialog.value?.contains(focus)) return;
-    if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
+    if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) opener.focus({ preventScroll: true });
     else document.getElementById(triggerId)?.focus({ preventScroll: true });
   }
   return { closed };

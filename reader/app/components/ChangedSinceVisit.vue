@@ -85,9 +85,9 @@ onMounted(() => {
     <p v-else-if="!previous" class="quiet">First visit in this browser. This revision is remembered locally for your next visit.</p>
     <template v-else>
       <p class="quiet">Since revision {{ previous.revision }}. Viewing state stays in this browser and never answers a question.</p>
-      <ul v-if="changes.length" class="grid gap-1.5 list-disc ps-5 marker:text-dimmed">
+      <ul v-if="changes.length" class="grid gap-1.5 list-disc ps-5 marker:text-flow-dimmed">
         <li v-for="b in changes" :key="b.id">
-          <a :href="`#${destination(b, b.status)}`" class="[overflow-wrap:anywhere]">{{ label(b) }} <span class="text-muted">{{ b.status }} · {{ b.stage ? flow?.stage.get(b.stage)?.label : 'Topic notes' }}<template v-if="b.historical"> · Historical, retained order</template></span></a>
+          <a :href="`#${destination(b, b.status)}`" class="[overflow-wrap:anywhere]">{{ label(b) }} <span class="text-flow-subtext">{{ b.status }} · {{ b.stage ? flow?.stage.get(b.stage)?.label : 'Topic notes' }}<template v-if="b.historical"> · Historical, retained order</template></span></a>
         </li>
       </ul>
       <p v-else class="quiet">No new or revised blocks since your last visit.</p>

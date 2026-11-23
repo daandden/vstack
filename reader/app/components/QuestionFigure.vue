@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import Button from "~/components/ui/Button.vue";
 import { VISUAL_KINDS } from "#flow/fields.ts";
 import type { Attachment, Figure } from "#flow/model.ts";
 import { tab } from "~/composables/navigation";
 
 const { figure, attachment } = defineProps<{ figure: Figure; attachment?: Attachment }>();
 const title = computed(() => attachment ? withoutQuestionNumber(attachment.caption) : figure.kind ? VISUAL_KINDS[figure.kind] : "Historical figure");
-const trigger = useTemplateRef<HTMLButtonElement>("trigger");
+const trigger = useTemplateRef<{ $el: HTMLButtonElement }>("trigger");
 const dialog = useTemplateRef<HTMLDialogElement>("dialog");
 const enlarged = shallowRef(false);
 
@@ -14,7 +15,7 @@ async function open() {
   enlarged.value = true;
   await nextTick();
   if (!dialog.value?.isConnected || dialog.value.open || !enlarged.value) return;
-  trigger.value?.focus({ preventScroll: true });
+  trigger.value?.$el.focus({ preventScroll: true });
   dialog.value.showModal();
 }
 
@@ -33,7 +34,7 @@ function close() {
 function closed() {
   if (dialog.value?.open) return;
   enlarged.value = false;
-  trigger.value?.focus({ preventScroll: true });
+  trigger.value?.$el.focus({ preventScroll: true });
 }
 
 watch(tab, close);
@@ -44,12 +45,12 @@ watch(tab, close);
     <div class="decision-visual grid" @click="openFromMedia">
       <FigureList :figures="[figure]" part="inline" />
     </div>
-    <button ref="trigger" type="button" aria-haspopup="dialog" :aria-label="`Enlarge figure: ${title}`" class="w-fit cursor-pointer rounded border border-default px-2 py-1 text-small text-info hover:bg-elevated active:bg-accented pointer-coarse:min-h-11" @click="open">
+    <Button ref="trigger" aria-haspopup="dialog" :aria-label="`Enlarge figure: ${title}`" class="w-fit text-flow-blue" @click="open">
       Enlarge figure
-    </button>
-    <dialog ref="dialog" :aria-label="title" class="figure-dialog m-auto w-[calc(100%_-_2rem)] max-h-[calc(100%_-_2rem)] max-w-none overflow-clip rounded-lg border border-default bg-default p-0 text-default open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)]" @click.self="close" @close="closed" @keydown.stop>
-      <header class="flex shrink-0 justify-end border-be border-default px-4 py-2">
-        <UButton color="neutral" variant="outline" class="min-h-11" autofocus @click="close">Close figure</UButton>
+    </Button>
+    <dialog ref="dialog" :aria-label="title" class="figure-dialog m-auto w-[calc(100%_-_2rem)] max-h-[calc(100%_-_2rem)] max-w-none overflow-clip rounded-lg border border-flow-line bg-flow-base p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--color-base)_70%,transparent)]" @click.self="close" @close="closed" @keydown.stop>
+      <header class="flex shrink-0 justify-end border-be border-flow-line px-4 py-2">
+        <Button autofocus @click="close">Close figure</Button>
       </header>
       <div v-if="enlarged" class="enlarged-visual grid min-h-0 gap-2 overflow-auto overscroll-contain p-4">
         <FigureList :figures="[figure]" part="enlarged" />

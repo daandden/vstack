@@ -27,6 +27,8 @@ Record one outcome per ID per attempt. Preserve failed attempts and their eviden
 
 A pre-check REFUSED record may have empty `proof_steps` and `evidence` arrays because no app checks ran. It still needs its identifier keys and reason notes under END-STATE step 6b, and it never passes. A passing legacy record without `proof_steps` is malformed, not a compatibility case.
 
+A missing required runtime input, failed declared Restore, or unproven Python environment containment is a pre-check REFUSED. Preserve the refusal reason and any setup evidence. Do not record app checks that did not run.
+
 ## Caller checks
 
 Decode the Verifier's actual completion text into its leading JSON record and separate omp-added isolation suffix as END-STATE step 6b requires. Save both unchanged. Check the actual suffix and every captured patch independently. A string inside JSON, a checker result, or a producer claim cannot prove isolation.

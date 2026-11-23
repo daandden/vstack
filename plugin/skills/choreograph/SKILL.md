@@ -7,7 +7,7 @@ description: "Use when coordinating several web animations, staggered entrances,
 
 Apply this guidance when several elements move in response to the same event. Keep the current task's stack and scope. The existing vstack owner retains implementation, planning, review, verification, and evidence. An audit remains read-only until its owner obtains an explicit selection. This Utility skill starts no executor, plan-status system, or separate review gate.
 
-Adapted from [Emil Kowalski's choreograph](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/choreograph). The [MIT notice](LICENSE) ships here. Read skill://animate for a single effect's purpose, easing, duration, and origin. Use skill://find-animation-opportunities or skill://remove-animations when deciding whether motion belongs at all.
+Adapted from [Emil Kowalski's choreograph](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/choreograph). The [MIT notice](LICENSE) ships here. Read skill://animate for a single effect's purpose, easing, duration, and origin. Use skill://find-animation-opportunities or skill://remove-animations when deciding whether motion belongs at all.
 
 ## Inventory before choosing delays
 
@@ -39,7 +39,7 @@ A normal view swap crossfades. A rich two-dimensional morph can sequence instead
 
 ## Set timing by role and event
 
-For an occasional product group, start with 30–80ms offsets and a total near or below 300ms. Cap a long list's delays after the first handful; item twenty must not wait twenty offsets. A rare marketing entrance can justify 100–150ms offsets and 0.5–0.6s entrances when motion conveys the message.
+For an occasional product group, start with 30–80ms offsets and a total near or below 300ms. Cap delays so the last delay plus playback fits the total budget. Let later items enter together or without motion rather than extending the sequence. A rare marketing entrance can justify 100–150ms offsets and 0.5–0.6s entrances when motion conveys the message.
 
 Avoid a mechanical stagger in which every item has identical delay increments, distance, duration, and easing. Group a title and first paragraph into one beat when appropriate. Let importance set order and reduce distance for support. Direction follows reading direction or the initiating event. The budgets are starting points, not a reason to add motion.
 
@@ -59,7 +59,7 @@ Under reduced motion, collapse the choreography rather than merely shortening it
 
 ## Implement and report through the owner
 
-Use the lightest existing tool. CSS indexed delays suit one-shot entrances. Compatible Motion variants and stagger helpers suit state-driven groups. Imperative orchestration is for multiple events that genuinely require awaited completion, not a simple list entrance. Read [RECIPES.md](RECIPES.md) for these cases. Inspect installed dependencies and consult matching docs before using library APIs; this guidance authorizes no installation.
+Use the lightest existing tool. CSS per-item delays suit one-shot entrances. Compatible Motion variants and stagger helpers suit state-driven groups. Imperative orchestration is for multiple events that genuinely require awaited completion, not a simple list entrance. Read [RECIPES.md](RECIPES.md) for these cases. Inspect installed dependencies and consult matching docs before using library APIs; this guidance authorizes no installation.
 
 Record the timing plan before editing. A table of element, role, start, duration, movement, and relationship can help, but use the current owner's output format. State what stays still and why. Return source locations and the exact moments that still need recording.
 
