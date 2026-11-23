@@ -238,6 +238,14 @@ The helper loads the checkout's plugin and copies the candidate Flow runtime int
 
 Inspect `guard-refusal.json`, `observed-native-submit.json`, `persisted-state.json`, and the lease targets. For Tern inspect `native-pane-identities.json`, the `follow-*.blocks.json` snapshots, `click-destination.blocks.json`, and the lossless WebP captures. Require no surviving process or listener in `summary.json`.
 
+#### Submitted native answers and history
+
+Use a fresh `VERIFY_RUN_DIR` with the same pinned binaries and isolated Tern prerequisites as the stock baseline. Run the controller with `--case native-answers --tern`, without `--omp-tools`.
+
+- Step `flow-page-native-submitted-values`: Click Alpha in the first form and type its exact value in Other in the second. Submit both forms. The first form also takes two checked scopes plus unmatched Other words, and a words-only concern on another question. Compare the actual native results, CLI `show`, and live `content`. The two Alpha answers have the same single pick. Neither the partial label nor the other question's exact label matches. The concern stays open with the words and reading kept apart. Inspect `native-*-result.json`, `native-*-show.json`, and `native-*-recorded-content.json`. `synthetic-matcher-fixtures.json` separately covers duplicate values, an explicit Other marker, and the submission gate. Those fixtures are not native outcomes.
+- Step `flow-page-native-option-note`: Use the isolated Tern controller's clipboard command to paste a fixture PNG into the selected Alpha option's Note. Save the Note and submit the form. The model stub accepts images. Compare the returned Note text and image blocks to the linked Document and the bytes the live Flow serves. Inspect `native-note-editor.webp`, `returned-native-note.*`, and `native-note-attachment.json`. A Submit note, an unpicked-option note, and an input file on disk cannot satisfy this step.
+- Step `flow-page-native-history-reanswer`: After CLI recording, open `/tree`, navigate to the earlier ask result, and submit Beta in the reopened native form. Require the new Beta result in the native session and compare `native-history-show.json` and `native-history-content.json` to the pre-re-answer records. Earlier picks, Other words, readings, Note text, and served attachment bytes remain unchanged. Inspect the selector, active-form, and settled WebP captures. The controlled actions prove transport and preservation, not human consent.
+
 #### Stock native Eval and Ratchet dialogs
 
 Use the same binary pins and disposable launcher as the stock baseline. Run `eval`, `eval-read-error`, and `ratchet` in distinct new run directories. These cases require `--tern` and refuse `--omp-tools`. Run the Python helper through eval:

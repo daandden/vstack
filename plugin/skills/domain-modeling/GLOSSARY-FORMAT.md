@@ -57,4 +57,4 @@ The skill infers which structure applies:
 - If only a root `GLOSSARY.md` exists, single context
 - If neither exists, create a root `GLOSSARY.md` lazily when the first term is resolved
 
-When multiple contexts exist, infer which one the current topic relates to. If unclear, ask the user with `ask` when bound to a Flow, or the existing omp-tools `ask` override outside one, with one option per context. Bound questions follow `skill://flow-page`'s "Every ask in a Flow" contract.
+When multiple contexts exist, infer which one the topic belongs to. If unclear, use omp's native `ask` with one option per context. Bound questions follow `skill://flow-page`'s "Every ask in a Flow" contract.

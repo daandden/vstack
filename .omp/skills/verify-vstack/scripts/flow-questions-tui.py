@@ -25,6 +25,8 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import urlopen
 
+from flow_native_answers import NativeAnswers, initial_questions
+
 PANEL = '[data-role="vstack.flow-panel"]'
 FORM = '[data-role="omp.ask.card"]'
 COMPOSER = '.tn-pane.on:not(.off) .sf-editor'
@@ -376,8 +378,8 @@ def main():
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--omp-tools", help="omp-tools plugin for legacy Verify cases only")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["native", "native-offline", "tui", "timeout", "cancel", "retry",
-                        "offline", "abort", "ratchet", "cancelled", "empty", "later-round", "eval", "eval-read-error"],
+    parser.add_argument("--case", choices=["native", "native-offline", "native-answers", "tui", "timeout", "cancel",
+                        "retry", "offline", "abort", "ratchet", "cancelled", "empty", "later-round", "eval", "eval-read-error"],
                         default="native")
     parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
     parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
@@ -385,7 +387,9 @@ def main():
     parser.add_argument("--session-source", help="Persistent caller session for model and thinking discovery")
     parser.add_argument("--deadline-seconds", type=int, default=1800)
     args = parser.parse_args()
-    native = args.case in ("native", "native-offline")
+    native = args.case in ("native", "native-offline", "native-answers")
+    if args.case == "native-answers" and not args.tern:
+        parser.error("--case native-answers requires an isolated native Tern window")
     specialized = args.case in ("eval", "eval-read-error", "ratchet")
     if (native or specialized) and args.omp_tools:
         parser.error("native cases use stock omp ask; omit --omp-tools")
@@ -569,7 +573,9 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
              "needs": [{"need": "Explain the fixture concern.", "kind": "prose"}],
              "options": [{"label": "Proceed", "does": "Continue.", "gains": ["Progress"], "costs": ["Unresolved concern"]},
                          {"label": "Pause", "does": "Wait.", "gains": ["Review"], "costs": ["Delay"]}]}]}]}
-    if native:
+    if args.case == "native-answers":
+        contribution["items"][1]["questions"] = initial_questions()
+    elif native:
         first, second = contribution["items"][1]["questions"]
         del first["multi"]
         first["title"] = "Which fixture path should the form record?"
@@ -627,6 +633,9 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
     def published_stage(state, opened):
         return next(stage for stage in state["stages"] if stage["id"] == opened["stage"])
 
+    answer_case = (NativeAnswers(out, project, cli, identity, save, asks, published_stage, published_state)
+                   if args.case == "native-answers" else None)
+
     def live_question():
         nonlocal receipt
         receipt = json.loads((out / "publication.json").read_text())
@@ -651,6 +660,9 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         if args.case == "ratchet":
             required_context = ["Ratchet fixture inputs", "Say Alpha", "Fixed local transport fixture",
                                 "The complete input set is one disposable case with id fixture."]
+        elif answer_case:
+            required_context = ["Disposable picker fixture", "Fixture evidence, not a real user decision.",
+                                "Compare Alpha and Beta for this disposable fixture.", "Use Local for multi."]
         else:
             required_context = ["Disposable picker fixture", "Fixture evidence, not a real user decision.",
                                 "Full authored context retained on Flow.", "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]
@@ -784,7 +796,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 elif phase == 2:
                     reply = live_question()
                     phase = 3
-                    if args.case == "tui" or native:
+                    if args.case == "tui" or (native and not answer_case):
                         reply = {"tool": "ask", "args": renamed_ask(receipt)}
                         phase = "guard"
                     elif args.case == "eval":
@@ -799,6 +811,8 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                         raise RuntimeError("Native controller did not observe the Eval guard refusal")
                     reply = eval_ask(fixture_ask(receipt))
                     phase = 3
+                elif answer_case:
+                    reply, phase = answer_case.provider(phase, receipt, done)
                 elif phase == 3:
                     result = asks()
                     assert result, "No dialog tool result"
@@ -968,11 +982,13 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
     models:
       - id: stub-model
         name: Stub Model
-        input: [text]
+        input: {"[text, image]" if answer_case else "[text]"}
         contextWindow: 200000
         maxTokens: 8192
 """)
     config = "startup:\n  setupWizard: false\n  showSplash: false\n"
+    if answer_case:
+        config += "branchSummary:\n  enabled: false\n"
     if args.case == "timeout":
         config += "ask:\n  timeout: 1\n"
     if args.case == "ratchet":
@@ -1431,7 +1447,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         launch_native()
         peer = launch_follow_peer() if owned_window and args.case == "native" else None
         following = None
-        if args.case == "tui" or native:
+        if native and not answer_case or args.case == "tui":
             deadline = time.monotonic() + 30
             while True:
                 read_output(0.1)
@@ -1456,7 +1472,9 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             if peer:
                 following = prepare_following(*peer)
             refusal_observed.set()
-        if native:
+        if answer_case:
+            drive_answer_history = answer_case.drive(ctl, native_click, wait_native, tern_shot)
+        elif native:
             drive_native(following)
         elif args.case == "eval":
             drive_eval_guard()
@@ -1621,13 +1639,17 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         stage = published_stage(state, opened)
         save(out / "persisted-state.json", state)
         later = json.loads((out / "later-publication.json").read_text()) if args.case == "later-round" else None
-        assert len(stage["rounds"]) == (2 if later else 1), state
+        assert len(stage["rounds"]) == (2 if later or answer_case else 1), state
         expected_ids = [q["id"] for q in receipt["ask"]["questions"]]
         if later:
             expected_ids.append(later["ask"]["questions"][0]["id"])
+        if answer_case:
+            expected_ids.append(answer_case.second["refs"]["typed"])
         assert [q["id"] for q in stage["questions"]] == expected_ids, stage
         answers = recorded_answers(stage)
-        if native:
+        if answer_case:
+            assert set(answers) == set(answer_case.expected), answers
+        elif native:
             pick = receipt["refs"]["pick"]
             expected_answer = {"status": "answered", "picks": ["A"]}
             assert set(answers) == {pick} and answers[pick]["response"] == expected_answer, answers
@@ -1685,8 +1707,11 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         calls_by_id = {c["id"]: c for c in ask_calls}
         for index, outcome in enumerate(r for r in result if r["toolName"] == "ask"):
             original = calls_by_id[outcome["toolCallId"]]
-            expected = (renamed_ask(receipt) if (native or args.case == "tui") and index == 0
-                        else fixture_ask(later if later and index == 1 else receipt))
+            if answer_case:
+                expected = fixture_ask(answer_case.second if index == 1 else receipt)
+            else:
+                expected = (renamed_ask(receipt) if (native or args.case == "tui") and index == 0
+                            else fixture_ask(later if later and index == 1 else receipt))
             assert original["arguments"] == expected, "Ask HTML differs from the expected receipt form"
         if args.case == "retry":
             assert result[0].get("isError") and not result[-1].get("isError"), result
@@ -1704,9 +1729,14 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                       "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
         if args.case != "ratchet" and args.case != "eval":
             assertions.append("ordinary ask sends the receipt's ask.html unchanged")
-        if args.case == "tui" or native:
+        if not answer_case and (args.case == "tui" or native):
             assertions.append("the renamed control is refused without opening the picker or Flow panel")
-        if native:
+        if answer_case:
+            drive_answer_history()
+            assertions.append("listed and exact Other values record the same pick; multi and concern words survive CLI and HTTP readback")
+            assertions.append("the selected-option Note and returned image stay linked to the original Flow question")
+            assertions.append("the native /tree re-answer creates a different session answer without changing Flow history")
+        elif native:
             assertions.append("one explicit native Submit records only Alpha through a separate CLI contribution")
             if args.case == "native-offline":
                 assertions.append("the actual unavailable-host error appears while the native form remains usable")

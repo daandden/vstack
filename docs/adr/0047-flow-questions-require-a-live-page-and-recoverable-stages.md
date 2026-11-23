@@ -60,3 +60,5 @@ Keep session and agent authoring identity, binding isolation, full Flow history,
 [ADR 20261111-the-installed-flow-host-replaces-itself-on-update](20261111-the-installed-flow-host-replaces-itself-on-update.md) builds the host ownership above: the installed host replaces itself on update, and every CLI copy writes through the installed code.
 
 [ADR 20261116-scratch-cleanup-moves-to-a-tern-popup](20261116-scratch-cleanup-moves-to-a-tern-popup.md) removes the cleanup Result itself: `/vstack-clean` now writes nothing to a Flow.
+
+[ADR 20261123-flow-records-native-ask-values](20261123-flow-records-native-ask-values.md) allows equal submitted values to count as the same answer when native `ask` does not report input origin. The separate publication, raw-answer, and non-consent rules still apply.
