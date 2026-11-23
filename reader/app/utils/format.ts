@@ -3,10 +3,19 @@ export type Cites = Map<string, { anchor: string; n: number }>;
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-export function inline(s: string, cites?: Cites): string {
-  const out = esc(s)
+function renderInline(s: string, links: "anchor" | "label"): string {
+  return esc(s)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\[([^\]]+)\]\(((?:https?:\/\/|#)[^)\s]+)\)/g, (_, t, u) => `<a href="${u}"${u.startsWith("#") ? "" : ' rel="noreferrer"'}>${t}</a>`);
+    .replace(/\[([^\]]+)\]\(((?:https?:\/\/|#)[^)\s]+)\)/g, (_, t, u) =>
+      links === "label" ? t : `<a href="${u}"${u.startsWith("#") ? "" : ' rel="noreferrer"'}>${t}</a>`);
+}
+
+export function inlineLinkLabel(s: string): string {
+  return renderInline(s, "label");
+}
+
+export function inline(s: string, cites?: Cites): string {
+  const out = renderInline(s, "anchor");
   if (!cites) return out;
   return out.replace(/\[@([a-z0-9][a-z0-9-]*)\]/g, (m, ref) => {
     const c = cites.get(ref);

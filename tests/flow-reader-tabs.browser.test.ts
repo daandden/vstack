@@ -133,7 +133,7 @@ test("Stage tabs show each Stage's own content in first-publication order under 
 test("Jump labels identify Assumed subjects and each published attempt without moving their destinations", async () => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Long decision history"]);
   const subjects = [
-    "Keep `captured evidence`",
+    "Keep [`captured evidence`](https://example.test/evidence)",
     "Preserve Đặng Thị Ngọc Hân's review notes",
     "Retain the deployment configuration for the European production environment",
     "Retain the deployment configuration for the European staging environment",
@@ -157,7 +157,10 @@ test("Jump labels identify Assumed subjects and each published attempt without m
     expect(await jumps(page)).toEqual(expectedIds);
     expect(await shownBlocks(page)).toEqual(expectedIds);
     const row = page.locator(".bar .jump-row");
-    expect(await row.locator(`a[href="#${first.refs["choice-0"]}"]`).innerText()).toBe("Assumed: Keep captured evidence");
+    const firstJump = row.getByRole("link", { name: "Assumed: Keep captured evidence", exact: true });
+    expect(await firstJump.getAttribute("href")).toBe(`#${first.refs["choice-0"]}`);
+    expect(await firstJump.locator("code").innerText({ timeout: 2000 })).toBe("captured evidence");
+    expect(await firstJump.getByRole("link").count()).toBe(0);
     for (let i = 1; i < subjects.length; i++) {
       expect(await row.locator(`a[href="#${first.refs[`choice-${i}`]}"]`).innerText()).toBe(`Assumed: ${subjects[i]}`);
     }
@@ -171,7 +174,7 @@ test("Jump labels identify Assumed subjects and each published attempt without m
       expect(await row.locator("a[aria-current]").getAttribute("href")).toBe(`#${id}`);
       expect(await page.locator(`#${id}`).evaluate((el) => el.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(-1);
     }
-    await row.getByRole("link", { name: "Assumed: Keep captured evidence", exact: true }).click();
+    await firstJump.click();
     expect(await hash(page)).toBe(first.refs["choice-0"]);
     await page.keyboard.press("j");
     expect(await hash(page)).toBe(first.refs["choice-1"]);
@@ -207,6 +210,15 @@ test("with no open question the page opens on Overview", async () => {
     await page.locator(".bar .tabs").waitFor();
     expect(await selected(page)).toBe("overview");
     expect(await page.locator("#overview").isVisible()).toBe(true);
+    const row = page.getByRole("navigation", { name: "In this tab" });
+    for (const name of ["Progress", "Observations", "Stages"]) {
+      expect(await row.getByRole("link", { name, exact: true }).isVisible()).toBe(true);
+    }
+    const stages = row.getByRole("link", { name: "Stages", exact: true });
+    expect(await stages.getAttribute("href", { timeout: 2000 })).toBe("#overview-stages");
+    await stages.click();
+    await stages.and(row.locator('[aria-current="location"]')).waitFor({ timeout: 2000 });
+    expect(await hash(page)).toBe("overview-stages");
   } finally {
     await context.close();
   }
@@ -528,6 +540,55 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     await page.keyboard.press("n");
     expect(await hash(page)).toBe(pending.refs["map-q"]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("Escape returns focus to the Stages Map trigger after keyboard opening", async () => {
+  const a = cli(["open", "--skill", "research", "--title", "Map focus return"]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    const trigger = page.getByRole("button", { name: "Stages m", exact: true });
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    expect(await trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    for (const openWith of ["m", "Enter"] as const) {
+      if (openWith === "Enter") await trigger.focus();
+      await page.keyboard.press(openWith);
+      await map.waitFor();
+      await page.keyboard.press("Escape");
+      await map.waitFor({ state: "hidden" });
+      await trigger.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => done())));
+      expect(await trigger.evaluate((el) => el === document.activeElement)).toBe(true);
+    }
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("a queued Map close does not take focus back from the Overview tab", async () => {
+  const a = cli(["open", "--skill", "research", "--title", "Map focus after dismissal"]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    const nav = page.getByRole("navigation", { name: "Flow tabs", exact: true });
+    const overview = nav.getByRole("link", { name: "Overview", exact: true });
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    await nav.waitFor();
+    expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
+    await page.keyboard.press("m");
+    await map.waitFor();
+    const overviewLink = await overview.elementHandle();
+    await map.evaluate(async (el, link) => {
+      const closed = new Promise<void>((done) => el.addEventListener("close", () => done(), { once: true }));
+      (el as HTMLDialogElement).close();
+      link.focus();
+      await closed;
+    }, overviewLink);
+    expect(await overview.evaluate((el) => el === document.activeElement)).toBe(true);
   } finally {
     await context.close();
   }

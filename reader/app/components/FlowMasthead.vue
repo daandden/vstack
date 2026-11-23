@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useReaderState } from "~/composables/reader";
+import Button from "~/components/ui/Button.vue";
 const { flow } = useReaderState();
 
 const f = computed(() => flow.value!);
@@ -29,8 +30,26 @@ const themes = [
       <span>Revision {{ f.revision }}</span>
     </p>
     <div class="theme flex flex-wrap gap-1 justify-self-start" role="group" aria-label="Color theme">
-      <UButton v-for="t in themes" :key="t.value" :aria-pressed="colorMode.preference === t.value" :ui="{ base: () => 'inline-flex items-center rounded border border-default bg-accented text-toned [padding-block:0.125rem] [padding-inline:0.5rem] text-[length:var(--fs-small)] font-semibold cursor-pointer touch-manipulation active:bg-[var(--surface1)] active:text-secondary aria-pressed:border-primary aria-pressed:text-primary hover:text-secondary motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out' }" @click="colorMode.preference = t.value">{{ t.label }}</UButton>
+      <Button v-for="t in themes" :key="t.value" variant="bare" :aria-pressed="colorMode.preference === t.value" class="theme-button u-rounded-[0.25rem] u-border u-border-flow-border u-bg-flow-accented u-py-0.5 u-px-2 u-text-[length:var(--fs-small)] u-text-[color:var(--subtext1)] u-font-semibold u-cursor-pointer u-touch-manipulation motion-safe:u-transition-[color,background-color] motion-safe:u-duration-[130ms] motion-safe:u-ease-out" @click="colorMode.preference = t.value">{{ t.label }}</Button>
     </div>
     <CopyFeedback />
   </header>
 </template>
+
+<style scoped>
+.theme-button:active {
+  background-color: var(--surface1);
+  color: var(--lavender);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .theme-button:hover {
+    color: var(--lavender);
+  }
+}
+
+.theme-button[aria-pressed="true"] {
+  border-color: var(--mauve);
+  color: var(--mauve);
+}
+</style>

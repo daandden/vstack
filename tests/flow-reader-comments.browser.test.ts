@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "playwright-core";
+import { chromium, type Locator } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
 
 test("readers select typed-table text and manage revision-bound comments across browsers", async () => {
@@ -81,12 +81,30 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(await count.count()).toBe(0);
     expect(await draft.getAttribute("aria-invalid")).not.toBe("true");
     expect(await draft.getAttribute("aria-describedby")).toBeNull();
+    const blockedSave = Promise.withResolvers<void>();
     const failSave = async (route: import("playwright-core").Route) => {
       if (route.request().method() !== "POST") return route.continue();
+      await blockedSave.promise;
       await route.fulfill({ status: 503, json: { error: "The Local Flow host is unavailable." } });
     };
     await page.route("**/comments", failSave);
-    await save.click();
+    try {
+      await save.click();
+      const cancel = comments.getByRole("button", { name: "Cancel", exact: true });
+      const sort = page.getByRole("button", { name: "Sort by Check", exact: true });
+      await cancel.and(comments.locator(":disabled")).waitFor({ timeout: 5000 });
+      const paint = (button: Locator) => button.evaluate(el => {
+        const { padding, fontSize, fontWeight, color, opacity } = getComputedStyle(el);
+        return { padding, fontSize, fontWeight, color, opacity };
+      });
+      const label = { fontSize: "12px", fontWeight: "500", color: "oklch(0.879 0.043 272.3)" };
+      expect({ cancel: await paint(cancel), sort: await paint(sort) }).toEqual({
+        cancel: { ...label, padding: "4px 8px", opacity: "0.75" },
+        sort: { ...label, padding: "6px 10px", opacity: "1" },
+      });
+    } finally {
+      blockedSave.resolve();
+    }
     const failed = comments.getByRole("alert").filter({ hasText: "The Local Flow host is unavailable." });
     await failed.waitFor();
     expect(await draft.inputValue()).toBe(atLimit);

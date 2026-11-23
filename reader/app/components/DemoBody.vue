@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Condition, Demo, DemoLiteral, Effect, Transition } from "#flow/model.ts";
+import Button from "~/components/ui/Button.vue";
 import { useReaderState } from "~/composables/reader";
 const { flow } = useReaderState();
 import type { ResultView } from "~/utils/flow";
 
+const demoControl = "demo-control u-gap-1 u-rounded-[0.25rem] u-border u-border-flow-border u-px-2.5 u-py-1 u-text-[length:var(--fs-body)] u-font-semibold";
 const props = defineProps<{ r: ResultView; demo: Demo }>();
 const id = computed(() => `${props.r.anchor}-demo`);
 const key = computed(() => `flow-page:demo:${flow.value!.flow.id}:${props.r.id}:r${props.r.revision}`);
@@ -84,8 +86,8 @@ function rule(t: Transition): string {
       </dl>
     </div>
     <div class="flex flex-wrap gap-2" role="group" aria-label="Actions">
-      <UButton v-for="a in demo.actions" :key="a.name" type="button" :data-action="a.name" :aria-disabled="!next(a, now)" class="rounded border border-default bg-accented px-2.5 py-1 text-[length:var(--fs-body)] font-semibold text-default ring-0 hover:text-secondary active:bg-[var(--surface1)] active:text-secondary aria-disabled:cursor-not-allowed aria-disabled:border-dashed aria-disabled:text-dimmed aria-disabled:opacity-100" @click="run(a)">{{ a.label }}</UButton>
-      <UButton type="button" class="rounded border border-default bg-transparent px-2.5 py-1 text-[length:var(--fs-body)] font-semibold text-toned ring-0 hover:text-secondary active:bg-[var(--surface1)] active:text-secondary" data-reset @click="reset">Reset</UButton>
+      <Button v-for="a in demo.actions" :key="a.name" variant="bare" :data-action="a.name" :aria-disabled="!next(a, now)" :class="[demoControl, 'u-bg-flow-accented u-text-flow-text']" @click="run(a)">{{ a.label }}</Button>
+      <Button variant="bare" :class="[demoControl, 'u-text-[color:var(--subtext1)]']" data-reset @click="reset">Reset</Button>
     </div>
     <p class="text-small text-muted">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
     <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
@@ -100,3 +102,31 @@ function rule(t: Transition): string {
     </details>
   </div>
 </template>
+
+<style scoped>
+.demo-control {
+  outline-color: color-mix(in oklab, var(--text) 25%, transparent);
+}
+
+.demo-control:focus-visible {
+  outline-width: 3px;
+}
+
+.demo-control:active {
+  background-color: var(--surface1);
+  color: var(--lavender);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .demo-control:hover {
+    color: var(--lavender);
+  }
+}
+
+.demo-control[aria-disabled="true"] {
+  background-color: var(--base);
+  border-style: dashed;
+  color: var(--overlay0);
+  cursor: not-allowed;
+}
+</style>

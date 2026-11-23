@@ -22,11 +22,11 @@ const { as = "button", asChild, variant = "outline" } = defineProps<PrimitivePro
 </template>
 
 <style scoped>
-.reader-button {
+.reader-button:not([data-variant="bare"]) {
   outline-color: color-mix(in oklab, var(--text) 25%, transparent);
 }
 
-.reader-button:focus-visible {
+.reader-button:not([data-variant="bare"]):focus-visible {
   outline-width: 3px;
 }
 
