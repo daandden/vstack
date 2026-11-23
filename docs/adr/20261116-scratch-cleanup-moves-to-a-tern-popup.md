@@ -18,5 +18,5 @@ This amends [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md
 ## Consequences
 
 - Scratch cleanup needs Tern with the `vstack-clean` plugin linked. Without it, the only way to clean up is to run the cleanup script by hand.
-- `tern open` cannot report whether the popup opened. When a plugin handles the open, it exits 1. When the plugin is absent, it exits 0 and opens an empty file pane. So the Command checks the plugin's readiness before the open, accepts only the handled-route exit as expected, and reports any other launch result. The plugin shows an error toast when it cannot open the popup.
+- `tern open` cannot report whether the popup opened through its exit code: it exits 0 whether a plugin handled the open or none claimed it and it opened an empty file pane. `tern open --json` lists the file blocks it opened, none for a handled open. So the Command checks the plugin's readiness before the open, accepts only an open that lists no blocks, and reports any other launch result. The plugin shows an error toast when it cannot open the popup.
 - A closed Flow's page can be deleted 15 days after the Flow closes, and a blocked to-tickets batch's record 15 days after its newest file.
