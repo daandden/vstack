@@ -220,6 +220,26 @@ The stub proves delivery and presentation mechanics, not whether a model follows
 
 ### Flow question panels through real omp and Tern (`flow-questions`)
 
+#### Stock native ask baseline
+
+Use `scripts/flow-questions-tui.py` with `--case native`. Pin `omp` to 19.1.1 and `tern` to 0.9.30 on `PATH`. Run once with `--tern` and once without it, each in a new run directory:
+
+```sh
+	python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
+		--run "$VERIFY_RUN_DIR" --case native --tern
+	jq '{ok,assertions,error,cleanup}' "$VERIFY_RUN_DIR/flow-questions-native/summary.json"
+```
+
+The helper loads the checkout's plugin and copies the candidate Flow runtime into a new HOME outside the real home. The provider listens only on localhost. The Tern case starts its own window and daemon through `tern-verify`. Omit `--omp-tools` and keep the legacy cases below separate.
+
+- Step `flow-page-native-ask`: Require committed question ids and authored context at the live `content` endpoint before the provider delivers the form. A renamed control opens neither the native form nor the Flow panel. The unchanged receipt opens a two-question form with one Flow panel. In Tern, check the composer is present while the form waits. In both renderers, submit only Alpha and require the native tool result before a separate Flow CLI answer. Compare the CLI readback with the live answer. The second question stays open. The scripted pick proves transport, not human consent.
+- Step `flow-page-native-follow`: Use `--case native --tern`. Read the actual omp session paths and pane ids. Opening or selecting a session alone creates no browser pane. Switch between both bound sessions with two existing pages in different tabs. Before opening the already-published form, reset the selected tab's page to Overview and require a Stage target without Picker presence. Require the new form to move only that page. Reset to Overview again and click the real `Flow page` link to reach the same question in the same pane. After explicit Submit, the form, panel, and presence must disappear without moving the page.
+- Step `flow-page-native-offline`: Run `--case native-offline --tern` in another new run directory. After publication, the helper stops the owned host and occupies its port. The native form stays usable and the Flow panel shows the actual `bound.live.error`. The helper requires the same single explicit pick and reads that pick back through the CLI.
+
+Inspect `guard-refusal.json`, `observed-native-submit.json`, `persisted-state.json`, and the lease targets. For Tern inspect `native-pane-identities.json`, the `follow-*.blocks.json` snapshots, `click-destination.blocks.json`, and the lossless WebP captures. Require no surviving process or listener in `summary.json`.
+
+#### Legacy Verify cases
+
 Use `scripts/flow-questions-tui.py --tern`, not RPC `drive.ts`, for visible native proof. It starts a real interactive omp process in its own headless Tern renderer and stubs only the model provider. Both plugins load normally. The ordinary `ask` integration and Ratchet's host dialog stay unchanged. Its Tern control endpoint and config directory are independent of the user's working window.
 
 Preconditions:

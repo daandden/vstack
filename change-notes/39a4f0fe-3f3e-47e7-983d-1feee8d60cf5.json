@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep the Flow page panel and its session target active only while omp's native question form is open. Verify a published receipt and a single listed pick without the retired Picker (#573)."
+  ]
+}

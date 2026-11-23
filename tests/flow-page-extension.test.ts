@@ -562,6 +562,56 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   expect(h.saved).toEqual([]);
 });
 
+test("an ordinary native form owns the Flow panel and presence before tool completion", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Native form", "--skill", "implement", "--session", "native"]);
+  const receipt = await publishQuestions(w, "native", "first", "second");
+  const h = w.host("native");
+  const ui = panelUI(h);
+  let submit!: () => void;
+  h.ctx.ui.formDialog = () => new Promise<void>(resolve => { submit = resolve; });
+  await h.emit("session_start");
+
+  const target = () => w.ok(["target", "--session", "native"]);
+  const stageUrl = `${opened.live.url}#${opened.stage}`;
+  const questionUrl = `${opened.live.url}#${receipt.refs.first}`;
+  const call = { toolName: "ask", toolCallId: "native-form" };
+  const args = { html: receipt.ask.html };
+
+  // A history re-answer presents a form without a new agent tool call.
+  const history = h.ctx.ui.formDialog(args.html);
+  expect(await target()).toMatchObject({ target: stageUrl, picker: null });
+  expect(ui.panel()).toBeUndefined();
+  submit();
+  await history;
+
+  expect(await h.emit("tool_call", { ...call, input: args })).toEqual([undefined]);
+  await h.emit("tool_execution_start", { ...call, args });
+  expect(await target()).toMatchObject({ target: stageUrl, picker: null });
+  expect(ui.panel()).toBeUndefined();
+
+  const pending = h.ctx.ui.formDialog(args.html);
+  await until(() => ui.panel()?.includes(questionUrl) ?? false);
+  const presenceUrl = new URL("presence", opened.live.url);
+  const presence = async () => (await (await fetch(presenceUrl)).json() as { presences: unknown[] }).presences;
+  const waitPresence = async (count: number) => {
+    const deadline = Date.now() + 5000;
+    let rows = await presence();
+    while (rows.length !== count && Date.now() < deadline) {
+      await Bun.sleep(20);
+      rows = await presence();
+    }
+    return rows;
+  };
+  expect(await waitPresence(1)).toMatchObject([{ session: "native", questions: [receipt.refs.first, receipt.refs.second] }]);
+  submit();
+  await pending;
+  expect(ui.panel()).toBeUndefined();
+  expect(await waitPresence(0)).toEqual([]);
+  expect(await target()).toMatchObject({ target: stageUrl, picker: null });
+  await h.emit("tool_execution_end", call);
+});
+
 test("a picker that closes before its link lookup finishes leaves no panel behind", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Fast answer", "--skill", "implement", "--session", "fast"]);

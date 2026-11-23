@@ -154,7 +154,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     shownIn?.ui.setWidget(panelKey, undefined);
     shownIn = undefined;
   };
-  type ReadyAsk = { state: "ready"; names: string[]; scope?: object; readError?: string };
+  type ReadyAsk = { state: "ready" | "started"; html: unknown; names: string[]; scope?: object; readError?: string };
   type OpenAsk = { state: "open"; picker: symbol };
   type AskCall = { state: "checking" } | { state: "denied" } | ReadyAsk | OpenAsk;
   const calls = new Map<string, AskCall>();
@@ -176,8 +176,9 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     const checking: AskCall = { state: "checking" };
     calls.set(toolCallId, checking);
     const scope = toolApprovalScopeToken();
-    const { names, duplicates, hidden } = askControlNames(event.input.html);
-    const ready: ReadyAsk = { state: "ready", names, scope };
+    const { html } = event.input;
+    const { names, duplicates, hidden } = askControlNames(html);
+    const ready: ReadyAsk = { state: "ready", html, names, scope };
     let current: { binding: null } | { binding: { stage: string }; refusals: string[] };
     try {
       current = await flowPage(pi, ctx, ["ask-status"], flowIdentity(ctx), names);
@@ -214,6 +215,10 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
       return;
     }
     if (call?.state === "open") return;
+    if (ctx.ui.formDialog) {
+      if (call?.state === "ready") call.state = "started";
+      return;
+    }
     if (call?.state === "ready") openAsk(event.toolCallId, ctx, call.names, call.readError);
     else openAsk(event.toolCallId, ctx, askControlNames((event.args as { html?: unknown } | undefined)?.html).names);
   });
@@ -231,21 +236,24 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
   type Custom = ExtensionContext["ui"]["custom"];
   type FormDialog = NonNullable<ExtensionContext["ui"]["formDialog"]>;
   type Route = { ctx: ExtensionContext; depth: number; enabled: boolean; wrappers: Set<Dialog | Custom | FormDialog> };
-  const duringScopedAsk = <T>(route: Route, dialog: () => Promise<T>): Promise<T> => {
+  const duringAsk = <T>(route: Route, dialog: () => Promise<T>, form?: Parameters<FormDialog>): Promise<T> => {
+    if (!route.enabled || !interactive(route.ctx) || form?.[1]?.signal?.aborted) return dialog();
     const scope = toolApprovalScopeToken();
-    if (scope && route.enabled && interactive(route.ctx)) {
-      // Eval skips the loop start. The wrapper's scope ties this post-approval dialog to its guard result.
-      for (const [id, pending] of calls) {
-        if (pending.state !== "ready" || pending.scope !== scope) continue;
-        const open = openAsk(id, route.ctx, pending.names, pending.readError);
-        return (async () => {
-          try {
-            return await dialog();
-          } finally {
-            if (calls.get(id) === open) closeAsk(id);
-          }
-        })();
-      }
+    for (const [id, pending] of calls) {
+      if (pending.state !== "ready" && pending.state !== "started") continue;
+      if (form) {
+        if (pending.html !== form[0]) continue;
+        if (pending.scope ? pending.scope !== scope : !(scope || pending.state === "started")) continue;
+      } else if (!scope || pending.scope !== scope) continue;
+      // The loop's preflight has no approval token. Its start notification may arrive after the form opens.
+      const open = openAsk(id, route.ctx, pending.names, pending.readError);
+      return (async () => {
+        try {
+          return await dialog();
+        } finally {
+          if (calls.get(id) === open) closeAsk(id);
+        }
+      })();
     }
     return dialog();
   };
@@ -265,14 +273,14 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     const custom = own("custom") as Custom | undefined;
     if (typeof custom === "function" && !state.wrappers.has(custom)) {
       const wrapped: Custom = <T>(...args: Parameters<Custom>) =>
-        duringScopedAsk(state, () => custom.apply(ctx.ui, args) as Promise<T>);
+        duringAsk(state, () => custom.apply(ctx.ui, args) as Promise<T>);
       state.wrappers.add(wrapped);
       ctx.ui.custom = wrapped;
     }
     const form = own("formDialog") as FormDialog | undefined;
     if (typeof form === "function" && !state.wrappers.has(form)) {
       const wrapped: FormDialog = (...args: Parameters<FormDialog>) =>
-        duringScopedAsk(state, () => form.apply(ctx.ui, args));
+        duringAsk(state, () => form.apply(ctx.ui, args), args);
       state.wrappers.add(wrapped);
       ctx.ui.formDialog = wrapped;
     }
