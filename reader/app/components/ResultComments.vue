@@ -127,15 +127,15 @@ async function save(text: string) {
     <ul v-if="saved.length" class="grid list-none gap-3 ps-0" aria-live="polite">
       <li v-for="c in saved" :key="c.id" class="grid gap-1">
         <p class="text-flow-subtext">Stage {{ c.stage }} · Result {{ c.result }}: {{ r.title }} · Revision {{ c.revision }}<template v-if="c.edit != null"> · Edit {{ c.edit }}</template> · {{ c.anchor.kind === 'entry' ? `Entry ${c.anchor.entry}` : c.anchor.kind === 'text' ? 'Selected text' : 'Whole Result block' }}</p>
-        <blockquote v-if="c.anchor.kind === 'text'" class="whitespace-pre-wrap border-s-2 border-flow-border ps-3">{{ c.anchor.quote }}</blockquote>
+        <blockquote v-if="c.anchor.kind === 'text'" class="whitespace-pre-wrap border-s-2 border-flow-border ps-2">{{ c.anchor.quote }}</blockquote>
         <p class="whitespace-pre-wrap">{{ c.text }}</p>
         <time :datetime="c.time" class="text-flow-subtext">{{ formatTime(c.time) }}</time>
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="begin(c)">Edit comment</Button>
           <Button v-if="removing !== c.id" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="removing = c.id">Remove comment</Button>
           <template v-else>
             <span>Remove this Reader comment?</span>
-            <Button :disabled="pending" :aria-busy="pending || undefined" class="max-w-full whitespace-normal text-start text-flow-red" @click="remove(c.id)">Confirm removal</Button>
+            <Button :disabled="pending" :aria-busy="pending || undefined" class="confirm-removal max-w-full whitespace-normal text-start" @click="remove(c.id)">Confirm removal</Button>
             <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="removing = ''">Keep comment</Button>
           </template>
         </div>
@@ -148,7 +148,7 @@ async function save(text: string) {
     </ResultTextSelection>
     <form v-else ref="form" class="grid min-w-0 gap-2" novalidate @submit.prevent.stop="commentForm.handleSubmit()">
       <p class="text-flow-subtext">Draft for Revision {{ revision }}<template v-if="edit != null"> · Edit {{ edit }}</template>. Saving is a separate action.</p>
-      <blockquote v-if="passage" class="whitespace-pre-wrap border-s-2 border-flow-border ps-3">{{ passage }}</blockquote>
+      <blockquote v-if="passage" class="whitespace-pre-wrap border-s-2 border-flow-border ps-2">{{ passage }}</blockquote>
       <Field v-else-if="!editing" :id="`${r.anchor}-target`" label="Comment target">
         <template #default="{ control }">
           <Select v-bind="control" v-model="selectedTarget" :items="targets" class="w-full" :disabled="pending" />
@@ -173,3 +173,10 @@ async function save(text: string) {
     </form>
   </section>
 </template>
+
+<style scoped>
+.confirm-removal {
+  border-color: var(--color-red);
+  color: var(--color-red);
+}
+</style>

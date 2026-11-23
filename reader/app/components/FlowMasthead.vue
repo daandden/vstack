@@ -22,17 +22,19 @@ const themes = [
     <h1 v-html="inline(f.flow.title)" />
     <p class="meta">
       <span v-if="last" class="font-semibold text-flow-state" :data-state="last.event">
-        {{ last.event === "closed" ? "Closed" : "Reopened" }} <time :datetime="last.time">{{ formatTime(last.time) }}</time>
+        {{ last.event === "closed" ? "Closed" : "Reopened" }} <time :datetime="last.time" class="font-normal">{{ formatTime(last.time) }}</time>
       </span>
       <span>{{ stages }} {{ stages === 1 ? "Stage" : "Stages" }}</span>
       <span>{{ open }} open {{ open === 1 ? "question" : "questions" }}<template v-if="open"> · <kbd>n</kbd> visits them</template></span>
       <a href="#overview">Progress: {{ progress }}</a>
       <span>Revision {{ f.revision }}</span>
     </p>
-    <div class="theme flex flex-wrap gap-1 justify-self-start" role="group" aria-label="Color theme">
-      <Button v-for="t in themes" :key="t.value" variant="bare" :aria-pressed="colorMode.preference === t.value" class="theme-button border border-flow-line bg-flow-muted text-small text-flow-toned font-semibold cursor-pointer touch-manipulation motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out" @click="colorMode.preference = t.value">{{ t.label }}</Button>
+    <div class="flex flex-wrap items-start gap-2">
+      <CopyFeedback />
+      <div class="theme flex flex-wrap gap-1" role="group" aria-label="Color theme">
+        <Button v-for="t in themes" :key="t.value" variant="bare" :aria-pressed="colorMode.preference === t.value" class="theme-button border border-flow-line bg-flow-muted text-small text-flow-toned font-semibold cursor-pointer touch-manipulation motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out" @click="colorMode.preference = t.value">{{ t.label }}</Button>
+      </div>
     </div>
-    <CopyFeedback />
   </header>
 </template>
 

@@ -42,7 +42,10 @@ test("all Results retain compact themed rendering, learning progress and isolate
       { kind: "attachment", ref: "app", type: "artifact", caption: "Captured prototype", origin: "Browser fixture", revision: "fixture-1", launch: "Open the captured viewer", runtime: "html", bundle: { entry: "index.html", files: [{ path: "index.html", source: "artifact.html" }, { path: "app.js", source: "app.js" }] } },
       { kind: "result", ref: "cards", shape: "cards", title: "Cards", entries: [{ ...finding, location: undefined }] },
       { kind: "result", ref: "review", shape: "review", title: "Review", axes: [{ axis: "standards", status: "findings" }, { axis: "spec", status: "clean", reason: "Covered." }, { axis: "blast-radius", status: "unavailable", reason: "No external caller." }], entries: [{ ...finding, axis: "standards" }] },
-      { kind: "result", ref: "ledger", shape: "ledger", title: "Ledger", entries: [{ ref: "claim", claim: "Reconnect keeps answers.", status: "unproven", evidence: "One local run.", missing_proof: "Restart evidence.", consequence: "Do not claim persistence yet." }] },
+      { kind: "result", ref: "ledger", shape: "ledger", title: "Ledger", entries: [
+        { ref: "claim", claim: "Reconnect keeps answers.", status: "unproven", evidence: "One local run.", missing_proof: "Restart evidence.", consequence: "Do not claim persistence yet." },
+        { ref: "confirmed", claim: "Drafts remain during polling.", status: "confirmed", evidence: "Two candidate poll cycles.", missing_proof: "None for polling.", consequence: "Keep the draft on the current page." },
+      ] },
       { kind: "result", ref: "table", shape: "table", title: "Table", columns: ["Target", "Status"], rows: [{ ref: "row", cells: ["reader/app/components/QuizBody.vue", "Covered"] }] },
       { kind: "result", ref: "document", shape: "document", title: "Document", sections: [{ heading: "Procedure", blocks: [{ prose: "Keep the answer [@source]." }, { list: ["Reconnect", "Read again"], ordered: true }, { code: "const saved = true;\n", language: "ts" }] }], citations: [{ ref: "source", source: "answers.ts:42" }], limitations: ["Local run only."], sources: ["GLOSSARY.md"] },
       { kind: "result", ref: "code", shape: "code", title: "Code and diff", entries: [{ ref: "source", file: "answers.ts", line: 10, language: "ts", code: "const saved = true;\n" }, { ref: "diff", file: "answers.ts", language: "ts", diff: "--- a/answers.ts\n+++ b/answers.ts\n@@ -1 +1 @@\n-const saved = false;\n+const saved = true;\n" }] },
@@ -61,6 +64,10 @@ test("all Results retain compact themed rendering, learning progress and isolate
     await page.locator(`#${seeded.refs.artifact} iframe`).waitFor();
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
+      const confirmed = page.getByRole("region", { name: "Ledger", exact: true }).getByText("Confirmed", { exact: true });
+      expect(await confirmed.evaluate(el => getComputedStyle(el).color)).toBe(
+        theme === "Light" ? "oklch(0.625 0.177 140.4)" : "oklch(0.858 0.109 142.7)",
+      );
       for (const width of [360, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -82,6 +89,7 @@ test("all Results retain compact themed rendering, learning progress and isolate
       })).toEqual(["28px", "8px"]);
     }
     expect(await quizRegion.getByRole("radio", { name: "A real ask" }).evaluate(el => getComputedStyle(el.closest("label")!).minBlockSize)).toBe("28px");
+    expect(await quizRegion.getByRole("textbox", { name: "Answer", exact: true }).first().evaluate(el => el.getBoundingClientRect().width)).toBe(320);
     for (const ref of ["cards", "review", "ledger", "table", "document", "code", "timeline", "comparison", "metrics", "quiz", "demo", "artifact"]) expect(await page.locator(`#${seeded.refs[ref]}`).isVisible()).toBe(true);
     expect(await page.getByRole("table", { name: "Review summary" }).innerText()).toContain("Keep saved answers");
     expect(await page.locator(`#${seeded.refs.comparison}`).innerText()).toContain("Not assessed");
@@ -92,12 +100,19 @@ test("all Results retain compact themed rendering, learning progress and isolate
     await revisions.locator(":scope > summary").focus();
     await page.keyboard.press("Enter");
     expect(await revisions.innerText()).toContain("A reader loses an answer.");
+    expect(await revisions.getByRole("article").first().evaluate(el => getComputedStyle(el).borderInlineStartWidth)).toBe("2px");
     const demo = page.locator(`#${seeded.refs.demo}`);
+    expect(await demo.getByRole("group", { name: "Actions" }).evaluate(el => getComputedStyle(el.parentElement!).rowGap)).toBe("4px");
+    expect(await demo.getByRole("button", { name: "Add item" }).evaluate(el => {
+      const css = getComputedStyle(el);
+      return [css.minBlockSize, css.fontSize];
+    })).toEqual(["28px", "12px"]);
     await demo.getByRole("button", { name: "Add item", exact: true }).click();
     expect(await demo.locator("strong").innerText()).toBe("Full");
     expect(await demo.getByRole("button", { name: "Add item", exact: true }).getAttribute("aria-disabled")).toBe("true");
     const iframe = page.locator(`#${seeded.refs.artifact} iframe`);
     expect(new URL((await iframe.getAttribute("src"))!).origin).not.toBe(new URL(opened.live.url).origin);
+    expect(await iframe.evaluate(el => getComputedStyle(el.parentElement!).padding)).toBe("8px");
     expect(await iframe.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin");
     await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Try prototype" }).click();
     expect(await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Prototype works" }).isVisible()).toBe(true);

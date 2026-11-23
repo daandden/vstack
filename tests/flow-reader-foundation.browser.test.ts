@@ -49,6 +49,99 @@ async function capture(page: Page, name: string) {
   writeFileSync(join(proof, `${name}.aria.txt`), await page.locator("body").ariaSnapshot());
 }
 
+test("the reader shows a compact reconnecting notice without dropping the rendered Flow", async () => {
+  const { live } = cli(["open", "--skill", "implement", "--title", "Reader connection states"]);
+  const versions = new URL("versions", live.url).href;
+  for (const theme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await Promise.all([page.waitForResponse(versions, { timeout: 5_000 }), page.goto(live.url)]);
+      const title = page.getByRole("heading", { name: "Reader connection states" });
+      await title.waitFor({ timeout: 5_000 });
+      await page.route(versions, route => route.abort());
+      const notice = page.getByRole("status").filter({ hasText: "The Local Flow host stopped answering" });
+      await notice.waitFor({ timeout: 5_000 });
+      expect(await notice.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [
+          el.getBoundingClientRect().width, css.paddingInlineStart, css.borderRadius,
+          css.borderInlineStartWidth, css.borderBlockStartWidth, css.borderInlineStartColor, css.backgroundColor,
+        ];
+      })).toEqual([
+        1024, "8px", "4px", "2px", "0px",
+        theme === "light" ? "oklch(0.692 0.204 42.4)" : "oklch(0.824 0.101 52.6)",
+        theme === "light" ? "oklch(0.933 0.009 264.5)" : "oklch(0.216 0.025 284.1)",
+      ]);
+      expect(await title.isVisible()).toBe(true);
+      await capture(page, `reconnecting/${theme}`);
+      await page.unroute(versions);
+      await notice.waitFor({ state: "hidden", timeout: 5_000 });
+      expect(await title.isVisible()).toBe(true);
+    } finally { await context.close(); }
+  }
+});
+
+test("completed and reopened Flows keep lifecycle metadata, topic links, and compact context notes", async () => {
+  const opened = cli(["open", "--skill", "implement-spec", "--title", "Checkout limits"]);
+  const seeded = cli(["submit"], [
+    { kind: "background", title: "Where the checkout cap applies", summary: "Each cart has its own cap.", sections: [{ heading: "Today", body: "A separate cap applies on each cart." }], sources: ["Checkout policy"] },
+    { kind: "topic", ref: "cap", title: "Per-cart cap", summary: "The limit applies at checkout, including gift cards.", body: "Each cart has its own cap.", sources: ["Checkout policy"] },
+    { kind: "result", ref: "limits", shape: "document", title: "Boundary checks", sections: [{ heading: "Cart sizes", blocks: [{ prose: "Five items pass. Six items block checkout." }] }] },
+    { kind: "round", questions: [{ ref: "scope", title: "Apply the cap to each cart?", description: "Related carts may be checked out separately.", topics: ["cap"], terms: [{ term: "Cap", text: "The maximum number of items one cart can contain." }], results: ["limits"], needs: [{ need: "Read the boundary checks.", kind: "prose" }], options: [{ label: "Per cart", does: "Apply one cap to each cart.", gains: ["Predictable checkout"], costs: ["No shop-wide quota"] }] }] },
+    { kind: "task", title: "Check the cart limit", state: "done", evidence: ["Checked one cart at the limit and one over."] },
+    { kind: "end-state", requested: "none" },
+  ]);
+  cli(["submit"], [
+    { kind: "answer", question: seeded.refs.scope, response: { status: "answered", picks: ["A"] } },
+    { kind: "stage", state: "finished" },
+  ]);
+  cli(["close", "--flow", opened.flow]);
+  for (const theme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${opened.live.url}#overview`);
+      const status = page.getByRole("banner").getByText(/^Closed /);
+      await status.waitFor();
+      await page.getByRole("region", { name: "Read-only observations" }).getByText("Git", { exact: true }).waitFor();
+      expect(await page.getByRole("region", { name: "Authored progress" }).innerText()).toContain("Complete: every task is settled");
+      await capture(page, `closed/${theme}`);
+      const notes = page.getByText("Context and related notes", { exact: true });
+      await notes.focus();
+      await page.keyboard.press("Enter");
+      const backgrounds = page.getByRole("region", { name: "Backgrounds" });
+      await backgrounds.getByRole("link", { name: "Where the checkout cap applies" }).waitFor();
+      expect(await page.getByRole("region", { name: "Term notes" }).getByText("Cap", { exact: true }).isVisible()).toBe(true);
+      expect(await page.getByRole("region", { name: "Backlinks" }).getByRole("link", { name: "Boundary checks" }).isVisible()).toBe(true);
+      expect(await notes.evaluate(el => getComputedStyle(el.parentElement!).paddingBlockEnd)).toBe("8px");
+      expect(await backgrounds.getByRole("list").evaluate(el => getComputedStyle(el).paddingInlineStart)).toBe("12px");
+      await capture(page, `context/${theme}`);
+      await notes.click();
+      await page.getByRole("navigation", { name: "Flow tabs" }).getByRole("link", { name: "Topics", exact: true }).click();
+      const topics = page.getByRole("region", { name: "Topic notes", exact: true });
+      const topic = topics.getByRole("link", { name: "Per-cart cap", exact: true });
+      await topic.waitFor();
+      expect(await topics.getByRole("list").evaluate(el => getComputedStyle(el).paddingInlineStart)).toBe("12px");
+      await capture(page, `topics/${theme}`);
+      await topic.click();
+      await page.getByRole("heading", { name: "Per-cart cap", exact: true }).waitFor();
+    } finally { await context.close(); }
+  }
+  const reopened = cli(["reopen", "--flow", opened.flow, "--skill", "implement", "--parent", opened.stage]);
+  for (const theme of ["light", "dark"] as const) {
+    const context = await browser.newContext({ colorScheme: theme, viewport: { width: 1280, height: 900 } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`${reopened.live.url}#overview`);
+      await page.getByRole("banner").getByText(/^Reopened /).waitFor();
+      expect(await page.getByRole("link", { name: "Progress: complete" }).isVisible()).toBe(true);
+      expect(await page.getByRole("navigation", { name: "Flow tabs" }).getByRole("link", { name: "Implement", exact: true }).isVisible()).toBe(true);
+      await capture(page, `reopened/${theme}`);
+    } finally { await context.close(); }
+  }
+});
+
 test("the offline reader foundation keeps Catppuccin shell, navigation and diagrams under the host CSP", async () => {
   const opened = cli(["open", "--skill", "implement", "--title", "Reader foundation"]);
   writeFileSync(join(root, "reader.mmd"), 'flowchart LR\n  reader["Read the Flow"] --> choice["Choose deliberately"]\n');

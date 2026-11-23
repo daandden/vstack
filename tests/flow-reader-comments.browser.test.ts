@@ -25,15 +25,33 @@ test("readers select typed-table text and manage revision-bound comments across 
     cli(["open", "--title", "Reader comments", "--skill", "implement"]);
     const result = { kind: "result", ref: "evidence", shape: "table", title: "Restart evidence", columns: [{ label: "Check", type: "text" }], rows: [{ ref: "restart", cells: ["Host restart"] }, { ref: "other", cells: ["Earlier check"] }] };
     const sent = cli(["submit"], [result]);
-    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "light" });
     const page = await context.newPage();
     await page.goto(`${sent.live.url}#${sent.stage}`);
     let comments = page.getByRole("region", { name: "Reader comments on Restart evidence" });
+    const capture = async (state: string) => {
+      const proof = process.env.FLOW_READER_EVIDENCE;
+      if (!proof) return;
+      const system = page.getByRole("button", { name: "System", exact: true });
+      if (await system.getAttribute("aria-pressed") !== "true") await system.click();
+      for (const theme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: theme });
+        await page.waitForFunction(theme => document.documentElement.dataset.theme === theme, theme);
+        const path = join(proof, `${state}-${theme}`);
+        await comments.screenshot({ path: `${path}.png` });
+        writeFileSync(`${path}.aria.txt`, await comments.ariaSnapshot());
+      }
+      await page.emulateMedia({ colorScheme: "light" });
+    };
+    await capture("empty");
     await comments.getByRole("button", { name: "Add Reader comment" }).click({ timeout: 5000 });
     const draft = comments.getByRole("textbox", { name: "Comment" });
     const save = comments.getByRole("button", { name: "Save comment", exact: true });
     const tooLong = comments.getByText("Keep the comment to 4,096 characters.", { exact: true });
     const count = comments.getByText("4,097 / 4,096", { exact: true });
+    await capture("composing");
+    await draft.fill("Was the first restart flaky, or did the host recover between runs?");
+    await capture("draft");
     await draft.fill(" \n\t ");
     expect(await save.isDisabled()).toBe(true);
     expect(await draft.getAttribute("aria-invalid")).not.toBe("true");
@@ -162,11 +180,15 @@ test("readers select typed-table text and manage revision-bound comments across 
     const savedAtLimit = comments.getByRole("listitem").filter({ hasText: atLimit.trim() });
     await savedAtLimit.waitFor();
     expect(await savedAtLimit.locator("p").allTextContents()).toContain(atLimit);
+    await savedAtLimit.getByRole("button", { name: "Remove comment" }).click();
+    await savedAtLimit.getByRole("button", { name: "Confirm removal" }).click();
+    await savedAtLimit.waitFor({ state: "hidden" });
     await comments.getByRole("button", { name: "Add Reader comment" }).click();
     await comments.getByRole("textbox", { name: "Comment" }).fill("Keep this evidence <script>literal</script>.");
     await comments.getByRole("button", { name: "Save comment", exact: true }).click();
     await comments.getByText("Keep this evidence <script>literal</script>.", { exact: true }).waitFor();
     expect(await comments.textContent()).toContain("Whole Result block");
+    await capture("saved");
     await comments.getByRole("button", { name: "Add Reader comment" }).click();
     await comments.getByRole("combobox", { name: "Comment target" }).click();
     await page.getByRole("option", { name: "e1: Host restart", exact: true }).click();
@@ -244,6 +266,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     await page.keyboard.press("Enter");
     const passage = comments.getByRole("textbox", { name: "Result text for selection" });
     await passage.focus();
+    await capture("selecting");
     await page.keyboard.press("ControlOrMeta+A");
     await page.keyboard.press("ArrowRight");
     for (let i = 0; i < 12; i++) await page.keyboard.press("Shift+ArrowLeft");
@@ -253,21 +276,31 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(await comments.getByRole("button", { name: "Comment on selected text", exact: true }).isEnabled()).toBe(true);
     await comments.getByRole("button", { name: "Comment on selected text", exact: true }).focus();
     await page.keyboard.press("Enter");
+    const quote = comments.locator("form blockquote");
+    expect(await quote.evaluate(el => getComputedStyle(el).paddingInlineStart)).toBe("8px");
+    await capture("quoting");
     await comments.getByRole("textbox", { name: "Comment" }).fill("Explain this selected passage.");
     await comments.getByRole("button", { name: "Save comment", exact: true }).focus();
     await page.keyboard.press("Enter");
     await comments.getByText("Explain this selected passage.", { exact: true }).waitFor();
+    await capture("multiple-saved");
     const textComment = comments.getByRole("listitem").filter({ hasText: "Explain this selected passage." });
     expect(await textComment.locator("blockquote").textContent()).toBe("Host restart");
     await page.reload();
     await textComment.getByRole("button", { name: "Edit comment" }).focus();
     await page.keyboard.press("Enter");
+    await capture("editing");
     await comments.getByRole("textbox", { name: "Comment" }).fill("Keep the selected passage.");
     await comments.getByRole("button", { name: "Save comment", exact: true }).focus();
     await page.keyboard.press("Enter");
     await otherPage.getByText("Keep the selected passage.", { exact: true }).waitFor();
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     const copyFeedback = page.getByRole("button", { name: "Copy feedback", exact: true });
+    const themeControl = page.getByRole("button", { name: "System", exact: true });
+    const copyBox = (await copyFeedback.boundingBox())!;
+    const themeBox = (await themeControl.boundingBox())!;
+    expect(copyBox.y).toBe(themeBox.y);
+    expect(themeBox.x - (copyBox.x + copyBox.width)).toBe(8);
     const pending = Promise.withResolvers<void>();
     await page.route("**/comments", async (route) => {
       await pending.promise;
@@ -334,6 +367,12 @@ test("readers select typed-table text and manage revision-bound comments across 
     }
     await historicalText.getByRole("button", { name: "Remove comment" }).focus();
     await page.keyboard.press("Enter");
+    const confirm = historicalText.getByRole("button", { name: "Confirm removal" });
+    expect(await confirm.evaluate(el => {
+      const style = getComputedStyle(el);
+      return style.borderColor === style.color;
+    })).toBe(true);
+    await capture("removing");
     await historicalText.getByRole("button", { name: "Confirm removal" }).focus();
     await page.keyboard.press("Enter");
     await historicalText.waitFor({ state: "hidden" });

@@ -61,10 +61,10 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
         <StagePanel v-for="st in flow.stages" :key="st.id" :stage="st" />
         <section v-if="flow.topics.length" id="topics" class="panel grid gap-2 py-entry border-bs border-flow-line" data-tab="topics" :hidden="tab !== 'topics'" aria-labelledby="topics-title">
           <h2 id="topics-title">Topic notes</h2>
-          <ul class="bullets">
+          <ul class="bullets gap-1 ps-3">
             <li v-for="t in flow.topics" :key="t.id"><a :href="`#${t.id}`" v-html="inline(t.title)" /> <span class="quiet" v-html="inline(t.summary)" /></li>
           </ul>
-          <section v-if="stageless.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-flow-border" aria-labelledby="topics-historical">
+          <section v-if="stageless.length" class="grid gap-1 py-2 border-bs border-flow-line" aria-labelledby="topics-historical">
             <h3 id="topics-historical" class="eyebrow">Historical content in retained order</h3>
             <p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p>
             <ReadingEntry v-for="b in stageless" :key="b.id" :block="b" />

@@ -5,7 +5,7 @@ import { useReaderState } from "~/composables/reader";
 const { flow } = useReaderState();
 import type { ResultView } from "~/utils/flow";
 
-const demoControl = "demo-control gap-1 border border-flow-line text-[length:var(--text-body)] font-semibold";
+const demoControl = "demo-control border border-flow-line bg-flow-muted text-small font-medium text-flow-text";
 const props = defineProps<{ r: ResultView; demo: Demo }>();
 const id = computed(() => `${props.r.anchor}-demo`);
 const key = computed(() => `flow-page:demo:${flow.value!.flow.id}:${props.r.id}:r${props.r.revision}`);
@@ -75,24 +75,24 @@ function rule(t: Transition): string {
 </script>
 
 <template>
-  <div :id="id" class="demo grid justify-items-start gap-2 rounded-md border border-flow-line bg-flow-muted p-2">
-    <div class="grid gap-1.5" aria-live="polite">
-      <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-flow-subtext">State</span> <strong :id="`${id}-state`" class="text-title text-flow-mauve">{{ stateLabel }}</strong></p>
+  <div :id="id" class="demo grid justify-items-start gap-1 rounded-md border border-flow-line bg-flow-muted p-2">
+    <div class="grid gap-1" aria-live="polite">
+      <p class="flex flex-wrap items-baseline gap-x-2 gap-y-1"><span class="font-semibold text-flow-subtext">State</span> <strong :id="`${id}-state`" class="text-title text-flow-mauve">{{ stateLabel }}</strong></p>
       <template v-for="s in demo.states" :key="s.name">
-        <div v-if="s.description && s.name === now.state" class="grid gap-1.5" v-html="prose(s.description)" />
+        <div v-if="s.description && s.name === now.state" class="grid gap-1" v-html="prose(s.description)" />
       </template>
-      <dl v-if="demo.values.length" class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1">
+      <dl v-if="demo.values.length" class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1">
         <template v-for="v in demo.values" :key="v.name"><dt class="text-small font-semibold text-flow-toned">{{ v.label }}</dt><dd :id="`${id}-v-${v.name}`" class="ms-0 text-flow-teal tabular-nums">{{ demoValue(now.values[v.name]!) }}</dd></template>
       </dl>
     </div>
     <div class="flex flex-wrap gap-2" role="group" aria-label="Actions">
-      <Button v-for="a in demo.actions" :key="a.name" variant="bare" :data-action="a.name" :aria-disabled="!next(a, now)" :class="[demoControl, 'bg-flow-accented text-flow-text']" @click="run(a)">{{ a.label }}</Button>
-      <Button variant="bare" :class="[demoControl, 'text-[color:var(--color-subtext1)]']" data-reset @click="reset">Reset</Button>
+      <Button v-for="a in demo.actions" :key="a.name" variant="bare" :data-action="a.name" :aria-disabled="!next(a, now)" :class="demoControl" @click="run(a)">{{ a.label }}</Button>
+      <Button variant="bare" :class="demoControl" data-reset @click="reset">Reset</Button>
     </div>
     <p class="text-small text-flow-subtext">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
-    <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
+    <details class="text-small open:grid open:gap-1 [&>:not(summary)]:text-body">
       <summary>How it works</summary>
-      <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-flow-toned [&_dd]:ms-0">
+      <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-flow-toned [&_dd]:ms-0">
         <template v-for="a in demo.actions" :key="a.name">
           <dt>{{ a.label }}</dt>
           <dd><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><li v-for="(t, i) in a.transitions" :key="i">{{ rule(t) }}</li></ul></dd>

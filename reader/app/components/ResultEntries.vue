@@ -34,7 +34,7 @@ const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id)
     <li v-for="e in r.entries" :id="e.anchor" :key="e.anchor" class="claim grid gap-1.5 border-be border-flow-line pbe-2 last:border-be-0 last:pbe-0 target:bg-flow-accented" :data-status="e.status">
       <CorrectionNotice :notice="e" />
       <h3><span class="me-2 font-bold uppercase tabular-nums">{{ e.id }}</span><span class="sr-only">: </span><span v-html="inline(str(e.claim))" /></h3>
-      <p class="text-small font-semibold" :class="e.status === 'confirmed' ? 'text-flow-red' : e.status === 'cleared' ? 'text-flow-green' : 'text-flow-peach'">{{ CLAIM_LABELS[str(e.status)] }}</p>
+      <p class="text-small font-semibold" :class="e.status === 'confirmed' || e.status === 'cleared' ? 'text-flow-green' : 'text-flow-peach'">{{ CLAIM_LABELS[str(e.status)] }}</p>
       <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-flow-toned [&_dd]:ms-0">
         <dt>Evidence</dt><dd v-html="inline(str(e.evidence))" />
         <dt>Missing proof</dt><dd v-html="inline(str(e.missing_proof))" />

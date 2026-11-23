@@ -27,7 +27,7 @@ function choose() {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-wrap gap-1">
+  <div class="flex min-w-0 flex-wrap items-center gap-1">
     <slot />
     <Button variant="ghost" class="max-w-full whitespace-normal text-start" @click="selectable = content?.innerText ?? ''">Select text to comment</Button>
     <Field v-if="selectable !== undefined" :id="fieldId" v-slot="{ control }" class="basis-full" label="Result text for selection" description="Select a passage with Shift and the arrow keys, then choose Comment on selected text.">

@@ -7,9 +7,9 @@ const reason = computed(() => props.a.reason ?? props.runtime?.reason ?? "Start 
 </script>
 
 <template>
-  <div class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5" :data-artifact="a.id">
+  <div class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1" :data-artifact="a.id">
     <FigureCaption :a="a" as="div" />
-    <div class="grid justify-self-stretch justify-items-stretch gap-1.5 rounded-md bg-flow-muted px-3 py-2.5">
+    <div class="grid justify-self-stretch justify-items-stretch gap-1 rounded-md bg-flow-muted p-2">
       <template v-if="available">
         <p role="status" class="font-semibold text-flow-green" data-availability="available">Available in an isolated viewer</p>
         <iframe :id="`${anchor}-viewer`" class="block aspect-video w-full border border-flow-line bg-flow-base" :title="a.caption" :src="runtime!.url" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer" />

@@ -50,7 +50,7 @@ const correct = computed(() => {
         <legend class="mbe-1 font-semibold" v-html="inline(q.prompt)" />
         <Field :id="id" :label="q.choices ? undefined : 'Answer'" :horizontal="!q.choices" :errors="field.state.meta.errors">
           <template #default="{ control }">
-            <template v-if="q.choices">
+            <div v-if="q.choices" class="grid gap-2">
               <label v-for="c in q.choices" :key="c.ref" class="flex [min-block-size:var(--spacing-control)] flex-wrap items-center gap-2">
                 <input
                   type="radio"
@@ -65,8 +65,8 @@ const correct = computed(() => {
                   @keydown.enter.prevent="form.handleSubmit()"
                 > {{ c.label }}
               </label>
-            </template>
-            <Input v-else v-bind="control" :model-value="field.state.value" :inputmode="isNumber ? 'decimal' : undefined" type="text" class="max-w-[15rem] text-small" @update:model-value="field.handleChange(String($event ?? ''))" @blur="field.handleBlur()" />
+            </div>
+            <Input v-else v-bind="control" :model-value="field.state.value" :inputmode="isNumber ? 'decimal' : undefined" type="text" class="max-w-80 text-small" @update:model-value="field.handleChange(String($event ?? ''))" @blur="field.handleBlur()" />
           </template>
         </Field>
       </fieldset>

@@ -20,7 +20,7 @@ const earlier = computed(() => [...props.r.history].reverse());
 </script>
 
 <template>
-  <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2" :class="historical ? 'border-s border-flow-line ps-2' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
+  <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2" :class="historical ? 'border-s-2 border-flow-border ps-2' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
     <span v-if="r.review && !historical" :id="`${r.stage}-review`" />
     <div ref="content" class="grid min-w-0 gap-2">
     <CorrectionNotice :notice="r" />
@@ -45,7 +45,7 @@ const earlier = computed(() => [...props.r.history].reverse());
     </div>
     <ResultChanges v-if="!historical && r.history.length" :r="r" />
     <ResultComments :r="r" :content="content" />
-    <details v-if="r.history.length" class="text-small open:grid open:gap-4 [&>:not(summary)]:text-body">
+    <details v-if="r.history.length" class="text-small open:grid open:gap-2 [&>:not(summary)]:text-body">
       <summary>Earlier revisions ({{ r.history.length }})</summary>
       <ResultBlock v-for="h in earlier" :key="h.anchor" :r="h" historical />
     </details>
