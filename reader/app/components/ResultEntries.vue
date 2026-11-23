@@ -15,7 +15,7 @@ const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id)
     <CodeEntry v-for="e in r.entries" :key="e.anchor" :e="e" />
   </ol>
   <ol v-else-if="r.shape === 'timeline'" class="grid list-decimal ps-4">
-    <li v-for="e in r.entries" :id="e.anchor" :key="e.anchor" class="event border-s border-flow-line pbs-0 pbe-4 ps-3 [&>*+*]:mbs-1.5 marker:text-[var(--outcome)] marker:tabular-nums target:bg-flow-accented" :class="e.outcome === 'succeeded' ? '[--outcome:var(--green)]' : e.outcome === 'failed' ? '[--outcome:var(--red)]' : e.outcome === 'blocked' ? '[--outcome:var(--peach)]' : e.outcome === 'noted' ? '[--outcome:var(--blue)]' : '[--outcome:var(--subtext0)]'" :data-outcome="e.outcome">
+    <li v-for="e in r.entries" :id="e.anchor" :key="e.anchor" class="event border-s border-flow-line pbs-0 pbe-4 ps-3 [&>*+*]:mbs-1.5 marker:text-[var(--outcome)] marker:tabular-nums target:bg-flow-accented" :class="e.outcome === 'succeeded' ? '[--outcome:var(--color-green)]' : e.outcome === 'failed' ? '[--outcome:var(--color-red)]' : e.outcome === 'blocked' ? '[--outcome:var(--color-peach)]' : e.outcome === 'noted' ? '[--outcome:var(--color-blue)]' : '[--outcome:var(--color-subtext0)]'" :data-outcome="e.outcome">
       <CorrectionNotice :notice="e" />
       <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext">
         <time v-if="e.time" :datetime="str(e.time)">{{ eventTime(str(e.time)) }}</time><span v-else class="font-semibold text-flow-dimmed">Time not recorded</span>

@@ -46,7 +46,7 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
     label.className = "figure-caption grid justify-self-stretch gap-1";
     const previous = media.previousElementSibling;
     const heading = previous && withoutQuestionNumber(previous.textContent ?? "") === title ? previous : doc.createElement("p");
-    heading.className = "figure-title font-heading text-body leading-[1.35] font-[650] text-flow-text text-balance";
+    heading.className = "figure-title font-heading text-body leading-heading [font-weight:var(--font-weight-heading)] text-flow-text text-balance";
     heading.textContent = title;
     label.append(heading, source(doc, a));
     media.before(label);
@@ -57,8 +57,8 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
 
 <template>
   <template v-for="fig in figures ?? []" :key="fig.id">
-    <div v-if="'text' in fig" :id="fig.id" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-flow-muted px-3 py-2.5"><pre>{{ fig.text }}</pre></div>
-    <div v-else-if="'html' in fig" :id="fig.id" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-flow-accented [&_video]:rounded [&_video]:bg-flow-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-flow-muted px-3 py-2.5'" v-html="historical(fig)" />
+    <div v-if="'text' in fig" :id="fig.id" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 overflow-x-auto rounded-md bg-flow-muted p-2"><pre>{{ fig.text }}</pre></div>
+    <div v-else-if="'html' in fig" :id="fig.id" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 [&_img]:rounded [&_img]:bg-flow-accented [&_video]:rounded [&_video]:bg-flow-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-flow-muted p-2'" v-html="historical(fig)" />
     <figure v-else :id="fig.id" class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">
       <FigureCaption v-if="attachment(fig.attachment)" :a="attachment(fig.attachment)!" />
       <DiagramFigure v-if="attachment(fig.attachment)?.availability === 'captured' && attachment(fig.attachment)!.type !== 'image'" :a="attachment(fig.attachment)!" />

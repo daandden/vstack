@@ -19,10 +19,10 @@ const change = (v: ValueView, unit: string) => {
 </script>
 
 <template>
-  <div class="grid gap-2.5">
+  <div class="grid gap-2">
     <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-flow-toned [&_dd]:ms-0"><template v-for="[k, v] in facts" :key="k"><dt>{{ k }}</dt><dd v-html="inline(v)" /></template></dl>
-    <section v-for="me in m.measurements" :id="me.anchor" :key="me.anchor" class="grid gap-2.5" :aria-labelledby="`${me.anchor}-title`">
-      <h3 :id="`${me.anchor}-title`" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-flow-lavender">
+    <section v-for="me in m.measurements" :id="me.anchor" :key="me.anchor" class="grid gap-2" :aria-labelledby="`${me.anchor}-title`">
+      <h3 :id="`${me.anchor}-title`" class="flex flex-wrap items-baseline gap-2">
         <span v-html="inline(me.name)" /> <span class="text-small text-flow-subtext">({{ me.unit }})</span>
         <span v-if="me.better" class="text-small text-flow-subtext">{{ me.better === "lower" ? "Lower is better" : "Higher is better" }}</span>
         <span v-if="me.verdict" class="text-small font-semibold data-[verdict=better]:text-flow-green data-[verdict=worse]:text-flow-red data-[verdict=no-difference]:text-flow-peach data-[verdict=inconclusive]:text-flow-peach" :data-verdict="me.verdict">{{ MEASURE_LABELS[me.verdict] }}</span>
@@ -67,8 +67,8 @@ const change = (v: ValueView, unit: string) => {
   overflow: hidden;
   border: 0;
   border-radius: 0.25rem;
-  background: var(--surface0);
-  accent-color: var(--blue);
+  background: var(--color-surface0);
+  accent-color: var(--color-blue);
 }
 
 .scalar-bar::-webkit-progress-bar {
@@ -77,11 +77,11 @@ const change = (v: ValueView, unit: string) => {
 
 .scalar-bar::-webkit-progress-value {
   border-radius: inherit;
-  background: var(--blue);
+  background: var(--color-blue);
 }
 
 .scalar-bar::-moz-progress-bar {
   border-radius: inherit;
-  background: var(--blue);
+  background: var(--color-blue);
 }
 </style>

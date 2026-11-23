@@ -84,6 +84,15 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
       await page.getByRole("button", { name: label, exact: true }).click();
       expect(await bodyColor(page)).toBe(expected);
       expect(await page.getByRole("button", { name: label, exact: true }).getAttribute("aria-pressed")).toBe("true");
+      expect(await page.getByRole("button", { name: label, exact: true }).evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart, css.borderRadius, css.borderTopColor];
+      })).toEqual(["28px", "8px", "4px", label === "Light" ? "oklch(0.559 0.226 262.1)" : "oklch(0.766 0.111 259.9)"]);
+      expect(await page.getByRole("heading", { name: "Keep the compact reader?", exact: false }).evaluate(el => {
+        const css = getComputedStyle(el);
+        const entry = getComputedStyle(el.closest("[data-reading]")!);
+        return [css.fontSize, css.lineHeight, entry.paddingBlockStart, entry.paddingBlockEnd];
+      })).toEqual(["15px", "20.25px", "16px", "16px"]);
       await page.mouse.move(0, 0);
       await page.evaluate(async () => { await Promise.all(document.getAnimations().map((animation) => animation.finished)); });
       expect(await colorOf(page, ".theme button:first-child", "color")).toBe(label === "Light" ? "#5c5f77" : "#bac2de");
@@ -92,6 +101,11 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
       await page.getByRole("navigation", { name: "Flow tabs", exact: true }).getByRole("link", { name: "Overview", exact: true }).click();
       await page.locator("#observations").waitFor();
       expect(await page.locator("#progress").innerText()).toContain("1 active");
+      expect(await page.getByText(/^Keys:/).count()).toBe(0);
+      expect(await page.getByRole("region", { name: "Authored progress" }).evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.padding, css.borderTopWidth, css.borderRadius, css.boxShadow, el.getBoundingClientRect().width];
+      })).toEqual(["8px", "1px", "4px", "none", 1024]);
       await capture(page, `${label!.toLowerCase()}-overview`);
       await page.getByRole("navigation", { name: "Flow tabs", exact: true }).getByRole("link", { name: "Implement", exact: true }).click();
     }
@@ -114,10 +128,13 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     }
     expect(await page.evaluate(() => (window as any).policyViolations)).toEqual([]);
     expect(errors).toEqual([]);
+    const css = await page.evaluate(() => [...document.styleSheets].flatMap(sheet => [...sheet.cssRules].map(rule => rule.cssText)).join("\n"));
+    expect(css).not.toMatch(/pointer:\s*coarse|pointer-coarse/);
+    if (proof) writeFileSync(join(proof, "browser-css.txt"), css);
     expect(outside).toEqual([]);
     const tokens = await page.locator("html").evaluate((el) => {
       const style = getComputedStyle(el);
-      return Object.fromEntries(["--base", "--text", "--mauve"].map((key) => [key, style.getPropertyValue(key).trim()]));
+      return Object.fromEntries(["--color-base", "--color-text", "--color-mauve"].map((key) => [key, style.getPropertyValue(key).trim()]));
     });
     if (proof) writeFileSync(join(proof, "runtime.json"), JSON.stringify({ policy, outside, errors, tokens, colors }, null, 2));
     for (const token of Object.values(tokens)) expect(token).not.toBe("");

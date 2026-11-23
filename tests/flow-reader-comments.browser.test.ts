@@ -56,7 +56,10 @@ test("readers select typed-table text and manage revision-bound comments across 
       await page.getByRole("button", { name: theme, exact: true }).click();
       const paint = () => draft.evaluate(el => {
         const css = getComputedStyle(el);
-        return { border: css.borderTopColor, shadow: css.boxShadow, outline: css.outlineStyle, height: el.getBoundingClientRect().height };
+        return {
+          border: css.borderTopColor, width: css.borderTopWidth, shadow: css.boxShadow,
+          outline: css.outlineStyle, height: el.getBoundingClientRect().height,
+        };
       });
       await comments.getByRole("combobox", { name: "Comment target" }).focus();
       const unfocused = await paint();
@@ -64,16 +67,32 @@ test("readers select typed-table text and manage revision-bound comments across 
       expect(await draft.evaluate(el => el === document.activeElement)).toBe(true);
       const focused = await paint();
       expect(focused.border).toBe(unfocused.border);
+      expect(focused.border).toBe(theme === "Light" ? "oklch(0.55 0.216 19.8)" : "oklch(0.756 0.13 2.8)");
+      expect(unfocused.width).toBe("1px");
+      expect(focused.width).toBe("2px");
       expect(focused.height).toBe(unfocused.height);
       expect(unfocused.shadow).toBe("none");
-      expect(focused.shadow).toContain("inset");
+      expect(focused.shadow).toBe("none");
       expect(focused.outline).toBe("none");
       if (process.env.FLOW_READER_EVIDENCE) {
         const dir = process.env.FLOW_READER_EVIDENCE;
         const name = `comment-invalid-${theme.toLowerCase()}`;
+        mkdirSync(dir, { recursive: true });
         writeFileSync(join(dir, `${name}.json`), JSON.stringify({ unfocused, focused }, null, 2));
         writeFileSync(join(dir, `${name}.aria.txt`), await comments.ariaSnapshot());
         await comments.screenshot({ path: join(dir, `${name}.png`) });
+      }
+      await draft.fill(atLimit);
+      await tooLong.waitFor({ state: "hidden" });
+      const valid = await paint();
+      expect(valid.border).toBe(theme === "Light" ? "oklch(0.559 0.226 262.1)" : "oklch(0.766 0.111 259.9)");
+      expect(valid.width).toBe("1px");
+      expect(valid.shadow).toBe("none");
+      expect(valid.outline).toBe("none");
+      if (theme === "Light") {
+        await draft.fill(`${atLimit} x`);
+        await save.click();
+        await tooLong.waitFor();
       }
     }
     await draft.fill(atLimit);
@@ -99,8 +118,8 @@ test("readers select typed-table text and manage revision-bound comments across 
       });
       const label = { fontSize: "12px", fontWeight: "500", color: "oklch(0.879 0.043 272.3)" };
       expect({ cancel: await paint(cancel), sort: await paint(sort) }).toEqual({
-        cancel: { ...label, padding: "4px 8px", opacity: "0.75" },
-        sort: { ...label, padding: "6px 10px", opacity: "1" },
+        cancel: { ...label, padding: "2px 8px", opacity: "0.75" },
+        sort: { ...label, padding: "2px 8px", opacity: "1" },
       });
     } finally {
       blockedSave.resolve();
@@ -133,26 +152,28 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(await comments.textContent()).toContain("Stage stage-1");
     expect(await comments.textContent()).toContain("Result result-1");
     expect(await comments.textContent()).toContain("Entry e1");
-    const other = await browser.newContext({ viewport: { width: 320, height: 800 }, colorScheme: "dark", hasTouch: true });
+    const other = await browser.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: "dark", hasTouch: true });
     const otherPage = await other.newPage();
     await otherPage.goto(`${sent.live.url}#${sent.stage}`);
     await otherPage.getByText("Confirm the host restart.", { exact: true }).waitFor();
     expect(await otherPage.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
     const touchComments = otherPage.getByRole("region", { name: "Reader comments on Restart evidence" });
-    const touchSize = async (button: Locator) => {
-      const box = await button.boundingBox();
-      expect(box?.width).toBeGreaterThanOrEqual(44);
-      expect(box?.height).toBeGreaterThanOrEqual(44);
+    const desktopSize = async (control: Locator) => {
+      expect(await control.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart];
+      })).toEqual(["28px", "8px"]);
     };
     const addComment = touchComments.getByRole("button", { name: "Add Reader comment" });
-    await touchSize(addComment);
-    await touchSize(otherPage.getByRole("button", { name: "Sort by Check", exact: true }));
-    await touchSize(touchComments.getByRole("button", { name: "Edit comment" }).first());
-    await touchSize(touchComments.getByRole("button", { name: "Remove comment" }).first());
+    await desktopSize(addComment);
+    await desktopSize(otherPage.getByRole("button", { name: "Sort by Check", exact: true }));
+    await desktopSize(touchComments.getByRole("button", { name: "Edit comment" }).first());
+    await desktopSize(touchComments.getByRole("button", { name: "Remove comment" }).first());
     await addComment.tap();
-    await touchSize(touchComments.getByRole("button", { name: "Save comment" }));
+    await desktopSize(touchComments.getByRole("button", { name: "Save comment" }));
+    await desktopSize(touchComments.getByRole("combobox", { name: "Comment target" }));
     const cancelComment = touchComments.getByRole("button", { name: "Cancel" });
-    await touchSize(cancelComment);
+    await desktopSize(cancelComment);
     await cancelComment.tap();
     expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await otherPage.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
@@ -162,8 +183,7 @@ test("readers select typed-table text and manage revision-bound comments across 
       const touchButtons = otherPage.getByRole("button").filter({ hasText: /^(Edit comment|Remove comment|Add Reader comment|Select text to comment|Comment on selected text|Check)/ });
       for (const button of await touchButtons.all()) {
         const box = await button.boundingBox();
-        expect(box!.height).toBeGreaterThanOrEqual(44);
-        expect(box!.width).toBeGreaterThanOrEqual(44);
+        expect(box!.height).toBeGreaterThanOrEqual(28);
         expect(await button.evaluate(el => [...el.querySelectorAll("span")]
           .filter(label => label.scrollWidth > label.clientWidth)
           .map(label => ({ text: label.textContent, scrollWidth: label.scrollWidth, clientWidth: label.clientWidth })))).toEqual([]);

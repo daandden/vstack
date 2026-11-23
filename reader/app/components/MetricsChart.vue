@@ -4,7 +4,7 @@ import type { MetricsView } from "#flow/model.ts";
 import Table from "~/components/ui/Table.vue";
 
 const props = defineProps<{ measurement: MetricsView["measurements"][number] }>();
-const palette = ["var(--blue)", "var(--mauve)", "var(--teal)", "var(--peach)", "var(--pink)", "var(--green)", "var(--lavender)", "var(--yellow)"];
+const palette = ["var(--color-blue)", "var(--color-mauve)", "var(--color-teal)", "var(--color-peach)", "var(--color-pink)", "var(--color-green)", "var(--color-lavender)", "var(--color-yellow)"];
 const series = computed(() => props.measurement.values.filter(v => !v.missing).map((v, i) => ({ ...v, color: palette[i % palette.length]!, name: `${v.label}${v.baseline ? " (baseline)" : ""}` })));
 const histogram = computed(() => props.measurement.chart === "histogram");
 type DataRow = { series: string; index: number; x: number; y?: number };
@@ -25,13 +25,13 @@ const table = useVueTable({
 </script>
 
 <template>
-  <div class="grid min-w-0 gap-2.5">
-    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[length:var(--fs-small)]" aria-label="Chart series">
-      <li v-for="v in series" :key="v.series" class="inline-flex min-w-0 items-baseline gap-1.5 [overflow-wrap:anywhere]">
+  <div class="grid min-w-0 gap-2">
+    <ul class="flex flex-wrap gap-x-3 gap-y-1 text-small" aria-label="Chart series">
+      <li v-for="v in series" :key="v.series" class="inline-flex min-w-0 items-baseline gap-1 [overflow-wrap:anywhere]">
         <span aria-hidden="true" :style="{ color: v.color }">{{ v.baseline ? '◇' : '●' }}</span><span>{{ v.name }}</span>
       </li>
     </ul>
-    <div class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] items-start gap-3">
+    <div class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] items-start gap-2">
       <div class="metrics-plot">
         <MetricsPlot :measurement="measurement" :series="series" />
       </div>
@@ -62,18 +62,18 @@ const table = useVueTable({
 
 .chart-data-caption,
 .chart-data-cell {
-  font-size: var(--fs-small);
+  font-size: var(--text-small);
   text-align: start;
 }
 
 .chart-data-caption {
-  color: var(--subtext0);
+  color: var(--color-subtext0);
 }
 
 .chart-data-cell {
-  border-block-end: 1px solid var(--line);
-  padding-block: 0.25rem;
-  padding-inline: 0.5rem;
+  border-block-end: 1px solid var(--color-line);
+  padding-block: var(--spacing-1);
+  padding-inline: var(--spacing-2);
 }
 
 .chart-data-cell:first-child {
@@ -85,7 +85,7 @@ const table = useVueTable({
 }
 
 th.chart-data-cell {
-  color: var(--subtext0);
+  color: var(--color-subtext0);
   font-weight: 600;
 }
 </style>

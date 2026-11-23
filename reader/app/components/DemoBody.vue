@@ -5,7 +5,7 @@ import { useReaderState } from "~/composables/reader";
 const { flow } = useReaderState();
 import type { ResultView } from "~/utils/flow";
 
-const demoControl = "demo-control gap-1 rounded-[0.25rem] border border-flow-border px-2.5 py-1 text-[length:var(--fs-body)] font-semibold";
+const demoControl = "demo-control gap-1 border border-flow-line text-[length:var(--text-body)] font-semibold";
 const props = defineProps<{ r: ResultView; demo: Demo }>();
 const id = computed(() => `${props.r.anchor}-demo`);
 const key = computed(() => `flow-page:demo:${flow.value!.flow.id}:${props.r.id}:r${props.r.revision}`);
@@ -75,7 +75,7 @@ function rule(t: Transition): string {
 </script>
 
 <template>
-  <div :id="id" class="demo grid justify-items-start gap-1.5 rounded-md bg-flow-muted px-3 py-2.5">
+  <div :id="id" class="demo grid justify-items-start gap-2 rounded-md border border-flow-line bg-flow-muted p-2">
     <div class="grid gap-1.5" aria-live="polite">
       <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-flow-subtext">State</span> <strong :id="`${id}-state`" class="text-title text-flow-mauve">{{ stateLabel }}</strong></p>
       <template v-for="s in demo.states" :key="s.name">
@@ -87,7 +87,7 @@ function rule(t: Transition): string {
     </div>
     <div class="flex flex-wrap gap-2" role="group" aria-label="Actions">
       <Button v-for="a in demo.actions" :key="a.name" variant="bare" :data-action="a.name" :aria-disabled="!next(a, now)" :class="[demoControl, 'bg-flow-accented text-flow-text']" @click="run(a)">{{ a.label }}</Button>
-      <Button variant="bare" :class="[demoControl, 'text-[color:var(--subtext1)]']" data-reset @click="reset">Reset</Button>
+      <Button variant="bare" :class="[demoControl, 'text-[color:var(--color-subtext1)]']" data-reset @click="reset">Reset</Button>
     </div>
     <p class="text-small text-flow-subtext">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
     <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
@@ -104,29 +104,21 @@ function rule(t: Transition): string {
 </template>
 
 <style scoped>
-.demo-control {
-  outline-color: color-mix(in oklab, var(--text) 25%, transparent);
-}
-
-.demo-control:focus-visible {
-  outline-width: 3px;
-}
-
 .demo-control:active {
-  background-color: var(--surface1);
-  color: var(--lavender);
+  background-color: var(--color-surface1);
+  color: var(--color-lavender);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .demo-control:hover {
-    color: var(--lavender);
+    color: var(--color-lavender);
   }
 }
 
 .demo-control[aria-disabled="true"] {
-  background-color: var(--base);
+  background-color: var(--color-base);
   border-style: dashed;
-  color: var(--overlay0);
+  color: var(--color-overlay0);
   cursor: not-allowed;
 }
 </style>

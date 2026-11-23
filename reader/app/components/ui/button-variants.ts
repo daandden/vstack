@@ -1,19 +1,19 @@
 import { cva, type VariantProps } from "class-variance-authority";
 
 export const buttonVariants = cva(
-  "inline-flex items-center",
+  "reader-control inline-flex items-center py-0.5",
   {
     variants: {
       variant: {
-        soft: "bg-[var(--mantle)]",
-        outline: "bg-[var(--base)] border border-flow-border",
+        soft: "bg-flow-muted",
+        outline: "bg-flow-muted border border-flow-line",
         ghost: "bg-transparent",
         bare: "",
       },
     },
     compoundVariants: [{
       variant: ["soft", "outline", "ghost"],
-      class: "justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[color:var(--text)] disabled:cursor-not-allowed disabled:opacity-75",
+      class: "justify-center gap-1 text-small font-medium text-flow-text disabled:cursor-not-allowed disabled:opacity-75",
     }],
   },
 );

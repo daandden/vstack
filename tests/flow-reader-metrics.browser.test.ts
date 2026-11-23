@@ -123,6 +123,8 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
       if (previousColor) expect(current).not.toBe(previousColor);
       expect(paint[0]).toMatchObject({ dashed: true, outlined: true });
       expect(paint[1]).toMatchObject({ outlined: true });
+      expect(await result.getByRole("heading", { name: /Latency trend/ }).evaluate(el => getComputedStyle(el).color))
+        .toBe(theme === "Light" ? "oklch(0.435 0.043 279.3)" : "oklch(0.879 0.043 272.3)");
       if (proof) {
         mkdirSync(proof, { recursive: true });
         writeFileSync(join(proof, `${theme.toLowerCase()}-chart-paint.json`), JSON.stringify(paint, null, 2));

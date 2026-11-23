@@ -22,26 +22,18 @@ const { as = "button", asChild, variant = "outline" } = defineProps<PrimitivePro
 </template>
 
 <style scoped>
-.reader-button:not([data-variant="bare"]) {
-  outline-color: color-mix(in oklab, var(--text) 25%, transparent);
-}
-
-.reader-button:not([data-variant="bare"]):focus-visible {
-  outline-width: 3px;
-}
-
-.reader-button:is([data-variant="soft"], [data-variant="ghost"]):active:enabled {
-  background: var(--surface0);
+.reader-button:not([data-variant="bare"]):active:enabled {
+  background: var(--color-surface0);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .reader-button[data-variant="soft"]:hover:enabled:not(:active) {
-    background: color-mix(in oklab, var(--surface0) 75%, transparent);
+    background: color-mix(in oklch, var(--color-surface0) 75%, transparent);
   }
 
-  .reader-button[data-variant="outline"]:hover:enabled,
+  .reader-button[data-variant="outline"]:hover:enabled:not(:active),
   .reader-button[data-variant="ghost"]:hover:enabled:not(:active) {
-    background: var(--mantle);
+    background: color-mix(in oklch, var(--color-surface0) 55%, var(--color-mantle));
   }
 }
 </style>

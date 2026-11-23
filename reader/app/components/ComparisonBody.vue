@@ -9,8 +9,8 @@ const sides = computed(() => props.c.alternatives.filter((a) => a.attachments?.l
 </script>
 
 <template>
-  <div class="grid gap-2.5">
-    <section :id="c.verdict.anchor" class="grid gap-1 rounded border-s-2 border-[var(--state)] bg-flow-muted px-3 py-2" :class="c.verdict.outcome === 'chosen' ? '[--state:var(--green)]' : c.verdict.outcome === 'tie' ? '[--state:var(--lavender)]' : '[--state:var(--peach)]'" :data-outcome="c.verdict.outcome">
+  <div class="grid gap-2">
+    <section :id="c.verdict.anchor" class="grid gap-1 rounded-md border border-flow-line bg-flow-muted p-2" :class="c.verdict.outcome === 'chosen' ? '[--state:var(--color-green)]' : c.verdict.outcome === 'tie' ? '[--state:var(--color-lavender)]' : '[--state:var(--color-peach)]'" :data-outcome="c.verdict.outcome">
       <p class="font-semibold text-flow-subtext">Verdict</p>
       <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="text-small font-semibold text-flow-state">{{ VERDICT_LABELS[c.verdict.outcome] }}</span> <a v-if="chosen" class="font-bold no-underline" :href="`#${chosen.anchor}`" v-html="inline(chosen.name)" /></p>
       <div class="grid gap-1.5" v-html="prose(c.verdict.reason)" />

@@ -17,7 +17,7 @@ onMounted(() => void syncLearning());
 <template>
   <div class="quiz grid gap-2" @keydown.stop>
     <QuizQuestion v-for="q in quiz.questions" :key="q.ref" :q="q" :attempts="tries(q.ref)" @answer="recordAnswer(q.ref, $event)" />
-    <p class="quiz-completion text-[color:var(--green)]" role="status">{{ complete ? "Lesson complete." : "Lesson in progress." }}</p>
+    <p class="quiz-completion text-[color:var(--color-green)]" role="status">{{ complete ? "Lesson complete." : "Lesson in progress." }}</p>
     <p class="text-small text-flow-subtext" role="status">
       <template v-if="!durableLocal">Browser storage is unavailable. Unsynced attempts may be lost when this page closes.</template>
       <template v-else-if="pending">{{ pending }} attempt(s) saved in this browser, waiting to sync.</template>

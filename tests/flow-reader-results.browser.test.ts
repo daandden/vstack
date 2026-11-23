@@ -72,8 +72,16 @@ test("all Results retain compact themed rendering, learning progress and isolate
         }
       }
     }
-    expect(await page.locator(`#${seeded.refs.cards}`).evaluate((el) => getComputedStyle(el).rowGap)).toBe("10px");
+    expect(await page.locator(`#${seeded.refs.cards}`).evaluate((el) => getComputedStyle(el).rowGap)).toBe("8px");
     expect(await page.locator(`#${seeded.refs.quiz} form`).first().evaluate((el) => getComputedStyle(el).display)).toBe("grid");
+    const quizRegion = page.getByRole("region", { name: "Quiz", exact: true });
+    for (const control of [quizRegion.getByRole("button", { name: "Check answer" }).first(), quizRegion.getByRole("textbox", { name: "Answer", exact: true }).first()]) {
+      expect(await control.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart];
+      })).toEqual(["28px", "8px"]);
+    }
+    expect(await quizRegion.getByRole("radio", { name: "A real ask" }).evaluate(el => getComputedStyle(el.closest("label")!).minBlockSize)).toBe("28px");
     for (const ref of ["cards", "review", "ledger", "table", "document", "code", "timeline", "comparison", "metrics", "quiz", "demo", "artifact"]) expect(await page.locator(`#${seeded.refs[ref]}`).isVisible()).toBe(true);
     expect(await page.getByRole("table", { name: "Review summary" }).innerText()).toContain("Keep saved answers");
     expect(await page.locator(`#${seeded.refs.comparison}`).innerText()).toContain("Not assessed");

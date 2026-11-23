@@ -61,8 +61,8 @@ watchEffect((cleanup) => {
       <path v-for="edge in edges" :key="`${edge.blocker}:${edge.ticket}`" :data-blocker="edge.blocker" :data-ticket="edge.ticket" :d="edge.path" marker-end="url(#wayfinder-arrow)" />
     </svg>
     <ol class="wayfinder-nodes relative m-0 grid list-none items-start gap-x-16 gap-y-8 p-0" :style="{ gridTemplateColumns: `repeat(${columnCount}, 18rem)` }" aria-label="Wayfinder tickets">
-      <li v-for="node in layout" :key="node.ticket.id" class="min-w-0 wrap-anywhere rounded-md border border-flow-border bg-flow-base p-3" :data-ticket-node="node.ticket.id" :data-state="node.ticket.state" :style="{ gridColumn: node.column, gridRow: node.row }">
-        <a v-if="/^https?:\/\//i.test(node.ticket.url)" class="block min-h-11 py-1.5 text-flow-blue active:bg-flow-accented @hover:bg-flow-accented" data-map-item :href="node.ticket.url" target="_blank" rel="noopener noreferrer" dir="auto">{{ node.ticket.title }}</a>
+      <li v-for="node in layout" :key="node.ticket.id" class="min-w-0 wrap-anywhere rounded-md border border-flow-line bg-flow-base p-2" :data-ticket-node="node.ticket.id" :data-state="node.ticket.state" :style="{ gridColumn: node.column, gridRow: node.row }">
+        <a v-if="/^https?:\/\//i.test(node.ticket.url)" class="reader-control flex items-center py-0.5 text-flow-blue active:bg-flow-accented @hover:bg-flow-accented" data-map-item :href="node.ticket.url" target="_blank" rel="noopener noreferrer" dir="auto">{{ node.ticket.title }}</a>
         <div v-else data-map-item tabindex="0" dir="auto">
           {{ node.ticket.title }}
           <p class="quiet">{{ node.ticket.url }}</p>

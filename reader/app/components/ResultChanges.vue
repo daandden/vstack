@@ -43,13 +43,12 @@ const changes = computed(() => difference(content(earlier.value), content(props.
     <details class="open:grid open:gap-2.5">
       <summary>Compare revisions</summary>
       <div :id="anchor(earlier)" class="grid gap-2.5">
-      <div class="snapshot-field grid max-w-full justify-items-start gap-1 text-sm">
+      <div class="grid max-w-full justify-items-start gap-1">
         <label :for="`${r.id}-earlier`" class="font-medium">Earlier snapshot</label>
         <Select
           :id="`${r.id}-earlier`"
           :model-value="earlier.changed"
           :items="snapshots"
-          class="snapshot-select"
           @update:model-value="selected = $event"
         />
       </div>
@@ -59,7 +58,7 @@ const changes = computed(() => difference(content(earlier.value), content(props.
       <ul v-if="changes.length" class="grid list-none gap-2.5 ps-0">
         <li v-for="(c, i) in changes" :key="i" class="grid min-w-0 gap-1 border-s-2 border-flow-border ps-3 [overflow-wrap:anywhere]">
           <p class="font-semibold">{{ c.path }}</p>
-          <p class="whitespace-pre-wrap tabular-nums">{{ c.prefix }}<del v-if="c.removed !== undefined && c.removed !== ''" class="bg-[var(--red)]/10 text-flow-red">{{ c.removed }}</del><ins v-if="c.added !== undefined && c.added !== ''" class="bg-[var(--green)]/10 text-flow-green">{{ c.added }}</ins>{{ c.suffix }}<span v-if="c.before === '' || c.after === ''" class="text-flow-subtext"> {{ c.before === '' ? '(previously empty)' : '(now empty)' }}</span></p>
+          <p class="whitespace-pre-wrap tabular-nums">{{ c.prefix }}<del v-if="c.removed !== undefined && c.removed !== ''" class="bg-[var(--color-red)]/10 text-flow-red">{{ c.removed }}</del><ins v-if="c.added !== undefined && c.added !== ''" class="bg-[var(--color-green)]/10 text-flow-green">{{ c.added }}</ins>{{ c.suffix }}<span v-if="c.before === '' || c.after === ''" class="text-flow-subtext"> {{ c.before === '' ? '(previously empty)' : '(now empty)' }}</span></p>
         </li>
       </ul>
       <p v-else class="quiet">No content changes between these snapshots.</p>
@@ -67,23 +66,3 @@ const changes = computed(() => difference(content(earlier.value), content(props.
     </details>
   </section>
 </template>
-
-<style scoped>
-.snapshot-field :deep(.snapshot-select) {
-  background: var(--base);
-  gap: 0.75rem;
-  line-height: 1.25rem;
-  padding-block: 0.3125rem;
-  padding-inline: 0.5625rem;
-}
-
-.snapshot-field :deep(.snapshot-select:not(:focus-visible, [aria-expanded="true"])) {
-  border-color: var(--overlay0);
-}
-
-@media (pointer: coarse) {
-  .snapshot-field :deep(.snapshot-select) {
-    min-block-size: 44px;
-  }
-}
-</style>

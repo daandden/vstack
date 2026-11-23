@@ -105,13 +105,15 @@ test("readers compare known Document and typed edits without losing snapshots or
       const { width, height } = el.getBoundingClientRect();
       return { width, height, border: style.borderColor, shadow: style.boxShadow, outline: style.outlineStyle, padding: style.padding, fontSize: style.fontSize };
     });
+    await changes.getByText(/^Only changed fields are shown\./).click();
     const idleSnapshot = await snapshotStyle();
     await selector.focus();
+    const focusedSnapshot = await snapshotStyle();
     await page.keyboard.press("Space");
     const options = page.getByRole("listbox");
     await options.getByRole("option", { name: "Revision 1", exact: true }).and(page.locator(":focus")).waitFor();
     const openSnapshot = await snapshotStyle();
-    if (proof) writeFileSync(join(proof, "snapshot-open.styles.json"), JSON.stringify({ idleSnapshot, openSnapshot }, null, 2));
+    if (proof) writeFileSync(join(proof, "snapshot-open.styles.json"), JSON.stringify({ idleSnapshot, focusedSnapshot, openSnapshot }, null, 2));
     await page.keyboard.press("ArrowDown");
     await options.getByRole("option", { name: "Revision 2", exact: true }).and(page.locator(":focus")).waitFor();
     await page.keyboard.press("Space");
@@ -141,6 +143,9 @@ test("readers compare known Document and typed edits without losing snapshots or
     await changes.getByText("No content changes between these snapshots.", { exact: true }).waitFor();
     expect(cli(["show"]).revision).toBe(identical.revision);
     expect(openSnapshot.border).not.toBe(idleSnapshot.border);
+    expect(focusedSnapshot.border).toBe(openSnapshot.border);
+    expect(focusedSnapshot.shadow).toBe("none");
+    expect(focusedSnapshot.outline).toBe("none");
     expect(openSnapshot.shadow).toBe("none");
     expect(openSnapshot.outline).toBe("none");
     const touch = await browser.newContext({ hasTouch: true });
@@ -150,7 +155,10 @@ test("readers compare known Document and typed edits without losing snapshots or
       const snapshot = touchPage.getByRole("combobox", { name: "Earlier snapshot", exact: true });
       await snapshot.waitFor();
       expect(await touchPage.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
-      expect((await snapshot.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+      expect(await snapshot.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart];
+      })).toEqual(["28px", "8px"]);
     } finally { await touch.close(); }
   } finally { await context.close(); await browser.close(); cli(["host", "stop"]); rmSync(root, { recursive: true, force: true }); }
 }, 120_000);

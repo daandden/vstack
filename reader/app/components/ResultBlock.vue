@@ -20,9 +20,9 @@ const earlier = computed(() => [...props.r.history].reverse());
 </script>
 
 <template>
-  <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2.5" :class="historical ? 'border-s-2 border-flow-border ps-3' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
+  <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2" :class="historical ? 'border-s border-flow-line ps-2' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
     <span v-if="r.review && !historical" :id="`${r.stage}-review`" />
-    <div ref="content" class="grid min-w-0 gap-2.5">
+    <div ref="content" class="grid min-w-0 gap-2">
     <CorrectionNotice :notice="r" />
     <header class="grid gap-1">
       <h2 :id="`${r.anchor}-title`" v-html="inline(r.title)" />
@@ -38,7 +38,7 @@ const earlier = computed(() => [...props.r.history].reverse());
     <MetricsBody v-else-if="r.metrics" :m="r.metrics" />
     <QuizBody v-else-if="r.quiz" :r="r" />
     <ResultEntries v-else :r="r" />
-    <div v-if="listed.length" class="grid gap-2.5">
+    <div v-if="listed.length" class="grid gap-2">
       <p class="font-semibold text-flow-subtext">Attachments</p>
       <AttachmentFigure v-for="a in listed" :key="a.id" :a="a" :anchor="`${r.anchor}-${a.id}`" />
     </div>

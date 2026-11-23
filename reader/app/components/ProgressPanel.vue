@@ -33,7 +33,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
 </script>
 
 <template>
-  <section id="progress" class="progress grid gap-2 p-3 border border-flow-border rounded-md bg-flow-muted [&_.tag]:text-flow-state" data-stop aria-labelledby="progress-title" :data-complete="p.complete ? '' : undefined">
+  <section id="progress" class="progress grid gap-2 p-2 border border-flow-line rounded-md bg-flow-muted [&_.tag]:text-flow-state" data-stop aria-labelledby="progress-title" :data-complete="p.complete ? '' : undefined">
     <h3 id="progress-title">Authored progress</h3>
     <p class="font-semibold" :class="p.complete ? 'text-flow-green' : 'text-flow-peach'">{{ verdict }}</p>
     <dl class="facts grid [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))] gap-x-6 gap-y-2 [&_dt]:text-flow-subtext [&_dt]:text-small [&_dt]:font-semibold [&_dd]:ms-0">
@@ -91,7 +91,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
         </li>
       </ul>
     </div>
-    <ol v-if="p.tasks.length" class="tasks grid gap-1.5 ps-0 list-none">
+    <ol v-if="p.tasks.length" class="tasks grid gap-1 ps-0 list-none">
       <li v-for="t in p.tasks" :id="t.id" :key="t.id" class="task flex flex-wrap items-baseline gap-x-3 gap-y-1 data-[task=skipped]:text-flow-subtext data-[task=inapplicable]:text-flow-subtext" :data-task="t.state" :data-blocked="t.blocked_by.length ? '' : undefined">
         <span class="tag [min-inline-size:7em]">{{ TASK_LABELS[t.state] }}</span>
         <span v-html="inline(t.title)" />
@@ -105,7 +105,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
       </li>
     </ol>
   </section>
-  <section id="observations" class="observations grid gap-2 p-3 border border-dashed border-flow-border rounded-md bg-flow-muted [&_.tag]:text-flow-state" data-stop aria-labelledby="observations-title">
+  <section id="observations" class="observations grid gap-2 p-2 border border-dashed border-flow-line rounded-md bg-flow-muted [&_.tag]:text-flow-state" data-stop aria-labelledby="observations-title">
     <h3 id="observations-title">Read-only observations</h3>
     <p class="quiet">Observed outside the Flow. They change no authored content, completion, or authorization.</p>
     <p v-if="!observations" class="quiet">Not observed yet.</p>

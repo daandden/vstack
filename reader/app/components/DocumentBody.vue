@@ -17,9 +17,9 @@ const stop = computed(() => (props.historical ? undefined : ""));
 </script>
 
 <template>
-  <div class="grid gap-2.5 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-flow-dimmed">
-    <section v-for="sec in doc.sections" :id="sec.anchor" :key="sec.anchor" class="doc-section grid gap-2.5 target:bg-flow-accented" :aria-labelledby="`${sec.anchor}-title`" :data-stop="stop">
-      <h3 :id="`${sec.anchor}-title`" class="text-flow-lavender" v-html="inline(sec.heading)" />
+  <div class="grid gap-2 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-flow-dimmed">
+    <section v-for="sec in doc.sections" :id="sec.anchor" :key="sec.anchor" class="doc-section grid gap-2 target:bg-flow-accented" :aria-labelledby="`${sec.anchor}-title`" :data-stop="stop">
+      <h3 :id="`${sec.anchor}-title`" v-html="inline(sec.heading)" />
       <template v-for="(b, i) in sec.blocks" :key="i">
         <div v-if="'prose' in b" class="grid gap-1.5" v-html="prose(b.prose, cites)" />
         <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid gap-0.5 ps-5 marker:text-flow-dimmed" :class="b.ordered ? 'list-decimal' : 'list-disc'">
@@ -47,11 +47,11 @@ const stop = computed(() => (props.historical ? undefined : ""));
       </template>
     </section>
     <section v-if="doc.limitations.length" :id="doc.limitationsAnchor" class="grid gap-1.5" :data-stop="stop">
-      <p class="font-semibold text-flow-peach">Limitations</p>
+      <p class="font-semibold">Limitations</p>
       <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><li v-for="(l, i) in doc.limitations" :key="i" v-html="inline(l)" /></ul>
     </section>
     <section v-if="doc.citations.length" :id="doc.citationsAnchor" class="grid gap-1.5" aria-label="Citations" :data-stop="stop">
-      <p class="font-semibold text-[var(--pink)]">Citations</p>
+      <p class="font-semibold">Citations</p>
       <ol class="grid list-decimal gap-0.5 ps-5 marker:text-flow-dimmed">
         <li v-for="c in doc.citations" :id="c.anchor" :key="c.anchor">
           <span v-html="inline(c.text)" />

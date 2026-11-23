@@ -10,7 +10,7 @@ const question = computed(() => (props.block.kind === "question" ? f.value.quest
 const round = computed(() => {
   const q = question.value;
   const item = q && st.value?.items.find((i) => i.type === "round" && i.round.id === q.round);
-  return item?.type === "round" ? { round: item.round, first: item.questions[0]?.id === q.id } : undefined;
+  return item?.type === "round" ? { round: item.round, first: item.questions[0]?.id === q!.id } : undefined;
 });
 const result = computed(() => (props.block.kind === "result" ? st.value?.results.find((r) => r.id === props.block.id) : undefined));
 const topic = computed(() => (props.block.kind === "topic" ? f.value.topics.find((t) => t.id === props.block.id) : undefined));
@@ -24,7 +24,7 @@ const ordinal = computed(() => (props.position === undefined ? undefined : Strin
 </script>
 
 <template>
-  <div class="entry grid gap-2 [padding-block:var(--entry-space)] [&+.entry]:border-bs [&+.entry]:border-flow-line" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
+  <div class="entry grid gap-2 py-entry [&+.entry]:border-bs [&+.entry]:border-flow-line" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
     <p class="meta">
       <span v-if="ordinal" class="text-flow-toned font-bold tabular-nums" :title="`First published at position ${position}`">{{ ordinal }}</span>
       <span v-if="round" :id="round.first ? round.round.id : undefined">

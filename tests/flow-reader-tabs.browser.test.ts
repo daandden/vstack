@@ -108,6 +108,17 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     await page.locator(`#${research.refs.doc}`).waitFor();
     expect(await selected(page)).toBe(stageB);
     expect(await clearance()).toBeGreaterThanOrEqual(0);
+    if (process.env.FLOW_READER_EVIDENCE) {
+      const dir = process.env.FLOW_READER_EVIDENCE;
+      mkdirSync(dir, { recursive: true });
+      for (const theme of ["Light", "Dark"]) {
+        await page.getByRole("button", { name: theme, exact: true }).click();
+        await page.evaluate(() => scrollTo(0, 0));
+        const name = join(dir, `${theme.toLowerCase()}-research`);
+        await page.screenshot({ path: `${name}.png`, fullPage: true });
+        writeFileSync(`${name}.aria.txt`, await page.locator("body").ariaSnapshot());
+      }
+    }
     for (let i = 0; i < 3; i++) {
       await page.reload();
       await page.locator(".bar .tabs").waitFor();

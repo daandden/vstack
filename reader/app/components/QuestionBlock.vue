@@ -73,9 +73,9 @@ const lines = computed(() => {
 </script>
 
 <template>
-  <article :id="q.id" class="question grid gap-2.5" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
+  <article :id="q.id" class="question grid gap-2" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
     <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
-    <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
+    <h2><span class="me-2 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
     <section aria-label="Current outcome" class="grid gap-1 text-small">
       <p :class="outcome.cls" v-html="outcome.html" />
       <p v-if="outcome.previous" :class="outcome.previous.cls" v-html="outcome.previous.html" />
@@ -86,7 +86,7 @@ const lines = computed(() => {
         <span v-if="latestOutcome" :class="latestOutcome.cls" v-html="latestOutcome.html" />
       </nav>
     </section>
-    <section :id="`${q.id}-evidence`" aria-label="Question evidence" class="grid gap-2.5">
+    <section :id="`${q.id}-evidence`" aria-label="Question evidence" class="grid gap-2">
       <div class="grid gap-1.5" v-html="prose(q.description)" />
       <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext [&_a]:no-underline">
         <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
@@ -112,7 +112,7 @@ const lines = computed(() => {
         </ul>
       </details>
       <div v-if="q.today?.length" class="grid gap-1.5">
-        <p class="font-semibold text-[var(--pink)]">Today</p>
+        <p class="font-semibold text-[var(--color-pink)]">Today</p>
         <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed">
           <li v-for="(fact, i) in q.today" :key="i"><span v-html="inline(fact.text)" /></li>
         </ul>
@@ -124,7 +124,7 @@ const lines = computed(() => {
         </details>
       </div>
       <div v-if="q.example" class="grid gap-1.5">
-        <p class="font-semibold text-[var(--pink)]">Example</p>
+        <p class="font-semibold text-[var(--color-pink)]">Example</p>
         <p class="whitespace-pre-wrap" v-html="inline(q.example)" />
       </div>
       <FigureList :figures="q.figures" />
@@ -132,7 +132,7 @@ const lines = computed(() => {
     <div class="grid gap-4 pbs-1.5">
       <ol :id="`${q.id}-choices`" aria-label="Choices" class="options grid list-none gap-4 ps-0">
         <li v-for="o in q.options" :key="o.label" class="option group/option grid gap-1" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
-          <h3 class="font-semibold text-flow-blue group-data-[picked]/option:font-bold group-data-[picked]/option:text-flow-yellow">
+          <h3 class="font-semibold group-data-[picked]/option:font-bold group-data-[picked]/option:text-flow-yellow">
             <span v-html="inline(o.label)" />
             <span v-if="o.recommended" class="ms-2 font-bold text-flow-yellow" aria-hidden="true">*</span><span v-if="o.recommended" class="sr-only"> (recommended)</span>
             <span v-if="picks.has(o.label)" class="sr-only"> (your answer)</span>
@@ -140,8 +140,8 @@ const lines = computed(() => {
           <FigureList v-if="o.preview" :figures="[o.preview]" />
           <p v-html="inline(o.does)" />
           <ul class="grid list-none ps-0">
-            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-green before:content-['+']" v-html="inline(g)" />
-            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-red before:content-['−']" v-html="inline(c)" />
+            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-green before:content-['+']" v-html="inline(g)" />
+            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-red before:content-['−']" v-html="inline(c)" />
           </ul>
           <p v-if="o.recommended" class="text-small text-flow-subtext">Recommended: <span v-html="inline(o.recommended)" /></p>
         </li>
@@ -157,7 +157,7 @@ const lines = computed(() => {
           <p v-else v-html="inline(q.answer.recorded_reading.unresolved)" />
         </details>
       </section>
-      <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2">
+      <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--color-surface1)] px-3 py-2">
         <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
       </div>
     </div>

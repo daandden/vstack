@@ -121,7 +121,7 @@ async function save(text: string) {
 </script>
 
 <template>
-  <section :aria-label="`Reader comments on ${r.title}`" class="grid min-w-0 gap-2 rounded border border-dashed border-flow-border bg-flow-muted p-3 text-small [overflow-wrap:anywhere]">
+  <section :aria-label="`Reader comments on ${r.title}`" class="grid min-w-0 gap-2 rounded-md border border-dashed border-flow-line bg-flow-muted p-2 text-small [overflow-wrap:anywhere]">
     <h3>Reader comments</h3>
     <p class="text-flow-subtext">Reader notes, not agent-authored content, answers, or consent.</p>
     <ul v-if="saved.length" class="grid list-none gap-3 ps-0" aria-live="polite">
@@ -131,28 +131,27 @@ async function save(text: string) {
         <p class="whitespace-pre-wrap">{{ c.text }}</p>
         <time :datetime="c.time" class="text-flow-subtext">{{ formatTime(c.time) }}</time>
         <div class="flex flex-wrap gap-2">
-          <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="begin(c)">Edit comment</Button>
-          <Button v-if="removing !== c.id" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="removing = c.id">Remove comment</Button>
+          <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="begin(c)">Edit comment</Button>
+          <Button v-if="removing !== c.id" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="removing = c.id">Remove comment</Button>
           <template v-else>
             <span>Remove this Reader comment?</span>
-            <Button :disabled="pending" :aria-busy="pending || undefined" class="max-w-full whitespace-normal text-start text-flow-red media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="remove(c.id)">Confirm removal</Button>
-            <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="removing = ''">Keep comment</Button>
+            <Button :disabled="pending" :aria-busy="pending || undefined" class="max-w-full whitespace-normal text-start text-flow-red" @click="remove(c.id)">Confirm removal</Button>
+            <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="removing = ''">Keep comment</Button>
           </template>
         </div>
       </li>
     </ul>
     <p v-else class="text-flow-subtext">No Reader comments on this revision.</p>
     <p v-if="removeError" role="alert" class="text-flow-red">{{ removeError }}</p>
-    <template v-if="!open">
-      <Button ref="add" variant="soft" class="w-fit max-w-full whitespace-normal text-start media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="begin()">Add Reader comment</Button>
-      <ResultTextSelection :key="`${r.revision}-${r.edit ?? ''}`" :content="content" @select="begin(undefined, $event)" />
-    </template>
-    <form v-else ref="form" class="grid min-w-0 gap-3" novalidate @submit.prevent.stop="commentForm.handleSubmit()">
+    <ResultTextSelection v-if="!open" :key="`${r.revision}-${r.edit ?? ''}`" :content="content" @select="begin(undefined, $event)">
+      <Button ref="add" variant="ghost" class="w-fit max-w-full whitespace-normal text-start" @click="begin()">Add Reader comment</Button>
+    </ResultTextSelection>
+    <form v-else ref="form" class="grid min-w-0 gap-2" novalidate @submit.prevent.stop="commentForm.handleSubmit()">
       <p class="text-flow-subtext">Draft for Revision {{ revision }}<template v-if="edit != null"> · Edit {{ edit }}</template>. Saving is a separate action.</p>
       <blockquote v-if="passage" class="whitespace-pre-wrap border-s-2 border-flow-border ps-3">{{ passage }}</blockquote>
       <Field v-else-if="!editing" :id="`${r.anchor}-target`" label="Comment target">
         <template #default="{ control }">
-          <Select v-bind="control" v-model="selectedTarget" :items="targets" class="w-full media-pointer-coarse:min-h-[44px]" :disabled="pending" />
+          <Select v-bind="control" v-model="selectedTarget" :items="targets" class="w-full" :disabled="pending" />
         </template>
       </Field>
       <component :is="commentForm.Field" v-slot="{ field }" name="text">
@@ -167,8 +166,8 @@ async function save(text: string) {
         <p v-if="editing" class="text-flow-subtext">Editing preserves the original anchor and revision.</p>
         <p v-if="saveError" role="alert" class="text-flow-red">{{ saveError }}</p>
         <div class="flex flex-wrap gap-2">
-          <Button type="submit" :disabled="pending || !field.state.value.trim()" :aria-busy="pending || undefined" class="max-w-full whitespace-normal text-start media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]">Save comment</Button>
-          <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="close">Cancel</Button>
+          <Button type="submit" :disabled="pending || !field.state.value.trim()" :aria-busy="pending || undefined" class="max-w-full whitespace-normal text-start">Save comment</Button>
+          <Button variant="ghost" :disabled="pending" class="max-w-full whitespace-normal text-start" @click="close">Cancel</Button>
         </div>
       </component>
     </form>

@@ -97,31 +97,30 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
 
 <template>
   <div class="grid min-w-0 gap-2">
-    <div class="table-filters flex flex-wrap items-end gap-2">
-      <div class="grid justify-items-start gap-1 text-sm">
+    <div class="flex flex-wrap items-end gap-2">
+      <div class="grid justify-items-start gap-1 text-small">
         <label :for="`${r.anchor}-search`" class="font-medium">Filter rows</label>
         <Input
           :id="`${r.anchor}-search`"
           :model-value="search"
           type="text"
           placeholder="Search this table"
-          class="table-field table-search"
+          class="table-search"
           @update:model-value="search = String($event ?? '')"
         />
       </div>
-      <div v-for="c in statuses" :key="c.id" class="grid justify-items-start gap-1 text-sm">
+      <div v-for="c in statuses" :key="c.id" class="grid justify-items-start gap-1 text-small">
         <label :for="`${r.anchor}-${c.id}`" class="font-medium">{{ c.label }}</label>
         <Select
           :id="`${r.anchor}-${c.id}`"
           :aria-label="c.label"
           :model-value="statusValue(c.id)"
           :items="c.items"
-          class="table-field table-status"
           @update:model-value="setStatus(c.id, $event)"
         />
       </div>
     </div>
-    <p role="status" aria-live="polite" aria-atomic="true" class="text-[length:var(--fs-small)] text-flow-subtext tabular-nums">{{ count }} of {{ r.entries.length }} rows</p>
+    <p role="status" aria-live="polite" aria-atomic="true" class="text-[length:var(--text-small)] text-flow-subtext tabular-nums">{{ count }} of {{ r.entries.length }} rows</p>
     <Table class="border-collapse tabular-nums">
       <caption data-slot="table-caption" class="sr-only">{{ r.title }}</caption>
       <thead data-slot="table-header" class="result-head">
@@ -164,36 +163,21 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
 </template>
 
 <style scoped>
-.table-filters :deep(.table-field) {
-  background: var(--base);
-  line-height: 1.25rem;
-  padding-block: 0.3125rem;
-  padding-inline: 0.5625rem;
-}
-
-.table-filters :deep(.table-field:not(:focus, [aria-expanded="true"])) {
-  border-color: var(--overlay0);
-}
-
 .table-search {
   inline-size: auto;
   max-inline-size: 100%;
 }
 
-.table-filters :deep(.table-status) {
-  gap: 0.75rem;
-}
-
 .result-head {
-  border-block-end: 1px solid var(--overlay0);
+  border-block-end: 1px solid var(--color-overlay0);
 }
 
 .result-row + .result-row {
-  border-block-start: 1px solid var(--line);
+  border-block-start: 1px solid var(--color-line);
 }
 
 .result-row:has(:target) {
-  background: var(--surface0);
+  background: var(--color-surface0);
 }
 
 .result-cell {
@@ -207,14 +191,5 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
   justify-content: start;
   margin-inline-start: -0.5rem;
   gap: 0.375rem;
-  padding-block: 0.375rem;
-  padding-inline: 0.625rem;
-}
-
-@media (pointer: coarse) {
-  .sort-button {
-    min-block-size: 44px;
-    min-inline-size: 44px;
-  }
 }
 </style>

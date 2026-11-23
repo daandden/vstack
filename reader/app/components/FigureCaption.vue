@@ -7,7 +7,7 @@ const facts = computed(() => sourceFacts(props.a));
 
 <template>
   <component :is="as ?? 'figcaption'" class="figure-caption grid justify-self-stretch gap-1">
-    <p class="figure-title font-heading text-body leading-[1.35] font-[650] text-flow-text text-balance" v-html="inline(withoutQuestionNumber(a.caption))" />
+    <p class="figure-title font-heading text-body leading-heading [font-weight:var(--font-weight-heading)] text-flow-text text-balance" v-html="inline(withoutQuestionNumber(a.caption))" />
     <div v-if="a.description" class="figure-description grid gap-1.5 text-flow-toned" v-html="prose(a.description)" />
     <details class="source text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
       <summary>Source</summary>

@@ -9,7 +9,7 @@ const children = computed(() => flow.value!.stages.filter((s) => s.parent === pr
 
 <template>
   <li class="grid grid-cols-[auto_1fr] gap-x-3 items-baseline" :data-state="stage.state">
-    <a class="inline-flex gap-2 items-center min-h-11 wrap-anywhere text-flow-mauve font-semibold no-underline" :href="`#${stage.id}`" data-map-item><span class="shrink-0 [inline-size:0.4375rem] [block-size:0.4375rem] rounded-full bg-flow-state" />{{ stage.label }}</a>
+    <a class="reader-control inline-flex gap-2 items-center wrap-anywhere font-semibold no-underline" :href="`#${stage.id}`" data-map-item><span class="shrink-0 size-2 rounded-full bg-flow-state" />{{ stage.label }}</a>
     <span class="quiet"><span class="text-flow-state font-semibold">{{ STATE_LABELS[stage.state] }}</span> · {{ stage.open_questions }} open</span>
     <ul v-if="children.length" class="col-span-full grid gap-1 list-none mbs-1 ms-1 ps-4 border-s border-flow-border"><StageTreeNode v-for="c in children" :key="c.id" :stage="c" /></ul>
   </li>

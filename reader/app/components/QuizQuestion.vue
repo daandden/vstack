@@ -44,14 +44,14 @@ const correct = computed(() => {
 </script>
 
 <template>
-  <form :data-question="q.ref" class="grid gap-2 border-be border-flow-line py-3" novalidate @submit.prevent="form.handleSubmit()">
+  <form :data-question="q.ref" class="grid gap-2 border-be border-flow-line py-2" novalidate @submit.prevent="form.handleSubmit()">
     <component :is="form.Field" v-slot="{ field }" name="answer">
       <fieldset class="m-0 min-w-0 border-0 p-0">
         <legend class="mbe-2 font-semibold" v-html="inline(q.prompt)" />
         <Field :id="id" :label="q.choices ? undefined : 'Answer'" :horizontal="!q.choices" :errors="field.state.meta.errors">
           <template #default="{ control }">
             <template v-if="q.choices">
-              <label v-for="c in q.choices" :key="c.ref" class="flex min-h-11 flex-wrap items-center gap-2">
+              <label v-for="c in q.choices" :key="c.ref" class="flex [min-block-size:var(--spacing-control)] flex-wrap items-center gap-2">
                 <input
                   type="radio"
                   :name="id"
@@ -59,38 +59,21 @@ const correct = computed(() => {
                   :checked="field.state.value === c.ref"
                   :aria-invalid="control['aria-invalid']"
                   :aria-describedby="control['aria-describedby']"
-                  class="accent-[var(--blue)]"
+                  class="accent-[var(--color-blue)]"
                   @change="field.handleChange(c.ref)"
                   @blur="field.handleBlur()"
                   @keydown.enter.prevent="form.handleSubmit()"
                 > {{ c.label }}
               </label>
             </template>
-            <Input v-else v-bind="control" :model-value="field.state.value" :inputmode="isNumber ? 'decimal' : undefined" type="text" class="quiz-answer max-w-[20rem]" @update:model-value="field.handleChange(String($event ?? ''))" @blur="field.handleBlur()" />
+            <Input v-else v-bind="control" :model-value="field.state.value" :inputmode="isNumber ? 'decimal' : undefined" type="text" class="max-w-[15rem]" @update:model-value="field.handleChange(String($event ?? ''))" @blur="field.handleBlur()" />
           </template>
         </Field>
       </fieldset>
-      <Button type="submit" class="quiz-check min-h-11 justify-self-start">Check answer</Button>
-      <p class="quiz-feedback data-[correct=true]:text-[color:var(--green)] data-[correct=false]:text-[color:var(--peach)]" role="status" :data-correct="correct">
+      <Button type="submit" class="quiz-check justify-self-start">Check answer</Button>
+      <p class="quiz-feedback data-[correct=true]:text-[color:var(--color-green)] data-[correct=false]:text-[color:var(--color-peach)]" role="status" :data-correct="correct">
         <template v-if="correct !== undefined && !field.state.meta.errors.length">{{ correct ? "Correct." : "Not yet." }} {{ q.explanation }} Attempts: {{ attempts.length }}.</template>
       </p>
     </component>
   </form>
 </template>
-
-<style scoped>
-.quiz-answer {
-  background: var(--surface0);
-  padding: 0.5rem;
-  font-size: max(16px, 1rem);
-  line-height: 1.6;
-}
-
-.quiz-check {
-  border-color: var(--blue);
-  background: var(--surface0);
-  padding-inline: 1rem;
-  font-size: var(--fs-body);
-  font-weight: 600;
-}
-</style>

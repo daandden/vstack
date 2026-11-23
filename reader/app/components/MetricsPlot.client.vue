@@ -25,7 +25,7 @@ const baselineDash = [5, 3];
 const x = (p: Point) => p.x;
 const y = (p: Point) => p.y;
 const stroke = (p: Mark) => p.series.color;
-const pointFill = (p: Mark) => p.series.baseline ? "var(--base)" : stroke(p);
+const pointFill = (p: Mark) => p.series.baseline ? "var(--color-base)" : stroke(p);
 const pointStrokeWidth = (p: Mark) => p.series.baseline ? 2.5 : 1;
 
 const pointSeries = computed(() => histogram.value ? [] : series.map(s => ({
@@ -226,7 +226,7 @@ function pointerFocus(event: PointerEvent) {
             :stroke="stroke(rect.mark)"
             :stroke-width="pointStrokeWidth(rect.mark)"
           />
-          <circle v-if="focusPosition" :cx="focusPosition.x" :cy="focusPosition.y" r="6" fill="none" stroke="var(--text)" stroke-width="2" />
+          <circle v-if="focusPosition" :cx="focusPosition.x" :cy="focusPosition.y" r="6" fill="none" stroke="var(--color-text)" stroke-width="2" />
         </g>
       </svg>
     </div>
@@ -244,17 +244,17 @@ function pointerFocus(event: PointerEvent) {
   position: relative;
   min-inline-size: 0;
   --vis-axis-font-family: var(--font-sans, monospace);
-  --vis-axis-label-font-size: var(--fs-small);
-  --vis-axis-label-color: var(--subtext0);
-  --vis-axis-tick-label-font-size: var(--fs-small);
-  --vis-axis-tick-label-color: var(--subtext0);
-  --vis-axis-tick-color: var(--line);
-  --vis-axis-grid-color: var(--line);
-  --vis-axis-domain-color: var(--line);
+  --vis-axis-label-font-size: var(--text-small);
+  --vis-axis-label-color: var(--color-subtext0);
+  --vis-axis-tick-label-font-size: var(--text-small);
+  --vis-axis-tick-label-color: var(--color-subtext0);
+  --vis-axis-tick-color: var(--color-line);
+  --vis-axis-grid-color: var(--color-line);
+  --vis-axis-domain-color: var(--color-line);
 }
 
 .plot:focus-visible {
-  outline: 2px solid var(--mauve);
+  outline: 2px solid var(--color-mauve);
   outline-offset: 2px;
 }
 
@@ -268,8 +268,8 @@ function pointerFocus(event: PointerEvent) {
 
 .plot-status {
   min-block-size: 1lh;
-  color: var(--subtext0);
-  font-size: var(--fs-small);
+  color: var(--color-subtext0);
+  font-size: var(--text-small);
   overflow-wrap: anywhere;
 }
 </style>

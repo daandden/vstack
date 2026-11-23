@@ -36,7 +36,7 @@ async function copy() {
 
 <template>
   <div v-if="readerComments.length" class="grid gap-1 text-small [overflow-wrap:anywhere]">
-    <Button variant="soft" :aria-busy="pending || undefined" :disabled="pending" class="w-fit max-w-full whitespace-normal media-pointer-coarse:min-h-[44px] media-pointer-coarse:min-w-[44px]" @click="copy">
+    <Button variant="soft" :aria-busy="pending || undefined" :disabled="pending" class="w-fit max-w-full whitespace-normal" @click="copy">
       <span v-if="pending" class="copy-spinner i-lucide-loader-circle shrink-0 text-base" aria-hidden="true" />
       Copy feedback
     </Button>

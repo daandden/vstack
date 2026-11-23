@@ -57,7 +57,7 @@ test("question context, choices, answers and figures keep their compact themed l
       }
     }
     const question = page.locator(`#${published.refs.first}`);
-    expect(await question.evaluate((el) => ({ display: getComputedStyle(el).display, gap: getComputedStyle(el).gap }))).toEqual({ display: "grid", gap: "10px" });
+    expect(await question.evaluate((el) => ({ display: getComputedStyle(el).display, gap: getComputedStyle(el).gap }))).toEqual({ display: "grid", gap: "8px" });
     expect(await question.locator(".options").evaluate((el) => ({ display: getComputedStyle(el).display, list: getComputedStyle(el).listStyleType }))).toEqual({ display: "grid", list: "none" });
     expect(await question.locator(".answer").count()).toBe(0);
     expect(await question.getByRole("heading", { name: /Keep.*\(your answer\)/ }).count()).toBe(1);

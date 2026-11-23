@@ -49,6 +49,13 @@ test("the Matt path lives only in the Map panel with recorded states and is abse
     await page.keyboard.press("m");
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     await map.waitFor();
+    expect(await map.getByText(/tabs ·.*items · Enter opens/).count()).toBe(0);
+    for (const control of [map.getByRole("button", { name: "Close" }), ...await map.getByRole("tab").all()]) {
+      expect(await control.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart];
+      })).toEqual(["28px", "8px"]);
+    }
     expect(await map.getByRole("tab").allTextContents()).toEqual(["Matt flow path", "Stages"]);
     const path = map.getByRole("region", { name: "Matt flow path" });
     expect(await path.isVisible()).toBe(true);
@@ -78,7 +85,7 @@ test("the Matt path lives only in the Map panel with recorded states and is abse
   } finally { await context.close(); }
 }, 120_000);
 
-test("repeated Matt path Stages have distinct labels and nonoverlapping 44px links", async () => {
+test("repeated Matt path Stages have distinct labels and nonoverlapping compact links", async () => {
   const first = cli(["open", "--skill", "implement", "--title", "Repeated implement Stages"]);
   cli(["submit", "--flow", first.flow, "--stage", first.stage], [{ kind: "stage", state: "finished" }]);
   const second = cli(["open", "--skill", "implement", "--flow", first.flow]);
@@ -96,7 +103,7 @@ test("repeated Matt path Stages have distinct labels and nonoverlapping 44px lin
       expect(await links.allTextContents()).toEqual(["Implement", "Implement 2"]);
       expect(await links.evaluateAll((els) => {
         const rects = els.map((el) => el.getBoundingClientRect());
-        return rects.every((r) => r.width >= 44 && r.height >= 44)
+        return els.every((el) => getComputedStyle(el).minBlockSize === "28px" && getComputedStyle(el).paddingInlineStart === "8px")
           && rects.every((r, i) => rects.slice(i + 1).every((s) => r.bottom <= s.top || s.bottom <= r.top || r.right <= s.left || s.right <= r.left));
       })).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
