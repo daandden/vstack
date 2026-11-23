@@ -155,7 +155,10 @@ test("Jump labels identify Assumed subjects and each published attempt without m
     await page.goto(`${opened.live.url}#${opened.stage}`);
     await page.locator(".bar .jump-row").waitFor();
     expect(await jumps(page)).toEqual(expectedIds);
-    expect(await shownBlocks(page)).toEqual(expectedIds);
+    const stage = page.locator(`#${opened.stage}`);
+    expect(await stage.locator("[data-reading]").evaluateAll(els => els.map(el => (el as HTMLElement).dataset.reading))).toEqual(expectedIds);
+    const assumed = stage.getByRole("heading", { name: "Keep captured evidence", exact: true });
+    expect(await assumed.isVisible()).toBe(false);
     const row = page.locator(".bar .jump-row");
     expect(await row.locator(`a[href="#${first.refs["choice-0"]}"]`).innerText()).toBe("Assumed: Keep captured evidence");
     for (let i = 1; i < subjects.length; i++) {
@@ -173,6 +176,7 @@ test("Jump labels identify Assumed subjects and each published attempt without m
     }
     await row.getByRole("link", { name: "Assumed: Keep captured evidence", exact: true }).click();
     expect(await hash(page)).toBe(first.refs["choice-0"]);
+    expect(await assumed.isVisible()).toBe(true);
     await page.keyboard.press("j");
     expect(await hash(page)).toBe(first.refs["choice-1"]);
     await page.keyboard.press("k");

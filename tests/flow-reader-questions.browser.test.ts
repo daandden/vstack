@@ -63,6 +63,8 @@ test("question context, choices, answers and figures keep their compact themed l
     expect(await question.getByRole("heading", { name: /Keep.*\(your answer\)/ }).count()).toBe(1);
     const noted = page.locator(`#${published.refs.noted}`);
     const worded = page.locator(`#${published.refs.worded}`);
+    await page.goto(`${opened.live.url}#${published.refs.noted}`);
+    await noted.getByRole("list", { name: "Choices" }).waitFor();
     const lineLabels = (q: typeof noted) => q.locator(".answer p").evaluateAll((ps) => ps.map((p) => p.firstElementChild!.textContent));
     expect(await lineLabels(noted)).toEqual(["Note on B"]);
     expect(await lineLabels(worded)).toEqual(["Words on A", "Concern", "Still to ask"]);
@@ -81,12 +83,12 @@ test("question context, choices, answers and figures keep their compact themed l
       return { lines: [...el.querySelectorAll(".option")].map((o) => getComputedStyle(o).borderBlockStartWidth), between: Math.round(opts[1]!.top - opts[0]!.bottom), toAnswer: Math.round(answer.top - opts[1]!.bottom) };
     });
     expect(gaps).toEqual({ lines: ["0px", "0px"], between: 16, toAnswer: 16 });
-    const terms = question.locator("details").filter({ has: page.locator("summary", { hasText: /^Term notes/ }) });
-    await terms.locator("summary").focus();
+    const terms = question.locator("summary").filter({ hasText: /^Term notes/ });
+    await terms.focus();
     await page.keyboard.press("Enter");
-    expect(await terms.getByText("Related work across Stages.").isVisible()).toBe(true);
+    expect(await question.getByText("Related work across Stages.").isVisible()).toBe(true);
     await page.keyboard.press("Space");
-    expect(await terms.getByText("Related work across Stages.").isVisible()).toBe(false);
+    expect(await question.getByText("Related work across Stages.").isVisible()).toBe(false);
     await page.locator("body").click({ position: { x: 1, y: 1 } });
     await page.keyboard.press("n");
     expect(new URL(page.url()).hash).toBe(`#${published.refs.second}`);

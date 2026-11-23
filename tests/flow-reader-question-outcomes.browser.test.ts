@@ -86,9 +86,13 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     await page.keyboard.press("n");
     expect(new URL(page.url()).hash).not.toBe(`#${corrected.refs.retry}`);
     for (const [ref, text] of Object.entries({ picked: "Your pick: A. Keep the recorded evidence", written: "Retain the audit trail", headless: "Headless, not your answer", cancelled: "Cancelled, not your answer", empty: "Empty response, not your answer", "timed-out": "Timed out, not your answer", open: "Retired" })) {
+      await page.goto(`${opened.live.url}#${q[ref]}`);
+      await summary(q[ref]).waitFor();
       expect(await summary(q[ref]).innerText()).toContain(text);
     }
+    await page.goto(`${opened.live.url}#${q.reasked}`);
     const earlier = summary(q.reasked);
+    await earlier.waitFor();
     expect(await earlier.innerText()).toContain("Re-asked");
     expect(await earlier.innerText()).not.toContain("Open");
     expect(await earlier.getByRole("link", { name: "Latest attempt: Q9 (attempt 2)", exact: true }).isVisible()).toBe(true);

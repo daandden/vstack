@@ -8,7 +8,6 @@ const props = defineProps<{ q: QuestionView }>();
 const f = computed(() => flow.value!);
 const st = computed(() => f.value.stage.get(props.q.stage)!);
 const picks = computed(() => new Set(props.q.answer.picks ?? []));
-const rank = computed(() => f.value.next.indexOf(props.q.id));
 const ask = (id: string) => f.value.question.get(id);
 const askedIn = (id: string) => {
   const other = ask(id);
@@ -18,17 +17,7 @@ const topics = computed(() => (props.q.topics ?? []).map((id) => f.value.topics.
 const reopened = computed(() => (props.q.reopens ? f.value.stages.flatMap((s) => s.assumed).find((a) => a.id === props.q.reopens) : undefined));
 const label = (letter: string) => optionLabel(props.q, letter);
 const outcome = computed(() => questionOutcome(props.q));
-const latestAttempt = computed(() => {
-  const attempts = new Set([props.q.id]);
-  let latest: QuestionView | undefined;
-  for (const question of f.value.questions) {
-    if (question.again && attempts.has(question.again)) {
-      attempts.add(question.id);
-      latest = question;
-    }
-  }
-  return latest;
-});
+const latestAttempt = computed(() => f.value.latestAttempt.get(props.q.id));
 const latestOutcome = computed(() => latestAttempt.value && questionOutcome(latestAttempt.value));
 const earlierAttempts = computed(() => props.q.asked_again_by.filter(id => id !== latestAttempt.value?.id));
 
@@ -73,7 +62,7 @@ const lines = computed(() => {
 </script>
 
 <template>
-  <article :id="q.id" class="question grid gap-2.5" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
+  <div class="grid gap-2.5">
     <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
     <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
     <section aria-label="Current outcome" class="grid gap-1 text-small">
@@ -161,5 +150,5 @@ const lines = computed(() => {
         <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
       </div>
     </div>
-  </article>
+  </div>
 </template>

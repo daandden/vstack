@@ -341,7 +341,8 @@ test("answers, superseded asks, and retirement updates leave the reading place u
       { kind: "stage", state: "finished", retire: [{ question: "retired", reason: "Deferred until another ticket." }] },
     ]);
     await page.locator(`#${settled.refs.retired}[data-retired]`).waitFor();
-    expect(await page.locator(`#${seed.refs.existing} a[href="#${settled.refs.superseding}"]`).count()).toBe(1);
+    const retryLink = page.locator(`#${seed.refs.existing}`).getByRole("link", { name: /Latest attempt/ });
+    expect(await retryLink.getAttribute("href")).toBe(`#${settled.refs.superseding}`);
     expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
     expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
   } finally {

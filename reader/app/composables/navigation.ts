@@ -7,7 +7,8 @@ export const mapTab = ref("path");
 export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
-export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]")].filter(shown);
+export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]:not(details[open])")].filter(el =>
+  shown(el) && !el.parentElement?.closest("details[data-reading-fold]:not([open])"));
 const tabs = () => [...document.querySelectorAll<HTMLElement>("[data-tab]")].map((el) => el.dataset.tab!);
 export const tabOf = (el: Element) => el.closest<HTMLElement>("[data-tab]")?.dataset.tab;
 
@@ -20,6 +21,8 @@ export function resolve(id: string): HTMLElement | null {
     seen.add(alias);
     el = document.getElementById(alias);
   }
+  const fold = el?.dataset.foldTarget ? document.getElementById(el.dataset.foldTarget) : el;
+  if (fold instanceof HTMLDetailsElement && fold.hasAttribute("data-reading-fold")) fold.open = true;
   for (let parent = el?.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement) parent.open = true;
   return el;
 }
@@ -158,14 +161,15 @@ export function captureReadingPlace() {
   return {
     hash: location.hash, tab: tab.value, current: current.value, y: scrollY,
     anchor: anchor?.el.id, top: anchor?.top,
-    details: [...document.querySelectorAll("details")].flatMap((el, i) => el.open ? [i] : []),
+    details: [...document.querySelectorAll<HTMLDetailsElement>("details:not([data-reading-fold])")].flatMap((el, i) => el.open ? [i] : []),
+    folds: [...document.querySelectorAll("details[data-reading-fold][open]")].map(el => el.id),
     focus: focused instanceof HTMLElement ? focused.id : "",
     selection: focused instanceof HTMLTextAreaElement ? [focused.selectionStart, focused.selectionEnd] : undefined,
   };
 }
 
 export async function restoreReadingPlace(value: unknown): Promise<boolean> {
-  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", details: "list", focus: "string", selection: "number pair", anchor: "string", top: "number" });
+  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", details: "list", folds: "list", focus: "string", selection: "number pair", anchor: "string", top: "number" });
   if (!saved || saved.hash !== location.hash) return false;
   if (!tabs().includes(saved.tab)) return false;
   tab.value = saved.tab;
@@ -173,8 +177,14 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
   await nextTick();
   if (saved.details) {
     const details = saved.details;
-    document.querySelectorAll("details").forEach((el, i) => { el.open = details.includes(i); });
+    document.querySelectorAll<HTMLDetailsElement>("details:not([data-reading-fold])").forEach((el, i) => { el.open = details.includes(i); });
   }
+  if (saved.folds) {
+    for (const id of saved.folds) {
+      const el = typeof id === "string" && document.getElementById(id);
+      if (el instanceof HTMLDetailsElement && el.hasAttribute("data-reading-fold")) el.open = true;
+    }
+  } else if (saved.anchor) resolve(saved.anchor);
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
   measureHeader();

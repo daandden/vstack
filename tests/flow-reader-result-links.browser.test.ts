@@ -71,6 +71,8 @@ test("whole Results link to question headers both ways while entries and earlier
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280]) {
         await page.setViewportSize({ width, height: 900 });
+        await asked.getByRole("link", { name: "Q1 (attempt 1)", exact: true }).click();
+        expect(new URL(page.url()).hash).toBe(`#${sent.refs.decision}`);
         await question.locator(`a[href="#${sent.refs.document}"]`).click();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         const proof = process.env.FLOW_READER_EVIDENCE;
