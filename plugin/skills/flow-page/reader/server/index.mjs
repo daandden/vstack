@@ -113871,14 +113871,14 @@ var import_es56, createTask, Hookable = class {
     }
     return result;
   } });
-}, virtual_nuxt__nuxt_2Fui_2Ftoaster_default, _sfc_main$17, _sfc_setup$65, Toaster_default, useOverlay, _sfc_main$16, _sfc_setup$64, _sfc_main$15, _sfc_setup$63, App_default, esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"), withoutQuestionNumber = (caption) => caption.replace(/^Q\d+ \u00B7 /, ""), UNKNOWN_EXAMPLE = "Unrecorded example identity, theme, or viewport: unknown.", MONTHS, size$1 = (n) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`, signed = (n) => n > 0 ? `+${n}` : String(n), demoValue = (v) => typeof v === "boolean" ? v ? "yes" : "no" : String(v), STATE_LABELS, CLAIM_LABELS, TYPE_LABELS, TASK_LABELS, END_LABELS, PR_LABELS, CHECK_LABELS, OUTCOME_LABELS, AXIS_LABELS, REVIEW_LABELS, VERDICT_LABELS, MEASURE_LABELS, PROVENANCE, SHAPE_LABELS, optionLabel = (q, letter) => q.options[letter.charCodeAt(0) - 65]?.label ?? letter, NON_CONSENT, readerComments, previous = "", current, mapOpen, mapTab, jumpOpen, tab, shown = (el) => el.getClientRects().length > 0, stops = () => [...undefined.querySelectorAll("[data-stop]:not(details[open])")].filter((el) => shown(el) && !el.parentElement?.closest("details[data-reading-fold]:not([open])")), FlowBar_vue_vue_type_script_setup_true_lang_default, _plugin_vue_export_helper_default = (sfc, props) => {
+}, virtual_nuxt__nuxt_2Fui_2Ftoaster_default, _sfc_main$17, _sfc_setup$68, Toaster_default, useOverlay, _sfc_main$16, _sfc_setup$67, _sfc_main$15, _sfc_setup$66, App_default, esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"), withoutQuestionNumber = (caption) => caption.replace(/^Q\d+ \u00B7 /, ""), UNKNOWN_EXAMPLE = "Unrecorded example identity, theme, or viewport: unknown.", MONTHS, size$1 = (n) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`, signed = (n) => n > 0 ? `+${n}` : String(n), demoValue = (v) => typeof v === "boolean" ? v ? "yes" : "no" : String(v), STATE_LABELS, CLAIM_LABELS, TYPE_LABELS, TASK_LABELS, END_LABELS, PR_LABELS, CHECK_LABELS, OUTCOME_LABELS, AXIS_LABELS, REVIEW_LABELS, VERDICT_LABELS, MEASURE_LABELS, PROVENANCE, SHAPE_LABELS, optionLabel = (q, letter) => q.options[letter.charCodeAt(0) - 65]?.label ?? letter, NON_CONSENT, readerComments, previous = "", current, mapOpen, mapTab, jumpOpen, tab, shown = (el) => el.getClientRects().length > 0, stops = () => [...undefined.querySelectorAll("[data-stop]:not(details[open])")].filter((el) => shown(el) && !el.parentElement?.closest("details[data-reading-fold]:not([open])")), FlowBar_vue_vue_type_script_setup_true_lang_default, _plugin_vue_export_helper_default = (sfc, props) => {
   const target = sfc.__vccOpts || sfc;
   for (const [key, val] of props)
     target[key] = val;
   return target;
-}, _sfc_setup$62, FlowBar_default, fieldGroupInjectionKey, FieldGroupReset, formOptionsInjectionKey, formBusInjectionKey, formFieldInjectionKey, inputIdInjectionKey, formInputsInjectionKey, formLoadingInjectionKey, formErrorsInjectionKey, linkKeySet, collectionSetCache, runtime3, SYMBOL_SERVER_CSS = "NUXT_ICONS_SERVER_CSS", NuxtIconCss, NuxtIconSvg2, components_exports, components_default, _sfc_main$14, _sfc_setup$61, avatarGroupInjectionKey, virtual_nuxt__nuxt_2Fui_2Fchip_default, _sfc_main$13, _sfc_setup$60, virtual_nuxt__nuxt_2Fui_2Favatar_default, _sfc_main$12, _sfc_setup$59, firstNonUndefined = (...args) => args.find((arg) => arg !== undefined), NuxtLink, _sfc_main$11, _sfc_setup$58, virtual_nuxt__nuxt_2Fui_2Flink_default, _sfc_main$10, _sfc_setup$57, virtual_nuxt__nuxt_2Fui_2Fbutton_default, _sfc_main$9, _sfc_setup$56, CopyFeedback_vue_vue_type_script_setup_true_lang_default, _sfc_setup$55, CopyFeedback_default, useColorMode = () => {
+}, _sfc_setup$65, FlowBar_default, fieldGroupInjectionKey, FieldGroupReset, formOptionsInjectionKey, formBusInjectionKey, formFieldInjectionKey, inputIdInjectionKey, formInputsInjectionKey, formLoadingInjectionKey, formErrorsInjectionKey, linkKeySet, collectionSetCache, runtime3, SYMBOL_SERVER_CSS = "NUXT_ICONS_SERVER_CSS", NuxtIconCss, NuxtIconSvg2, components_exports, components_default, _sfc_main$14, _sfc_setup$64, avatarGroupInjectionKey, virtual_nuxt__nuxt_2Fui_2Fchip_default, _sfc_main$13, _sfc_setup$63, virtual_nuxt__nuxt_2Fui_2Favatar_default, _sfc_main$12, _sfc_setup$62, firstNonUndefined = (...args) => args.find((arg) => arg !== undefined), NuxtLink, _sfc_main$11, _sfc_setup$61, virtual_nuxt__nuxt_2Fui_2Flink_default, _sfc_main$10, _sfc_setup$60, virtual_nuxt__nuxt_2Fui_2Fbutton_default, _sfc_main$9, _sfc_setup$59, CopyFeedback_vue_vue_type_script_setup_true_lang_default, _sfc_setup$58, CopyFeedback_default, useColorMode = () => {
   return useState("color-mode").value;
-}, FlowMasthead_vue_vue_type_script_setup_true_lang_default, _sfc_setup$54, FlowMasthead_default, ContextNotes_vue_vue_type_script_setup_true_lang_default, _sfc_setup$53, ContextNotes_default, ProgressPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$52, ProgressPanel_default, ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default, _sfc_setup$51, ChangedSinceVisit_default, StageOverview_vue_vue_type_script_setup_true_lang_default, _sfc_setup$50, StageOverview_default, useReadingClock, RoundHeader_vue_vue_type_script_setup_true_lang_default, _sfc_setup$49, RoundHeader_default, CorrectionNotice_vue_vue_type_script_setup_true_lang_default, _sfc_setup$48, CorrectionNotice_default, FigureCaption_vue_vue_type_script_setup_true_lang_default, _sfc_setup$47, FigureCaption_default, settingsByModel, trackedSankey, FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace", BASE$1 = "#1e1e2e", TEXT = "#cdd6f4", SURFACE = "#313244", BORDER = "#6c7086", MAUVE = "#cba6f7", ROLES, ACCENTS, CHARTS, PELE_CLASS, SHAPE, PAINT, decode = (s) => s.replace(/&(?:quot|apos|amp|lt|gt|#\d+|#x[\da-f]+);/gi, (s) => ({
+}, FlowMasthead_vue_vue_type_script_setup_true_lang_default, _sfc_setup$57, FlowMasthead_default, ContextNotes_vue_vue_type_script_setup_true_lang_default, _sfc_setup$56, ContextNotes_default, ProgressPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$55, ProgressPanel_default, ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default, _sfc_setup$54, ChangedSinceVisit_default, StageOverview_vue_vue_type_script_setup_true_lang_default, _sfc_setup$53, StageOverview_default, useReadingClock, RoundHeader_vue_vue_type_script_setup_true_lang_default, _sfc_setup$52, RoundHeader_default, CorrectionNotice_vue_vue_type_script_setup_true_lang_default, _sfc_setup$51, CorrectionNotice_default, FigureSource_vue_vue_type_script_setup_true_lang_default, _sfc_setup$50, FigureSource_default, FigureCaption_vue_vue_type_script_setup_true_lang_default, _sfc_setup$49, FigureCaption_default, settingsByModel, trackedSankey, FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace", BASE$1 = "#1e1e2e", TEXT = "#cdd6f4", SURFACE = "#313244", BORDER = "#6c7086", MAUVE = "#cba6f7", ROLES, ACCENTS, CHARTS, PELE_CLASS, SHAPE, PAINT, decode = (s) => s.replace(/&(?:quot|apos|amp|lt|gt|#\d+|#x[\da-f]+);/gi, (s) => ({
   "&quot;": '"',
   "&apos;": "'",
   "&amp;": "&",
@@ -113886,7 +113886,7 @@ var import_es56, createTask, Hookable = class {
   "&gt;": ">"
 })[s] ?? String.fromCodePoint(parseInt(s.slice(s[2] === "x" ? 3 : 2, -1), s[2] === "x" ? 16 : 10))), DIAGRAM_CONFIG, DIAGRAM_FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace", SVG = "http://www.w3.org/2000/svg", ELEMENTS, UNSAFE, SHAPES = ":is(rect, path, polygon, circle, ellipse)", MOCHA_PAINTS, PAINT_ATTRIBUTES, BASE = `:host { display: block; inline-size: fit-content; max-inline-size: 100%; overflow-x: auto; }
 svg { display: block; max-inline-size: none; block-size: auto; }
-text { font-variant-ligatures: none; }`, DiagramFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$46, DiagramFigure_default, FigureList_vue_vue_type_script_setup_true_lang_default, _sfc_setup$45, FigureList_default, VISUAL_KINDS, QuestionBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$44, QuestionBlock_default, QuestionRecord_vue_vue_type_script_setup_true_lang_default, _sfc_setup$43, QuestionRecord_default, ReviewSummary_vue_vue_type_script_setup_true_lang_default, _sfc_setup$42, ReviewSummary_default, virtual_nuxt__nuxt_2Fui_2Fbadge_default, _sfc_main$8, _sfc_setup$41, CodeFrame_vue_vue_type_script_setup_true_lang_default, _sfc_setup$40, CodeFrame_default, ArtifactView_vue_vue_type_script_setup_true_lang_default, _sfc_setup$39, ArtifactView_default, AttachmentFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$38, AttachmentFigure_default, HEADER, HUNK, linesOf = (s) => {
+text { font-variant-ligatures: none; }`, DiagramFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$48, DiagramFigure_default, FigureList_vue_vue_type_script_setup_true_lang_default, _sfc_setup$47, FigureList_default, VISUAL_KINDS, QuestionFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$46, QuestionFigure_default, EarlierAttempt_vue_vue_type_script_setup_true_lang_default, _sfc_setup$45, EarlierAttempt_default, QuestionBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$44, QuestionBlock_default, QuestionRecord_vue_vue_type_script_setup_true_lang_default, _sfc_setup$43, QuestionRecord_default, ReviewSummary_vue_vue_type_script_setup_true_lang_default, _sfc_setup$42, ReviewSummary_default, virtual_nuxt__nuxt_2Fui_2Fbadge_default, _sfc_main$8, _sfc_setup$41, CodeFrame_vue_vue_type_script_setup_true_lang_default, _sfc_setup$40, CodeFrame_default, ArtifactView_vue_vue_type_script_setup_true_lang_default, _sfc_setup$39, ArtifactView_default, AttachmentFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$38, AttachmentFigure_default, HEADER, HUNK, linesOf = (s) => {
   const ls = s.split(`
 `);
   if (ls.at(-1) === "")
@@ -118291,11 +118291,11 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$65 = _sfc_main$17.setup;
+  _sfc_setup$68 = _sfc_main$17.setup;
   _sfc_main$17.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/Toaster.vue");
-    return _sfc_setup$65 ? _sfc_setup$65(props, ctx) : undefined;
+    return _sfc_setup$68 ? _sfc_setup$68(props, ctx) : undefined;
   };
   Toaster_default = Object.assign(_sfc_main$17, { __name: "UToaster" });
   useOverlay = /* @__PURE__ */ createSharedComposable(_useOverlay);
@@ -118326,11 +118326,11 @@ var init_entry = __esm(() => {
       };
     }
   };
-  _sfc_setup$64 = _sfc_main$16.setup;
+  _sfc_setup$67 = _sfc_main$16.setup;
   _sfc_main$16.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/OverlayProvider.vue");
-    return _sfc_setup$64 ? _sfc_setup$64(props, ctx) : undefined;
+    return _sfc_setup$67 ? _sfc_setup$67(props, ctx) : undefined;
   };
   _sfc_main$15 = /* @__PURE__ */ Object.assign({ name: "App" }, {
     __ssrInlineRender: true,
@@ -118428,11 +118428,11 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$63 = _sfc_main$15.setup;
+  _sfc_setup$66 = _sfc_main$15.setup;
   _sfc_main$15.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/App.vue");
-    return _sfc_setup$63 ? _sfc_setup$63(props, ctx) : undefined;
+    return _sfc_setup$66 ? _sfc_setup$66(props, ctx) : undefined;
   };
   App_default = Object.assign(_sfc_main$15, { __name: "UApp" });
   MONTHS = [
@@ -118667,11 +118667,11 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$62 = FlowBar_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$65 = FlowBar_vue_vue_type_script_setup_true_lang_default.setup;
   FlowBar_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FlowBar.vue");
-    return _sfc_setup$62 ? _sfc_setup$62(props, ctx) : undefined;
+    return _sfc_setup$65 ? _sfc_setup$65(props, ctx) : undefined;
   };
   FlowBar_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(FlowBar_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-435f848b"]]), { __name: "FlowBar" });
   fieldGroupInjectionKey = Symbol("nuxt-ui.field-group");
@@ -118882,11 +118882,11 @@ var init_entry = __esm(() => {
       };
     }
   };
-  _sfc_setup$61 = _sfc_main$14.setup;
+  _sfc_setup$64 = _sfc_main$14.setup;
   _sfc_main$14.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/Icon.vue");
-    return _sfc_setup$61 ? _sfc_setup$61(props, ctx) : undefined;
+    return _sfc_setup$64 ? _sfc_setup$64(props, ctx) : undefined;
   };
   avatarGroupInjectionKey = Symbol("nuxt-ui.avatar-group");
   virtual_nuxt__nuxt_2Fui_2Fchip_default = {
@@ -119067,11 +119067,11 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$60 = _sfc_main$13.setup;
+  _sfc_setup$63 = _sfc_main$13.setup;
   _sfc_main$13.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/Chip.vue");
-    return _sfc_setup$60 ? _sfc_setup$60(props, ctx) : undefined;
+    return _sfc_setup$63 ? _sfc_setup$63(props, ctx) : undefined;
   };
   virtual_nuxt__nuxt_2Fui_2Favatar_default = {
     slots: {
@@ -119308,11 +119308,11 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$59 = _sfc_main$12.setup;
+  _sfc_setup$62 = _sfc_main$12.setup;
   _sfc_main$12.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/Avatar.vue");
-    return _sfc_setup$59 ? _sfc_setup$59(props, ctx) : undefined;
+    return _sfc_setup$62 ? _sfc_setup$62(props, ctx) : undefined;
   };
   NuxtLink = /* @__PURE__ */ defineNuxtLink(nuxtLinkDefaults);
   _sfc_main$11 = {
@@ -119413,11 +119413,11 @@ var init_entry = __esm(() => {
       };
     }
   };
-  _sfc_setup$58 = _sfc_main$11.setup;
+  _sfc_setup$61 = _sfc_main$11.setup;
   _sfc_main$11.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/LinkBase.vue");
-    return _sfc_setup$58 ? _sfc_setup$58(props, ctx) : undefined;
+    return _sfc_setup$61 ? _sfc_setup$61(props, ctx) : undefined;
   };
   virtual_nuxt__nuxt_2Fui_2Flink_default = {
     base: "outline-primary/25 focus-visible:outline-3 rounded-md",
@@ -119891,11 +119891,11 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$57 = _sfc_main$10.setup;
+  _sfc_setup$60 = _sfc_main$10.setup;
   _sfc_main$10.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/Link.vue");
-    return _sfc_setup$57 ? _sfc_setup$57(props, ctx) : undefined;
+    return _sfc_setup$60 ? _sfc_setup$60(props, ctx) : undefined;
   };
   virtual_nuxt__nuxt_2Fui_2Fbutton_default = {
     slots: {
@@ -120629,11 +120629,11 @@ var init_entry = __esm(() => {
       };
     }
   };
-  _sfc_setup$56 = _sfc_main$9.setup;
+  _sfc_setup$59 = _sfc_main$9.setup;
   _sfc_main$9.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("../../node_modules/@nuxt/ui/dist/runtime/components/Button.vue");
-    return _sfc_setup$56 ? _sfc_setup$56(props, ctx) : undefined;
+    return _sfc_setup$59 ? _sfc_setup$59(props, ctx) : undefined;
   };
   CopyFeedback_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "CopyFeedback",
@@ -120708,11 +120708,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$55 = CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$58 = CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup;
   CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CopyFeedback.vue");
-    return _sfc_setup$55 ? _sfc_setup$55(props, ctx) : undefined;
+    return _sfc_setup$58 ? _sfc_setup$58(props, ctx) : undefined;
   };
   CopyFeedback_default = Object.assign(CopyFeedback_vue_vue_type_script_setup_true_lang_default, { __name: "CopyFeedback" });
   FlowMasthead_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -120781,11 +120781,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$54 = FlowMasthead_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$57 = FlowMasthead_vue_vue_type_script_setup_true_lang_default.setup;
   FlowMasthead_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FlowMasthead.vue");
-    return _sfc_setup$54 ? _sfc_setup$54(props, ctx) : undefined;
+    return _sfc_setup$57 ? _sfc_setup$57(props, ctx) : undefined;
   };
   FlowMasthead_default = Object.assign(FlowMasthead_vue_vue_type_script_setup_true_lang_default, { __name: "FlowMasthead" });
   ContextNotes_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -120859,11 +120859,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$53 = ContextNotes_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$56 = ContextNotes_vue_vue_type_script_setup_true_lang_default.setup;
   ContextNotes_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ContextNotes.vue");
-    return _sfc_setup$53 ? _sfc_setup$53(props, ctx) : undefined;
+    return _sfc_setup$56 ? _sfc_setup$56(props, ctx) : undefined;
   };
   ContextNotes_default = Object.assign(ContextNotes_vue_vue_type_script_setup_true_lang_default, { __name: "ContextNotes" });
   ProgressPanel_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -121060,11 +121060,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$52 = ProgressPanel_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$55 = ProgressPanel_vue_vue_type_script_setup_true_lang_default.setup;
   ProgressPanel_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ProgressPanel.vue");
-    return _sfc_setup$52 ? _sfc_setup$52(props, ctx) : undefined;
+    return _sfc_setup$55 ? _sfc_setup$55(props, ctx) : undefined;
   };
   ProgressPanel_default = Object.assign(ProgressPanel_vue_vue_type_script_setup_true_lang_default, { __name: "ProgressPanel" });
   ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -121151,11 +121151,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$51 = ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$54 = ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default.setup;
   ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ChangedSinceVisit.vue");
-    return _sfc_setup$51 ? _sfc_setup$51(props, ctx) : undefined;
+    return _sfc_setup$54 ? _sfc_setup$54(props, ctx) : undefined;
   };
   ChangedSinceVisit_default = Object.assign(ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default, { __name: "ChangedSinceVisit" });
   StageOverview_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -121203,11 +121203,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$50 = StageOverview_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$53 = StageOverview_vue_vue_type_script_setup_true_lang_default.setup;
   StageOverview_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/StageOverview.vue");
-    return _sfc_setup$50 ? _sfc_setup$50(props, ctx) : undefined;
+    return _sfc_setup$53 ? _sfc_setup$53(props, ctx) : undefined;
   };
   StageOverview_default = Object.assign(StageOverview_vue_vue_type_script_setup_true_lang_default, { __name: "StageOverview" });
   useReadingClock = createSharedComposable((initial) => {
@@ -121259,11 +121259,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$49 = RoundHeader_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$52 = RoundHeader_vue_vue_type_script_setup_true_lang_default.setup;
   RoundHeader_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/RoundHeader.vue");
-    return _sfc_setup$49 ? _sfc_setup$49(props, ctx) : undefined;
+    return _sfc_setup$52 ? _sfc_setup$52(props, ctx) : undefined;
   };
   RoundHeader_default = Object.assign(RoundHeader_vue_vue_type_script_setup_true_lang_default, { __name: "RoundHeader" });
   CorrectionNotice_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -121295,24 +121295,56 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$48 = CorrectionNotice_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$51 = CorrectionNotice_vue_vue_type_script_setup_true_lang_default.setup;
   CorrectionNotice_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CorrectionNotice.vue");
-    return _sfc_setup$48 ? _sfc_setup$48(props, ctx) : undefined;
+    return _sfc_setup$51 ? _sfc_setup$51(props, ctx) : undefined;
   };
   CorrectionNotice_default = Object.assign(CorrectionNotice_vue_vue_type_script_setup_true_lang_default, { __name: "CorrectionNotice" });
+  FigureSource_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "FigureSource",
+    __ssrInlineRender: true,
+    props: { a: {} },
+    setup(__props) {
+      const facts = exports_vue.computed(() => sourceFacts(__props.a));
+      return (_ctx, _push, _parent, _attrs) => {
+        _push(`<details${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "source disclosure" }, _attrs))}><summary>Source</summary><p class="meta"><span class="${exports_server_renderer.ssrRenderClass([__props.a.availability === "unavailable" ? "text-error" : __props.a.availability === "external" ? "text-warning" : "text-flow-teal", "kind font-semibold"])}">${exports_server_renderer.ssrInterpolate(("TYPE_LABELS" in _ctx ? _ctx.TYPE_LABELS : exports_vue.unref(TYPE_LABELS))[__props.a.type])}</span><span>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).state)}</span>`);
+        if (exports_vue.unref(facts).revision)
+          _push(`<span>Revision <code>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).revision)}</code></span>`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(facts).from)
+          _push(`<span>From <code>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).from)}</code></span>`);
+        else
+          _push(`<!---->`);
+        _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", __props.a.time)}>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(__props.a.time))}</time></p><p>Origin: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.origin) ?? ""}</span></p>`);
+        if (__props.a.type === "image" || __props.a.type === "svg")
+          _push(`<p class="quiet">${exports_server_renderer.ssrInterpolate("UNKNOWN_EXAMPLE" in _ctx ? _ctx.UNKNOWN_EXAMPLE : exports_vue.unref(UNKNOWN_EXAMPLE))}</p>`);
+        else
+          _push(`<!---->`);
+        _push(`</details>`);
+      };
+    }
+  });
+  _sfc_setup$50 = FigureSource_vue_vue_type_script_setup_true_lang_default.setup;
+  FigureSource_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FigureSource.vue");
+    return _sfc_setup$50 ? _sfc_setup$50(props, ctx) : undefined;
+  };
+  FigureSource_default = Object.assign(FigureSource_vue_vue_type_script_setup_true_lang_default, { __name: "FigureSource" });
   FigureCaption_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "FigureCaption",
     __ssrInlineRender: true,
     props: {
       a: {},
-      as: {}
+      as: {},
+      hideSource: { type: Boolean }
     },
     setup(__props) {
-      const props = __props;
-      const facts = exports_vue.computed(() => sourceFacts(props.a));
       return (_ctx, _push, _parent, _attrs) => {
+        const _component_FigureSource = FigureSource_default;
         exports_server_renderer.ssrRenderVNode(_push, exports_vue.createVNode(exports_vue.resolveDynamicComponent(__props.as ?? "figcaption"), exports_vue.mergeProps({ class: "figure-caption grid justify-self-stretch gap-1" }, _attrs), {
           default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
             if (_push) {
@@ -121321,21 +121353,10 @@ ${feedback.join(`
                 _push(`<div class="figure-description grid gap-1.5 text-toned"${_scopeId}>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.a.description) ?? ""}</div>`);
               else
                 _push(`<!---->`);
-              _push(`<details class="source text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"${_scopeId}><summary${_scopeId}>Source</summary><p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted"${_scopeId}><span class="${exports_server_renderer.ssrRenderClass([__props.a.availability === "unavailable" ? "text-error" : __props.a.availability === "external" ? "text-warning" : "text-flow-teal", "kind font-semibold"])}"${_scopeId}>${exports_server_renderer.ssrInterpolate(("TYPE_LABELS" in _ctx ? _ctx.TYPE_LABELS : exports_vue.unref(TYPE_LABELS))[__props.a.type])}</span><span${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).state)}</span>`);
-              if (exports_vue.unref(facts).revision)
-                _push(`<span${_scopeId}>Revision <code${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).revision)}</code></span>`);
+              if (!__props.hideSource)
+                _push(exports_server_renderer.ssrRenderComponent(_component_FigureSource, { a: __props.a }, null, _parent, _scopeId));
               else
                 _push(`<!---->`);
-              if (exports_vue.unref(facts).from)
-                _push(`<span${_scopeId}>From <code${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).from)}</code></span>`);
-              else
-                _push(`<!---->`);
-              _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", __props.a.time)}${_scopeId}>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(__props.a.time))}</time></p><p${_scopeId}>Origin: <span${_scopeId}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.origin) ?? ""}</span></p>`);
-              if (__props.a.type === "image" || __props.a.type === "svg")
-                _push(`<p class="quiet"${_scopeId}>${exports_server_renderer.ssrInterpolate("UNKNOWN_EXAMPLE" in _ctx ? _ctx.UNKNOWN_EXAMPLE : exports_vue.unref(UNKNOWN_EXAMPLE))}</p>`);
-              else
-                _push(`<!---->`);
-              _push(`</details>`);
             } else
               return [
                 exports_vue.createVNode("p", {
@@ -121347,21 +121368,10 @@ ${feedback.join(`
                   class: "figure-description grid gap-1.5 text-toned",
                   innerHTML: ("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.a.description)
                 }, null, 8, ["innerHTML"])) : exports_vue.createCommentVNode("", true),
-                exports_vue.createVNode("details", { class: "source text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body" }, [
-                  exports_vue.createVNode("summary", null, "Source"),
-                  exports_vue.createVNode("p", { class: "flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted" }, [
-                    exports_vue.createVNode("span", { class: ["kind font-semibold", __props.a.availability === "unavailable" ? "text-error" : __props.a.availability === "external" ? "text-warning" : "text-flow-teal"] }, exports_vue.toDisplayString(("TYPE_LABELS" in _ctx ? _ctx.TYPE_LABELS : exports_vue.unref(TYPE_LABELS))[__props.a.type]), 3),
-                    exports_vue.createVNode("span", null, exports_vue.toDisplayString(exports_vue.unref(facts).state), 1),
-                    exports_vue.unref(facts).revision ? (exports_vue.openBlock(), exports_vue.createBlock("span", { key: 0 }, [exports_vue.createTextVNode("Revision "), exports_vue.createVNode("code", null, exports_vue.toDisplayString(exports_vue.unref(facts).revision), 1)])) : exports_vue.createCommentVNode("", true),
-                    exports_vue.unref(facts).from ? (exports_vue.openBlock(), exports_vue.createBlock("span", { key: 1 }, [exports_vue.createTextVNode("From "), exports_vue.createVNode("code", null, exports_vue.toDisplayString(exports_vue.unref(facts).from), 1)])) : exports_vue.createCommentVNode("", true),
-                    exports_vue.createVNode("time", { datetime: __props.a.time }, exports_vue.toDisplayString(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(__props.a.time)), 9, ["datetime"])
-                  ]),
-                  exports_vue.createVNode("p", null, [exports_vue.createTextVNode("Origin: "), exports_vue.createVNode("span", { innerHTML: ("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.origin) }, null, 8, ["innerHTML"])]),
-                  __props.a.type === "image" || __props.a.type === "svg" ? (exports_vue.openBlock(), exports_vue.createBlock("p", {
-                    key: 0,
-                    class: "quiet"
-                  }, exports_vue.toDisplayString("UNKNOWN_EXAMPLE" in _ctx ? _ctx.UNKNOWN_EXAMPLE : exports_vue.unref(UNKNOWN_EXAMPLE)), 1)) : exports_vue.createCommentVNode("", true)
-                ])
+                !__props.hideSource ? (exports_vue.openBlock(), exports_vue.createBlock(_component_FigureSource, {
+                  key: 1,
+                  a: __props.a
+                }, null, 8, ["a"])) : exports_vue.createCommentVNode("", true)
               ];
           }),
           _: 1
@@ -121369,11 +121379,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$47 = FigureCaption_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$49 = FigureCaption_vue_vue_type_script_setup_true_lang_default.setup;
   FigureCaption_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FigureCaption.vue");
-    return _sfc_setup$47 ? _sfc_setup$47(props, ctx) : undefined;
+    return _sfc_setup$49 ? _sfc_setup$49(props, ctx) : undefined;
   };
   FigureCaption_default = Object.assign(FigureCaption_vue_vue_type_script_setup_true_lang_default, { __name: "FigureCaption" });
   settingsByModel = /* @__PURE__ */ new WeakMap;
@@ -121579,21 +121589,25 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$46 = DiagramFigure_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$48 = DiagramFigure_vue_vue_type_script_setup_true_lang_default.setup;
   DiagramFigure_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/DiagramFigure.vue");
-    return _sfc_setup$46 ? _sfc_setup$46(props, ctx) : undefined;
+    return _sfc_setup$48 ? _sfc_setup$48(props, ctx) : undefined;
   };
   DiagramFigure_default = Object.assign(DiagramFigure_vue_vue_type_script_setup_true_lang_default, { __name: "DiagramFigure" });
   FigureList_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "FigureList",
     __ssrInlineRender: true,
-    props: { figures: {} },
+    props: {
+      figures: {},
+      part: { default: "complete" }
+    },
     setup(__props) {
       const { flow } = useReaderState();
       const f = exports_vue.computed(() => flow.value);
       const attachment = (id) => f.value.attachments.find((a) => a.id === id);
+      const displayId = (id) => __props.part === "enlarged" ? `${id}-enlarged` : id;
       const scoped = (css, id) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, body) => `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`).join(", ")} { ${body} }`);
       const withImages = (html) => /<img\b/i.test(html);
       const hydrated = exports_vue.shallowRef(false);
@@ -121623,11 +121637,17 @@ ${drawn.css}`;
         return details;
       }
       const historical = (fig) => {
+        const stylesheet = fig.css && __props.part !== "source" ? `<style>${scoped(fig.css, displayId(fig.id))}</style>` : "";
         if (!hydrated.value)
-          return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${fig.html}`;
+          return __props.part === "source" ? "" : `${stylesheet}${fig.html}`;
         const doc = new DOMParser().parseFromString(fig.html, "text/html");
+        const sources = __props.part === "source" ? doc.createElement("div") : undefined;
         for (const img of doc.querySelectorAll("img")) {
           const a = f.value.attachments.find((a) => a.file && img.getAttribute("src")?.split("#")[0] === `assets/${a.file}`);
+          if (sources) {
+            sources.append(source(doc, a));
+            continue;
+          }
           const title = withoutQuestionNumber(a?.caption || img.getAttribute("alt") || "Example identity unknown");
           const media = img.closest("picture") ?? img;
           const label = doc.createElement("div");
@@ -121636,25 +121656,40 @@ ${drawn.css}`;
           const heading = previous && withoutQuestionNumber(previous.textContent ?? "") === title ? previous : doc.createElement("p");
           heading.className = "figure-title font-heading text-body leading-[1.35] font-[650] text-default text-balance";
           heading.textContent = title;
-          label.append(heading, source(doc, a));
+          label.append(heading);
+          if (__props.part === "complete")
+            label.append(source(doc, a));
           media.before(label);
         }
-        return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${doc.body.innerHTML}`;
+        return sources?.innerHTML ?? `${stylesheet}${doc.body.innerHTML}`;
       };
       return (_ctx, _push, _parent, _attrs) => {
+        const _component_FigureSource = FigureSource_default;
         const _component_FigureCaption = FigureCaption_default;
         const _component_DiagramFigure = DiagramFigure_default;
         _push(`<!--[-->`);
         ssrRenderList$2(__props.figures ?? [], (fig) => {
           _push(`<!--[-->`);
-          if ("text" in fig)
-            _push(`<div${exports_server_renderer.ssrRenderAttr("id", fig.id)} class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-elevated px-3 py-2.5"><pre>${exports_server_renderer.ssrInterpolate(fig.text)}</pre></div>`);
+          if (__props.part === "source") {
+            _push(`<!--[-->`);
+            if ("attachment" in fig && attachment(fig.attachment))
+              _push(exports_server_renderer.ssrRenderComponent(_component_FigureSource, { a: attachment(fig.attachment) }, null, _parent));
+            else if ("html" in fig && withImages(fig.html))
+              _push(`<div class="grid gap-1.5">${historical(fig) ?? ""}</div>`);
+            else
+              _push(`<!---->`);
+            _push(`<!--]-->`);
+          } else if ("text" in fig)
+            _push(`<div${exports_server_renderer.ssrRenderAttr("id", displayId(fig.id))} class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-elevated px-3 py-2.5"${exports_server_renderer.ssrRenderAttr("tabindex", __props.part === "complete" ? undefined : 0)}><pre>${exports_server_renderer.ssrInterpolate(fig.text)}</pre></div>`);
           else if ("html" in fig)
-            _push(`<div${exports_server_renderer.ssrRenderAttr("id", fig.id)} class="${exports_server_renderer.ssrRenderClass([withImages(fig.html) ? "figure" : "visual relative overflow-x-auto rounded-md bg-elevated px-3 py-2.5", "grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-accented [&_video]:rounded [&_video]:bg-accented"])}">${historical(fig) ?? ""}</div>`);
+            _push(`<div${exports_server_renderer.ssrRenderAttr("id", displayId(fig.id))} class="${exports_server_renderer.ssrRenderClass([withImages(fig.html) ? "figure" : "visual relative overflow-x-auto rounded-md bg-elevated px-3 py-2.5", "grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-accented [&_video]:rounded [&_video]:bg-accented"])}">${historical(fig) ?? ""}</div>`);
           else {
-            _push(`<figure${exports_server_renderer.ssrRenderAttr("id", fig.id)} class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">`);
+            _push(`<figure${exports_server_renderer.ssrRenderAttr("id", displayId(fig.id))} class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">`);
             if (attachment(fig.attachment))
-              _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, { a: attachment(fig.attachment) }, null, _parent));
+              _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, {
+                a: attachment(fig.attachment),
+                "hide-source": __props.part !== "complete"
+              }, null, _parent));
             else
               _push(`<!---->`);
             if (attachment(fig.attachment)?.availability === "captured" && attachment(fig.attachment).type !== "image")
@@ -121671,11 +121706,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$45 = FigureList_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$47 = FigureList_vue_vue_type_script_setup_true_lang_default.setup;
   FigureList_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FigureList.vue");
-    return _sfc_setup$45 ? _sfc_setup$45(props, ctx) : undefined;
+    return _sfc_setup$47 ? _sfc_setup$47(props, ctx) : undefined;
   };
   FigureList_default = Object.assign(FigureList_vue_vue_type_script_setup_true_lang_default, { __name: "FigureList" });
   VISUAL_KINDS = {
@@ -121690,6 +121725,121 @@ ${drawn.css}`;
     scenario: "Scenario walkthrough",
     prose: "Prose"
   };
+  QuestionFigure_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "QuestionFigure",
+    __ssrInlineRender: true,
+    props: {
+      figure: {},
+      attachment: {}
+    },
+    setup(__props) {
+      const title = exports_vue.computed(() => __props.attachment ? withoutQuestionNumber(__props.attachment.caption) : __props.figure.kind ? VISUAL_KINDS[__props.figure.kind] : "Historical figure");
+      exports_vue.useTemplateRef("trigger");
+      const dialog = exports_vue.useTemplateRef("dialog");
+      const enlarged = exports_vue.shallowRef(false);
+      function close() {
+        if (dialog.value?.open)
+          dialog.value.close();
+        else
+          enlarged.value = false;
+      }
+      exports_vue.watch(tab, close);
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_FigureList = FigureList_default;
+        const _component_UButton = _sfc_main$9;
+        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-2" }, _attrs))} data-v-7010d120><div class="decision-visual grid" data-v-7010d120>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, {
+          figures: [__props.figure],
+          part: "inline"
+        }, null, _parent));
+        _push(`</div><button type="button" aria-haspopup="dialog"${exports_server_renderer.ssrRenderAttr("aria-label", `Enlarge figure: ${exports_vue.unref(title)}`)} class="w-fit cursor-pointer rounded border border-default px-2 py-1 text-small text-info hover:bg-elevated active:bg-accented pointer-coarse:min-h-11" data-v-7010d120> Enlarge figure </button><dialog${exports_server_renderer.ssrRenderAttr("aria-label", exports_vue.unref(title))} class="figure-dialog m-auto w-[calc(100%_-_2rem)] max-h-[calc(100%_-_2rem)] max-w-none overflow-clip rounded-lg border border-default bg-default p-0 text-default open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)]" data-v-7010d120><header class="flex shrink-0 justify-end border-be border-default px-4 py-2" data-v-7010d120>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_UButton, {
+          color: "neutral",
+          variant: "outline",
+          class: "min-h-11",
+          autofocus: "",
+          onClick: close
+        }, {
+          default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+            if (_push)
+              _push(`Close figure`);
+            else
+              return [exports_vue.createTextVNode("Close figure")];
+          }),
+          _: 1
+        }, _parent));
+        _push(`</header>`);
+        if (exports_vue.unref(enlarged)) {
+          _push(`<div class="enlarged-visual grid min-h-0 gap-2 overflow-auto overscroll-contain p-4" data-v-7010d120>`);
+          _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, {
+            figures: [__props.figure],
+            part: "enlarged"
+          }, null, _parent));
+          _push(`</div>`);
+        } else
+          _push(`<!---->`);
+        _push(`</dialog></div>`);
+      };
+    }
+  });
+  _sfc_setup$46 = QuestionFigure_vue_vue_type_script_setup_true_lang_default.setup;
+  QuestionFigure_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/QuestionFigure.vue");
+    return _sfc_setup$46 ? _sfc_setup$46(props, ctx) : undefined;
+  };
+  QuestionFigure_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(QuestionFigure_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-7010d120"]]), { __name: "QuestionFigure" });
+  EarlierAttempt_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "EarlierAttempt",
+    __ssrInlineRender: true,
+    props: {
+      question: {},
+      label: {}
+    },
+    setup(__props) {
+      const answer = exports_vue.computed(() => __props.question.answer);
+      const response = exports_vue.computed(() => answer.value.response);
+      const reading = exports_vue.computed(() => answer.value.reading);
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_CorrectionNotice = CorrectionNotice_default;
+        _push(`<details${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "disclosure wrap-anywhere" }, _attrs))}><summary>Earlier attempt</summary><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.question.id}`)}>${exports_server_renderer.ssrInterpolate(__props.label)}, asked earlier</a>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: exports_vue.unref(answer) }, null, _parent));
+        _push(`<p>${exports_server_renderer.ssrInterpolate(exports_vue.unref(foldedQuestionOutcome)(__props.question))}</p><dl class="grid gap-1 [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-teal">`);
+        if (exports_vue.unref(response)?.status === "answered" && exports_vue.unref(response).text !== undefined) {
+          _push(`<!--[--><dt>Your words`);
+          if (exports_vue.unref(response).note_on)
+            _push(`<span> on ${exports_server_renderer.ssrInterpolate(exports_vue.unref(response).note_on)}</span>`);
+          else
+            _push(`<!---->`);
+          _push(`</dt><dd class="whitespace-pre-wrap">${exports_server_renderer.ssrInterpolate(exports_vue.unref(response).text)}</dd><!--]-->`);
+        } else if (exports_vue.unref(answer).legacy?.other !== undefined)
+          _push(`<!--[--><dt>Recorded answer</dt><dd class="whitespace-pre-wrap">${exports_server_renderer.ssrInterpolate(exports_vue.unref(answer).legacy.other)}</dd><!--]-->`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(answer).legacy?.note)
+          _push(`<!--[--><dt>Recorded note</dt><dd class="whitespace-pre-wrap">${exports_server_renderer.ssrInterpolate(exports_vue.unref(answer).legacy.note)}</dd><!--]-->`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(reading)) {
+          _push(`<!--[--><dt>Agent reading</dt>`);
+          if (exports_vue.unref(reading).outcome === "resolved")
+            _push(`<dd class="grid gap-1"><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reading).decision) ?? ""}</p><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reading).basis) ?? ""}</p></dd>`);
+          else
+            _push(`<dd>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reading).unresolved) ?? ""}</dd>`);
+          _push(`<!--]-->`);
+        } else
+          _push(`<!---->`);
+        _push(`</dl></details>`);
+      };
+    }
+  });
+  _sfc_setup$45 = EarlierAttempt_vue_vue_type_script_setup_true_lang_default.setup;
+  EarlierAttempt_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/EarlierAttempt.vue");
+    return _sfc_setup$45 ? _sfc_setup$45(props, ctx) : undefined;
+  };
+  EarlierAttempt_default = Object.assign(EarlierAttempt_vue_vue_type_script_setup_true_lang_default, { __name: "EarlierAttempt" });
   QuestionBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "QuestionBlock",
     __ssrInlineRender: true,
@@ -121717,6 +121867,49 @@ ${drawn.css}`;
       const latestAttempt = exports_vue.computed(() => f.value.latestAttempt.get(props.q.id));
       const latestOutcome = exports_vue.computed(() => latestAttempt.value && questionOutcome(latestAttempt.value));
       const earlierAttempts = exports_vue.computed(() => props.q.asked_again_by.filter((id) => id !== latestAttempt.value?.id));
+      const earlier = exports_vue.computed(() => props.q.again ? ask(props.q.again) : undefined);
+      function visualPriority(kind) {
+        switch (kind) {
+          case "option-diagram":
+          case "before-after":
+          case "comparison-table":
+          case "data-chart":
+          case "scenario":
+            return 3;
+          case "context-diagram":
+          case "source-view":
+            return 2;
+          case "source-excerpt":
+            return 1;
+          case "option-preview":
+            return -1;
+          default:
+            return 0;
+        }
+      }
+      const visuals = exports_vue.computed(() => {
+        let deciding;
+        let attachment;
+        let priority = -1;
+        for (const fig of props.q.figures ?? []) {
+          const rank = visualPriority(fig.kind);
+          if (rank <= priority)
+            continue;
+          const captured = "attachment" in fig ? f.value.attachments.find((a) => a.id === fig.attachment) : undefined;
+          if ("attachment" in fig && captured?.availability !== "captured")
+            continue;
+          deciding = fig;
+          attachment = captured;
+          priority = rank;
+        }
+        return {
+          deciding,
+          attachment,
+          source: !!(attachment || deciding && ("html" in deciding) && /<img\b/i.test(deciding.html)),
+          additional: deciding ? props.q.figures?.filter((fig) => fig !== deciding) : props.q.figures
+        };
+      });
+      const hasSources = exports_vue.computed(() => !!(st.value.background || topics.value.length || props.q.result_links.length || props.q.terms?.length || props.q.today?.length || visuals.value.source || visuals.value.additional?.length));
       const NOT_ASKED = {
         "timed-out": "The ask timed out. This is not your answer.",
         cancelled: "The ask was cancelled. This is not your answer.",
@@ -121796,7 +121989,7 @@ ${drawn.css}`;
             label: "Retired",
             html: inline3(props.q.retired.reason)
           });
-        if (!out.length && !a.picks) {
+        if (!out.length && !a.picks && !props.q.open) {
           if (props.q.asked_again_by.length)
             out.push({
               label: "Re-asked",
@@ -121804,8 +121997,8 @@ ${drawn.css}`;
             });
           else
             out.push({
-              label: props.q.latest ? "Open" : "Not answered",
-              html: props.q.open ? "Waiting for your answer." : "No answer was recorded."
+              label: "Not answered",
+              html: "No answer was recorded."
             });
         }
         return out;
@@ -121813,9 +122006,25 @@ ${drawn.css}`;
       return (_ctx, _push, _parent, _attrs) => {
         const _component_CorrectionNotice = CorrectionNotice_default;
         const _component_FigureList = FigureList_default;
-        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-2.5" }, _attrs))}><div${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-context`)}>`);
+        const _component_QuestionFigure = QuestionFigure_default;
+        const _component_EarlierAttempt = EarlierAttempt_default;
+        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "@container grid gap-2.5 wrap-anywhere" }, _attrs))}><div${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-context`)}>`);
         _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.q.context }, null, _parent));
-        _push(`</div><h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q${exports_server_renderer.ssrInterpolate(__props.q.q)}</span><span class="sr-only">: </span><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></h2>`);
+        _push(`</div><header class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><h2 class="wrap-anywhere text-[1.0625rem] text-flow-mauve"><span class="me-2.5 tabular-nums">Q${exports_server_renderer.ssrInterpolate(__props.q.q)}</span><span class="sr-only">: </span><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></h2><section aria-label="Current outcome" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small wrap-anywhere"><p class="${exports_server_renderer.ssrRenderClass([exports_vue.unref(outcome).cls, "w-fit rounded border border-flow-line bg-muted px-2"])}">${exports_vue.unref(outcome).html ?? ""}</p>`);
+        if (exports_vue.unref(outcome).previous)
+          _push(`<p class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(outcome).previous.cls)}">${exports_vue.unref(outcome).previous.html ?? ""}</p>`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(latestAttempt)) {
+          _push(`<!--[--><a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latestAttempt).id}`)}>Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(askLabel)(exports_vue.unref(f), exports_vue.unref(latestAttempt).id))}${exports_server_renderer.ssrInterpolate(askedIn(exports_vue.unref(latestAttempt).id))}</a>`);
+          if (exports_vue.unref(latestOutcome))
+            _push(`<span class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(latestOutcome).cls)}">${exports_vue.unref(latestOutcome).html ?? ""}</span>`);
+          else
+            _push(`<!---->`);
+          _push(`<!--]-->`);
+        } else
+          _push(`<!---->`);
+        _push(`</section></header>`);
         if (__props.q.brief && exports_vue.unref(now) !== undefined) {
           _push(`<section aria-label="Decision brief" class="min-w-0 wrap-anywhere"><dl class="grid gap-1 [&amp;_dd]:inline [&amp;_dd]:ms-2 [&amp;_dt]:inline [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-teal"><div><dt>Now</dt><dd>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(now)) ?? ""}</dd></div>`);
           if (__props.q.brief.asked_again_because)
@@ -121831,91 +122040,37 @@ ${drawn.css}`;
           _push(`<div><dt>After you answer</dt><dd><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.brief.unblocks) ?? ""}</span> <span class="font-semibold">Undo:</span> <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.brief.undo) ?? ""}</span></dd></div></dl></section>`);
         } else
           _push(`<!---->`);
-        _push(`<section aria-label="Current outcome" class="grid gap-1 text-small"><p class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(outcome).cls)}">${exports_vue.unref(outcome).html ?? ""}</p>`);
-        if (exports_vue.unref(outcome).previous)
-          _push(`<p class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(outcome).previous.cls)}">${exports_vue.unref(outcome).previous.html ?? ""}</p>`);
-        else
-          _push(`<!---->`);
-        _push(`<nav aria-label="Question details" class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5"><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.id}-choices`)}>Choices</a><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.id}-evidence`)}>Evidence</a>`);
-        if (exports_vue.unref(latestAttempt))
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latestAttempt).id}`)}>Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(askLabel)(exports_vue.unref(f), exports_vue.unref(latestAttempt).id))}${exports_server_renderer.ssrInterpolate(askedIn(exports_vue.unref(latestAttempt).id))}</a>`);
-        else
-          _push(`<!---->`);
-        if (exports_vue.unref(latestOutcome))
-          _push(`<span class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(latestOutcome).cls)}">${exports_vue.unref(latestOutcome).html ?? ""}</span>`);
-        else
-          _push(`<!---->`);
-        _push(`</nav></section><section${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-evidence`)} aria-label="Question evidence" class="grid gap-2.5"><div class="grid gap-1.5">${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.q.description) ?? ""}</div><p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted [&amp;_a]:no-underline">`);
-        if (exports_vue.unref(st).background)
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(st).background.id}`)}>Background: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(st).background.title) ?? ""}</span></a>`);
-        else
-          _push(`<!---->`);
-        _push(`<!--[-->`);
-        ssrRenderList$2(exports_vue.unref(topics), (t) => {
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${t.id}`)}>Topic: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.title) ?? ""}</span></a>`);
-        });
-        _push(`<!--]--><!--[-->`);
-        ssrRenderList$2(__props.q.result_links, (link) => {
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${link.anchor}`)}><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(link.title) ?? ""}</span> `);
-          if (link.entry)
-            _push(`<span class="entry-id">${exports_server_renderer.ssrInterpolate(link.entry)}</span>`);
+        _push(`<div class="grid gap-1.5">${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.q.description) ?? ""}</div>`);
+        if (exports_vue.unref(earlierAttempts).length || exports_vue.unref(reopened) || __props.q.decided_in) {
+          _push(`<p class="meta"><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(earlierAttempts), (id) => {
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${id}`)}>Q${exports_server_renderer.ssrInterpolate(ask(id)?.q)}${exports_server_renderer.ssrInterpolate(askedIn(id))}, asked again</a>`);
+          });
+          _push(`<!--]-->`);
+          if (exports_vue.unref(reopened))
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(reopened).id}`)}>Reopens an Assumed pick: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reopened).decision) ?? ""}</span></a>`);
           else
             _push(`<!---->`);
-          _push(`</a>`);
-        });
-        _push(`<!--]-->`);
-        if (__props.q.again)
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.again}`)}>Q${exports_server_renderer.ssrInterpolate(ask(__props.q.again)?.q)}${exports_server_renderer.ssrInterpolate(askedIn(__props.q.again))}, asked earlier</a>`);
-        else
-          _push(`<!---->`);
-        _push(`<!--[-->`);
-        ssrRenderList$2(exports_vue.unref(earlierAttempts), (id) => {
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${id}`)}>Q${exports_server_renderer.ssrInterpolate(ask(id)?.q)}${exports_server_renderer.ssrInterpolate(askedIn(id))}, asked again</a>`);
-        });
-        _push(`<!--]-->`);
-        if (exports_vue.unref(reopened))
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(reopened).id}`)}>Reopens an Assumed pick: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reopened).decision) ?? ""}</span></a>`);
-        else
-          _push(`<!---->`);
-        if (__props.q.decided_in)
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.decided_in}`)}>Decision in the summary</a>`);
-        else
-          _push(`<!---->`);
-        _push(`</p>`);
-        if (__props.q.terms?.length) {
-          _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Term notes (${exports_server_renderer.ssrInterpolate(__props.q.terms.length)})</summary><dl class="grid gap-0.5 [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-teal [&amp;_dd+dt]:mbs-1.5"><!--[-->`);
-          ssrRenderList$2(__props.q.terms, (t) => {
-            _push(`<!--[--><dt>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.term) ?? ""}</dt><dd class="ms-0">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.text) ?? ""}</dd><!--]-->`);
-          });
-          _push(`<!--]--></dl></details>`);
+          if (__props.q.decided_in)
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.decided_in}`)}>Decision in the summary</a>`);
+          else
+            _push(`<!---->`);
+          _push(`</p>`);
         } else
           _push(`<!---->`);
-        if (__props.q.needs?.length) {
-          _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Reader needs (${exports_server_renderer.ssrInterpolate(__props.q.needs.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><!--[-->`);
-          ssrRenderList$2(__props.q.needs, (n, i) => {
-            _push(`<li><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(n.need) ?? ""}</span> <span class="text-small text-muted">${exports_server_renderer.ssrInterpolate(exports_vue.unref(VISUAL_KINDS)[n.kind])}</span></li>`);
-          });
-          _push(`<!--]--></ul></details>`);
-        } else
-          _push(`<!---->`);
-        if (__props.q.today?.length) {
-          _push(`<div class="grid gap-1.5"><p class="font-semibold text-[var(--pink)]">Today</p><ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><!--[-->`);
+        if (!__props.q.brief && __props.q.today?.length) {
+          _push(`<div class="labelled"><p class="font-semibold text-[var(--pink)]">Today</p><ul class="bullets"><!--[-->`);
           ssrRenderList$2(__props.q.today, (fact, i) => {
-            _push(`<li><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(fact.text) ?? ""}</span></li>`);
+            _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(fact.text) ?? ""}</li>`);
           });
-          _push(`<!--]--></ul><details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Sources (${exports_server_renderer.ssrInterpolate(__props.q.today.length)})</summary><ol class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><!--[-->`);
-          ssrRenderList$2(__props.q.today, (fact, i) => {
-            _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(sourceText)(exports_vue.unref(f), fact.source)) ?? ""}</li>`);
-          });
-          _push(`<!--]--></ol></details></div>`);
+          _push(`<!--]--></ul></div>`);
         } else
           _push(`<!---->`);
         if (__props.q.example)
-          _push(`<div class="grid gap-1.5"><p class="font-semibold text-[var(--pink)]">Example</p><p class="whitespace-pre-wrap">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.example) ?? ""}</p></div>`);
+          _push(`<div class="labelled"><p class="font-semibold text-[var(--pink)]">Example</p><p class="whitespace-pre-wrap">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.example) ?? ""}</p></div>`);
         else
           _push(`<!---->`);
-        _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, { figures: __props.q.figures }, null, _parent));
-        _push(`</section><div class="grid gap-4 pbs-1.5"><ol${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-choices`)} aria-label="Choices" class="options grid list-none gap-4 ps-0"><!--[-->`);
+        _push(`<div class="${exports_server_renderer.ssrRenderClass([exports_vue.unref(visuals).deciding && "@min-[48rem]:grid-cols-[minmax(0,5fr)_minmax(0,4fr)]", "grid items-start gap-4 pbs-1.5"])}"><ol${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-choices`)} aria-label="Choices" class="options grid list-none gap-4 ps-0"><!--[-->`);
         ssrRenderList$2(__props.q.options, (o) => {
           _push(`<li class="option group/option grid gap-1"${exports_server_renderer.ssrRenderAttr("data-recommended", o.recommended ? "" : undefined)}${exports_server_renderer.ssrRenderAttr("data-picked", exports_vue.unref(picks).has(o.label) ? "" : undefined)}><h3 class="font-semibold text-info group-data-picked/option:font-bold group-data-picked/option:text-flow-yellow"><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.label) ?? ""}</span>`);
           if (o.recommended)
@@ -121951,30 +122106,112 @@ ${drawn.css}`;
           _push(`</li>`);
         });
         _push(`<!--]--></ol>`);
-        if (__props.q.answer.correction || __props.q.answer.corrects.length || __props.q.answer.recorded_reading) {
-          _push(`<section${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-reading`)} class="grid gap-1.5">`);
-          _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.q.answer }, null, _parent));
-          if (__props.q.answer.recorded_reading) {
-            _push(`<details><summary>Original agent reading, no longer current</summary>`);
-            if (__props.q.answer.recorded_reading.outcome === "resolved")
-              _push(`<!--[--><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.decision) ?? ""}</p><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.basis) ?? ""}</p><!--]-->`);
-            else
-              _push(`<p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.unresolved) ?? ""}</p>`);
-            _push(`</details>`);
+        if (exports_vue.unref(visuals).deciding)
+          _push(exports_server_renderer.ssrRenderComponent(_component_QuestionFigure, {
+            figure: exports_vue.unref(visuals).deciding,
+            attachment: exports_vue.unref(visuals).attachment
+          }, null, _parent));
+        else
+          _push(`<!---->`);
+        _push(`</div>`);
+        if (exports_vue.unref(lines).length || __props.q.answer.correction || __props.q.answer.corrects.length || __props.q.answer.recorded_reading) {
+          _push(`<div class="grid gap-4 pbs-1.5">`);
+          if (__props.q.answer.correction || __props.q.answer.corrects.length || __props.q.answer.recorded_reading) {
+            _push(`<section${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-reading`)} class="grid gap-1.5">`);
+            _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.q.answer }, null, _parent));
+            if (__props.q.answer.recorded_reading) {
+              _push(`<details><summary>Original agent reading, no longer current</summary>`);
+              if (__props.q.answer.recorded_reading.outcome === "resolved")
+                _push(`<!--[--><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.decision) ?? ""}</p><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.basis) ?? ""}</p><!--]-->`);
+              else
+                _push(`<p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.unresolved) ?? ""}</p>`);
+              _push(`</details>`);
+            } else
+              _push(`<!---->`);
+            _push(`</section>`);
           } else
             _push(`<!---->`);
-          _push(`</section>`);
+          if (exports_vue.unref(lines).length) {
+            _push(`<div class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2"><!--[-->`);
+            ssrRenderList$2(exports_vue.unref(lines), (l, i) => {
+              _push(`<p class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">${exports_server_renderer.ssrInterpolate(l.label)}</span><span>${l.html ?? ""}</span></p>`);
+            });
+            _push(`<!--]--></div>`);
+          } else
+            _push(`<!---->`);
+          _push(`</div>`);
         } else
           _push(`<!---->`);
-        if (exports_vue.unref(lines).length) {
-          _push(`<div class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2"><!--[-->`);
-          ssrRenderList$2(exports_vue.unref(lines), (l, i) => {
-            _push(`<p class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">${exports_server_renderer.ssrInterpolate(l.label)}</span><span>${l.html ?? ""}</span></p>`);
+        _push(`<details class="disclosure"><summary${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-evidence`)}>Sources and context</summary>`);
+        if (exports_vue.unref(st).background || exports_vue.unref(topics).length || __props.q.result_links.length) {
+          _push(`<p class="meta">`);
+          if (exports_vue.unref(st).background)
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(st).background.id}`)}>Background: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(st).background.title) ?? ""}</span></a>`);
+          else
+            _push(`<!---->`);
+          _push(`<!--[-->`);
+          ssrRenderList$2(exports_vue.unref(topics), (t) => {
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${t.id}`)}>Topic: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.title) ?? ""}</span></a>`);
           });
-          _push(`<!--]--></div>`);
+          _push(`<!--]--><!--[-->`);
+          ssrRenderList$2(__props.q.result_links, (link) => {
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${link.anchor}`)}><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(link.title) ?? ""}</span> `);
+            if (link.entry)
+              _push(`<span class="entry-id">${exports_server_renderer.ssrInterpolate(link.entry)}</span>`);
+            else
+              _push(`<!---->`);
+            _push(`</a>`);
+          });
+          _push(`<!--]--></p>`);
         } else
           _push(`<!---->`);
-        _push(`</div></div>`);
+        if (__props.q.terms?.length) {
+          _push(`<div class="labelled"><p class="font-semibold text-flow-teal">Term notes</p><dl class="grid gap-0.5 [&amp;_dt]:font-semibold [&amp;_dd+dt]:mbs-1.5"><!--[-->`);
+          ssrRenderList$2(__props.q.terms, (t) => {
+            _push(`<!--[--><dt>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.term) ?? ""}</dt><dd>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.text) ?? ""}</dd><!--]-->`);
+          });
+          _push(`<!--]--></dl></div>`);
+        } else
+          _push(`<!---->`);
+        if (__props.q.today?.length) {
+          _push(`<div class="labelled"><p class="font-semibold text-flow-teal">${exports_server_renderer.ssrInterpolate(__props.q.brief ? "Today" : "Today sources")}</p><ul class="bullets"><!--[-->`);
+          ssrRenderList$2(__props.q.today, (fact, i) => {
+            _push(`<li>`);
+            if (__props.q.brief)
+              _push(`<p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(fact.text) ?? ""}</p>`);
+            else
+              _push(`<!---->`);
+            _push(`<span class="quiet">`);
+            if (__props.q.brief)
+              _push(`<!--[-->Source: <!--]-->`);
+            else
+              _push(`<!---->`);
+            _push(`<span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(sourceText)(exports_vue.unref(f), fact.source)) ?? ""}</span></span></li>`);
+          });
+          _push(`<!--]--></ul></div>`);
+        } else
+          _push(`<!---->`);
+        if (exports_vue.unref(visuals).deciding && exports_vue.unref(visuals).source)
+          _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, {
+            figures: [exports_vue.unref(visuals).deciding],
+            part: "source"
+          }, null, _parent));
+        else
+          _push(`<!---->`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, { figures: exports_vue.unref(visuals).additional }, null, _parent));
+        if (!exports_vue.unref(hasSources))
+          _push(`<p class="quiet">No sources or additional context were recorded.</p>`);
+        else
+          _push(`<!---->`);
+        _push(`</details>`);
+        if (exports_vue.unref(earlier))
+          _push(exports_server_renderer.ssrRenderComponent(_component_EarlierAttempt, {
+            question: exports_vue.unref(earlier),
+            label: `Q${exports_vue.unref(earlier).q}${askedIn(exports_vue.unref(earlier).id)}`
+          }, null, _parent));
+        else
+          _push(`<!---->`);
+        _push(`</div>`);
       };
     }
   });
@@ -122016,15 +122253,20 @@ ${drawn.css}`;
           "data-next": exports_vue.unref(rank) >= 0 ? exports_vue.unref(rank) : undefined,
           "data-retired": __props.q.retired ? "" : undefined,
           "data-stop": ""
-        }, _attrs))}><details${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-fold`)} data-reading-fold${exports_server_renderer.ssrIncludeBooleanAttr(__props.q.open || exports_vue.unref(expanded)) ? " open" : ""}><summary class="min-h-8 py-1 [overflow-wrap:anywhere]" style="${exports_server_renderer.ssrRenderStyle(!__props.q.open ? null : { display: "none" })}"><span class="text-default"><span class="tabular-nums">Q${exports_server_renderer.ssrInterpolate(__props.q.q)}: </span><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></span><span class="text-small font-normal text-muted"> \xB7 ${exports_server_renderer.ssrInterpolate(exports_vue.unref(outcome))}</span>`);
-        if ((__props.q.context.correction || __props.q.answer.correction) && !exports_vue.unref(expanded))
-          _push(`<span class="text-small text-warning"> \xB7 Corrected</span>`);
-        else
-          _push(`<!---->`);
-        if (exports_vue.unref(latest) && !exports_vue.unref(expanded))
-          _push(`<!--[--> \xB7 <a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latest).id}`)} class="text-small font-normal">Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(latestLabel))}</a><!--]-->`);
-        else
-          _push(`<!---->`);
+        }, _attrs))}><details${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-fold`)} data-reading-fold${exports_server_renderer.ssrIncludeBooleanAttr(__props.q.open || exports_vue.unref(expanded)) ? " open" : ""}><summary class="min-h-8 py-1 [overflow-wrap:anywhere]" style="${exports_server_renderer.ssrRenderStyle(!__props.q.open ? null : { display: "none" })}">`);
+        if (!exports_vue.unref(expanded)) {
+          _push(`<!--[--><span class="text-default"><span class="tabular-nums">Q${exports_server_renderer.ssrInterpolate(__props.q.q)}: </span><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></span><span class="text-small font-normal text-muted"> \xB7 ${exports_server_renderer.ssrInterpolate(exports_vue.unref(outcome))}</span>`);
+          if (__props.q.context.correction || __props.q.answer.correction)
+            _push(`<span class="text-small text-warning"> \xB7 Corrected</span>`);
+          else
+            _push(`<!---->`);
+          if (exports_vue.unref(latest))
+            _push(`<!--[--> \xB7 <a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latest).id}`)} class="text-small font-normal">Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(latestLabel))}</a><!--]-->`);
+          else
+            _push(`<!---->`);
+          _push(`<!--]-->`);
+        } else
+          _push(`<!--[-->Collapse question<!--]-->`);
         _push(`</summary>`);
         _push(exports_server_renderer.ssrRenderComponent(_component_QuestionBlock, { q: __props.q }, null, _parent));
         _push(`</details></article>`);
@@ -131005,7 +131247,7 @@ __export(exports_precomputed, {
 });
 var client_precomputed;
 var init_precomputed = __esm(() => {
-  client_precomputed = ((h, j, k, m, o, q, u, x, z, A, B, C, D, E, F, G, H, I, J, K, L, N, P, Q, R, T, U, V, W, X, Y, Z, $, _, hb, jb) => ({ dependencies: { "_D8erDxGK.js": { scripts: {}, styles: {}, preload: { "_D8erDxGK.js": h = { resourceType: "script", module: true, prefetch: true, preload: true, file: "D8erDxGK.js", name: "nuxt" } }, prefetch: {} }, "_BW3xJdEx.js": { scripts: {}, styles: {}, preload: { "_BW3xJdEx.js": j = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BW3xJdEx.js", name: "defu" } }, prefetch: {} }, "_H1wzclJL.js": { scripts: {}, styles: {}, preload: { "_H1wzclJL.js": k = { resourceType: "script", module: true, prefetch: true, preload: true, file: "H1wzclJL.js", name: "ready", imports: ["_D8erDxGK.js", "_BW3xJdEx.js"] }, "_D8erDxGK.js": h, "_BW3xJdEx.js": j }, prefetch: {} }, "_JprU3HKd.js": { scripts: {}, styles: {}, preload: { "_JprU3HKd.js": m = { resourceType: "script", module: true, prefetch: true, preload: true, file: "JprU3HKd.js", name: "head", imports: ["_D8erDxGK.js"] }, "_D8erDxGK.js": h }, prefetch: {} }, "_BosXrFqz.js": { scripts: {}, styles: {}, preload: { "_BosXrFqz.js": o = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BosXrFqz.js", name: "server-prefetch", imports: ["_D8erDxGK.js"] }, "_D8erDxGK.js": h }, prefetch: {} }, "_DIWJVMiN.js": { scripts: {}, styles: {}, preload: { "_DIWJVMiN.js": q = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DIWJVMiN.js", name: "7OAKGN26" } }, prefetch: {} }, "_DPEFMf5Q.js": { scripts: {}, styles: {}, preload: { "_DPEFMf5Q.js": u = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DPEFMf5Q.js", name: "GUJTEFZK" } }, prefetch: {} }, "_CQJ_2c2w.js": { scripts: {}, styles: {}, preload: { "_CQJ_2c2w.js": x = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CQJ_2c2w.js", name: "YWXUFHC7" } }, prefetch: {} }, "_DciMwFJ1.js": { scripts: {}, styles: {}, preload: { "_DciMwFJ1.js": z = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DciMwFJ1.js", name: "DKTLEL5E" } }, prefetch: {} }, "_qj2FSERp.js": { scripts: {}, styles: {}, preload: { "_qj2FSERp.js": A = { resourceType: "script", module: true, prefetch: true, preload: true, file: "qj2FSERp.js", name: "KHUP5TOH", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/nuxt/dist/app/entry.js": { scripts: { "../../node_modules/nuxt/dist/app/entry.js": C = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CqDPYCCX.js", name: "entry", src: "../../node_modules/nuxt/dist/app/entry.js", isEntry: true, imports: ["_D8erDxGK.js", "_H1wzclJL.js", "_JprU3HKd.js", "_BW3xJdEx.js", "_BosXrFqz.js", "_DIWJVMiN.js", "_DPEFMf5Q.js", "_CQJ_2c2w.js", "_DciMwFJ1.js", "_qj2FSERp.js"], dynamicImports: B = ["../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js", "../../node_modules/nuxt/dist/app/entry.js", "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js", "../../node_modules/pele/dist/esm/lazy.js", "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue", "../../node_modules/nuxt/dist/app/components/error-404.vue", "../../node_modules/nuxt/dist/app/components/error-500.vue"], css: ["entry.Bgn2XNhA.css"], assets: [] } }, styles: { "entry.Bgn2XNhA.css": D = { file: "entry.Bgn2XNhA.css", resourceType: "style", prefetch: true, preload: true } }, preload: { "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.Bgn2XNhA.css": D } }, "_DAWZIfaJ.js": { scripts: {}, styles: { "entry.Bgn2XNhA.css": D }, preload: { "_DAWZIfaJ.js": E = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DAWZIfaJ.js", name: "shared", imports: ["_D8erDxGK.js", "../../node_modules/nuxt/dist/app/entry.js"] }, "_D8erDxGK.js": h, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.Bgn2XNhA.css": D } }, "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js": { scripts: {}, styles: { "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CuLp1CHz.js", name: "css-runtime", src: "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js", isDynamicEntry: true, imports: ["_DAWZIfaJ.js"] }, "_DAWZIfaJ.js": E, "_D8erDxGK.js": h, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.Bgn2XNhA.css": D } }, "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js": { scripts: {}, styles: { "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CG1c6k8z.js", name: "svg", src: "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js", isDynamicEntry: true, imports: ["_BosXrFqz.js", "_D8erDxGK.js", "_H1wzclJL.js", "_BW3xJdEx.js", "../../node_modules/nuxt/dist/app/entry.js", "_DAWZIfaJ.js"] }, "_BosXrFqz.js": o, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_JprU3HKd.js": m, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A, "_DAWZIfaJ.js": E }, prefetch: { "entry.Bgn2XNhA.css": D } }, "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": { scripts: {}, styles: { "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CVHJeAOm.js", name: "Toast", src: "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js", "_D8erDxGK.js"] }, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.Bgn2XNhA.css": D } }, "../../node_modules/nuxt/dist/app/components/error-404.vue": { scripts: {}, styles: { "error-404.0VRc7TZD.css": F = { file: "error-404.0VRc7TZD.css", resourceType: "style", prefetch: true, preload: true }, "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/nuxt/dist/app/components/error-404.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CUq7qHKk.js", name: "error-404", src: "../../node_modules/nuxt/dist/app/components/error-404.vue", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js", "_JprU3HKd.js", "_D8erDxGK.js"], css: ["error-404.0VRc7TZD.css"] }, "error-404.0VRc7TZD.css": F, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "error-404.0VRc7TZD.css": F, "entry.Bgn2XNhA.css": D } }, "error-404.0VRc7TZD.css": { scripts: {}, styles: {}, preload: { "error-404.0VRc7TZD.css": F }, prefetch: {} }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { scripts: {}, styles: { "error-500.B6KHwBYu.css": G = { file: "error-500.B6KHwBYu.css", resourceType: "style", prefetch: true, preload: true }, "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/nuxt/dist/app/components/error-500.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CqSDsnwv.js", name: "error-500", src: "../../node_modules/nuxt/dist/app/components/error-500.vue", isDynamicEntry: true, imports: ["_JprU3HKd.js", "_D8erDxGK.js", "../../node_modules/nuxt/dist/app/entry.js"], css: ["error-500.B6KHwBYu.css"] }, "error-500.B6KHwBYu.css": G, "_JprU3HKd.js": m, "_D8erDxGK.js": h, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "error-500.B6KHwBYu.css": G, "entry.Bgn2XNhA.css": D } }, "error-500.B6KHwBYu.css": { scripts: {}, styles: {}, preload: { "error-500.B6KHwBYu.css": G }, prefetch: {} }, "entry.Bgn2XNhA.css": { scripts: {}, styles: {}, preload: { "entry.Bgn2XNhA.css": D }, prefetch: {} }, "_BRacOsTa.js": { scripts: {}, styles: {}, preload: { "_BRacOsTa.js": H = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BRacOsTa.js", name: "IU7WZTP6", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": x }, prefetch: {} }, "_CDgikELR.js": { scripts: {}, styles: {}, preload: { "_CDgikELR.js": I = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CDgikELR.js", name: "D5TW5CPZ", imports: ["_BRacOsTa.js"] }, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x }, prefetch: {} }, "_Bm_zMqIp.js": { scripts: {}, styles: {}, preload: { "_Bm_zMqIp.js": J = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Bm_zMqIp.js", name: "OHJ2EJXK", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DF47FnbQ.js", name: "43YPWK3Q", src: "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": I, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "_jmQjJSVB.js": { scripts: {}, styles: {}, preload: { "_jmQjJSVB.js": K = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jmQjJSVB.js", name: "XLHPVVFU", imports: ["_DPEFMf5Q.js"] }, "_DPEFMf5Q.js": u }, prefetch: {} }, "_Rv0XU_EN.js": { scripts: {}, styles: {}, preload: { "_Rv0XU_EN.js": L = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Rv0XU_EN.js", name: "TR4WJQGX", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DQ7-5EPR.js", name: "45MVAN6X", src: "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": K, "_DPEFMf5Q.js": u, "_Rv0XU_EN.js": L, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z }, prefetch: {} }, "_CggtIYAM.js": { scripts: {}, styles: {}, preload: { "_CggtIYAM.js": N = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CggtIYAM.js", name: "FTXIJQGB" } }, prefetch: {} }, "_D6QVYUu9.js": { scripts: {}, styles: {}, preload: { "_D6QVYUu9.js": P = { resourceType: "script", module: true, prefetch: true, preload: true, file: "D6QVYUu9.js", name: "7WLXJQOR" } }, prefetch: {} }, "_A379Mz0i.js": { scripts: {}, styles: {}, preload: { "_A379Mz0i.js": Q = { resourceType: "script", module: true, prefetch: true, preload: true, file: "A379Mz0i.js", name: "YUPSMAUO", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_jUP2eHkt.js": { scripts: {}, styles: {}, preload: { "_jUP2eHkt.js": R = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jUP2eHkt.js", name: "2CHDFZHC" } }, prefetch: {} }, "_Di8lEgbI.js": { scripts: {}, styles: {}, preload: { "_Di8lEgbI.js": T = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Di8lEgbI.js", name: "UWRPUF3N", imports: ["_jUP2eHkt.js", "_qj2FSERp.js"] }, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_DjgDzPAI.js": { scripts: {}, styles: {}, preload: { "_DjgDzPAI.js": U = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DjgDzPAI.js", name: "LLLWOAQD", imports: ["_Di8lEgbI.js"] }, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_DOzvca2k.js": { scripts: {}, styles: {}, preload: { "_DOzvca2k.js": V = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DOzvca2k.js", name: "PDMLSE6I", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_cWIjF4Ta.js": { scripts: {}, styles: {}, preload: { "_cWIjF4Ta.js": W = { resourceType: "script", module: true, prefetch: true, preload: true, file: "cWIjF4Ta.js", name: "NDSCUZ25", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_DvPkyAGP.js": { scripts: {}, styles: {}, preload: { "_DvPkyAGP.js": X = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DvPkyAGP.js", name: "VSWIZJ7B", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_fkcgi8rz.js": { scripts: {}, styles: {}, preload: { "_fkcgi8rz.js": Y = { resourceType: "script", module: true, prefetch: true, preload: true, file: "fkcgi8rz.js", name: "O3ACPFEJ", imports: ["_CggtIYAM.js", "_DIWJVMiN.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "N-r2D2Jn.js", name: "46GJKBLZ", src: "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js", isDynamicEntry: true, imports: ["_fkcgi8rz.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js"] }, "_fkcgi8rz.js": Y, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BCpu_K-Y.js", name: "63WH7YNF", src: "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", isDynamicEntry: true, imports: ["_CggtIYAM.js", "_DIWJVMiN.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "_BxrxwxIF.js": { scripts: {}, styles: {}, preload: { "_BxrxwxIF.js": Z = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BxrxwxIF.js", name: "SXSLPWUD", imports: ["_DPEFMf5Q.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": u, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "rsGOuYai.js", name: "6DDU7VKX", src: "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "_DOzvca2k.js", "_DvPkyAGP.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": Z, "_DPEFMf5Q.js": u, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_DvPkyAGP.js": X, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B6XVgDR0.js", name: "CLQLV5VT", src: "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", isDynamicEntry: true, imports: ["_DIWJVMiN.js", "_Bm_zMqIp.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DIWJVMiN.js": q, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DtI7bYOl.js", name: "CUSPXG5M", src: "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": K, "_DPEFMf5Q.js": u, "_Rv0XU_EN.js": L, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "_Ce_hS451.js": { scripts: {}, styles: {}, preload: { "_Ce_hS451.js": $ = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Ce_hS451.js", name: "5THPTBWS" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BlSzXU9S.js", name: "D3L7O4X2", src: "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": $, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D9lvdoJG.js", name: "EGADTWYV", src: "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", isDynamicEntry: true, imports: ["_Rv0XU_EN.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Rv0XU_EN.js": L, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_BRacOsTa.js": H }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DC4zHdLs.js", name: "EOJSJZXM", src: "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Dk48IVMN.js", name: "G2OEIG6X", src: "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "4SFSL1cU.js", name: "GXJ2T77W", src: "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": I, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CJFzCM--.js", name: "HX3UMAK7", src: "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "GWcLNi_-.js", name: "J5J2NR2G", src: "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "_CgA1WoRv.js": { scripts: {}, styles: {}, preload: { "_CgA1WoRv.js": _ = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CgA1WoRv.js", name: "RVARI57O" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "pImnSmIV.js", name: "JRCWTJEL", src: "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": _, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CNSF0GFe.js", name: "L74FQTH5", src: "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", isDynamicEntry: true, imports: ["_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_cWIjF4Ta.js": W, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DpUcO8Ea.js", name: "LAV4ZXOS", src: "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", isDynamicEntry: true, imports: ["_DOzvca2k.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DOzvca2k.js": V, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Cuoq_p7c.js", name: "LBIZYCRR", src: "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { scripts: {}, styles: { "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B0NS1tLt.js", name: "LFFXNLRS", src: "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js"] }, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.Bgn2XNhA.css": D } }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DIbK5QUF.js", name: "LTYQZ5U5", src: "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", isDynamicEntry: true, imports: ["_fkcgi8rz.js"] }, "_fkcgi8rz.js": Y, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "_BZmnMkFw.js": { scripts: {}, styles: {}, preload: { "_BZmnMkFw.js": hb = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BZmnMkFw.js", name: "G3MDBVQH" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "tHiC8OPv.js", name: "NMN3IKWL", src: "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": hb, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D-HpbxLB.js", name: "NMUA3R2D", src: "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", isDynamicEntry: true, imports: ["_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CVRYe09m.js", name: "NY5A6PPW", src: "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", isDynamicEntry: true, imports: ["_DPEFMf5Q.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": u, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Vp8uTWHn.js", name: "OU2GIT2H", src: "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BzzWOXOp.js", name: "PJ7X32S5", src: "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Y5AakHLu.js", name: "RLLQ44NJ", src: "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": I, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B3inPF54.js", name: "S6DWMCK5", src: "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": hb, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B46P-L8x.js", name: "STIOTUT7", src: "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "C0dqctsN.js", name: "WM7NR6YK", src: "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CF6w7KE0.js", name: "WXKV2YEK", src: "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": _, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CKms6LnG.js", name: "YNX532HU", src: "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": $, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_BRacOsTa.js": H }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D0nAuYVf.js", name: "ZFRCZTLK", src: "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "_DIWJVMiN.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": Z, "_DPEFMf5Q.js": u, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DIWJVMiN.js": q, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CPCl8y27.js", name: "ZZDR4CN3", src: "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/lazy.js": { scripts: {}, styles: { "entry.Bgn2XNhA.css": D }, preload: { "../../node_modules/pele/dist/esm/lazy.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "7Rs56IYL.js", name: "lazy", src: "../../node_modules/pele/dist/esm/lazy.js", isDynamicEntry: true, imports: ["_CQJ_2c2w.js", "../../node_modules/nuxt/dist/app/entry.js"], dynamicImports: jb = ["../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js"] }, "_CQJ_2c2w.js": x, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.Bgn2XNhA.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.Bgn2XNhA.css": D } } }, entrypoints: ["../../node_modules/nuxt/dist/app/entry.js"], modules: { "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js": { file: "CuLp1CHz.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js": { file: "CG1c6k8z.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": { file: "CVHJeAOm.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/nuxt/dist/app/components/error-404.vue": { file: "CUq7qHKk.js", resourceType: "script", mimeType: undefined, module: true }, "error-404.0VRc7TZD.css": { file: "error-404.0VRc7TZD.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { file: "CqSDsnwv.js", resourceType: "script", mimeType: undefined, module: true }, "error-500.B6KHwBYu.css": { file: "error-500.B6KHwBYu.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/entry.js": { file: "CqDPYCCX.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: B }, "entry.Bgn2XNhA.css": { file: "entry.Bgn2XNhA.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { file: "DF47FnbQ.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { file: "DQ7-5EPR.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { file: "N-r2D2Jn.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { file: "BCpu_K-Y.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { file: "rsGOuYai.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { file: "B6XVgDR0.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { file: "DtI7bYOl.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { file: "BlSzXU9S.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { file: "D9lvdoJG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { file: "DC4zHdLs.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { file: "Dk48IVMN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { file: "4SFSL1cU.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { file: "CJFzCM--.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { file: "GWcLNi_-.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { file: "pImnSmIV.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { file: "CNSF0GFe.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { file: "DpUcO8Ea.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { file: "Cuoq_p7c.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { file: "B0NS1tLt.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { file: "DIbK5QUF.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { file: "tHiC8OPv.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { file: "D-HpbxLB.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { file: "CVRYe09m.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { file: "Vp8uTWHn.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { file: "BzzWOXOp.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { file: "Y5AakHLu.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { file: "B3inPF54.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { file: "B46P-L8x.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { file: "C0dqctsN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { file: "CF6w7KE0.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { file: "CKms6LnG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { file: "D0nAuYVf.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { file: "CPCl8y27.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/lazy.js": { file: "7Rs56IYL.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: jb }, "_A379Mz0i.js": { file: "A379Mz0i.js", resourceType: "script", mimeType: undefined, module: true }, "_BRacOsTa.js": { file: "BRacOsTa.js", resourceType: "script", mimeType: undefined, module: true }, "_BW3xJdEx.js": { file: "BW3xJdEx.js", resourceType: "script", mimeType: undefined, module: true }, "_BZmnMkFw.js": { file: "BZmnMkFw.js", resourceType: "script", mimeType: undefined, module: true }, "_Bm_zMqIp.js": { file: "Bm_zMqIp.js", resourceType: "script", mimeType: undefined, module: true }, "_BosXrFqz.js": { file: "BosXrFqz.js", resourceType: "script", mimeType: undefined, module: true }, "_BxrxwxIF.js": { file: "BxrxwxIF.js", resourceType: "script", mimeType: undefined, module: true }, "_CDgikELR.js": { file: "CDgikELR.js", resourceType: "script", mimeType: undefined, module: true }, "_CQJ_2c2w.js": { file: "CQJ_2c2w.js", resourceType: "script", mimeType: undefined, module: true }, "_Ce_hS451.js": { file: "Ce_hS451.js", resourceType: "script", mimeType: undefined, module: true }, "_CgA1WoRv.js": { file: "CgA1WoRv.js", resourceType: "script", mimeType: undefined, module: true }, "_CggtIYAM.js": { file: "CggtIYAM.js", resourceType: "script", mimeType: undefined, module: true }, "_D6QVYUu9.js": { file: "D6QVYUu9.js", resourceType: "script", mimeType: undefined, module: true }, "_D8erDxGK.js": { file: "D8erDxGK.js", resourceType: "script", mimeType: undefined, module: true }, "_DAWZIfaJ.js": { file: "DAWZIfaJ.js", resourceType: "script", mimeType: undefined, module: true }, "_DIWJVMiN.js": { file: "DIWJVMiN.js", resourceType: "script", mimeType: undefined, module: true }, "_DOzvca2k.js": { file: "DOzvca2k.js", resourceType: "script", mimeType: undefined, module: true }, "_DPEFMf5Q.js": { file: "DPEFMf5Q.js", resourceType: "script", mimeType: undefined, module: true }, "_DciMwFJ1.js": { file: "DciMwFJ1.js", resourceType: "script", mimeType: undefined, module: true }, "_Di8lEgbI.js": { file: "Di8lEgbI.js", resourceType: "script", mimeType: undefined, module: true }, "_DjgDzPAI.js": { file: "DjgDzPAI.js", resourceType: "script", mimeType: undefined, module: true }, "_DvPkyAGP.js": { file: "DvPkyAGP.js", resourceType: "script", mimeType: undefined, module: true }, "_H1wzclJL.js": { file: "H1wzclJL.js", resourceType: "script", mimeType: undefined, module: true }, "_JprU3HKd.js": { file: "JprU3HKd.js", resourceType: "script", mimeType: undefined, module: true }, "_Rv0XU_EN.js": { file: "Rv0XU_EN.js", resourceType: "script", mimeType: undefined, module: true }, "_cWIjF4Ta.js": { file: "cWIjF4Ta.js", resourceType: "script", mimeType: undefined, module: true }, "_fkcgi8rz.js": { file: "fkcgi8rz.js", resourceType: "script", mimeType: undefined, module: true }, "_jUP2eHkt.js": { file: "jUP2eHkt.js", resourceType: "script", mimeType: undefined, module: true }, "_jmQjJSVB.js": { file: "jmQjJSVB.js", resourceType: "script", mimeType: undefined, module: true }, "_qj2FSERp.js": { file: "qj2FSERp.js", resourceType: "script", mimeType: undefined, module: true } }, resourceCount: 73 }))();
+  client_precomputed = ((h, j, k, m, o, q, u, x, z, A, B, C, D, E, F, G, H, I, J, K, L, N, P, Q, R, T, U, V, W, X, Y, Z, $, _, hb, jb) => ({ dependencies: { "_D8erDxGK.js": { scripts: {}, styles: {}, preload: { "_D8erDxGK.js": h = { resourceType: "script", module: true, prefetch: true, preload: true, file: "D8erDxGK.js", name: "nuxt" } }, prefetch: {} }, "_BW3xJdEx.js": { scripts: {}, styles: {}, preload: { "_BW3xJdEx.js": j = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BW3xJdEx.js", name: "defu" } }, prefetch: {} }, "_H1wzclJL.js": { scripts: {}, styles: {}, preload: { "_H1wzclJL.js": k = { resourceType: "script", module: true, prefetch: true, preload: true, file: "H1wzclJL.js", name: "ready", imports: ["_D8erDxGK.js", "_BW3xJdEx.js"] }, "_D8erDxGK.js": h, "_BW3xJdEx.js": j }, prefetch: {} }, "_JprU3HKd.js": { scripts: {}, styles: {}, preload: { "_JprU3HKd.js": m = { resourceType: "script", module: true, prefetch: true, preload: true, file: "JprU3HKd.js", name: "head", imports: ["_D8erDxGK.js"] }, "_D8erDxGK.js": h }, prefetch: {} }, "_BosXrFqz.js": { scripts: {}, styles: {}, preload: { "_BosXrFqz.js": o = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BosXrFqz.js", name: "server-prefetch", imports: ["_D8erDxGK.js"] }, "_D8erDxGK.js": h }, prefetch: {} }, "_DIWJVMiN.js": { scripts: {}, styles: {}, preload: { "_DIWJVMiN.js": q = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DIWJVMiN.js", name: "7OAKGN26" } }, prefetch: {} }, "_DPEFMf5Q.js": { scripts: {}, styles: {}, preload: { "_DPEFMf5Q.js": u = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DPEFMf5Q.js", name: "GUJTEFZK" } }, prefetch: {} }, "_CQJ_2c2w.js": { scripts: {}, styles: {}, preload: { "_CQJ_2c2w.js": x = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CQJ_2c2w.js", name: "YWXUFHC7" } }, prefetch: {} }, "_DciMwFJ1.js": { scripts: {}, styles: {}, preload: { "_DciMwFJ1.js": z = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DciMwFJ1.js", name: "DKTLEL5E" } }, prefetch: {} }, "_qj2FSERp.js": { scripts: {}, styles: {}, preload: { "_qj2FSERp.js": A = { resourceType: "script", module: true, prefetch: true, preload: true, file: "qj2FSERp.js", name: "KHUP5TOH", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/nuxt/dist/app/entry.js": { scripts: { "../../node_modules/nuxt/dist/app/entry.js": C = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BsIITMaT.js", name: "entry", src: "../../node_modules/nuxt/dist/app/entry.js", isEntry: true, imports: ["_D8erDxGK.js", "_H1wzclJL.js", "_JprU3HKd.js", "_BW3xJdEx.js", "_BosXrFqz.js", "_DIWJVMiN.js", "_DPEFMf5Q.js", "_CQJ_2c2w.js", "_DciMwFJ1.js", "_qj2FSERp.js"], dynamicImports: B = ["../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js", "../../node_modules/nuxt/dist/app/entry.js", "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js", "../../node_modules/pele/dist/esm/lazy.js", "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue", "../../node_modules/nuxt/dist/app/components/error-404.vue", "../../node_modules/nuxt/dist/app/components/error-500.vue"], css: ["entry.CnfBO6Wr.css"], assets: [] } }, styles: { "entry.CnfBO6Wr.css": D = { file: "entry.CnfBO6Wr.css", resourceType: "style", prefetch: true, preload: true } }, preload: { "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.CnfBO6Wr.css": D } }, "_DAWZIfaJ.js": { scripts: {}, styles: { "entry.CnfBO6Wr.css": D }, preload: { "_DAWZIfaJ.js": E = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DAWZIfaJ.js", name: "shared", imports: ["_D8erDxGK.js", "../../node_modules/nuxt/dist/app/entry.js"] }, "_D8erDxGK.js": h, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.CnfBO6Wr.css": D } }, "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js": { scripts: {}, styles: { "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CuLp1CHz.js", name: "css-runtime", src: "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js", isDynamicEntry: true, imports: ["_DAWZIfaJ.js"] }, "_DAWZIfaJ.js": E, "_D8erDxGK.js": h, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.CnfBO6Wr.css": D } }, "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js": { scripts: {}, styles: { "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CG1c6k8z.js", name: "svg", src: "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js", isDynamicEntry: true, imports: ["_BosXrFqz.js", "_D8erDxGK.js", "_H1wzclJL.js", "_BW3xJdEx.js", "../../node_modules/nuxt/dist/app/entry.js", "_DAWZIfaJ.js"] }, "_BosXrFqz.js": o, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_JprU3HKd.js": m, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A, "_DAWZIfaJ.js": E }, prefetch: { "entry.CnfBO6Wr.css": D } }, "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": { scripts: {}, styles: { "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CVHJeAOm.js", name: "Toast", src: "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js", "_D8erDxGK.js"] }, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.CnfBO6Wr.css": D } }, "../../node_modules/nuxt/dist/app/components/error-404.vue": { scripts: {}, styles: { "error-404.0VRc7TZD.css": F = { file: "error-404.0VRc7TZD.css", resourceType: "style", prefetch: true, preload: true }, "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/nuxt/dist/app/components/error-404.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CUq7qHKk.js", name: "error-404", src: "../../node_modules/nuxt/dist/app/components/error-404.vue", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js", "_JprU3HKd.js", "_D8erDxGK.js"], css: ["error-404.0VRc7TZD.css"] }, "error-404.0VRc7TZD.css": F, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "error-404.0VRc7TZD.css": F, "entry.CnfBO6Wr.css": D } }, "error-404.0VRc7TZD.css": { scripts: {}, styles: {}, preload: { "error-404.0VRc7TZD.css": F }, prefetch: {} }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { scripts: {}, styles: { "error-500.B6KHwBYu.css": G = { file: "error-500.B6KHwBYu.css", resourceType: "style", prefetch: true, preload: true }, "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/nuxt/dist/app/components/error-500.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CqSDsnwv.js", name: "error-500", src: "../../node_modules/nuxt/dist/app/components/error-500.vue", isDynamicEntry: true, imports: ["_JprU3HKd.js", "_D8erDxGK.js", "../../node_modules/nuxt/dist/app/entry.js"], css: ["error-500.B6KHwBYu.css"] }, "error-500.B6KHwBYu.css": G, "_JprU3HKd.js": m, "_D8erDxGK.js": h, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "error-500.B6KHwBYu.css": G, "entry.CnfBO6Wr.css": D } }, "error-500.B6KHwBYu.css": { scripts: {}, styles: {}, preload: { "error-500.B6KHwBYu.css": G }, prefetch: {} }, "entry.CnfBO6Wr.css": { scripts: {}, styles: {}, preload: { "entry.CnfBO6Wr.css": D }, prefetch: {} }, "_BRacOsTa.js": { scripts: {}, styles: {}, preload: { "_BRacOsTa.js": H = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BRacOsTa.js", name: "IU7WZTP6", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": x }, prefetch: {} }, "_CDgikELR.js": { scripts: {}, styles: {}, preload: { "_CDgikELR.js": I = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CDgikELR.js", name: "D5TW5CPZ", imports: ["_BRacOsTa.js"] }, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x }, prefetch: {} }, "_Bm_zMqIp.js": { scripts: {}, styles: {}, preload: { "_Bm_zMqIp.js": J = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Bm_zMqIp.js", name: "OHJ2EJXK", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DF47FnbQ.js", name: "43YPWK3Q", src: "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": I, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "_jmQjJSVB.js": { scripts: {}, styles: {}, preload: { "_jmQjJSVB.js": K = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jmQjJSVB.js", name: "XLHPVVFU", imports: ["_DPEFMf5Q.js"] }, "_DPEFMf5Q.js": u }, prefetch: {} }, "_Rv0XU_EN.js": { scripts: {}, styles: {}, preload: { "_Rv0XU_EN.js": L = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Rv0XU_EN.js", name: "TR4WJQGX", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DQ7-5EPR.js", name: "45MVAN6X", src: "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": K, "_DPEFMf5Q.js": u, "_Rv0XU_EN.js": L, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z }, prefetch: {} }, "_CggtIYAM.js": { scripts: {}, styles: {}, preload: { "_CggtIYAM.js": N = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CggtIYAM.js", name: "FTXIJQGB" } }, prefetch: {} }, "_D6QVYUu9.js": { scripts: {}, styles: {}, preload: { "_D6QVYUu9.js": P = { resourceType: "script", module: true, prefetch: true, preload: true, file: "D6QVYUu9.js", name: "7WLXJQOR" } }, prefetch: {} }, "_A379Mz0i.js": { scripts: {}, styles: {}, preload: { "_A379Mz0i.js": Q = { resourceType: "script", module: true, prefetch: true, preload: true, file: "A379Mz0i.js", name: "YUPSMAUO", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_jUP2eHkt.js": { scripts: {}, styles: {}, preload: { "_jUP2eHkt.js": R = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jUP2eHkt.js", name: "2CHDFZHC" } }, prefetch: {} }, "_Di8lEgbI.js": { scripts: {}, styles: {}, preload: { "_Di8lEgbI.js": T = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Di8lEgbI.js", name: "UWRPUF3N", imports: ["_jUP2eHkt.js", "_qj2FSERp.js"] }, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_DjgDzPAI.js": { scripts: {}, styles: {}, preload: { "_DjgDzPAI.js": U = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DjgDzPAI.js", name: "LLLWOAQD", imports: ["_Di8lEgbI.js"] }, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_DOzvca2k.js": { scripts: {}, styles: {}, preload: { "_DOzvca2k.js": V = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DOzvca2k.js", name: "PDMLSE6I", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_cWIjF4Ta.js": { scripts: {}, styles: {}, preload: { "_cWIjF4Ta.js": W = { resourceType: "script", module: true, prefetch: true, preload: true, file: "cWIjF4Ta.js", name: "NDSCUZ25", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_DvPkyAGP.js": { scripts: {}, styles: {}, preload: { "_DvPkyAGP.js": X = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DvPkyAGP.js", name: "VSWIZJ7B", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "_fkcgi8rz.js": { scripts: {}, styles: {}, preload: { "_fkcgi8rz.js": Y = { resourceType: "script", module: true, prefetch: true, preload: true, file: "fkcgi8rz.js", name: "O3ACPFEJ", imports: ["_CggtIYAM.js", "_DIWJVMiN.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "N-r2D2Jn.js", name: "46GJKBLZ", src: "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js", isDynamicEntry: true, imports: ["_fkcgi8rz.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js"] }, "_fkcgi8rz.js": Y, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BCpu_K-Y.js", name: "63WH7YNF", src: "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", isDynamicEntry: true, imports: ["_CggtIYAM.js", "_DIWJVMiN.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "_BxrxwxIF.js": { scripts: {}, styles: {}, preload: { "_BxrxwxIF.js": Z = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BxrxwxIF.js", name: "SXSLPWUD", imports: ["_DPEFMf5Q.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": u, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "rsGOuYai.js", name: "6DDU7VKX", src: "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "_DOzvca2k.js", "_DvPkyAGP.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": Z, "_DPEFMf5Q.js": u, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_DvPkyAGP.js": X, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B6XVgDR0.js", name: "CLQLV5VT", src: "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", isDynamicEntry: true, imports: ["_DIWJVMiN.js", "_Bm_zMqIp.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DIWJVMiN.js": q, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DtI7bYOl.js", name: "CUSPXG5M", src: "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": K, "_DPEFMf5Q.js": u, "_Rv0XU_EN.js": L, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "_Ce_hS451.js": { scripts: {}, styles: {}, preload: { "_Ce_hS451.js": $ = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Ce_hS451.js", name: "5THPTBWS" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BlSzXU9S.js", name: "D3L7O4X2", src: "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": $, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D9lvdoJG.js", name: "EGADTWYV", src: "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", isDynamicEntry: true, imports: ["_Rv0XU_EN.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Rv0XU_EN.js": L, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_BRacOsTa.js": H }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DC4zHdLs.js", name: "EOJSJZXM", src: "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Dk48IVMN.js", name: "G2OEIG6X", src: "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "4SFSL1cU.js", name: "GXJ2T77W", src: "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": I, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CJFzCM--.js", name: "HX3UMAK7", src: "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "GWcLNi_-.js", name: "J5J2NR2G", src: "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "_CgA1WoRv.js": { scripts: {}, styles: {}, preload: { "_CgA1WoRv.js": _ = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CgA1WoRv.js", name: "RVARI57O" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "pImnSmIV.js", name: "JRCWTJEL", src: "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": _, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CNSF0GFe.js", name: "L74FQTH5", src: "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", isDynamicEntry: true, imports: ["_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_cWIjF4Ta.js": W, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DpUcO8Ea.js", name: "LAV4ZXOS", src: "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", isDynamicEntry: true, imports: ["_DOzvca2k.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DOzvca2k.js": V, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Cuoq_p7c.js", name: "LBIZYCRR", src: "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { scripts: {}, styles: { "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B0NS1tLt.js", name: "LFFXNLRS", src: "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js"] }, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.CnfBO6Wr.css": D } }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DIbK5QUF.js", name: "LTYQZ5U5", src: "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", isDynamicEntry: true, imports: ["_fkcgi8rz.js"] }, "_fkcgi8rz.js": Y, "_CggtIYAM.js": N, "_DIWJVMiN.js": q, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "_BZmnMkFw.js": { scripts: {}, styles: {}, preload: { "_BZmnMkFw.js": hb = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BZmnMkFw.js", name: "G3MDBVQH" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "tHiC8OPv.js", name: "NMN3IKWL", src: "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": hb, "_D6QVYUu9.js": P, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DvPkyAGP.js": X, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D-HpbxLB.js", name: "NMUA3R2D", src: "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", isDynamicEntry: true, imports: ["_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CVRYe09m.js", name: "NY5A6PPW", src: "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", isDynamicEntry: true, imports: ["_DPEFMf5Q.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": u, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Vp8uTWHn.js", name: "OU2GIT2H", src: "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BzzWOXOp.js", name: "PJ7X32S5", src: "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Y5AakHLu.js", name: "RLLQ44NJ", src: "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": I, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_DciMwFJ1.js": z, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B3inPF54.js", name: "S6DWMCK5", src: "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": hb, "_A379Mz0i.js": Q, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B46P-L8x.js", name: "STIOTUT7", src: "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": U, "_Di8lEgbI.js": T, "_jUP2eHkt.js": R, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DOzvca2k.js": V, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "C0dqctsN.js", name: "WM7NR6YK", src: "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CF6w7KE0.js", name: "WXKV2YEK", src: "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": _, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CKms6LnG.js", name: "YNX532HU", src: "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": $, "_Bm_zMqIp.js": J, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DciMwFJ1.js": z, "_BRacOsTa.js": H }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D0nAuYVf.js", name: "ZFRCZTLK", src: "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "_DIWJVMiN.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": Z, "_DPEFMf5Q.js": u, "_qj2FSERp.js": A, "_CQJ_2c2w.js": x, "_DIWJVMiN.js": q, "_DOzvca2k.js": V, "_cWIjF4Ta.js": W, "_DciMwFJ1.js": z }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CPCl8y27.js", name: "ZZDR4CN3", src: "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": z, "_BRacOsTa.js": H, "_CQJ_2c2w.js": x, "_qj2FSERp.js": A }, prefetch: {} }, "../../node_modules/pele/dist/esm/lazy.js": { scripts: {}, styles: { "entry.CnfBO6Wr.css": D }, preload: { "../../node_modules/pele/dist/esm/lazy.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "7Rs56IYL.js", name: "lazy", src: "../../node_modules/pele/dist/esm/lazy.js", isDynamicEntry: true, imports: ["_CQJ_2c2w.js", "../../node_modules/nuxt/dist/app/entry.js"], dynamicImports: jb = ["../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js"] }, "_CQJ_2c2w.js": x, "../../node_modules/nuxt/dist/app/entry.js": C, "entry.CnfBO6Wr.css": D, "_D8erDxGK.js": h, "_H1wzclJL.js": k, "_BW3xJdEx.js": j, "_JprU3HKd.js": m, "_BosXrFqz.js": o, "_DIWJVMiN.js": q, "_DPEFMf5Q.js": u, "_DciMwFJ1.js": z, "_qj2FSERp.js": A }, prefetch: { "entry.CnfBO6Wr.css": D } } }, entrypoints: ["../../node_modules/nuxt/dist/app/entry.js"], modules: { "../../node_modules/@nuxt/icon/dist/runtime/components/css-runtime.js": { file: "CuLp1CHz.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/@nuxt/icon/dist/runtime/components/svg.js": { file: "CG1c6k8z.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/@nuxt/ui/dist/runtime/components/Toast.vue": { file: "CVHJeAOm.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/nuxt/dist/app/components/error-404.vue": { file: "CUq7qHKk.js", resourceType: "script", mimeType: undefined, module: true }, "error-404.0VRc7TZD.css": { file: "error-404.0VRc7TZD.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { file: "CqSDsnwv.js", resourceType: "script", mimeType: undefined, module: true }, "error-500.B6KHwBYu.css": { file: "error-500.B6KHwBYu.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/entry.js": { file: "BsIITMaT.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: B }, "entry.CnfBO6Wr.css": { file: "entry.CnfBO6Wr.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { file: "DF47FnbQ.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { file: "DQ7-5EPR.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { file: "N-r2D2Jn.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { file: "BCpu_K-Y.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { file: "rsGOuYai.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { file: "B6XVgDR0.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { file: "DtI7bYOl.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { file: "BlSzXU9S.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { file: "D9lvdoJG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { file: "DC4zHdLs.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { file: "Dk48IVMN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { file: "4SFSL1cU.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { file: "CJFzCM--.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { file: "GWcLNi_-.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { file: "pImnSmIV.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { file: "CNSF0GFe.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { file: "DpUcO8Ea.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { file: "Cuoq_p7c.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { file: "B0NS1tLt.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { file: "DIbK5QUF.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { file: "tHiC8OPv.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { file: "D-HpbxLB.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { file: "CVRYe09m.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { file: "Vp8uTWHn.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { file: "BzzWOXOp.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { file: "Y5AakHLu.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { file: "B3inPF54.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { file: "B46P-L8x.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { file: "C0dqctsN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { file: "CF6w7KE0.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { file: "CKms6LnG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { file: "D0nAuYVf.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { file: "CPCl8y27.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/lazy.js": { file: "7Rs56IYL.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: jb }, "_A379Mz0i.js": { file: "A379Mz0i.js", resourceType: "script", mimeType: undefined, module: true }, "_BRacOsTa.js": { file: "BRacOsTa.js", resourceType: "script", mimeType: undefined, module: true }, "_BW3xJdEx.js": { file: "BW3xJdEx.js", resourceType: "script", mimeType: undefined, module: true }, "_BZmnMkFw.js": { file: "BZmnMkFw.js", resourceType: "script", mimeType: undefined, module: true }, "_Bm_zMqIp.js": { file: "Bm_zMqIp.js", resourceType: "script", mimeType: undefined, module: true }, "_BosXrFqz.js": { file: "BosXrFqz.js", resourceType: "script", mimeType: undefined, module: true }, "_BxrxwxIF.js": { file: "BxrxwxIF.js", resourceType: "script", mimeType: undefined, module: true }, "_CDgikELR.js": { file: "CDgikELR.js", resourceType: "script", mimeType: undefined, module: true }, "_CQJ_2c2w.js": { file: "CQJ_2c2w.js", resourceType: "script", mimeType: undefined, module: true }, "_Ce_hS451.js": { file: "Ce_hS451.js", resourceType: "script", mimeType: undefined, module: true }, "_CgA1WoRv.js": { file: "CgA1WoRv.js", resourceType: "script", mimeType: undefined, module: true }, "_CggtIYAM.js": { file: "CggtIYAM.js", resourceType: "script", mimeType: undefined, module: true }, "_D6QVYUu9.js": { file: "D6QVYUu9.js", resourceType: "script", mimeType: undefined, module: true }, "_D8erDxGK.js": { file: "D8erDxGK.js", resourceType: "script", mimeType: undefined, module: true }, "_DAWZIfaJ.js": { file: "DAWZIfaJ.js", resourceType: "script", mimeType: undefined, module: true }, "_DIWJVMiN.js": { file: "DIWJVMiN.js", resourceType: "script", mimeType: undefined, module: true }, "_DOzvca2k.js": { file: "DOzvca2k.js", resourceType: "script", mimeType: undefined, module: true }, "_DPEFMf5Q.js": { file: "DPEFMf5Q.js", resourceType: "script", mimeType: undefined, module: true }, "_DciMwFJ1.js": { file: "DciMwFJ1.js", resourceType: "script", mimeType: undefined, module: true }, "_Di8lEgbI.js": { file: "Di8lEgbI.js", resourceType: "script", mimeType: undefined, module: true }, "_DjgDzPAI.js": { file: "DjgDzPAI.js", resourceType: "script", mimeType: undefined, module: true }, "_DvPkyAGP.js": { file: "DvPkyAGP.js", resourceType: "script", mimeType: undefined, module: true }, "_H1wzclJL.js": { file: "H1wzclJL.js", resourceType: "script", mimeType: undefined, module: true }, "_JprU3HKd.js": { file: "JprU3HKd.js", resourceType: "script", mimeType: undefined, module: true }, "_Rv0XU_EN.js": { file: "Rv0XU_EN.js", resourceType: "script", mimeType: undefined, module: true }, "_cWIjF4Ta.js": { file: "cWIjF4Ta.js", resourceType: "script", mimeType: undefined, module: true }, "_fkcgi8rz.js": { file: "fkcgi8rz.js", resourceType: "script", mimeType: undefined, module: true }, "_jUP2eHkt.js": { file: "jUP2eHkt.js", resourceType: "script", mimeType: undefined, module: true }, "_jmQjJSVB.js": { file: "jmQjJSVB.js", resourceType: "script", mimeType: undefined, module: true }, "_qj2FSERp.js": { file: "qj2FSERp.js", resourceType: "script", mimeType: undefined, module: true } }, resourceCount: 73 }))();
 });
 
 // reader/.output/server/chunks/build/error-404-styles.CIkI-cSY.mjs
@@ -131032,15 +131274,52 @@ var init_error_500_styles_D3rQecbQ = __esm(() => {
   ];
 });
 
-// reader/.output/server/chunks/build/entry-styles.Omq-Qowo.mjs
-var exports_entry_styles_Omq_Qowo = {};
-__export(exports_entry_styles_Omq_Qowo, {
-  default: () => entryStyles_OmqQowo
+// reader/.output/server/chunks/build/entry-styles-1.mjs.mjs
+var FlowBar_vue_vue_type_style_index_0_scoped_435f848b_inline_used_lang_default = ".bar[data-v-435f848b]{block-size:var(--bar);container-type:inline-size}.bar-row[data-v-435f848b]{--gap:4px;--chip-pad:10px;align-items:center;gap:var(--gap);white-space:nowrap;block-size:100%;font-size:var(--fs-small);padding-inline:calc(clamp(6px,1.5cqi,20px));display:flex;position:relative}.identity[data-v-435f848b]{text-overflow:ellipsis;overflow:hidden}.project[data-v-435f848b]{max-inline-size:calc(min(15cqi,16ch))}.flow-title[data-v-435f848b]{max-inline-size:calc(min(27cqi,32ch))}.stage-title[data-v-435f848b]{max-inline-size:calc(min(24cqi,28ch))}.flow-title[data-v-435f848b],.stage-title[data-v-435f848b]{border-inline-start:1px solid var(--ui-border);padding-inline-start:6px}.slots[data-v-435f848b]{align-items:center;gap:var(--gap);min-inline-size:calc(var(--floor));flex:1 0 0;display:flex}.slots.has-current[data-v-435f848b]{min-inline-size:calc(var(--floor) + var(--queue-slot) + var(--chip-pad) + var(--gap))}.bar-action[data-v-435f848b],.chip[data-v-435f848b]{border:1px solid var(--ui-border);color:var(--ui-text-toned);touch-action:manipulation;cursor:pointer;border-radius:4px;flex:none;justify-content:center;align-items:center;gap:.25em;text-decoration:none;display:inline-flex}.chip[data-v-435f848b]{min-block-size:26px;padding-inline:4px}.queue-chip[data-v-435f848b]{inline-size:calc(var(--queue-slot) + var(--chip-pad));gap:0}.waiting-chip[data-v-435f848b]{inline-size:calc(15ch + var(--chip-pad));justify-content:space-between}.open-count[data-v-435f848b]{inline-size:calc(var(--open-slot) + var(--chip-pad))}.waiting-count[data-v-435f848b]{inline-size:calc(var(--other-slot) + var(--chip-pad))}.current-chip[data-v-435f848b]{border-color:var(--ui-primary);background:var(--ui-bg-accented);color:var(--ui-primary)}.concern-chip[data-v-435f848b]{color:var(--ui-warning)}.concern-chip span[data-v-435f848b]{font-weight:800}.bar-action[data-v-435f848b]{min-block-size:32px;padding-inline:6px}.bar-row[data-v-435f848b] :is(a,button):focus-visible{outline-offset:-2px}.bar-row[data-v-435f848b] :is(a,button):active{color:var(--ui-secondary)}@media (hover:hover) and (pointer:fine){.bar-row[data-v-435f848b] :is(a,button):hover{color:var(--ui-secondary)}}.ruler[data-v-435f848b]{visibility:hidden;pointer-events:none;display:flex;position:absolute;inset-inline-start:0}.ruler[data-v-435f848b]>*{flex:none}.gap-size[data-v-435f848b]{inline-size:var(--gap)}.action-icon[data-v-435f848b]{inline-size:1.25em;display:none}@container (width<520px){.action-label[data-v-435f848b]{display:none}.action-icon[data-v-435f848b]{display:block}}";
+var init_entry_styles_1_mjs = () => {};
+
+// reader/.output/server/chunks/build/entry-styles-2.mjs.mjs
+var QuestionFigure_vue_vue_type_style_index_0_scoped_7010d120_inline_used_lang_default = ".decision-visual[data-v-7010d120] :is(.visual,.diagram){cursor:zoom-in;max-block-size:16rem;overflow:auto}.decision-visual[data-v-7010d120] :is(img,svg,video){-o-object-fit:contain;object-fit:contain;cursor:zoom-in;max-block-size:16rem}.enlarged-visual[data-v-7010d120] img{inline-size:100%}html:has(.figure-dialog:modal){overflow:hidden}";
+var init_entry_styles_2_mjs = () => {};
+
+// reader/.output/server/chunks/build/entry-styles.DcueeA4J.mjs
+var exports_entry_styles_DcueeA4J = {};
+__export(exports_entry_styles_DcueeA4J, {
+  default: () => entryStyles_DcueeA4J
 });
-var FlowBar_vue_vue_type_style_index_0_scoped_435f848b_inline_used_lang_default = ".bar[data-v-435f848b]{block-size:var(--bar);container-type:inline-size}.bar-row[data-v-435f848b]{--gap:4px;--chip-pad:10px;align-items:center;gap:var(--gap);white-space:nowrap;block-size:100%;font-size:var(--fs-small);padding-inline:calc(clamp(6px,1.5cqi,20px));display:flex;position:relative}.identity[data-v-435f848b]{text-overflow:ellipsis;overflow:hidden}.project[data-v-435f848b]{max-inline-size:calc(min(15cqi,16ch))}.flow-title[data-v-435f848b]{max-inline-size:calc(min(27cqi,32ch))}.stage-title[data-v-435f848b]{max-inline-size:calc(min(24cqi,28ch))}.flow-title[data-v-435f848b],.stage-title[data-v-435f848b]{border-inline-start:1px solid var(--ui-border);padding-inline-start:6px}.slots[data-v-435f848b]{align-items:center;gap:var(--gap);min-inline-size:calc(var(--floor));flex:1 0 0;display:flex}.slots.has-current[data-v-435f848b]{min-inline-size:calc(var(--floor) + var(--queue-slot) + var(--chip-pad) + var(--gap))}.bar-action[data-v-435f848b],.chip[data-v-435f848b]{border:1px solid var(--ui-border);color:var(--ui-text-toned);touch-action:manipulation;cursor:pointer;border-radius:4px;flex:none;justify-content:center;align-items:center;gap:.25em;text-decoration:none;display:inline-flex}.chip[data-v-435f848b]{min-block-size:26px;padding-inline:4px}.queue-chip[data-v-435f848b]{inline-size:calc(var(--queue-slot) + var(--chip-pad));gap:0}.waiting-chip[data-v-435f848b]{inline-size:calc(15ch + var(--chip-pad));justify-content:space-between}.open-count[data-v-435f848b]{inline-size:calc(var(--open-slot) + var(--chip-pad))}.waiting-count[data-v-435f848b]{inline-size:calc(var(--other-slot) + var(--chip-pad))}.current-chip[data-v-435f848b]{border-color:var(--ui-primary);background:var(--ui-bg-accented);color:var(--ui-primary)}.concern-chip[data-v-435f848b]{color:var(--ui-warning)}.concern-chip span[data-v-435f848b]{font-weight:800}.bar-action[data-v-435f848b]{min-block-size:32px;padding-inline:6px}.bar-row[data-v-435f848b] :is(a,button):focus-visible{outline-offset:-2px}.bar-row[data-v-435f848b] :is(a,button):active{color:var(--ui-secondary)}@media (hover:hover) and (pointer:fine){.bar-row[data-v-435f848b] :is(a,button):hover{color:var(--ui-secondary)}}.ruler[data-v-435f848b]{visibility:hidden;pointer-events:none;display:flex;position:absolute;inset-inline-start:0}.ruler[data-v-435f848b]>*{flex:none}.gap-size[data-v-435f848b]{inline-size:var(--gap)}.action-icon[data-v-435f848b]{inline-size:1.25em;display:none}@container (width<520px){.action-label[data-v-435f848b]{display:none}.action-icon[data-v-435f848b]{display:block}}", entryStyles_OmqQowo;
-var init_entry_styles_Omq_Qowo = __esm(() => {
-  entryStyles_OmqQowo = [
+var entryStyles_DcueeA4J;
+var init_entry_styles_DcueeA4J = __esm(() => {
+  init_entry_styles_1_mjs();
+  init_entry_styles_2_mjs();
+  entryStyles_DcueeA4J = [
+    FlowBar_vue_vue_type_style_index_0_scoped_435f848b_inline_used_lang_default,
+    QuestionFigure_vue_vue_type_style_index_0_scoped_7010d120_inline_used_lang_default
+  ];
+});
+
+// reader/.output/server/chunks/build/FlowBar-styles.Omq-Qowo.mjs
+var exports_FlowBar_styles_Omq_Qowo = {};
+__export(exports_FlowBar_styles_Omq_Qowo, {
+  default: () => FlowBarStyles_OmqQowo
+});
+var FlowBarStyles_OmqQowo;
+var init_FlowBar_styles_Omq_Qowo = __esm(() => {
+  init_entry_styles_1_mjs();
+  FlowBarStyles_OmqQowo = [
     FlowBar_vue_vue_type_style_index_0_scoped_435f848b_inline_used_lang_default
+  ];
+});
+
+// reader/.output/server/chunks/build/QuestionFigure-styles.mv9LoS5r.mjs
+var exports_QuestionFigure_styles_mv9LoS5r = {};
+__export(exports_QuestionFigure_styles_mv9LoS5r, {
+  default: () => QuestionFigureStyles_mv9LoS5r
+});
+var QuestionFigureStyles_mv9LoS5r;
+var init_QuestionFigure_styles_mv9LoS5r = __esm(() => {
+  init_entry_styles_2_mjs();
+  QuestionFigureStyles_mv9LoS5r = [
+    QuestionFigure_vue_vue_type_style_index_0_scoped_7010d120_inline_used_lang_default
   ];
 });
 
@@ -131055,8 +131334,9 @@ var init_styles = __esm(() => {
   styles = {
     "../../node_modules/nuxt/dist/app/components/error-404.vue": () => Promise.resolve().then(() => (init_error_404_styles_CIkI_cSY(), exports_error_404_styles_CIkI_cSY)).then(interopDefault),
     "../../node_modules/nuxt/dist/app/components/error-500.vue": () => Promise.resolve().then(() => (init_error_500_styles_D3rQecbQ(), exports_error_500_styles_D3rQecbQ)).then(interopDefault),
-    "../../node_modules/nuxt/dist/app/entry.js": () => Promise.resolve().then(() => (init_entry_styles_Omq_Qowo(), exports_entry_styles_Omq_Qowo)).then(interopDefault),
-    "components/FlowBar.vue": () => Promise.resolve().then(() => (init_entry_styles_Omq_Qowo(), exports_entry_styles_Omq_Qowo)).then(interopDefault)
+    "../../node_modules/nuxt/dist/app/entry.js": () => Promise.resolve().then(() => (init_entry_styles_DcueeA4J(), exports_entry_styles_DcueeA4J)).then(interopDefault),
+    "components/FlowBar.vue": () => Promise.resolve().then(() => (init_FlowBar_styles_Omq_Qowo(), exports_FlowBar_styles_Omq_Qowo)).then(interopDefault),
+    "components/QuestionFigure.vue": () => Promise.resolve().then(() => (init_QuestionFigure_styles_mv9LoS5r(), exports_QuestionFigure_styles_mv9LoS5r)).then(interopDefault)
   };
   inlinedCSS = { "error-404.0VRc7TZD.css": [["../../node_modules/nuxt/dist/app/components/error-404.vue"]], "error-500.B6KHwBYu.css": [["../../node_modules/nuxt/dist/app/components/error-500.vue"]] };
 });
@@ -131629,7 +131909,7 @@ var NodeRenderResponse = class {
     _to.shift();
   }
   return [..._from.map(() => ".."), ..._to].join("/");
-}, entryIds, entryFileName = "CqDPYCCX.js", HAS_APP_TELEPORTS, APP_TELEPORT_OPEN_TAG, APP_TELEPORT_CLOSE_TAG, entryPaths, renderer, handler, renderer$1;
+}, entryIds, entryFileName = "BsIITMaT.js", HAS_APP_TELEPORTS, APP_TELEPORT_OPEN_TAG, APP_TELEPORT_CLOSE_TAG, entryPaths, renderer, handler, renderer$1;
 var init_renderer2 = __esm(() => {
   init_nitro();
   init_dist2();

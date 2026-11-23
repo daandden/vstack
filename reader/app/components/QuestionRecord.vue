@@ -26,10 +26,13 @@ watch(() => q.open, open => {
   <article :id="q.id" class="question grid gap-2.5" :data-fold-target="`${q.id}-fold`" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
     <details :id="`${q.id}-fold`" ref="disclosure" data-reading-fold :open="q.open || expanded" @toggle="expanded = !q.open && disclosure?.open === true">
       <summary v-show="!q.open" class="min-h-8 py-1 [overflow-wrap:anywhere]">
-        <span class="text-default"><span class="tabular-nums">Q{{ q.q }}: </span><span v-html="inline(q.title)" /></span>
-        <span class="text-small font-normal text-muted"> · {{ outcome }}</span>
-        <span v-if="(q.context.correction || q.answer.correction) && !expanded" class="text-small text-warning"> · Corrected</span>
-        <template v-if="latest && !expanded"> · <a :href="`#${latest.id}`" class="text-small font-normal">Latest attempt: {{ latestLabel }}</a></template>
+        <template v-if="!expanded">
+          <span class="text-default"><span class="tabular-nums">Q{{ q.q }}: </span><span v-html="inline(q.title)" /></span>
+          <span class="text-small font-normal text-muted"> · {{ outcome }}</span>
+          <span v-if="q.context.correction || q.answer.correction" class="text-small text-warning"> · Corrected</span>
+          <template v-if="latest"> · <a :href="`#${latest.id}`" class="text-small font-normal">Latest attempt: {{ latestLabel }}</a></template>
+        </template>
+        <template v-else>Collapse question</template>
       </summary>
       <QuestionBlock :q="q" />
     </details>

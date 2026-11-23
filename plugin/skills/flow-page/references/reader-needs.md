@@ -11,7 +11,7 @@ Prepare each new or re-asked question with this checklist before publication thr
    - Make each option's `does`, `gains`, and `costs` specific to this decision. Name the work or behavior it changes, the benefit, and the meaningful cost or risk. Reuse labels for shared choices, but explain their consequences for this question rather than repeating the Background's meanings.
 4. Declare one or more `needs`, each `{ need: "<concrete distinction>", kind: "<id>" }`. Name what the reader must recognize, know, or compare to choose between these options. A generic instruction to read the page is not a need.
 5. Build the visuals for non-prose needs, with the same `kind` on each question figure or option preview. One concise visual can meet several needs of the same kind.
-6. Cut overlapping brief, description, and Today text without removing the evidence or qualifications the reader needs. Check that each option's consequences remain clear without opening the linked Results.
+6. Cut overlapping brief, description, and Today text. Keep any fact or caveat the choice depends on in the description. The reader folds Today facts and citations into **Sources and context**. Check that the choice remains clear before opening that row or any linked Result.
 7. For ordinary main-agent delivery, follow [Every ask in a Flow](../SKILL.md#every-ask-in-a-flow). Publish the complete round and its new attachments in one CLI contribution. The shared contract owns the content check, picker handoff, failures, answer recording, and Ratchet's native approval exception.
 
 | Visual kind | `kind` | Reader need and safe representation |

@@ -3,9 +3,10 @@ import type { Attachment, Figure } from "#flow/model.ts";
 import { useReaderState } from "~/composables/reader";
 const { flow } = useReaderState();
 
-defineProps<{ figures?: Figure[] }>();
+const { part = "complete" } = defineProps<{ figures?: Figure[]; part?: "complete" | "inline" | "enlarged" | "source" }>();
 const f = computed(() => flow.value!);
 const attachment = (id: string) => f.value.attachments.find((a) => a.id === id);
+const displayId = (id: string) => part === "enlarged" ? `${id}-enlarged` : id;
 const scoped = (css: string, id: string) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors: string, body: string) =>
   `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => (s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`)).join(", ")} { ${body} }`);
 const withImages = (html: string) => /<img\b/i.test(html);
@@ -36,10 +37,16 @@ function source(doc: Document, a: Attachment | undefined): HTMLDetailsElement {
 }
 
 const historical = (fig: { id: string; html: string; css?: string }) => {
-  if (!hydrated.value) return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${fig.html}`;
+  const stylesheet = fig.css && part !== "source" ? `<style>${scoped(fig.css, displayId(fig.id))}</style>` : "";
+  if (!hydrated.value) return part === "source" ? "" : `${stylesheet}${fig.html}`;
   const doc = new DOMParser().parseFromString(fig.html, "text/html");
+  const sources = part === "source" ? doc.createElement("div") : undefined;
   for (const img of doc.querySelectorAll("img")) {
     const a = f.value.attachments.find((a) => a.file && img.getAttribute("src")?.split("#")[0] === `assets/${a.file}`);
+    if (sources) {
+      sources.append(source(doc, a));
+      continue;
+    }
     const title = withoutQuestionNumber(a?.caption || img.getAttribute("alt") || "Example identity unknown");
     const media = img.closest("picture") ?? img;
     const label = doc.createElement("div");
@@ -48,19 +55,24 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
     const heading = previous && withoutQuestionNumber(previous.textContent ?? "") === title ? previous : doc.createElement("p");
     heading.className = "figure-title font-heading text-body leading-[1.35] font-[650] text-default text-balance";
     heading.textContent = title;
-    label.append(heading, source(doc, a));
+    label.append(heading);
+    if (part === "complete") label.append(source(doc, a));
     media.before(label);
   }
-  return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${doc.body.innerHTML}`;
+  return sources?.innerHTML ?? `${stylesheet}${doc.body.innerHTML}`;
 };
 </script>
 
 <template>
   <template v-for="fig in figures ?? []" :key="fig.id">
-    <div v-if="'text' in fig" :id="fig.id" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-elevated px-3 py-2.5"><pre>{{ fig.text }}</pre></div>
-    <div v-else-if="'html' in fig" :id="fig.id" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-accented [&_video]:rounded [&_video]:bg-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-elevated px-3 py-2.5'" v-html="historical(fig)" />
-    <figure v-else :id="fig.id" class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">
-      <FigureCaption v-if="attachment(fig.attachment)" :a="attachment(fig.attachment)!" />
+    <template v-if="part === 'source'">
+      <FigureSource v-if="'attachment' in fig && attachment(fig.attachment)" :a="attachment(fig.attachment)!" />
+      <div v-else-if="'html' in fig && withImages(fig.html)" class="grid gap-1.5" v-html="historical(fig)" />
+    </template>
+    <div v-else-if="'text' in fig" :id="displayId(fig.id)" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-elevated px-3 py-2.5" :tabindex="part === 'complete' ? undefined : 0" @keydown="part !== 'complete' && $event.stopPropagation()"><pre>{{ fig.text }}</pre></div>
+    <div v-else-if="'html' in fig" :id="displayId(fig.id)" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-accented [&_video]:rounded [&_video]:bg-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-elevated px-3 py-2.5'" v-html="historical(fig)" />
+    <figure v-else :id="displayId(fig.id)" class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">
+      <FigureCaption v-if="attachment(fig.attachment)" :a="attachment(fig.attachment)!" :hide-source="part !== 'complete'" />
       <DiagramFigure v-if="attachment(fig.attachment)?.availability === 'captured' && attachment(fig.attachment)!.type !== 'image'" :a="attachment(fig.attachment)!" />
       <img v-else-if="attachment(fig.attachment)?.availability === 'captured'" class="rounded bg-accented" :src="`assets/${attachment(fig.attachment)!.file}`" :alt="attachment(fig.attachment)!.caption">
       <p v-else class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-error">Figure unavailable</span> <span v-html="inline(attachment(fig.attachment)?.reason ?? 'The attachment is missing.')" /></p>

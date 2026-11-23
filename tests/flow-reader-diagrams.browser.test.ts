@@ -225,7 +225,13 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     };
   });
   expect(injected).toEqual({ active: [], handlers: [], links: [] });
-  for (const text of ["Plain text", "javascript:alert(4)"]) await hostile.getByText(text).first().click();
+  const enlarged = page.getByRole("dialog", { name: "Hostile labels", exact: true });
+  for (const text of ["Plain text", "javascript:alert(4)"]) {
+    await hostile.getByText(text).first().click();
+    await enlarged.waitFor();
+    await page.keyboard.press("Escape");
+    await enlarged.waitFor({ state: "hidden" });
+  }
   await Bun.sleep(300);
   expect(page.url()).toBe(opened.live.url);
   expect({ dialogs, offOrigin, popups }).toEqual({ dialogs: [], offOrigin: [], popups: [] });
@@ -345,19 +351,19 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   }
 }, 120_000);
 
-test("every figure shows its caption as a title, a formatted description, and a closed Source, above a media box sized to the media", async () => {
+test("figures retain caption, formatted description and Source when a question separates the deciding figure from its sources", async () => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Figure captions"]);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
   writeFileSync(join(root, "caption.png"), png);
   writeFileSync(join(root, "narrow.mmd"), "flowchart TD\n  a[Start] --> b[End]\n");
   const description = "Two steps:\n\n- `Start` comes first\n- [End](https://example.com/end) comes last";
   const options = [{ label: "Inspect", does: "Reads the figure", gains: ["Context"], costs: ["Reading"] }];
-  cli(["submit"], { version: 1, items: [
+  const sent = cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "flow", type: "mermaid", path: "narrow.mmd", caption: "Narrow flow", description, origin: "Mermaid source narrow.mmd" },
     { kind: "attachment", ref: "shot", type: "image", path: "caption.png", caption: "Q1 · Legacy screenshot", origin: "Recorded image fixture" },
     { kind: "background", title: "Context", summary: "Why these figures exist.", sections: [{ heading: "Today", body: "Two figures." }], sources: ["fixture"], figures: [{ attachment: "shot" }] },
     { kind: "round", now: "The diagrams are captured and ready to read.", questions: [{
-      title: "Which figure reads better?", description: "Compare them.",
+      ref: "decision", title: "Which figure reads better?", description: "Compare them.",
       brief: decisionBrief("the diagram layout"),
       needs: [{ need: "Read the label.", kind: "source-excerpt" }, { need: "Follow the flow.", kind: "context-diagram" }, { need: "See the screenshot.", kind: "option-preview" }],
       figures: [{ text: "Narrow flow", kind: "source-excerpt" }, { attachment: "flow", kind: "context-diagram" }],
@@ -394,6 +400,8 @@ test("every figure shows its caption as a title, a formatted description, and a 
       probe.remove();
       return { color: getComputedStyle(document.body).color, size: parseFloat(getComputedStyle(document.body).fontSize), mantle };
     });
+    const question = page.locator(`#${sent.refs.decision}`);
+    const contextRow = question.locator("summary").filter({ hasText: /^Sources and context$/ });
     for (let i = 0; i < 5; i++) {
       const figure = figures.nth(i);
       await figure.scrollIntoViewIfNeeded();
@@ -404,13 +412,20 @@ test("every figure shows its caption as a title, a formatted description, and a 
       expect(look).toMatchObject({ weight: "650", color: body.color });
       expect(await figure.evaluate((f) => getComputedStyle(f).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
 
-      const source = figure.locator("details.source");
-      expect(await source.locator("summary").innerText()).toBe("Source");
-      expect(await source.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+      const deciding = await figure.getAttribute("id") === `${sent.refs.decision}-figure-2`;
       const origin = (await title.innerText()) === "Narrow flow" ? "Mermaid source narrow.mmd" : "Recorded image fixture";
-      expect(await figure.getByText(origin).isVisible()).toBe(false);
+      const sourceOwner = deciding ? contextRow.locator("..") : figure;
+      const source = sourceOwner.locator("details.source");
+      expect(await source.locator("summary").textContent()).toBe("Source");
+      expect(await source.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+      expect(await sourceOwner.getByText(origin).isVisible()).toBe(false);
+      if (deciding) {
+        expect(await figure.locator("details.source").count()).toBe(0);
+        expect(await source.isVisible()).toBe(false);
+        await contextRow.click();
+      }
       await source.locator("summary").click();
-      expect(await figure.getByText(origin).isVisible()).toBe(true);
+      expect(await sourceOwner.getByText(origin).isVisible()).toBe(true);
 
       if ((await title.innerText()) !== "Narrow flow") continue;
       const text = figure.locator(".figure-description");
@@ -441,6 +456,14 @@ test("every figure shows its caption as a title, a formatted description, and a 
     expect((await old.innerText()).split("Historical example").length - 1).toBe(1);
     expect(await old.innerText()).not.toContain("Q7 ·");
     expect(await old.evaluate((el) => getComputedStyle(el.querySelector(".figure-title")!.closest("[id]")!).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    const historicalImage = old.getByRole("img", { name: pretitle, exact: true });
+    await historicalImage.click();
+    const largerImage = page.getByRole("dialog", { name: "Historical figure", exact: true });
+    expect(await largerImage.getByRole("img", { name: pretitle, exact: true }).evaluate((img: HTMLImageElement) => img.decode().then(() => img.naturalWidth))).toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await largerImage.waitFor({ state: "hidden" });
+    expect(await old.getByRole("button", { name: "Enlarge figure: Historical figure" }).evaluate(el => document.activeElement === el)).toBe(true);
+    await old.locator("summary").filter({ hasText: /^Sources and context$/ }).click();
     expect(await old.locator("details.source summary").innerText()).toBe("Source");
     await old.locator("details.source summary").click();
     const source = await old.locator("details.source").innerText();
