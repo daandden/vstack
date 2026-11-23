@@ -674,18 +674,14 @@ def main():
                         assert values == {pick_id: ["A. Alpha", "B. Beta"], words_id: "fixture-custom-concern"}, values
                         notes = [note["text"] for note in raw["notes"]
                                  if note["name"] == pick_id and note["option"] == "A. Alpha"]
-                        words = [entry["text"] for entry in raw["other"] if entry["name"] == words_id]
-                        assert notes == ["fixture-option-note"] and words == ["fixture-custom-concern"], raw
-                        option_note, custom_input = notes[0], words[0]
-                        assert raw.get("submitNote") == "fixture-submit-note", raw
+                        words = [entry["answer"] for entry in raw["answers"] if entry["name"] == words_id]
+                        assert notes == ["fixture-option-note"] and words == ["Other: fixture-custom-concern"], raw
                         normalized = {"version": 1, "items": [
                             {"kind": "answer", "question": pick_id, "response": {
-                                "status": "answered", "picks": ["A", "B"], "text": option_note}},
+                                "status": "answered", "picks": ["A", "B"], "text": notes[0]}},
                             {"kind": "answer", "question": words_id, "response": {
-                                "status": "answered", "text": custom_input},
+                                "status": "answered", "text": values[words_id]},
                              "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}},
-                            {"kind": "result", "shape": "document", "title": "Note on all answers",
-                             "sections": [{"heading": "Submit note", "blocks": [{"prose": raw["submitNote"]}]}]},
                         ]}
                         save(out / "normalized-answers.json", normalized)
                         reply = {"tool": "bash", "args": {"command":
@@ -853,8 +849,8 @@ def main():
                        "output_byte_offset": len(captured)})
         save(out / "inputs.json", inputs)
         if args.tern:
-            keys = {b"\r": "Enter", b"\x1b": "Escape", b"\x1b[15~": "F5", b" ": "Space", b"\x03": "Ctrl+c",
-                    b"n": "n", b"j": "j"}
+            keys = {b"\r": "Enter", b"\t": "Tab", b"\x1b": "Escape", b"\x1b[15~": "F5",
+                    b" ": "Space", b"\x03": "Ctrl+c", b"n": "n"}
             if value in keys:
                 ctl("key", keys[value])
             else:
@@ -866,9 +862,6 @@ def main():
             read_output(0.03)
 
     def wait_for_text(text, after=0):
-        if args.tern:
-            text = {"n add note": "Add note", "Space/Enter/n type answer": "Type answer",
-                    "n add submit note": "Submit note"}.get(text, text)
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline:
             if text in plain(captured[after:]):
@@ -914,10 +907,40 @@ def main():
         ctl("click", *point)
         read_output(0.15)
 
+    def tree_nodes(nodes):
+        for node in nodes:
+            yield node
+            yield from tree_nodes(node.get("children", ()))
+
+    def labels(nodes, kind):
+        return {node["text"] for node in tree_nodes(nodes)
+                if kind in node.get("class", "").split() and node.get("text")}
+
+    def picker_in_tree(snapshot, *, ready=False):
+        buttons = labels(snapshot["tree"], "sf-btn-label")
+        notes = {"Note", "Add note"}
+        if ready:
+            return "Submit" in buttons and bool(buttons & notes)
+        return (("Submit" in buttons and bool(buttons & (notes | {"Cancel"})))
+                or {"Keep", "Save"} <= buttons)
+
+    def click_label(selector, label):
+        # The form briefly renders two matching rows during a field transition.
+        deadline = time.monotonic() + 5
+        while True:
+            matches = [node for node in ctl("tree", selector)["nodes"] if node.get("text") == label]
+            if len(matches) == 1:
+                native_click(f"click {label}", matches[0])
+                return
+            if time.monotonic() >= deadline:
+                raise AssertionError(f"Expected one {label!r} in {selector}, found {len(matches)}")
+            read_output(0.1)
+
     def click_option(label):
-        options = ctl("tree", '[role="listbox"] .sf-act')["nodes"]
-        row = next(node for node in options if node.get("text", "").endswith(label))
-        native_click(f"click option {label}", row)
+        click_label('[role="listbox"] [role="option"] .sf-item-label', label)
+
+    def click_submit():
+        click_label("button.sf-button .sf-btn-label", "Submit")
 
     summary = {"ok": False, "case": args.case}
 
@@ -932,6 +955,8 @@ def main():
             return None
         return current if "ask" in current else None
 
+    pty_picker_hint = "╭─ Ask"
+
     def panel_with_picker(name, after=0, round_file="publication.json"):
         # A later round has its own receipt; its question title and fragment differ from the first round's.
         current = round_receipt(round_file)
@@ -945,7 +970,7 @@ def main():
         if args.tern:
             wait_for_text(current["ask"]["questions"][0]["question"], after=after)
         else:
-            wait_for_text("n add note", after=after)
+            wait_for_text("n add note" if args.case == "ratchet" else pty_picker_hint, after=after)
         if args.case == "offline":
             expected = json.loads((out / "offline-bound.json").read_text())["live"]["error"]
         elif args.case == "eval":
@@ -961,7 +986,7 @@ def main():
             while True:
                 tree, panel = ctl("tree"), ctl("tree", PANEL)
                 together = ("Flow page" in json.dumps(panel) and expected in json.dumps(panel)
-                            and "Add note" in json.dumps(tree))
+                            and picker_in_tree(tree, ready=True))
                 if together or time.monotonic() >= deadline:
                     break
                 read_output(0.1)
@@ -992,9 +1017,10 @@ def main():
                 read_output(0.1)
                 if args.tern:
                     tree = ctl("tree")
-                    assert not panel_nodes() and "Add note" not in json.dumps(tree), \
+                    assert not panel_nodes() and not picker_in_tree(tree), \
                         "Renamed control opened a native picker or Flow panel"
-                assert "n add note" not in plain(captured), "Renamed control opened the picker"
+                else:
+                    assert pty_picker_hint not in plain(captured), "Renamed control opened the picker"
                 result = asks()
                 if result or time.monotonic() >= deadline:
                     break
@@ -1049,14 +1075,15 @@ def main():
             if args.tern:
                 after_abort = ctl("tree")
                 save(out / "after-abort.tree.json", after_abort)
-                assert "Add note" not in json.dumps(after_abort), "Turn cancellation left the picker open"
+                assert not picker_in_tree(after_abort), "Turn cancellation left the picker open"
             done.set()
         if args.case == "ratchet":
             send("pick native Ratchet approval", b"\r")
             time.sleep(0.2)
             send("submit native Ratchet approval", b"\r")
         if args.case in ("cancel", "retry", "offline"):
-            send("Escape cancels the actual ordinary ask picker", b"\x1b")
+            send("Escape returns focus to the composer", b"\x1b")
+            send("Escape from the composer aborts the open picker", b"\x1b")
             deadline = time.monotonic() + 20
             while not asks() and time.monotonic() < deadline:
                 read_output(0.1)
@@ -1082,7 +1109,7 @@ def main():
                 panel_gone(f"{route}-submit")
                 tree = ctl("tree")
                 save(out / f"after-{route}-submit.tree.json", tree)
-                assert "Add note" not in json.dumps(tree), f"{route} recovery picker remained open"
+                assert not picker_in_tree(tree), f"{route} recovery picker remained open"
                 if route == "direct":
                     direct_failures = len(failures_path.read_text().splitlines())
                     assert direct_failures > 0, "No failed ask-status call during the direct picker"
@@ -1090,55 +1117,44 @@ def main():
                     direct_close_observed.set()
         if args.case in ("tui", "retry", "later-round"):
             send("open Alpha option note", b"n")
-            wait_for_text("Note for")
+            wait_for_text("Note for A. Alpha")
             send("type option note", b"fixture-option-note")
-            time.sleep(0.15)
             send("save option note", b"\r")
-            time.sleep(0.2)
             send("pick Alpha", b" ")
             if args.tern:
                 click_option("B. Beta")
             else:
-                send("move to Beta", b"j")
+                send("move to Beta", b"\x1b[B")
                 send("pick Beta", b" ")
-            send("advance from the multiselect question", b"\r")
-            time.sleep(0.2)
-            send("move to Other", b"j")
-            time.sleep(0.15)
-            send("move to Other again", b"j")
-            wait_for_text("Space/Enter/n type answer")
-            send("open Other editor", b"n")
-            wait_for_text("Other answer")
+            send("open the second question", b"\t")
+            if args.tern:
+                click_option("Other…")
+            else:
+                send("move to Pause", b"\x1b[B")
+                send("move to Other", b"\x1b[B")
+                wait_for_text("type your own")
+            after_other = len(captured)
             send("type custom words", b"fixture-custom-concern")
-            time.sleep(0.15)
-            send("save custom words", b"\r")
-            time.sleep(0.2)
-            send("advance to submit review", b"\r")
-            wait_for_text("n add submit note")
-            send("open submit note", b"n")
-            time.sleep(0.2)
-            send("type submit note", b"fixture-submit-note")
-            time.sleep(0.15)
-            send("save submit note", b"\r")
-            time.sleep(0.2)
+            wait_for_text("2 of 2 answered", after=after_other)
+            send("focus Submit", b"\r")
             before_submit = len(captured)
-            send("submit real picker", b"\r")
+            if args.tern:
+                click_submit()
+            else:
+                send("submit real picker", b"\r")
             if args.case == "tui" and args.tern:
                 panel_gone("submit")
                 after_submit = ctl("tree")
                 save(out / "after-submit.tree.json", after_submit)
-                assert "Add note" not in json.dumps(after_submit), "Submit left the picker open"
+                assert not picker_in_tree(after_submit), "Submit left the picker open"
         if args.case == "later-round":
             panel_with_picker("later-panel", after=before_submit, round_file="later-publication.json")
             assert len(asks()) == 1, "Later picker returned before it was shown"
-            before_later_pick = len(captured)
-            send("pick Continue in later round", b"\r")
-            deadline = time.monotonic() + 20
-            while len(asks()) < 2 and time.monotonic() < deadline:
-                read_output(0.1)
-                if ("Submit note" if args.tern else "n add submit note") in plain(captured[before_later_pick:]):
-                    send("submit later round picker", b"\r")
-                    break
+            if args.tern:
+                click_option("A. Continue")
+                click_submit()
+            else:
+                send("pick Continue and submit later round", b"\r")
         deadline = time.monotonic() + 90
         while not done.is_set() and time.monotonic() < deadline:
             read_output(0.1)
@@ -1186,11 +1202,7 @@ def main():
                 content = json.load(response)
             save(out / "answered-live-content.json", content)
             results = published_stage(content, receipt)["results"]
-            assert [result["title"] for result in results] == ["Disposable picker fixture", "Note on all answers"], results
-            note = results[1]
-            assert note["shape"] == "document" and [
-                block["prose"] for section in note["doc"]["sections"] for block in section["blocks"]
-            ] == ["fixture-submit-note"], note
+            assert [result["title"] for result in results] == ["Disposable picker fixture"], results
             assert set(answers) == set(expected_ids), answers
             pick, words = (answers[receipt["refs"][ref]] for ref in ("pick", "words"))
             assert pick["response"]["picks"] == ["A", "B"], pick
@@ -1254,7 +1266,7 @@ def main():
         if args.tern:
             assertions.append("Flow panel is gone once the picker closes")
         if args.case in ("tui", "retry", "later-round"):
-            assertions.append("picks, option note, and Other words recorded as answers; submit note recorded once as a Document Result")
+            assertions.append("picks, option note, and Other words recorded as answers")
         if args.case == "retry":
             assertions.append("F5 retry shows a fresh Flow panel and preserves the question identities without republication")
         if args.case == "later-round":
