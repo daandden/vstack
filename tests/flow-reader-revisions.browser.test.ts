@@ -132,6 +132,17 @@ test("readers compare known Document and typed edits without losing snapshots or
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         if (proof) { mkdirSync(proof, { recursive: true }); await changes.screenshot({ path: join(proof, `${theme}-${width}.png`) }); writeFileSync(join(proof, `${theme}-${width}.aria.txt`), await changes.ariaSnapshot()); }
       }
+      if (proof) {
+        await page.setViewportSize({ width: 1280, height: 900 });
+        const panel = await changes.elementHandle();
+        await selector.press("Enter");
+        await options.getByRole("option", { name: "Revision 1", exact: true }).and(page.locator(":focus")).waitFor();
+        const name = join(proof, `snapshot-open-${theme.toLowerCase()}`);
+        await panel.screenshot({ path: `${name}.png` });
+        writeFileSync(`${name}.aria.txt`, await options.ariaSnapshot());
+        await page.keyboard.press("Escape");
+        await options.waitFor({ state: "hidden" });
+      }
     }
     await page.setViewportSize({ width: 320, height: 900 });
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });

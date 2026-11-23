@@ -25,11 +25,16 @@ const stop = computed(() => (props.historical ? undefined : ""));
         <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid gap-0.5 ps-5 marker:text-flow-dimmed" :class="b.ordered ? 'list-decimal' : 'list-disc'">
           <li v-for="(t, j) in b.list" :key="j" v-html="inline(t, cites)" />
         </component>
-        <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="list-none ps-3">
-          <li v-for="(step, j) in b.steps" :key="j" class="relative grid gap-1.5 border-s border-flow-line ps-5 pbe-4 last:border-s-transparent last:pbe-0">
-            <Badge class="absolute [inset-inline-start:-0.75rem] inset-bs-0 size-6 tabular-nums">{{ j + 1 }}</Badge>
-            <h4 class="font-semibold" v-html="inline(step.title, cites)" />
-            <div class="grid gap-1.5" v-html="prose(step.text, cites)" />
+        <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="grid list-none grid-cols-[auto_minmax(0,1fr)] gap-x-2">
+          <li v-for="(step, j) in b.steps" :key="j" class="procedure-step col-span-2 grid">
+            <div class="flex flex-col items-center">
+              <Badge class="min-h-5 min-w-5 px-1 tabular-nums">{{ j + 1 }}</Badge>
+              <span v-if="j < b.steps.length - 1" class="w-px flex-1 bg-flow-line" aria-hidden="true" />
+            </div>
+            <div class="grid gap-1">
+              <h4 class="font-semibold" v-html="inline(step.title, cites)" />
+              <div class="grid gap-1" v-html="prose(step.text, cites)" />
+            </div>
           </li>
         </ol>
         <figure v-else-if="'code' in b && b.language === 'mermaid'" class="figure grid grid-cols-[minmax(0,1fr)] gap-1.5 justify-items-start">
@@ -65,3 +70,13 @@ const stop = computed(() => (props.historical ? undefined : ""));
     </details>
   </div>
 </template>
+
+<style scoped>
+.procedure-step {
+  grid-template-columns: subgrid;
+}
+
+.procedure-step:not(:last-child) > :last-child {
+  padding-block-end: var(--spacing-2);
+}
+</style>

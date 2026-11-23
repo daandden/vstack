@@ -121,8 +121,8 @@ async function save(text: string) {
 </script>
 
 <template>
-  <section :aria-label="`Reader comments on ${r.title}`" class="grid min-w-0 gap-2 rounded-md border border-dashed border-flow-line bg-flow-muted p-2 text-small [overflow-wrap:anywhere]">
-    <h3>Reader comments</h3>
+  <section :aria-label="`Reader comments on ${r.title}`" class="grid min-w-0 gap-2 rounded-md border border-dashed border-flow-border bg-flow-muted p-2 text-small [overflow-wrap:anywhere]">
+    <h3 class="text-small">Reader comments</h3>
     <p class="text-flow-subtext">Reader notes, not agent-authored content, answers, or consent.</p>
     <ul v-if="saved.length" class="grid list-none gap-3 ps-0" aria-live="polite">
       <li v-for="c in saved" :key="c.id" class="grid gap-1">
@@ -157,10 +157,10 @@ async function save(text: string) {
       <component :is="commentForm.Field" v-slot="{ field }" name="text">
         <Field :id="`${r.anchor}-comment`" label="Comment" required :errors="field.state.value.trim() ? field.state.meta.errors : []">
           <template #default="{ control }">
-            <Textarea v-bind="control" :model-value="field.state.value" :rows="3" :disabled="pending" class="field-sizing-content min-h-[3lh] max-h-[12lh]" @update:model-value="field.handleChange($event ?? '')" @blur="field.handleBlur()" />
+            <Textarea v-bind="control" :model-value="field.state.value" :rows="3" :disabled="pending" class="field-sizing-content min-h-18 max-h-[12lh]" @update:model-value="field.handleChange($event ?? '')" @blur="field.handleBlur()" />
           </template>
           <template #error-detail>
-            <p v-if="field.state.value.length > COMMENT_LIMIT" class="tabular-nums">{{ countFormat.format(field.state.value.length) }} / {{ countFormat.format(COMMENT_LIMIT) }}</p>
+            <p v-if="field.state.value.length > COMMENT_LIMIT" class="ms-auto whitespace-nowrap tabular-nums">{{ countFormat.format(field.state.value.length) }} / {{ countFormat.format(COMMENT_LIMIT) }}</p>
           </template>
         </Field>
         <p v-if="editing" class="text-flow-subtext">Editing preserves the original anchor and revision.</p>

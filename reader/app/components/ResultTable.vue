@@ -15,6 +15,7 @@ type Entry = ResultView["entries"][number];
 const props = defineProps<{ r: ResultView }>();
 const { flow } = useReaderState();
 const search = shallowRef("");
+const filtersOpen = shallowRef(false);
 const labels = computed(() => (props.r.columns ?? []).map((c, i) => ({
   id: `cell${i}`, label: typeof c === "string" ? c : c.label, type: typeof c === "string" ? "text" : c.type ?? "text", index: i,
 })));
@@ -85,6 +86,23 @@ function setStatus(id: string, value: string | undefined) {
   table.getColumn(id)?.setFilterValue(value === allStatuses ? undefined : value);
 }
 
+const filename = /^(?:[^\s/\\`]+[/\\])*[^\s/\\`]+\.[a-z][a-z\d]*$/i;
+function valueClass(value: string | undefined, type: string | undefined) {
+  if (!value) return;
+  if (type !== "status") {
+    const plain = value.startsWith("`") && value.endsWith("`") ? value.slice(1, -1) : value;
+    return filename.test(plain) ? "whitespace-nowrap" : undefined;
+  }
+  switch (value.trim().toLowerCase()) {
+    case "finished": case "passed": case "closed": case "merged": return "text-flow-green";
+    case "active": case "pending": case "reopened": return "text-flow-peach";
+    case "failed": case "blocked": case "unresolved": return "text-flow-red";
+    case "picked": return "text-flow-yellow";
+    case "interpreted": return "text-flow-teal";
+    case "open": case "retired": case "not started": return "text-flow-dimmed";
+  }
+}
+
 useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
   const id: unknown = (event as CustomEvent<unknown>).detail;
   if (typeof id !== "string" || !Object.hasOwn(table.getCoreRowModel().rowsById, id)) return;
@@ -97,9 +115,16 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
 
 <template>
   <div class="grid min-w-0 gap-2">
-    <div class="flex flex-wrap items-end gap-2">
-      <div class="grid justify-items-start gap-1 text-small">
-        <label :for="`${r.anchor}-search`" class="font-medium">Filter rows</label>
+    <div class="flex items-center justify-between gap-2 text-small">
+      <p role="status" aria-live="polite" aria-atomic="true" class="text-flow-subtext tabular-nums">{{ count }} of {{ r.entries.length }} rows</p>
+      <Button class="filter-toggle" :aria-expanded="filtersOpen" :aria-controls="`${r.anchor}-filters`" @click="filtersOpen = !filtersOpen">
+        <span :class="filtersOpen ? 'i-lucide-chevron-up' : 'i-lucide-chevron-right'" aria-hidden="true" />
+        Filters
+      </Button>
+    </div>
+    <div v-show="filtersOpen" :id="`${r.anchor}-filters`" class="flex flex-wrap items-start gap-2 justify-self-end rounded-sm border border-flow-line bg-flow-muted p-2 text-small">
+      <div class="grid w-45 max-w-full gap-1">
+        <label :for="`${r.anchor}-search`">Filter rows</label>
         <Input
           :id="`${r.anchor}-search`"
           :model-value="search"
@@ -109,8 +134,8 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
           @update:model-value="search = String($event ?? '')"
         />
       </div>
-      <div v-for="c in statuses" :key="c.id" class="grid justify-items-start gap-1 text-small">
-        <label :for="`${r.anchor}-${c.id}`" class="font-medium">{{ c.label }}</label>
+      <div v-for="c in statuses" :key="c.id" class="grid w-45 max-w-full gap-1">
+        <label :for="`${r.anchor}-${c.id}`">{{ c.label }}</label>
         <Select
           :id="`${r.anchor}-${c.id}`"
           :aria-label="c.label"
@@ -120,18 +145,18 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
         />
       </div>
     </div>
-    <p role="status" aria-live="polite" aria-atomic="true" class="text-[length:var(--text-small)] text-flow-subtext tabular-nums">{{ count }} of {{ r.entries.length }} rows</p>
     <Table class="border-collapse tabular-nums">
       <caption data-slot="table-caption" class="sr-only">{{ r.title }}</caption>
       <thead data-slot="table-header" class="result-head">
         <tr v-for="group in table.getHeaderGroups()" :key="group.id" data-slot="table-row">
           <th
-            v-for="{ id, column } in group.headers"
+            v-for="({ id, column }, i) in group.headers"
             :key="id"
             data-slot="table-head"
             scope="col"
             :aria-sort="column.getCanSort() ? sortState(column) : undefined"
-            class="result-cell text-start text-flow-subtext"
+            class="result-cell text-flow-subtext"
+            :class="{ 'result-number': labels[i]?.type === 'number' }"
           >
             <Button v-if="column.getCanSort()" variant="ghost" class="sort-button" :aria-label="`Sort by ${column.columnDef.header}`" @click="column.toggleSorting()">
               <span v-html="inline(String(column.columnDef.header))" />
@@ -143,19 +168,19 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
       </thead>
       <tbody data-slot="table-body">
         <tr v-for="row in rows" :key="row.id" data-slot="table-row" class="result-row">
-          <td v-for="(cell, i) in row.getVisibleCells()" :key="cell.id" data-slot="table-cell" class="result-cell">
+          <td v-for="(cell, i) in row.getVisibleCells()" :key="cell.id" data-slot="table-cell" class="result-cell" :class="{ 'result-number': labels[i]?.type === 'number' }">
             <template v-if="cell.column.id === 'questions'">
               <template v-for="(id, j) in row.original.questions" :key="id">{{ j ? '; ' : '' }}<a :href="`#${id}`">{{ askName(id) }}</a>: <span v-html="inline(ask(id)?.title ?? '')" /></template>
             </template>
             <div v-else-if="i === 0" :id="row.id" class="min-h-[1lh]">
               <CorrectionNotice :notice="row.original" />
-              <span v-html="inline(cell.getValue<string>() ?? '')" />
+              <span :class="valueClass(cell.getValue<string>(), labels[i]?.type)" v-html="inline(cell.getValue<string>() ?? '')" />
             </div>
-            <span v-else v-html="inline(cell.getValue<string>() ?? '')" />
+            <span v-else :class="valueClass(cell.getValue<string>(), labels[i]?.type)" v-html="inline(cell.getValue<string>() ?? '')" />
           </td>
         </tr>
         <tr v-if="!rows.length" data-slot="table-row">
-          <td :colspan="columns.length" data-slot="table-cell" class="py-6 text-center text-flow-subtext">No matching rows.</td>
+          <td :colspan="columns.length" data-slot="table-cell" class="py-1 px-2 text-center text-body leading-body text-flow-subtext">No matching rows.</td>
         </tr>
       </tbody>
     </Table>
@@ -163,9 +188,13 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
 </template>
 
 <style scoped>
+.filter-toggle {
+  background: transparent;
+  font-weight: var(--font-weight-semibold);
+}
+
 .table-search {
-  inline-size: auto;
-  max-inline-size: 100%;
+  font-size: var(--text-small);
 }
 
 .result-head {
@@ -181,15 +210,33 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
 }
 
 .result-cell {
-  padding-block: 0.25rem;
-  padding-inline: 0.5rem;
+  font-size: var(--text-body);
+  line-height: var(--leading-body);
+  padding-block: var(--spacing-1);
+  padding-inline: var(--spacing-2);
   vertical-align: top;
-  overflow-wrap: anywhere;
+  text-align: start;
+  overflow-wrap: break-word;
+}
+
+.result-head .result-cell {
+  font-size: var(--text-small);
+}
+
+.result-number {
+  text-align: end;
+}
+
+.result-number .sort-button {
+  margin-inline: 0 calc(-1 * var(--spacing-2));
+  text-align: end;
+  flex-direction: row-reverse;
 }
 
 .sort-button {
   justify-content: start;
-  margin-inline-start: -0.5rem;
-  gap: 0.375rem;
+  margin-inline-start: calc(-1 * var(--spacing-2));
+  gap: var(--spacing-1);
+  white-space: normal;
 }
 </style>

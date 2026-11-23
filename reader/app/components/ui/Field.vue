@@ -26,9 +26,12 @@ const control = computed(() => ({
       <slot :control="control" />
     </div>
     <p v-if="description" :id="`${id}-description`" class="text-flow-subtext">{{ description }}</p>
-    <div v-if="messages.length" class="flex flex-wrap items-baseline justify-between gap-2 text-flow-red">
+    <div v-if="messages.length" class="flex flex-wrap items-start gap-x-2 gap-y-1 text-small text-flow-red">
       <div :id="`${id}-error`" data-slot="field-error" role="alert">
-        <p v-for="message in messages" :key="message">{{ message }}</p>
+        <p v-for="message in messages" :key="message" class="flex items-start gap-1">
+          <span class="i-lucide-circle-alert mbs-0.5 shrink-0 text-[length:1.1667em]" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
       </div>
       <slot name="error-detail" />
     </div>

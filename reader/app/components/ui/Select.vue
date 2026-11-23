@@ -26,7 +26,7 @@ const label = computed(() => items.find((item) => item.value === value.value)?.l
     >
       <SelectValue data-slot="select-value" class="min-w-0 [overflow-wrap:anywhere]">{{ label }}</SelectValue>
       <SelectIcon as-child>
-        <span class="i-lucide-chevron-down shrink-0 text-flow-dimmed" aria-hidden="true" />
+        <span class="select-chevron i-lucide-chevron-down shrink-0 text-flow-subtext" aria-hidden="true" />
       </SelectIcon>
     </SelectTrigger>
     <SelectPortal>
@@ -35,7 +35,7 @@ const label = computed(() => items.find((item) => item.value === value.value)?.l
         align="start"
         :side-offset="4"
         data-slot="select-content"
-        class="z-50 flex max-h-[min(15rem,var(--reka-select-content-available-height))] min-w-[var(--reka-select-trigger-width)] max-w-[var(--reka-select-content-available-width)] flex-col overflow-hidden rounded-md border border-flow-line bg-flow-base text-small"
+        class="z-50 flex max-h-[min(15rem,var(--reka-select-content-available-height))] min-w-[var(--reka-select-trigger-width)] max-w-[var(--reka-select-content-available-width)] flex-col overflow-hidden rounded-md border border-flow-border bg-flow-base text-small"
       >
         <SelectScrollUpButton class="flex justify-center py-1">
           <span class="i-lucide-chevron-up" aria-hidden="true" />
@@ -47,11 +47,11 @@ const label = computed(() => items.find((item) => item.value === value.value)?.l
             :value="item.value"
             :disabled="item.disabled"
             data-slot="select-item"
-            class="reader-control flex items-center justify-between gap-2 select-none outline-none data-[highlighted]:bg-flow-muted data-[disabled]:opacity-75"
+            class="select-option reader-control flex items-center justify-between gap-2 py-1 select-none outline-none data-[state=checked]:font-semibold data-[disabled]:opacity-75"
           >
             <SelectItemText class="min-w-0 [overflow-wrap:anywhere]">{{ item.label }}</SelectItemText>
             <SelectItemIndicator as-child>
-              <span class="i-lucide-check shrink-0 text-flow-blue" aria-hidden="true" />
+              <span class="i-lucide-check shrink-0 text-[length:1.1667em] text-flow-blue" aria-hidden="true" />
             </SelectItemIndicator>
           </SelectItem>
         </SelectViewport>
@@ -62,3 +62,21 @@ const label = computed(() => items.find((item) => item.value === value.value)?.l
     </SelectPortal>
   </SelectRoot>
 </template>
+
+<style scoped>
+[data-state="open"] .select-chevron {
+  rotate: 180deg;
+}
+
+.select-option {
+  border-radius: var(--radius-xs);
+}
+
+.select-option + .select-option {
+  margin-block-start: calc(var(--spacing-1) / 2);
+}
+
+.select-option[data-highlighted] {
+  background: color-mix(in oklch, var(--color-surface0) 60%, var(--color-base));
+}
+</style>

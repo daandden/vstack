@@ -52,6 +52,9 @@ test("readers select typed-table text and manage revision-bound comments across 
     const errorId = await tooLong.evaluate(el => el.closest("[role=alert]")?.id ?? null);
     expect(errorId).toBeTruthy();
     expect(await draft.getAttribute("aria-describedby")).toBe(errorId);
+    const icon = comments.getByRole("alert").filter({ hasText: "Keep the comment" }).locator('[aria-hidden="true"]');
+    expect(await icon.count()).toBe(1);
+    expect(await icon.evaluate(el => getComputedStyle(el).maskImage)).not.toBe("none");
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       const paint = () => draft.evaluate(el => {
@@ -61,7 +64,8 @@ test("readers select typed-table text and manage revision-bound comments across 
           outline: css.outlineStyle, height: el.getBoundingClientRect().height,
         };
       });
-      await comments.getByRole("combobox", { name: "Comment target" }).focus();
+      const target = comments.getByRole("combobox", { name: "Comment target" });
+      await target.focus();
       const unfocused = await paint();
       await page.keyboard.press("Tab");
       expect(await draft.evaluate(el => el === document.activeElement)).toBe(true);
@@ -73,6 +77,8 @@ test("readers select typed-table text and manage revision-bound comments across 
       expect(focused.height).toBe(unfocused.height);
       expect(unfocused.shadow).toBe("none");
       expect(focused.shadow).toBe("none");
+      expect(await count.evaluate(el => getComputedStyle(el).color)).toBe(focused.border);
+      expect(await icon.evaluate(el => getComputedStyle(el).color)).toBe(focused.border);
       expect(focused.outline).toBe("none");
       if (process.env.FLOW_READER_EVIDENCE) {
         const dir = process.env.FLOW_READER_EVIDENCE;
@@ -81,6 +87,16 @@ test("readers select typed-table text and manage revision-bound comments across 
         writeFileSync(join(dir, `${name}.json`), JSON.stringify({ unfocused, focused }, null, 2));
         writeFileSync(join(dir, `${name}.aria.txt`), await comments.ariaSnapshot());
         await comments.screenshot({ path: join(dir, `${name}.png`) });
+        const panel = await comments.elementHandle();
+        await target.press("Enter");
+        const listbox = page.getByRole("listbox");
+        await listbox.getByRole("option", { name: "Whole Result block", exact: true }).and(page.locator(":focus")).waitFor();
+        await page.keyboard.press("ArrowDown");
+        await listbox.getByRole("option", { name: "e1: Host restart", exact: true }).and(page.locator(":focus")).waitFor();
+        await panel.screenshot({ path: join(dir, `comment-target-open-${theme.toLowerCase()}.png`) });
+        writeFileSync(join(dir, `comment-target-open-${theme.toLowerCase()}.aria.txt`), await listbox.ariaSnapshot());
+        await page.keyboard.press("Escape");
+        await listbox.waitFor({ state: "hidden" });
       }
       await draft.fill(atLimit);
       await tooLong.waitFor({ state: "hidden" });
@@ -90,7 +106,7 @@ test("readers select typed-table text and manage revision-bound comments across 
       expect(valid.shadow).toBe("none");
       expect(valid.outline).toBe("none");
       if (theme === "Light") {
-        await draft.fill(`${atLimit} x`);
+        await draft.fill(`${atLimit}x`);
         await save.click();
         await tooLong.waitFor();
       }
@@ -100,6 +116,8 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(await count.count()).toBe(0);
     expect(await draft.getAttribute("aria-invalid")).not.toBe("true");
     expect(await draft.getAttribute("aria-describedby")).toBeNull();
+    const saveDraft = "Was the first restart flaky, or did the host recover between runs?";
+    await draft.fill(saveDraft);
     const blockedSave = Promise.withResolvers<void>();
     const failSave = async (route: import("playwright-core").Route) => {
       if (route.request().method() !== "POST") return route.continue();
@@ -126,12 +144,20 @@ test("readers select typed-table text and manage revision-bound comments across 
     }
     const failed = comments.getByRole("alert").filter({ hasText: "The Local Flow host is unavailable." });
     await failed.waitFor();
-    expect(await draft.inputValue()).toBe(atLimit);
+    expect(await draft.inputValue()).toBe(saveDraft);
     expect(await failed.evaluate(el => Boolean(el.compareDocumentPosition(el.closest("form")!.querySelector("[type=submit]")!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true);
     if (process.env.FLOW_READER_EVIDENCE) {
-      await comments.screenshot({ path: join(process.env.FLOW_READER_EVIDENCE, "comment-save-failed.png") });
+      const dir = process.env.FLOW_READER_EVIDENCE;
+      for (const theme of ["Dark", "Light"]) {
+        await page.getByRole("button", { name: theme, exact: true }).click();
+        await draft.focus();
+        const name = `comment-save-failed-${theme.toLowerCase()}`;
+        await comments.screenshot({ path: join(dir, `${name}.png`) });
+        writeFileSync(join(dir, `${name}.aria.txt`), await comments.ariaSnapshot());
+      }
     }
     await page.unroute("**/comments", failSave);
+    await draft.fill(atLimit);
     await save.click();
     const savedAtLimit = comments.getByRole("listitem").filter({ hasText: atLimit.trim() });
     await savedAtLimit.waitFor();
@@ -195,6 +221,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     });
     await page.getByRole("button", { name: "Sort by Check", exact: true }).click();
     expect(await page.getByRole("cell").allTextContents()).toEqual(["Earlier check", "Host restart"]);
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
     await page.getByRole("textbox", { name: "Filter rows", exact: true }).fill("Host restart");
     await page.getByRole("status").filter({ hasText: "1 of 2 rows" }).waitFor();
     const cell = page.getByRole("cell", { name: "Host restart", exact: true });
@@ -269,7 +296,6 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(feedback).toContain("Keep the selected passage.");
     expect(feedback).toContain("Keep this evidence <script>literal</script>.");
     expect(feedback).toContain("Confirm the host restart.");
-    await page.getByRole("textbox", { name: "Filter rows", exact: true }).fill("");
     await comments.getByRole("button", { name: "Add Reader comment", exact: true }).click();
     await comments.getByRole("textbox", { name: "Comment" }).fill("Saved after the focused edit.");
     const focused = cli(["submit"], [{ kind: "revise", result: sent.refs["evidence/restart"], base: sent.revision, set: { cells: ["Changed restart"] } }]);

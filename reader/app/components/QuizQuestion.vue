@@ -47,7 +47,7 @@ const correct = computed(() => {
   <form :data-question="q.ref" class="grid gap-2 border-be border-flow-line py-2" novalidate @submit.prevent="form.handleSubmit()">
     <component :is="form.Field" v-slot="{ field }" name="answer">
       <fieldset class="m-0 min-w-0 border-0 p-0">
-        <legend class="mbe-2 font-semibold" v-html="inline(q.prompt)" />
+        <legend class="mbe-1 font-semibold" v-html="inline(q.prompt)" />
         <Field :id="id" :label="q.choices ? undefined : 'Answer'" :horizontal="!q.choices" :errors="field.state.meta.errors">
           <template #default="{ control }">
             <template v-if="q.choices">
@@ -66,12 +66,12 @@ const correct = computed(() => {
                 > {{ c.label }}
               </label>
             </template>
-            <Input v-else v-bind="control" :model-value="field.state.value" :inputmode="isNumber ? 'decimal' : undefined" type="text" class="max-w-[15rem]" @update:model-value="field.handleChange(String($event ?? ''))" @blur="field.handleBlur()" />
+            <Input v-else v-bind="control" :model-value="field.state.value" :inputmode="isNumber ? 'decimal' : undefined" type="text" class="max-w-[15rem] text-small" @update:model-value="field.handleChange(String($event ?? ''))" @blur="field.handleBlur()" />
           </template>
         </Field>
       </fieldset>
       <Button type="submit" class="quiz-check justify-self-start">Check answer</Button>
-      <p class="quiz-feedback data-[correct=true]:text-[color:var(--color-green)] data-[correct=false]:text-[color:var(--color-peach)]" role="status" :data-correct="correct">
+      <p class="quiz-feedback text-small empty:absolute data-[correct=true]:text-[color:var(--color-green)] data-[correct=false]:text-[color:var(--color-peach)]" role="status" :data-correct="correct">
         <template v-if="correct !== undefined && !field.state.meta.errors.length">{{ correct ? "Correct." : "Not yet." }} {{ q.explanation }} Attempts: {{ attempts.length }}.</template>
       </p>
     </component>

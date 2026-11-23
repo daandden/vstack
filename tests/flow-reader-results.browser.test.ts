@@ -151,7 +151,15 @@ test("all Results retain compact themed rendering, learning progress and isolate
     expect(await numberAnswer.getAttribute("inputmode")).toBe("decimal");
     expect(await numberAnswer.inputValue()).toBe("about 5");
     expect(await quiz.getByText(/Attempts:/).count()).toBe(0);
-    await capture(page, "quiz-invalid");
+    if (proof) {
+      for (const theme of ["Dark", "Light"]) {
+        await page.getByRole("button", { name: theme, exact: true }).click();
+        await numberAnswer.focus();
+        const name = `quiz-invalid-${theme.toLowerCase()}`;
+        await quiz.screenshot({ path: join(proof, `${name}.png`) });
+        writeFileSync(join(proof, `${name}.aria.txt`), await quiz.ariaSnapshot());
+      }
+    }
     await radio.focus();
     await radio.press("Space");
     await choice.getByText("Choose an answer.", { exact: true }).waitFor({ state: "hidden" });
