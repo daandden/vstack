@@ -877,7 +877,7 @@ items:
     tree: 200830c5d204c1fd29129af9d392c8a4c258b1b5
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. The agent picks test seams by tdd's rule and asks only for a Costly seam, without holding non-costly patches and with approved costly tests added by a follow-up implementer (ADR 0062). Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
+    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. The agent picks test seams by tdd's rule and asks only for a Costly seam, without holding non-costly patches and with approved costly tests added by a follow-up implementer (ADR 0062). Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053). Uses a dedicated Merger to guard ticket paths and reuse passing proof only on the exact staged tree (#564, ADR 20261123-the-merger-lands-patches-without-reviewing-or-retesting-tested-trees)."
   - id: matt/pr
     upstream: matt
     kind: skill
@@ -1166,6 +1166,7 @@ originals:
   - plugin/rules/vstack-images.md
   - plugin/tern/vstack-clean
   - plugin/rules/vstack-dependencies.md
+  - plugin/agents/vstack-merger.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing

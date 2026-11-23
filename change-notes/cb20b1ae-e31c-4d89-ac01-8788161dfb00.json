@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Land implement-spec tickets through a dedicated Merger that checks patch scope by path and reuses passing proof only for the exact staged tree."
+  ]
+}
