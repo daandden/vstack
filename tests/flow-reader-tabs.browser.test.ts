@@ -227,12 +227,13 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
 
     await page.setViewportSize({ width: 2560, height: 1000 });
     await waitForReaderLayout(page);
-    await bar.getByRole("button", { name: "+1 waiting Stage", exact: true }).waitFor();
+    const lastWaitingCount = bar.getByRole("button", { name: /\+1 waiting Stage$/ });
+    await lastWaitingCount.waitFor();
     const shownWaiting = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
       links.filter(link => ids.includes(link.getAttribute("href")!.slice(1))).map(link => link.textContent), other.map(st => st.stage));
     expect(shownWaiting).toHaveLength(3);
     expect(shownWaiting.every(label => label?.includes("1"))).toBe(true);
-    expect(await bar.getByRole("button", { name: "+1 waiting Stage", exact: true }).isVisible()).toBe(true);
+    expect(await lastWaitingCount.isVisible()).toBe(true);
     expect(await bar.getByRole("link", { name: /Keep the fallback for zone 1\?.*Concern recorded/ }).innerText()).toContain("!");
     await capture(page, "bar-2560-light");
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
@@ -514,9 +515,20 @@ test("a fresh bare link opens the Flow's current decision queue before choosing 
     await capture(page, "overview-decisions-1280", true);
     await page.setViewportSize({ width: 320, height: 900 });
     await page.emulateMedia({ colorScheme: "dark" });
-    await barOf(page).getByRole("button", { name: "+2 waiting Stages", exact: true }).waitFor();
+    const wideFont = await useWideReaderFont(page);
+    await waitForReaderLayout(page);
+    const waitingCount = barOf(page).getByRole("button", { name: /\+2 waiting Stages$/ });
+    await waitingCount.waitFor();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await waitingCount.click();
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    const mapStages = map.getByRole("tabpanel", { name: "Stages", exact: true });
+    await mapStages.waitFor();
+    expect(await mapStages.getByRole("region", { name: "Waiting for an answer" }).getByRole("link").count()).toBe(2);
+    await page.keyboard.press("Escape");
+    await map.waitFor({ state: "hidden" });
     await capture(page, "overview-decisions-320-dark", true);
+    await wideFont.evaluate(el => { el.parentNode?.removeChild(el); });
     await retry!.getByRole("link", { name: "Change the failover threshold?", exact: true }).click();
     await page.locator(`#${next.retry}`).waitFor();
     expect(await selected(page)).toBe(opened.stage);
