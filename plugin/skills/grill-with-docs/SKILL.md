@@ -6,35 +6,22 @@ disable-model-invocation: true
 
 # Grill with docs
 
-Follow `skill://flow-page`'s "Stage entry/exit line". Use `skill://grilling` as this run's interviewing procedure. This skill owns the Architecture assessment, any expanded design discussion, and the continuation after shared understanding. It does not change the policy of other callers of grilling.
+Follow `skill://flow-page`'s "Stage entry/exit line". Use `skill://grilling` for the interview. grill-with-docs owns the Architecture assessment, agreement, and continuation. Other callers of grilling keep their own procedures.
 
-## Ground and assess
+## Trace and compare two shapes
 
-Ground the change in caller-visible behavior, affected dependencies, constraints, and relevant existing rationale. Read the project's glossary and applicable ADRs from its configured domain paths. Inspect the actual affected system before proposing alternatives. For greenfield work, ground its actors, surrounding systems, operating context, and requirements rather than explaining nonexistent code.
+1. For every change, trace each system it touches. Ground the trace in caller-visible behavior, actual dependencies, constraints, and applicable glossary terms and ADRs. For greenfield work, trace the actors and surrounding systems. Resolve missing facts before treating them as design choices.
+2. Sketch two distinct shapes at the owner, module, and contract level. Use `skill://codebase-design` and its `VISUAL-AGREEMENT.md` for vocabulary and visuals. Screen both against [codebase-design's red flags](../codebase-design/RED-FLAGS.md) and for one owner per piece of state, one way per task, and the least knowledge required of callers. Redesign when workarounds repeat. If only one shape is viable, show the constraint the second sketch fails and keep it out of the picks.
+3. For a large or contested design, run `skill://compare-attempts` with kind `reply` without asking whether to run it. Give the runners the grounded problem and constraints at the same sketch level. Apply no runner patch. Keep the comparison's Results on the Flow, with no tracker write. Bring the returned synthesis to the design question. If the comparison stops, keep the affected decision open and report why.
+4. Put the recommended direction, trade-offs, and necessary visuals in the design question. Use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract, even when only one shape is viable. Record the user's explicit agreement through grilling's answer rules. If a constraint changes, revise the affected sketches and carry forward the earlier answer and rationale.
 
-Give every change an Architecture assessment. Expand into design only when a consequential choice remains unsettled and dependent implementation would commit to an unagreed structure, shared contract, or quality trade-off. Explain the consequence through an affected requirement, shared assumption, guarantee, or dependency.
-
-Inspect responsibility and ownership, dependency direction, shared semantics, trust and data lifecycle, runtime operation, and important quality requirements. These subjects prompt assessment. They do not automatically require design. File count, module count, greenfield status, technology labels, and reversal cost alone do not trigger it. A one-module isolation or durability choice can qualify. A behavior-preserving many-file rename need not.
-
-Check whether existing decisions or applicable patterns already settle the choice, and whether their assumptions still hold. Matching signatures do not establish matching residency, failure, or recovery guarantees. A significant change already settled by a valid decision needs no repeated design exercise. An ordinary feature that preserves an established pattern can stay lightweight.
-
-Separate missing facts from open choices. Use grilling's fact-finding procedure for repository facts or bounded investigation before inventing design forks. Clarify speculative quality needs against a real requirement, credible scenario, analysis, or measurement. Production benchmarks are not universally required. Record a material unknown, why it matters, and what would resolve it. Keep dependent decisions open while its evidence is missing.
-
-If no consequential choice needs expansion, record a brief grounded no-expansion reason in the Stage's existing Result or summary. Cite the applicable decision or pattern and its fit, or the preserved behavior and guarantees. Continue the interview without requiring a new Architecture brief, separate document, or diagram.
-
-## Expand only the open architecture
-
-For an expanded assessment, read `skill://codebase-design` and its `VISUAL-AGREEMENT.md`. Use that reference to frame and screen the smallest useful visual alternatives. This is a conditional architecture discussion, not the fixed detailed-interface exercise in DESIGN-IT-TWICE.md. Leave that exercise and its other callers unchanged.
-
-Bring the surviving direction and consequential trade-offs to grilling's current frontier. Resolve prerequisite choices before dependent ones. Use existing Flow questions, reader needs, captured visuals, and answer-provenance rules. A recommendation does not settle a choice. Missing answers, cancellation, timeout, and headless automatic picks remain non-consent. A consequential unagreed consequence can need a question even when only one shape is viable.
-
-When an answer changes a constraint or invalidates a pattern assumption, re-ground the affected choice and revise its visual comparison. Preserve the earlier rationale and answer rather than silently replacing them.
+See ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts and ADR 0053.
 
 ## Record the agreement
 
 Run `skill://domain-modeling` for resolved glossary terms and qualifying ADRs as they crystallize. Its nested Results capture the terms and decisions with canonical file links. Keep their explanations in those canonical records. Do not create an ADR for every choice.
 
-For expanded design, publish an Architecture brief as a Flow Document Result with the agreed visuals and:
+After the user's explicit agreement, publish an Architecture brief as a Flow Document Result with the agreed visuals and:
 
 - Module responsibilities and ownership, interactions, and dependency direction.
 - Relevant observable guarantees, constraints, failure and recovery behavior, and quality requirements.

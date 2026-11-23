@@ -50,7 +50,7 @@ For each resulting main and delegated app:
 
 ### Source, package, and final gates
 
-Step `frontend-robustness-register`: Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned identity and `plugin/skills/break-ui` association. Preserve all twelve selected adaptations and six exclusions across eighteen UI items, with no selected deferrals.
+Step `frontend-robustness-register`: Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check that break-ui is adapt with the pinned identity and `plugin/skills/break-ui` association. Account for all twenty UI items at that Pin: twelve shipped adaptations, six permanent exclusions, `ask-emil` rejected, and `learn-taste` merged into `session`.
 
 Step `frontend-robustness-package`: Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the real Pin's MIT license. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must put break-ui in `listedSkills` and `skillCommands`, not `hiddenSkills`. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
 

@@ -7,7 +7,7 @@ description: "Use when testing or fixing UI robustness with realistic adverse co
 
 Use this knowledge inside the frontend implementation, review, or Verify work already in progress. Existing vstack owners retain planning, edits, execution, review, verification, and evidence. Keep the project's stack and the user's scope. This Utility skill starts no flow or independent executor.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/break-ui). The [MIT notice](LICENSE) ships with this skill.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/break-ui). The [MIT notice](LICENSE) ships with this skill.
 
 Demo data often hides failures. Use plausible names, emails, translations, missing fields, and collection sizes, not random strings or impossible inputs. A schema-backed maximum is useful; a missing limit is an explicit observation, not permission to invent a constraint.
 
@@ -26,7 +26,7 @@ Inspect relevant validation, migrations, API types, and input limits. Record fro
 
 Read [CATALOG.md](CATALOG.md) and select every applicable category. Mix realistic cases across the first visible rows rather than concentrating them in one implausible record. Keep fixture shape and entry boundary identical to ordinary data. Change fixture data, props, or the existing API fixture, not markup or CSS to manufacture a failure.
 
-Use the project's existing preview or fixture controls. If it lacks one, keep a plain dev-only **Demo data / Worst case** selector in a disposable prototype or development route. Make selection instant and URL-persistent where practical. Keep the control outside the component's layout and never ship it into production. A standalone throwaway HTML fixture can contain both datasets inline.
+Use the project's existing preview or fixture controls. If it lacks one, keep a plain dev-only **Demo data / Worst case** selector in a disposable prototype or development route. Make selection instant and URL-persistent where practical. Confirm each selection renders the intended fixture. Reload to verify persistence when the selector supports it. Keep the control outside the component's layout and never ship it into production. A standalone throwaway HTML fixture can contain both datasets inline.
 
 Also exercise **Empty**, **One**, page-size and page-size-plus-one boundaries, and a realistic large collection. For an unpaginated list, 1,000 or more rows can reveal rendering and scrolling problems. These are separate states when one dataset cannot represent them.
 
@@ -56,6 +56,8 @@ Validate causes in the actual component before prescribing a fix. For visual int
 ### Choose per field
 
 Wrap identifying text users need in full. Truncate secondary metadata only with an accessible way to read the complete value. Middle truncation can preserve distinguishing filename or path suffixes. Clamp previews when predictable card height matters. Never truncate compared numbers, amounts, or dates. A tooltip alone is not a touch-accessible detail view.
+
+For a two-line preview, check the target browser's support for `line-clamp`. Where needed, use `display: -webkit-box`, `-webkit-box-orient: vertical`, `-webkit-line-clamp: 2`, and `overflow: hidden` on the preview text. If the project uses Tailwind, check what its installed `line-clamp-2` utility emits. Verify the clamp with wrapped text and zoom, and keep the full text available outside the preview.
 
 Inspect the application's installed dependencies and versions before using library APIs, and consult documentation for those versions. Do not install a library merely because a reference mentions it. Browser evidence establishes only the observed engine, stack, and scenario.
 

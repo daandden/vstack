@@ -237,7 +237,7 @@ Content that a later Stage publishes to correct an earlier block of the same Flo
 _Avoid_: erratum, superseding block, retraction, amendment
 
 **Architecture assessment**:
-A grill's determination of whether a consequential architecture choice remains unsettled and needs agreement before dependent implementation.
+A grill's trace of the systems a change touches and the two shapes it sketches for the change, at the level of owners, modules, and contracts, before the user agrees one.
 _Avoid_: architecture gate, complexity score
 
 **Architecture brief**:

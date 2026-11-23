@@ -17,7 +17,7 @@ upstreams:
     repo: cursor/plugins
     path: pstack
     pin_kind: commit
-    pin: c742dd61706fbacc1b95f1a20b7b988cf096ce6c
+    pin: 0b46ec399d55f2829e88822998f53b84944837d3
     items:
       - { match: "pstack/skills/principle-*", type: tree, kind: principle }
       - { match: "pstack/skills/*", type: tree, kind: skill }
@@ -39,6 +39,6 @@ upstreams:
     repo: emilkowalski/skills
     path: skills
     pin_kind: commit
-    pin: 7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c
+    pin: 64eb3deb9a5fbfa041faf783e0bc3fd635872e9c
     items:
       - { match: "skills/*", type: tree, kind: skill }

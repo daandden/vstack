@@ -2,9 +2,9 @@
 
 A personal omp plugin built on Matt Pocock's skills, with selected additions from pstack, good-css, and Emil Kowalski's UI guidance.
 
-`/skill:grill-with-docs` assesses each change for consequential unsettled architecture choices before implementation commits to them. It reuses applicable decisions and patterns when their assumptions still hold. A routine change gets a brief grounded reason, not a mandatory diagram or new design document. An open choice gets proportionate visual alternatives, screened trade-offs, and a recommendation through the existing grill. The Architecture brief records the actual agreement in Flow Results, with responsibilities, interactions, guarantees, constraints, and rationale. Recommendations and unanswered or automatic picks are not your consent.
+`/skill:grill-with-docs` traces the systems each change touches and sketches two shapes at the level of owners, modules, and contracts. For a large or contested design, it starts `compare-attempts` automatically and brings the synthesis to the design question. If only one shape is viable, the second sketch shows why and is not offered as a choice.
 
-The grill stops at shared understanding. It creates no source scaffold, starts no next skill, and publishes no spec automatically. You invoke `/skill:to-spec` to synthesize a larger change into a self-contained canonical spec with the necessary agreed visuals. A newly discovered consequential fork holds affected synthesis for user-invoked grilling rather than silently choosing an architecture. Implementing agents retain signatures and coding details within the agreed guarantees.
+After you explicitly agree, `grill-with-docs` records the direction and trade-offs in an Architecture brief on the Flow, then continues into `/skill:to-spec` in the same turn under [ADR 0067](docs/adr/0067-grill-with-docs-continues-into-to-spec.md). An unanswered question or automatic pick is not consent. The chain stops at the spec. Implementing agents retain signatures and coding details within the agreed guarantees.
 
 ## Install
 
@@ -34,10 +34,12 @@ A host started by a vstack version from before this behavior cannot replace itse
 
 ## Use
 
-Start a change with `/skill:grill-with-docs` or `/skill:grill-me`. Confirm the grill's summary in your next prompt, or push back to revise it. Then choose the path:
+Start a change with `/skill:grill-with-docs` if you want to agree a design and continue into a spec in the same turn. Use `/skill:grill-me` for an interview that stops at the summary. With `/skill:grill-me`, use your next prompt to confirm the summary or push back, then start the next skill yourself.
+
+Choose how to proceed:
 
 - One session: `/skill:implement`.
-- Multiple sessions: `/skill:to-spec`, `/skill:to-tickets`, then `/skill:implement-spec`.
+- Multiple sessions: start `/skill:to-spec` if you don't already have a spec, then run `/skill:to-tickets` and `/skill:implement-spec`.
 
 The [Flow page](plugin/skills/flow-page/SKILL.md) keeps questions, answers, results, and delivery progress in one first-publication sequence across sessions. Answers and revisions stay in place; unprovable historical order has its own boundary. The reader requires the Local Flow host, with no static fallback. While a bound main-agent question picker is open in the interactive TUI, the extension shows a Flow panel above the composer with the clickable live link. If the host is unavailable, the panel shows the error and the picker still opens. Completion summaries do not repeat the link.
 

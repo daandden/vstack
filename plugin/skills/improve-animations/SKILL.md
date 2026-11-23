@@ -7,7 +7,7 @@ description: "Use when auditing existing web animations read-only, vetting defec
 
 Survey existing motion inside the current audit or planning task. This Utility skill supplies judgment, not another executor or planning system. The current vstack owner retains questions, Flow, scope, delegation, implementation hand-off, review, Verify, and evidence.
 
-Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/improve-animations). The [MIT notice](LICENSE) ships with the adaptation.
+Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/improve-animations). The [MIT notice](LICENSE) ships with the adaptation.
 
 Read [AUDIT.md](AUDIT.md) before surveying and [PLAN-TEMPLATE.md](PLAN-TEMPLATE.md) when recording selected work. For a single diff, use skill://review-animations through the existing review owner. For additive candidates, use skill://find-animation-opportunities. For selected subtraction, use skill://remove-animations through the existing implementation owner.
 
@@ -17,7 +17,9 @@ Keep application source unchanged during the audit. Use read-only inspection and
 
 First establish the actual stack and installed dependency versions, target engines, motion locations, token conventions, product personality, and interaction frequency. Inspect CSS transitions and keyframes, component motion props, conditional rendering, gestures, callback-driven state, and reduced-motion handling. Extend existing conventions in later requirements rather than inventing another token system.
 
-Set a bounded coverage statement with the owner. A quick survey covers high-traffic interactions, a standard survey covers interactive UI, and a deep survey includes marketing and low-priority polish. Coverage, not arbitrary finding counts, determines completion. Read all eight categories in the companion for each surveyed area. Record areas that could not be observed.
+Recon is complete when it records the stack and targets, motion locations, existing tokens, product character, and frequency tier of each in-scope animated interaction.
+
+Set a bounded coverage statement with the owner. A quick survey covers high-traffic interactions, a standard survey covers interactive UI, and a deep survey includes marketing and low-priority polish. For each surveyed area, account for all eight categories in the companion. Coverage is complete when each has evidence-backed findings or a recorded reason it is clear, not applicable, or unavailable. Unavailable is a proof gap, not a clean result.
 
 When the owner delegates an audit fact question, its brief includes the relevant companion section, recon facts, source-read-only constraint, absolute vstack root, Scratch, and a request for locations, observations, uncertainty, and open questions. A subagent neither chooses work for the user nor edits source.
 

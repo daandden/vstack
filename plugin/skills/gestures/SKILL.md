@@ -7,7 +7,7 @@ description: "Use when building or fixing web drag, swipe, fling, reorder, pull-
 
 Apply this guidance to the current web interaction. The existing vstack owner retains scope, edits, planning, review, verification, and evidence. Audit-only work stays read-only; implementation needs the owner's selected scope. This Utility skill creates no separate executor or final proof authority.
 
-Adapted from [Emil Kowalski's gestures](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/gestures). The [MIT notice](LICENSE) ships here.
+Adapted from [Emil Kowalski's gestures](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/gestures). The [MIT notice](LICENSE) ships here.
 
 ## Reuse the existing component
 
@@ -23,7 +23,7 @@ Avoid a React render for every pointer move. Keep the functional state declarati
 
 On release, let physics finish the movement. Prefer a retargetable spring seeded with measured release velocity. Combine distance and velocity: passing roughly 40–50% of travel can dismiss, but a short fast flick can also count. Match direction and units before comparing a library's velocity. For example, a threshold of 500 px/s is not 500 px/ms. Tune thresholds to the actual component and prevent a flick toward the open state from dismissing.
 
-Keep bounce small and normally limited to gesture release. A button-driven close has no gesture momentum and should not inherit that bounce. Smaller elements can need more bounce than large ones for the same apparent effect. A rejected dismissal snaps back promptly. If the element only repositions and should stop where released, disable automatic momentum where the installed API permits it.
+Keep bounce small and normally limited to gesture release. A button-driven close has no gesture momentum and should not inherit that bounce. Smaller elements can need more bounce than large ones for the same apparent effect. A rejected dismissal snaps back promptly. If your release handler owns the settle or the item should stop at release, disable automatic momentum so the library does not compete with it. For compatible Motion versions, check `dragMomentum={false}`.
 
 ## Preserve interruption and linked state
 
@@ -37,7 +37,7 @@ Capture the active pointer, retain its identity, and ignore extra pointers until
 
 Only when Vaul is already a dependency, inspect its current primitive and styling API. Its edge-attached iOS-style sheet uses a steep `cubic-bezier(0.32, 0.72, 0, 1)` curve over about 500ms. A small floating drawer can use roughly 200ms with a curve such as `cubic-bezier(0.165, 0.84, 0.44, 1)`. Match overlay, resizing, and content swaps to the same timing family.
 
-Use `data-vaul-no-drag` for interactive descendants only when the installed version supports it. Preserve the primitive's focus trapping, Escape, cancellation, and close lifecycle. A CSS settle can be appropriate even though a custom momentum-driven release generally uses a spring. Reconcile the actual behavior rather than imposing contradictory driver rules.
+Check that the installed Vaul version exposes `[data-vaul-drawer]` and `[data-vaul-overlay]` before styling them. Use `data-vaul-no-drag` for interactive descendants only when that version supports it. Preserve the primitive's focus trapping, Escape, cancellation, and close lifecycle. A CSS settle can be appropriate even though a custom momentum-driven release generally uses a spring. Reconcile the actual behavior rather than imposing contradictory driver rules.
 
 ## Direction, hold, and accessibility
 

@@ -10,7 +10,7 @@ Run independent attempts at the same task. Read every candidate, pick a base, gr
 
 ## Start
 
-The grill uses kind `reply` for fact-finding. implement uses kind `tree` for changes at real target paths. Run only when the user's words ask for several attempts. A caller's preference alone does not authorize attempts. implement owns the End state.
+The grill uses kind `reply` for fact-finding. implement uses kind `tree` for changes at real target paths. Run when the user's words ask for several attempts or when `skill://grill-with-docs` finds a large or contested design (ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts). All other callers need the user's explicit request. implement owns the End state.
 
 Follow `skill://flow-page`'s "Stage entry/exit line" for a comparison run. The parent publishes candidate evidence.
 
@@ -94,6 +94,9 @@ Verify the synthesized artifact per `skill://principle-prove-it-works`, using th
 
 ## Outputs
 
-Publish the synthesized artifact and synthesis note as Results on this Flow page. Use a Comparison Result with the candidates, rubric criteria, evidence-backed assessments, and chosen, tied, or inconclusive verdict. Preserve dropouts and unavailable candidates with their reasons rather than inventing assessments. A Document Result carries the full synthesis note and a `reply` artifact. Code/diff carries a `tree` artifact's relevant changes, with source paths and revisions. Attach redacted candidate evidence and verification outputs, keeping the real target files and losing patches unchanged. Add the synthesis note to the driving ticket when there is one. Write no separate synthesis file or report page. Return a short summary of the artifact and note in the reply.
+Publish the synthesized artifact and synthesis note as Results on this Flow page. Use a Comparison Result with the candidates, rubric criteria, evidence-backed assessments, and chosen, tied, or inconclusive verdict. Preserve dropouts and unavailable candidates with their reasons rather than inventing assessments. A Document Result carries the full synthesis note and a `reply` artifact. Code/diff carries a `tree` artifact's relevant changes, with source paths and revisions. Attach redacted candidate evidence and verification outputs, keeping the real target files and losing patches unchanged. Write no separate synthesis file or report page.
+
+- For a `reply` run started by `grill-with-docs`, keep the synthesis on the Flow and return the synthesized answer and note to the grill for its design question. Make no tracker write, even when the Flow has a driving ticket.
+- For every other caller, add the synthesis note to the driving ticket when there is one. Return a short summary of the artifact and note in the reply.
 
 The note names the base and why it won, each graft with its source, each rejection and why, the dropouts, the cross-judge's verdict or `cross-judge: not run`, every losing patch path, and the verification commands and observed results. State the artifact kind and any convergence or re-run. Never claim a check that did not run.

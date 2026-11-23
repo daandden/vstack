@@ -71,6 +71,6 @@ Where the design follows system themes, provide supported theme colors for both 
 <meta name="color-scheme" content="light dark">
 ```
 
-Match the actual top background, not an unrelated brand color. Declare both color schemes only if the page supports them. A class-driven theme may need to update the matching tag. For an installed PWA, inspect its real manifest theme and background colors and supported Apple status-bar metadata. Framework metadata APIs depend on the installed framework version. Inspect that version and its documentation before choosing an API.
+Match the actual top background, not an unrelated brand color. Declare both color schemes only if the page supports them. A class-driven theme may need to update the matching tag. For an installed PWA, check manifest `theme_color` and `background_color` separately from Apple's `apple-mobile-web-app-status-bar-style` metadata. The Apple setting uses `default`, `black`, or `black-translucent`, not color values. Check platform support and the installed framework's metadata API.
 
 Observe scroll, resizing, keyboard, safe-area geometry, and theme appearance on the actual target platform where available. Device emulation does not settle physical touch, browser chrome, real keyboard, or installed-PWA claims.

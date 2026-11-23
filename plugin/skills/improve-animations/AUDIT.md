@@ -21,7 +21,7 @@ When assessing easing or duration, read the Easing and Duration sections of skil
 
 ## 3. Physicality and origin
 
-For scale entrances, prefer scale(0.9–0.97) with opacity over scale(0). Trigger-anchored popovers generally originate at the trigger. Centered modals are exempt. A pure fade is valid, especially for reduced motion. Press feedback can use scale(0.97), with the subtle source range 0.95–0.98, and a 160ms ease-out transition when the interaction warrants motion. Do not add scaling to an intentionally instant keyboard action.
+For scale entrances, prefer scale(0.9–0.97) with opacity over scale(0). Trigger-anchored popovers generally originate at the trigger. Centered modals are exempt. A pure fade is valid, especially for reduced motion. Press feedback can use scale(0.97), with the subtle source range 0.95–0.98, and `transform 160ms var(--ease-out)` when the project has that token and the interaction warrants motion. Do not add scaling to an intentionally instant keyboard action.
 
 Base UI's origin variable is a library-dependent example. Inspect the installed version and component API before prescribing it.
 
@@ -37,7 +37,7 @@ Deliberate holds can be slow while release or cancellation snaps back. Check sta
 
 Prefer transform and opacity where they preserve the effect. Investigate layout, paint, blur, `transition: all`, parent-variable invalidation, per-frame rerenders, and rAF work. Browser-managed CSS or WAAPI may avoid main-thread driver delays, but neither API guarantees compositing.
 
-The source's blanket property-only rule conflicts with its clip-path and layout examples. Resolve this through skill://animation-performance and observed target-browser behavior. Before Motion 14.2, `x`, `y`, and `scale` shorthands use a main-thread frame loop; consider an upgrade or full transform string when busy-page behavior fails. From 14.2 the HTML shorthand path can be accelerated, so the shorthand alone is not a finding. In every version, inspect layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values as main-thread paths. Measure workload and user impact. Interpolation proves neither GPU execution nor acceptable frame cost.
+Clip-path reveals and measured-height disclosures can be appropriate. Use skill://animation-performance to check the actual browser and workload. Before Motion 14.2, `x`, `y`, and `scale` shorthands use a main-thread frame loop; consider an upgrade or full transform string when busy-page behavior fails. From 14.2 the HTML shorthand path can be accelerated, so the shorthand alone is not a finding. In every version, inspect layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values as main-thread paths. Measure workload and user impact. Interpolation proves neither GPU execution nor acceptable frame cost.
 
 The source recommends keeping transient blur below 20px, especially on Safari. This is a heuristic requiring measurement, not proof that 19px is cheap or 21px always blocks.
 
@@ -49,7 +49,7 @@ Gate hover motion behind `@media (hover: hover) and (pointer: fine)`. Verify key
 
 ## 7. Cohesion and tokens
 
-Match the product's personality and consolidate genuinely duplicated near-identical motion values through existing tokens. A source recommendation of 30–80ms stagger applies only to suitable occasional group entrances. Stagger is decoration and never delays interaction. Do not flag every unstaggered list as deficient.
+Match the product's personality and consolidate genuinely duplicated near-identical motion values through existing tokens. Use skill://choreograph to assess non-uniform delays and one entrance per container for occasional groups. Stagger is decoration and never delays interaction. Do not flag every unstaggered list as deficient.
 
 Subtle blur around 2px can mask a visibly doubled crossfade when supported and measured. Neither blur nor crossfade is required. Record the actual overlap before proposing it.
 

@@ -1,23 +1,23 @@
 # Architecture agreement
 
-The grill assesses each change, expands only consequential unsettled choices, records visual agreement, and stops before implementation. This recipe evaluates the actual reasoning at the user-visible Matt-run seam. It does not use the scripted model driver as proof of those decisions.
+`grill-with-docs` traces each change and sketches two shapes, compares large or contested designs through compare-attempts, and records explicit agreement before to-spec. This recipe evaluates actual reasoning at the user-visible Matt-run seam. Scripted model replies do not prove those decisions.
 
-The canonical policy is [ADR 0053](../../../../docs/adr/0053-architecture-agreement-belongs-in-the-grill.md). Its renumbering preserves the accepted policy bytes. Published main owns ADR 0051 (UI guidance) and ADR 0052 (Stage-tab reading).
+The policy is [ADR 0053](../../../../docs/adr/0053-architecture-agreement-belongs-in-the-grill.md), as amended by [ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts](../../../../docs/adr/20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts.md) and [ADR 0067](../../../../docs/adr/0067-grill-with-docs-continues-into-to-spec.md).
 
 ## Sub-features
 
 - `architecture-assess` covers one-module trust or durability choices, mechanical many-file changes, and applicable settled patterns.
 - `architecture-ground` covers changed pattern assumptions, missing facts, speculative quality concerns, credible quality scenarios without production benchmarks, and greenfield context.
-- `architecture-compare` covers comparable visual alternatives, screening, trade-offs, recommendations, and a forced single viable shape.
+- `architecture-compare` covers two visual sketches, screening, trade-offs, one viable shape, and automatic comparison for large or contested designs.
 - `architecture-brief` covers responsibilities, interactions, guarantees, constraints, costs, rationale, rejected alternatives, and decision provenance without coding details or scaffolds.
-- `architecture-consent-stop` covers real explicit answers, non-consent, the summary-only close, and the user-invoked handoff.
+- `architecture-consent-stop` covers real explicit answers, non-consent, the summary close, and continuation into to-spec only after agreement.
 - `architecture-handoff` consumes separate to-spec and implementation evaluation evidence to check preservation of agreement and consequential gap handling. A grill-only run does not prove those entry points.
 
 ## How to get to it (user POV)
 
 - Start `/skill:grill-with-docs` with a change and its applicable decisions.
-- Answer the consequential choices through the existing Flow questions. Read the Architecture brief or lightweight assessment and closing summary.
-- Invoke `/skill:to-spec` yourself for a larger change. Its separate proof must inspect the self-contained isolated publication and a newly discovered fork without publishing a silently selected design.
+- Answer the design question through the Flow picker. Read the Architecture brief and closing summary.
+- After agreement, the grill continues into to-spec. Its proof must inspect the self-contained isolated publication and verify that a newly discovered fork holds synthesis rather than publishing an unagreed design.
 - Invoke `/skill:implement` or `/skill:implement-spec` yourself. Their separate proof must distinguish ordinary implementation choices from a departure that changes an agreed guarantee.
 
 ## Driving it with actual skill evaluations
@@ -31,16 +31,16 @@ Preconditions: the user-visible Matt-run seam is confirmed by the spec or user. 
 
 | Scenario input | Observable proof |
 |---|---|
-| One module has an unsettled tenant-isolation or acknowledged-write durability choice. | The assessment identifies the affected guarantee and expands despite the small edit. |
-| A behavior-preserving rename touches many callers. | The assessment grounds no expansion without a new brief or compulsory diagram. |
-| An ordinary feature follows an accepted pattern with unchanged access, lifecycle, and failures. | The assessment records the pattern's fit without repeating settled choices. |
+| One module has an unsettled tenant-isolation or acknowledged-write durability choice. | The trace identifies the affected guarantee. Both sketches address the choice at owner, module, and contract level. |
+| A behavior-preserving rename touches many callers. | The grill traces the callers and sketches two shapes without treating file count alone as a contested design. |
+| An ordinary feature follows an accepted pattern with unchanged access, lifecycle, and failures. | The recommended sketch cites the pattern's fit. The other sketch and its trade-off or failed constraint remain visible. The grill asks for agreement. |
 | A provider keeps the same method shape but changes residency or recovery obligations. | The grill checks assumptions and exposes the real consequence rather than treating signatures as equivalence. |
 | The user proposes caching for vague future speed and has not read the existing path. | Grounding investigates actual facts and clarifies requirements without inventing a scale target. |
 | A credible workload or crash scenario establishes an important guarantee, without production measurements. | Analysis can reveal a real trade-off. Missing benchmarks alone do not dismiss it. |
-| Greenfield work has either settled local-only context or consequential local-versus-hosted constraints. | Context, not greenfield status, determines expansion. No investigation of nonexistent code is required. |
-| A consequential fork has genuinely different viable shapes. | Captured comparable visuals, screening, explicit accepted costs, rejected alternatives, and a recommendation support the question. |
-| Signed constraints leave only one shape but recovery consequences remain unagreed. | The shape and exclusions are explained without fabricated viable alternatives. The remaining consequence still needs agreement. |
-| Prior explicit answers settle an expanded direction. | The Architecture brief preserves the actual guarantees, interactions, ownership, constraints, rationale, costs, and provenance. It leaves signatures and private coding choices to implementation. |
+| Greenfield work has either settled local-only context or consequential local-versus-hosted constraints. | The sketches ground the actors and surrounding systems without investigating nonexistent code. |
+| A large or contested design has genuinely different viable shapes. | The grill starts kind `reply` without a picker round about whether to run it. The synthesis informs the question and no runner patch is applied. Check the runner count, comparison outcome, and any stop. |
+| Signed constraints leave only one viable shape. | The second sketch shows the constraint it fails and is not a picker option. The viable shape still gets a design question. |
+| Explicit answers settle the direction. | The Flow contains an Architecture brief with the guarantees, interactions, ownership, constraints, rationale, costs, rejected alternatives, and provenance before to-spec starts. No source implementation or scaffold is applied. |
 | No live answer is available, or an actual tool response reports cancellation, timeout, or an empty response. | The corresponding decision stays unresolved. Automatic picks and recommendations are not called user agreement. Preserve the actual response status rather than fabricating a timeout or cancellation. |
 
 5. Step `architecture-agreement-page`: For page proof, inspect the live Nuxt Flow in the browser. Verify the read-scoped `content` endpoint's Flow, revision, question identities and authored context, not just its shell. Check the assessment and agreement content, question-local Mermaid visuals, and answer provenance. Wait for the actual diagrams to finish drawing and retain any failure. Preserve source hashes, the ARIA snapshot and full-resolution lossless WebP through the Verify skill's Evidence step 5. An unavailable browser check is missing proof, not a passed visual review.

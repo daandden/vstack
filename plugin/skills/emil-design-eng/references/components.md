@@ -13,7 +13,7 @@ A subtle press scale gives immediate confirmation. Keep movement within the no-p
 
 @media (prefers-reduced-motion: no-preference) {
   .button {
-    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    transition: transform 160ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
   }
   .button:active {
     transform: scale(0.97);
@@ -42,7 +42,7 @@ CSS transitions retarget from the current interpolated value. They are a useful 
   .toast {
     opacity: 1;
     transform: translateY(0);
-    transition: opacity 200ms ease-out, transform 200ms ease-out;
+    transition: opacity 200ms var(--ease-out, ease-out), transform 200ms var(--ease-out, ease-out);
     @starting-style {
       opacity: 0;
       transform: translateY(100%);
@@ -71,7 +71,7 @@ For a one-time image reveal, an existing intersection observer or installed libr
 
 ## Stagger and component cohesion
 
-Use a short stagger, about 30–80ms between items, only when it helps an occasional group entrance. Do not block interaction or leave content invisible while a decorative entrance runs. Remove the stagger for reduced motion and repeated navigation.
+Use a short stagger only when it helps an occasional group entrance. Use skill://choreograph for non-uniform delays and the total group budget. Do not block interaction or leave content invisible while a decorative entrance runs. Remove the stagger for reduced motion and repeated navigation.
 
 Component quality depends on consistent defaults and reliable edge cases. For notifications, pause dismissal timers when appropriate while the document is hidden, preserve hover across gaps in a stack, and retain pointer capture during a drag. Apply these general lessons from Sonner without importing its library-specific API or installation workflow.
 

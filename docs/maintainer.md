@@ -159,9 +159,9 @@ The executing caller chooses visuals from each question's reader needs and choos
 
 ## Architecture agreement provenance
 
-At the current pstack Pin, `pstack/architect` contributes grounding, visual alternatives, screening, and rationale to `grill-with-docs` and shared `codebase-design`. Its merged register row does not ship a standalone architect command or its implementation phase. The Matt rows retain their existing owners, and DESIGN-IT-TWICE keeps its detailed-interface workflow. This feature moves no Pin.
+`pstack/architect` contributes grounding, two architectural sketches, and screening to `grill-with-docs` and shared `codebase-design`. The grill uses `compare-attempts` for a large or contested design and records agreement before to-spec. The merged row ships no standalone architect command or implementation phase. DESIGN-IT-TWICE keeps its detailed-interface workflow.
 
-[Architecture agreement belongs in the grill](adr/0053-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. Published main owns ADRs 0047 through 0052, so the architecture record moves to 0053 without changing its accepted bytes. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) retains the separate enrollment policy.
+[Architecture agreement belongs in the grill](adr/0053-architecture-agreement-belongs-in-the-grill.md) records the agreement and brief. [ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts](adr/20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts.md) amends when and how `grill-with-docs` compares designs. The [research note](research/architecture-design-in-grilling.md) is background, not policy. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) still governs enrollment.
 
 Published main's release notes through 9.0.4 remain intact. The architecture feature and reconciliation notes belong to 9.0.5, a compatibility Hand edit above both branch tips. The reconciliation preserves the UI upstream's Pin, register rows, and package metadata. It changes no approved target action or Disposition, and updates architecture references only for the ADR's number.
 
@@ -180,11 +180,11 @@ Each entry's `items:` list says which tree entries at the Pin are Upstream items
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c`. Its `skills/*` pattern discovers eighteen items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. The original ten retain their companion references and existing implementation, review, verification, and evidence owners. `choreograph` adds coordinated-motion guidance and recipes; `gestures` adds direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `64eb3deb9a5fbfa041faf783e0bc3fd635872e9c`. Its `skills/*` pattern discovers twenty items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. Existing implementation, review, verification, and evidence owners keep their roles. `choreograph` covers coordinated motion, and `gestures` covers direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
 
 `code-review` conditionally reaches motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md), as amended by [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md), governs applicability.
 
-All twelve selected items ship as adaptations. None remains deferred.
+None of the twelve adaptations is deferred. `ask-emil` is rejected as a second UI router. `learn-taste` merges its design-correction signals into `session`, which keeps its own approval and editing routes.
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains owned by the default branch; UI integration preserves its current version.
 
@@ -200,7 +200,7 @@ The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mo
 
 The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
 
-The Update to Matt `v1.3.2`, pstack `c742dd61706fbacc1b95f1a20b7b988cf096ce6c`, and the UI Pin above leaves css at `92d436ba1937d1b1407c47e35abb3e199eaace2e`. Motion shorthand performance findings apply before Motion 14.2; layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Browser acceleration still needs scenario-specific evidence.
+The Update moves pstack to `0b46ec399d55f2829e88822998f53b84944837d3` and emil to the UI Pin above. Matt stays at `v1.3.2` and css at `92d436ba1937d1b1407c47e35abb3e199eaace2e`. Motion shorthand performance findings apply before Motion 14.2; layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Browser acceleration still needs scenario-specific evidence.
 
 `interrogate` is an answer-only Utility skill, not a review axis or End state step. It uses three isolated Session-model adversaries by default, independently reruns findings, merges shared root causes, reports dropped counts, and applies no fix. Failed starts or missing isolation stop its review; only started failures drop out, with at least two substantive candidates required. Existing review and final Verifier ownership remains unchanged.
 
