@@ -132,6 +132,10 @@ _Avoid_: original branch, main checkout (for this), parent checkout
 omp's private copy of a checkout for one subagent, with its own repository metadata, so moving HEAD there leaves the Shared checkout alone. Its changes come back only as a patch or branch that the parent chooses to apply.
 _Avoid_: sandbox, worktree (for this), isolated checkout
 
+**Merger**:
+The subagent that lands one patch on implement-spec's integration branch. It commits a ticket or stages a non-maintain review-fix wave for the later shared commit. It owns path scope, conflict resolution, and checks on unproven trees. Content review belongs to code-review.
+_Avoid_: merge agent, lander, reviewer (for this)
+
 **Headless run**:
 A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the Session model.
 _Avoid_: eval subagent, runner (unqualified)
