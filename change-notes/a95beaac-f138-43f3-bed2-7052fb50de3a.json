@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Record explicitly submitted native ask values by question, preserve Other words and selected-option Note evidence, and keep earlier Flow answers unchanged (#574)."
+  ]
+}

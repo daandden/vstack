@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep Flow links and Picker presence tied to stock omp forms in ordinary ask and Eval, and to Ratchet's native approval gate. Remove the retired Picker's extension routes (#576)."
+  ]
+}

@@ -9,6 +9,7 @@ import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
 import { cleanBrief, preprocessTinyMessage } from "./prompt-cleaner.ts";
+import { AsyncLocalStorage } from "node:async_hooks";
 import * as fs from "node:fs";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -64,7 +65,7 @@ function askControlNames(html: unknown): { names: string[]; duplicates: Set<stri
     if (names.has(name)) duplicates.add(name);
     else names.add(name);
   }
-  // Inspect the picker's form root with its DOM parser because parseHtmlForm drops nameless hidden inputs.
+  // parseHtmlForm drops nameless hidden inputs.
   const { document } = parseHTML(html);
   const form = document.querySelector("form") ?? document;
   for (const input of form.querySelectorAll("input")) {
@@ -77,14 +78,16 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
   type Bound = { binding: { flow: string; stage: string } | null; live?: { state: string; url?: string; error?: string } };
   const interactive = (ctx: ExtensionContext) => ctx.mode === "tui" && ctx.hasUI && ctx.agent.kind === "main";
   const panelKey = "vstack-flow-panel";
-  const pickers = new Set<symbol>();
-  const presence = new Map<symbol, () => void>();
+  type Panel = { ctx: ExtensionContext; ids?: readonly string[]; readError?: string };
+  type WrappedDialog = { panel?: Panel; signal?: AbortSignal };
+  const dialogs = new Set<WrappedDialog>();
+  const firstDialog = () => dialogs.values().next().value;
   let presenceWrites: Promise<unknown> = Promise.resolve();
   const writePresence = (write: () => Promise<unknown>) => {
     presenceWrites = presenceWrites.then(write).catch(() => {});
     return presenceWrites;
   };
-  const startPresence = (ctx: ExtensionContext, picker: symbol, ids: readonly string[]) => {
+  const startPresence = (ctx: ExtensionContext, ids: readonly string[]) => {
     const identity = flowIdentity(ctx);
     const token = randomUUID();
     let closed = false;
@@ -98,17 +101,19 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
         if (!closed) { timer = setTimeout(write, 10_000); timer.unref(); }
       });
     };
-    presence.set(picker, () => {
+    write();
+    return () => {
       closed = true;
       clearTimeout(timer);
       void writePresence(() => flowPage(pi, ctx, ["picker", "clear", "--picker", token], identity));
-    });
-    write();
+    };
   };
+  let clearPresence: (() => void) | undefined;
   let shownIn: ExtensionContext | undefined;
-  const showPanel = async (ctx: ExtensionContext, picker: symbol, ids: readonly string[] = [], readError?: string) => {
-    pickers.add(picker);
-    startPresence(ctx, picker, ids);
+  const showPanel = async (dialog: WrappedDialog) => {
+    if (!dialog.panel || dialog.signal?.aborted) return;
+    const { ctx, ids = [], readError } = dialog.panel;
+    clearPresence = startPresence(ctx, ids);
     let text: string;
     if (readError !== undefined) {
       text = `Flow question lookup failed: ${readError}`;
@@ -135,7 +140,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     const { Markdown } = await import("@oh-my-pi/pi-tui");
     const { OverlayPanel } = await import("@oh-my-pi/pi-tui/chrome");
     const { getMarkdownTheme } = await import("@oh-my-pi/pi-tui/theme");
-    if (!pickers.has(picker)) return;
+    if (firstDialog() !== dialog) return;
     shownIn = ctx;
     ctx.ui.setWidget(panelKey, () => {
       const panel = new OverlayPanel("Flow page", "vstack.flow-panel");
@@ -143,111 +148,110 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
       return panel;
     }, { placement: "aboveEditor" });
   };
-  const hidePanel = (picker?: symbol) => {
-    const tokens = picker === undefined ? [...pickers] : [picker];
-    for (const token of tokens) {
-      presence.get(token)?.();
-      presence.delete(token);
-      pickers.delete(token);
-    }
-    if (pickers.size) return;
+  const hidePanel = () => {
+    clearPresence?.();
+    clearPresence = undefined;
     shownIn?.ui.setWidget(panelKey, undefined);
     shownIn = undefined;
   };
-  type ReadyAsk = { state: "ready"; names: string[]; scope?: object; readError?: string };
-  type OpenAsk = { state: "open"; picker: symbol };
-  type AskCall = { state: "checking" } | { state: "denied" } | ReadyAsk | OpenAsk;
+  // omp queues the native dialogs. Track their order without delaying the native calls.
+  const trackDialog = async <T>(invoke: () => Promise<T>, signal?: AbortSignal, panel?: Panel): Promise<T> => {
+    const dialog = { signal, panel };
+    dialogs.add(dialog);
+    if (firstDialog() === dialog) void showPanel(dialog);
+    try {
+      return await invoke();
+    } finally {
+      const wasFirst = firstDialog() === dialog;
+      dialogs.delete(dialog);
+      if (wasFirst) {
+        hidePanel();
+        const next = firstDialog();
+        if (next) void showPanel(next);
+      }
+    }
+  };
+  type ReadyAsk = { state: "ready" | "started"; html: unknown; names: string[]; scope?: object; readError?: string };
+  type AskCall = { state: "checking" | "open" } | ReadyAsk;
   const calls = new Map<string, AskCall>();
-  const closeAsk = (id: string) => {
-    const call = calls.get(id);
-    calls.delete(id);
-    if (call?.state === "open") hidePanel(call.picker);
-  };
-  const openAsk = (id: string, ctx: ExtensionContext, names: string[], readError?: string) => {
-    const call: OpenAsk = { state: "open", picker: Symbol(id) };
-    calls.set(id, call);
-    void showPanel(ctx, call.picker, names, readError);
-    return call;
-  };
   pi.on("tool_call", async (event: ToolCallEvent, ctx: ExtensionContext) => {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
     const { toolCallId } = event;
-    closeAsk(toolCallId);
     const checking: AskCall = { state: "checking" };
     calls.set(toolCallId, checking);
     const scope = toolApprovalScopeToken();
-    const { names, duplicates, hidden } = askControlNames(event.input.html);
-    const ready: ReadyAsk = { state: "ready", names, scope };
-    let current: { binding: null } | { binding: { stage: string }; refusals: string[] };
+    const { html } = event.input;
+    const { names, duplicates, hidden } = askControlNames(html);
+    const ready: ReadyAsk = { state: "ready", html, names, scope };
+    let current: { binding: null } | { binding: { stage: string }; refusals: string[] } | undefined;
     try {
       current = await flowPage(pi, ctx, ["ask-status"], flowIdentity(ctx), names);
     } catch (error) {
       ready.readError = error instanceof Error ? error.message : String(error);
-      if (calls.get(toolCallId) === checking) calls.set(toolCallId, ready);
-      return;
     }
-    if (!current.binding) {
+    if (current?.binding === null) {
       if (calls.get(toolCallId) === checking) calls.delete(toolCallId);
       return;
     }
-    const reasons = current.refusals;
+    const reasons = current?.refusals ?? [];
     for (const name of duplicates) reasons.push(`${JSON.stringify(name)}: more than one field uses this name`);
     for (const name of hidden) reasons.push(`${name ? JSON.stringify(name) : "unnamed input"}: hidden controls are not permitted`);
     if (!names.length && !hidden.size) reasons.push("the form has no controls");
     if (calls.get(toolCallId) === checking) {
       if (!reasons.length) calls.set(toolCallId, ready);
-      // The loop emits a synthetic start for a denial. The wrapper rejects without one.
-      else if (!scope) calls.set(toolCallId, { state: "denied" });
       else calls.delete(toolCallId);
     }
     if (!reasons.length) return;
     return {
       block: true,
-      reason: `Flow ask refused for ${current.binding.stage}: ${reasons.join("; ")}. Publish the round and pass the receipt's ask.html unchanged to ask. For a re-ask, publish with again.`,
+      reason: `Flow ask refused${current ? ` for ${current.binding.stage}` : ""}: ${reasons.join("; ")}. Publish the round and pass the receipt's ask.html unchanged to ask. For a re-ask, publish with again.`,
     };
   });
   pi.on("tool_execution_start", (event, ctx) => {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
     const call = calls.get(event.toolCallId);
-    if (call?.state === "denied") {
-      calls.delete(event.toolCallId);
-      return;
-    }
-    if (call?.state === "open") return;
-    if (call?.state === "ready") openAsk(event.toolCallId, ctx, call.names, call.readError);
-    else openAsk(event.toolCallId, ctx, askControlNames((event.args as { html?: unknown } | undefined)?.html).names);
+    if (call?.state === "ready") call.state = "started";
   });
   const finishAsk = (event: { toolName: string; toolCallId: string }) => {
-    if (event.toolName === "ask") closeAsk(event.toolCallId);
+    if (event.toolName === "ask") calls.delete(event.toolCallId);
   };
   pi.on("tool_execution_end", finishAsk);
   pi.on("tool_result", finishAsk);
   const resetPickers = () => {
     calls.clear();
+    dialogs.clear();
     hidePanel();
   };
   pi.on("agent_end", resetPickers);
   type Dialog = NonNullable<ExtensionContext["ui"]["askDialog"]>;
-  type Custom = ExtensionContext["ui"]["custom"];
   type FormDialog = NonNullable<ExtensionContext["ui"]["formDialog"]>;
-  type Route = { ctx: ExtensionContext; depth: number; enabled: boolean; wrappers: Set<Dialog | Custom | FormDialog> };
-  const duringScopedAsk = <T>(route: Route, dialog: () => Promise<T>): Promise<T> => {
+  type Route = { ctx: ExtensionContext; enabled: boolean; wrappers: Set<Dialog | FormDialog> };
+  // An integration can call an earlier wrapper in the same invocation.
+  const invoking = new AsyncLocalStorage<Route>();
+  const duringForm = (route: Route, dialog: FormDialog, args: Parameters<FormDialog>): ReturnType<FormDialog> => {
+    const { ctx } = route;
+    const invoke = () => dialog.apply(ctx.ui, args);
+    const signal = args[1]?.signal;
+    if (!route.enabled || !interactive(ctx) || signal?.aborted || invoking.getStore() === route) return invoke();
+    const invokeWrapped = () => invoking.run(route, invoke);
     const scope = toolApprovalScopeToken();
-    if (scope && route.enabled && interactive(route.ctx)) {
-      // Eval skips the loop start. The wrapper's scope ties this post-approval dialog to its guard result.
-      for (const [id, pending] of calls) {
-        if (pending.state !== "ready" || pending.scope !== scope) continue;
-        const open = openAsk(id, route.ctx, pending.names, pending.readError);
-        return (async () => {
-          try {
-            return await dialog();
-          } finally {
-            if (calls.get(id) === open) closeAsk(id);
-          }
-        })();
-      }
+    for (const [id, pending] of calls) {
+      if (pending.state !== "ready" && pending.state !== "started") continue;
+      if (pending.html !== args[0]) continue;
+      const matchesScope = scope !== undefined && (pending.scope === undefined || pending.scope === scope);
+      const startedOutsideScope = pending.scope === undefined && pending.state === "started";
+      if (!matchesScope && !startedOutsideScope) continue;
+      const open: AskCall = { state: "open" };
+      calls.set(id, open);
+      return (async () => {
+        try {
+          return await trackDialog(invokeWrapped, signal, { ctx, ids: pending.names, readError: pending.readError });
+        } finally {
+          if (calls.get(id) === open) calls.delete(id);
+        }
+      })();
     }
-    return dialog();
+    return trackDialog(invokeWrapped, signal);
   };
   const routeKey = Symbol("vstack.flow-questions");
   let active: Route | undefined;
@@ -255,43 +259,27 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     const own = (key: PropertyKey) => Object.getOwnPropertyDescriptor(ctx.ui, key)?.value;
     let route = own(routeKey) as Route | undefined;
     if (!route) {
-      route = { ctx, depth: 0, enabled: true, wrappers: new Set() };
+      route = { ctx, enabled: true, wrappers: new Set() };
       Object.defineProperty(ctx.ui, routeKey, { value: route, configurable: true });
     }
     route.ctx = ctx;
     route.enabled = true;
     active = route;
     const state = route;
-    const custom = own("custom") as Custom | undefined;
-    if (typeof custom === "function" && !state.wrappers.has(custom)) {
-      const wrapped: Custom = <T>(...args: Parameters<Custom>) =>
-        duringScopedAsk(state, () => custom.apply(ctx.ui, args) as Promise<T>);
-      state.wrappers.add(wrapped);
-      ctx.ui.custom = wrapped;
-    }
     const form = own("formDialog") as FormDialog | undefined;
     if (typeof form === "function" && !state.wrappers.has(form)) {
-      const wrapped: FormDialog = (...args: Parameters<FormDialog>) =>
-        duringScopedAsk(state, () => form.apply(ctx.ui, args));
+      const wrapped: FormDialog = (...args) => duringForm(state, form, args);
       state.wrappers.add(wrapped);
       ctx.ui.formDialog = wrapped;
     }
     const original = own("askDialog") as Dialog | undefined;
     if (typeof original !== "function" || route.wrappers.has(original)) return;
     const wrapped: Dialog = async (questions, options) => {
-      if (!state.enabled || state.depth || !interactive(state.ctx)) return original.call(ctx.ui, questions, options);
-      const owned: symbol[] = [];
-      for (const call of calls.values()) if (call.state === "open") owned.push(call.picker);
-      const picker = owned.length ? undefined : Symbol("askDialog");
-      if (picker) owned.push(picker);
-      state.depth++;
-      if (picker) void showPanel(state.ctx, picker);
-      try {
-        return await original.call(ctx.ui, questions, options);
-      } finally {
-        state.depth--;
-        for (const token of owned) hidePanel(token);
-      }
+      const current = state.ctx;
+      const invoke = () => original.call(current.ui, questions, options);
+      const signal = options?.signal;
+      if (!state.enabled || !interactive(current) || signal?.aborted || invoking.getStore() === state) return invoke();
+      return trackDialog(() => invoking.run(state, invoke), signal, { ctx: current });
     };
     state.wrappers.add(wrapped);
     ctx.ui.askDialog = wrapped;

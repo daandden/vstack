@@ -195,9 +195,9 @@ function holdLookups(h: ReturnType<typeof fakeHost>) {
   };
 }
 
-async function until(condition: () => boolean, timeout = 10_000) {
+async function until(condition: () => boolean | Promise<boolean>, timeout = 10_000) {
   const end = Date.now() + timeout;
-  while (!condition()) {
+  while (!(await condition())) {
     if (Date.now() > end) throw new Error("Timed out waiting for the Flow panel");
     await Bun.sleep(20);
   }
@@ -230,12 +230,145 @@ function askForm(...ids: string[]) {
   return { html: `<form>${fields.join("")}</form>` };
 }
 
+function nativeForms(h: ReturnType<typeof fakeHost>) {
+  let dialog!: ReturnType<typeof Promise.withResolvers<unknown>>;
+  h.ctx.ui.formDialog = () => (dialog = Promise.withResolvers<unknown>()).promise;
+  return async (id: string, input: { html: string }) => {
+    const call = { toolName: "ask", toolCallId: id };
+    expect(await h.emit("tool_call", { ...call, input })).toEqual([undefined]);
+    await h.emit("tool_execution_start", { ...call, args: input });
+    const settled = h.ctx.ui.formDialog(input.html);
+    const { resolve, reject } = dialog;
+    return { call, settled, fail: reject, close: (value?: unknown) => { resolve(value); return settled; } };
+  };
+}
+
+test("overlapping native asks keep the Flow link and presence on the form omp presents", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Overlapping asks", "--skill", "implement", "--session", "overlap"]);
+  const receipt = await publishQuestions(w, "overlap", "first", "second");
+  const h = w.host("overlap");
+  const ui = panelUI(h);
+  let presented: string | undefined;
+  let tail = Promise.resolve();
+  const forms = new Map<string, ReturnType<typeof Promise.withResolvers<void>>>();
+  h.ctx.ui.formDialog = (html: string) => {
+    const form = Promise.withResolvers<void>();
+    forms.set(html, form);
+    return tail = tail.then(() => {
+      presented = html;
+      return form.promise;
+    });
+  };
+  await h.emit("session_start");
+  const lookups = holdLookups(h);
+  const start = async (ref: string) => {
+    const input = askForm(receipt.refs[ref]);
+    const call = { toolName: "ask", toolCallId: ref };
+    expect(await h.emit("tool_call", { ...call, input })).toEqual([undefined]);
+    await h.emit("tool_execution_start", { ...call, args: input });
+    const settled = h.ctx.ui.formDialog(input.html);
+    return { ...input, settled };
+  };
+  const first = await start("first");
+  const firstUrl = `${opened.live.url}#${receipt.refs.first}`;
+  const secondUrl = `${opened.live.url}#${receipt.refs.second}`;
+  const target = () => w.ok(["target", "--session", "overlap"]);
+  let second: Awaited<ReturnType<typeof start>> | undefined;
+  try {
+    await until(() => lookups.held() === 1);
+    lookups.release(0);
+    await until(() => ui.panel()?.includes(firstUrl) ?? false);
+    await until(async () => (await target()).target === firstUrl);
+    second = await start("second");
+    expect(lookups.held()).toBe(1);
+    expect(presented).toBe(first.html);
+    expect(await target()).toMatchObject({ target: firstUrl, picker: expect.any(String) });
+    expect(ui.panel()).toContain(firstUrl);
+    forms.get(first.html)!.resolve();
+    await first.settled;
+    expect(presented).toBe(second.html);
+    await until(() => lookups.held() === 2);
+    lookups.release(1);
+    await until(() => ui.panel()?.includes(secondUrl) ?? false);
+    await until(async () => (await target()).target === secondUrl);
+  } finally {
+    for (const form of forms.values()) form.resolve();
+    await Promise.all([first.settled, second?.settled]);
+    lookups.release();
+  }
+  expect(ui.panel()).toBeUndefined();
+  await until(async () => (await target()).picker === null);
+});
+
+test.each(["cancelled", "failed"])("a queued form takes over after a %s Ratchet dialog", async outcome => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Ratchet then ask", "--skill", "tune-llm-flow", "--session", "ratchet-overlap"]);
+  const receipt = await publishQuestions(w, "ratchet-overlap", "next");
+  const h = w.host("ratchet-overlap");
+  const ui = panelUI(h);
+  const approval = Promise.withResolvers<undefined>();
+  const form = Promise.withResolvers<undefined>();
+  let formPresented = false;
+  h.ctx.ui.askDialog = () => approval.promise;
+  h.ctx.ui.formDialog = async () => {
+    await approval.promise.catch(() => {});
+    formPresented = true;
+    return form.promise;
+  };
+  await h.emit("session_start");
+  const lookups = holdLookups(h);
+  const approvalResult = h.ctx.ui.askDialog([{ id: "approval", question: "Approve?", options: [{ label: "Approve" }] }]);
+  void approvalResult.catch(() => {});
+  const stageUrl = `${opened.live.url}#${opened.stage}`;
+  const questionUrl = `${opened.live.url}#${receipt.refs.next}`;
+  const target = () => w.ok(["target", "--session", "ratchet-overlap"]);
+  let formResult: Promise<unknown> | undefined;
+  try {
+    await until(() => lookups.held() === 1);
+    lookups.release(0);
+    await until(() => ui.panel()?.includes(stageUrl) ?? false);
+    await until(async () => (await target()).picker !== null);
+    const before = await target();
+    expect(before.target).toBe(stageUrl);
+    const call = { toolName: "ask", toolCallId: "queued", input: { html: receipt.ask.html } };
+    expect(await h.emit("tool_call", call)).toEqual([undefined]);
+    await h.emit("tool_execution_start", { ...call, args: call.input });
+    formResult = h.ctx.ui.formDialog(call.input.html);
+    expect(formPresented).toBe(false);
+    expect(ui.panel()).toContain(stageUrl);
+    expect(await target()).toMatchObject({ target: stageUrl, picker: before.picker });
+    expect(lookups.held()).toBe(1);
+    if (outcome === "failed") {
+      approval.reject(new Error("Ratchet dialog failed"));
+      await expect(approvalResult).rejects.toThrow("Ratchet dialog failed");
+    } else {
+      approval.resolve(undefined);
+      expect(await approvalResult).toBeUndefined();
+    }
+    await until(() => formPresented && lookups.held() === 2);
+    lookups.release(1);
+    await until(() => ui.panel()?.includes(questionUrl) ?? false);
+    await until(async () => (await target()).target === questionUrl);
+    expect((await target()).picker).not.toBe(before.picker);
+  } finally {
+    approval.resolve(undefined);
+    form.resolve(undefined);
+    await Promise.allSettled([approvalResult, formResult]);
+    lookups.release();
+  }
+  expect(ui.panel()).toBeUndefined();
+  await until(async () => (await target()).picker === null);
+});
+
 test("a renamed Flow control is refused before omp's synthetic start can show a panel or presence", async () => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Guarded handoff", "--skill", "implement", "--session", "strict"]);
   const receipt = await publishQuestions(w, "strict", "first");
   const h = w.host("strict");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const call = { toolName: "ask", toolCallId: "renamed" };
   const args = { html: receipt.ask.html.replaceAll(`name="${receipt.refs.first}"`, 'name="renamed"') };
   expect(await h.emit("tool_call", { ...call, input: args })).toEqual([{
@@ -250,11 +383,10 @@ test("a renamed Flow control is refused before omp's synthetic start can show a 
   expect(ui.widgets).toEqual([]);
 
   const valid = { html: receipt.ask.html };
-  expect(await h.emit("tool_call", { ...call, input: valid })).toEqual([undefined]);
-  await h.emit("tool_execution_start", { ...call, args: valid });
+  const validForm = await openForm(call.toolCallId, valid);
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain(`<${opened.live.url}#${receipt.refs.first}>`);
-  await h.emit("tool_execution_end", call);
+  await validForm.close();
   expect(ui.panel()).toBeUndefined();
 });
 
@@ -307,27 +439,52 @@ test("a nameless hidden input is refused beside a visible askable question", asy
   }
 });
 
-test("a failed Flow read lets the question reach the picker and shows that error beside it", async () => {
+test.each([
+  ["hidden", "<input type=hidden>", "hidden controls are not permitted"],
+  ["duplicate", '<input type=text name="QUESTION">', "more than one field uses this name"],
+  ["empty", "", "the form has no controls"],
+])("a Flow read fault does not admit a %s form", async (kind, extra, reason) => {
+  const w = setup(true);
+  await w.ok(["open", "--title", "Malformed form", "--skill", "implement", "--session", "fault"]);
+  const receipt = await publishQuestions(w, "fault", "first");
+  const h = w.host("fault");
+  const exec = h.pi.exec;
+  h.pi.exec = async (...args: any[]) => args[1][1] === "ask-status"
+    ? { code: 1, stdout: "", stderr: "fixture read failed", killed: false }
+    : exec(...args);
+  const ui = panelUI(h);
+  await h.emit("session_start");
+  const html = kind === "empty" ? "<form></form>" :
+    receipt.ask.html.replace("</form>", `${extra.replace("QUESTION", receipt.refs.first)}</form>`);
+  expect(await h.emit("tool_call", { toolName: "ask", toolCallId: kind, input: { html } })).toEqual([{
+    block: true, reason: expect.stringContaining(reason),
+  }]);
+  expect(ui.widgets).toEqual([]);
+});
+
+test("a read fault on a current receipt shows the read error for the native form's lifetime", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Failed read", "--skill", "implement", "--session", "broken"]);
+  const receipt = await publishQuestions(w, "broken", "recovery");
+  const current = await w.ok(["ask-status", "--session", "broken", receipt.refs.recovery]);
+  expect(current.refusals).toEqual([]);
   const h = w.host("broken");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const exec = h.pi.exec;
   const error = "could not read the stored Flow for this question";
   h.pi.exec = async (...args: any[]) => args[1][1] === "ask-status"
     ? { code: 1, stdout: "", stderr: error, killed: false }
     : exec(...args);
-  const call = { toolName: "ask", toolCallId: "recovery" };
-  const args = askForm("recovery");
-  expect(await h.emit("tool_call", { ...call, input: args })).toEqual([undefined]);
-  await h.emit("tool_execution_start", { ...call, args });
+  const form = await openForm("recovery", { html: receipt.ask.html });
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain(error);
-  await h.emit("tool_execution_end", call);
+  await form.close();
   expect(ui.panel()).toBeUndefined();
 });
 
-test.each([false, true])("a bridged ask gets its own picker panel (failed Flow read: %s)", async (failedRead) => {
+test.each([false, true])("Eval links only the guarded native form and clears its panel on settlement (failed Flow read: %s)", async (failedRead) => {
   const w = setup();
   const opened = await w.ok(["open", "--title", "Eval question", "--skill", "implement", "--session", "eval-picker"]);
   const receipt = await publishQuestions(w, "eval-picker", "first");
@@ -340,29 +497,32 @@ test.each([false, true])("a bridged ask gets its own picker panel (failed Flow r
       ? { code: 1, stdout: "", stderr: error, killed: false }
       : exec(...args);
   }
+  const displayed = Promise.withResolvers<void>();
   const picker = Promise.withResolvers<string>();
-  h.ctx.ui.custom = (factory: () => unknown) => factory();
+  let nativeFormCalls = 0;
+  h.ctx.ui.custom = () => displayed.promise;
+  h.ctx.ui.formDialog = () => ++nativeFormCalls === 1 ? Promise.resolve("unrelated") : picker.promise;
   await h.emit("session_start");
   await withToolApprovalScope(async () => {
     const input = { html: receipt.ask.html };
     const call = { toolName: "ask", toolCallId: "js-ask-bridged", input };
     expect(await h.emit("tool_call", call)).toEqual([undefined]);
-    expect(await withToolApprovalScope(() => h.ctx.ui.custom(() => "unrelated"))).toBe("unrelated");
+    expect(await withToolApprovalScope(() => h.ctx.ui.formDialog(input.html))).toBe("unrelated");
     expect(ui.widgets).toEqual([]);
+    const unrelated = h.ctx.ui.custom(() => undefined);
+    try {
+      expect(await until(() => ui.shown() > 0, 1000).then(() => "shown", () => "absent")).toBe("absent");
+    } finally {
+      displayed.resolve();
+      await unrelated;
+    }
 
-    const result = h.ctx.ui.custom(() => picker.promise);
+    const result = h.ctx.ui.formDialog(input.html);
     const body = failedRead ? error : `<${opened.live.url}#${receipt.refs.first}>`;
     await until(() => ui.panel()?.includes(body) === true, 2000);
-    if (failedRead) {
-      picker.resolve("closed");
-      expect(await result).toBe("closed");
-      expect(ui.panel()).toBeUndefined();
-    }
-    await h.emit("tool_result", { ...call, isError: failedRead });
-    expect(ui.panel()).toBeUndefined();
     picker.resolve("closed");
     expect(await result).toBe("closed");
-    expect(await h.ctx.ui.custom(() => "later")).toBe("later");
+    expect(ui.panel()).toBeUndefined();
     expect(ui.shown()).toBe(1);
   });
 });
@@ -429,24 +589,28 @@ test("an eval refusal without execution events does not keep a stale denial acro
   const first = await publishQuestions(w, "eval", "first");
   const h = w.host("eval");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const id = { toolName: "ask", toolCallId: "eval-id" };
-  expect(await h.emit("tool_call", { ...id, input: askForm("unpublished") })).toEqual([{
-    block: true, reason: expect.stringContaining('"unpublished": not a published question'),
-  }]);
+  await withToolApprovalScope(async () => {
+    expect(await h.emit("tool_call", { ...id, input: askForm("unpublished") })).toEqual([{
+      block: true, reason: expect.stringContaining('"unpublished": not a published question'),
+    }]);
+  });
   await h.emit("agent_end");
   const args = { html: first.ask.html };
-  await h.emit("tool_execution_start", { ...id, args });
+  const form = await openForm(id.toolCallId, args);
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain(`<${opened.live.url}#${first.refs.first}>`);
-  await h.emit("tool_execution_end", id);
+  await form.close();
   expect(ui.panel()).toBeUndefined();
 
   const retry = { ...id, toolCallId: "lost-picker" };
   for (const isError of [true, false]) {
-    expect(await h.emit("tool_call", { ...retry, input: args })).toEqual([undefined]);
-    await h.emit("tool_execution_start", { ...retry, args });
+    const pending = await openForm(retry.toolCallId, args);
     await until(() => ui.panel() !== undefined);
     await h.emit("tool_execution_end", { ...retry, isError });
+    await pending.close();
     expect(ui.panel()).toBeUndefined();
   }
 });
@@ -457,10 +621,12 @@ test("an HTML ask links the Flow panel to the question named by its first contro
   const receipt = await publishQuestions(w, "html", "first");
   const h = w.host("html");
   const ui = panelUI(h);
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "html", args: askForm(receipt.refs.first) });
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
+  const form = await openForm("html", askForm(receipt.refs.first));
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain(`<${opened.live.url}#${receipt.refs.first}>`);
-  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "html" });
+  await form.close();
 });
 
 test("an ordinary ask links to its receipt question rather than the newest Stage", async () => {
@@ -473,14 +639,16 @@ test("an ordinary ask links to its receipt question rather than the newest Stage
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("asked");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const input = askForm(receipt.refs.asked);
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "targeted", args: input });
+  const form = await openForm("targeted", input);
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain(`<${current.live.url}#${receipt.ask.questions[0].id}>`);
   expect(input).toEqual(askForm(receipt.refs.asked));
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
-  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "targeted" });
+  await form.close();
   expect(ui.panel()).toBeUndefined();
 });
 
@@ -493,40 +661,29 @@ test("a multi-question picker links to its first asked question, not the first o
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("ordered");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const ids = [receipt.refs.first, receipt.refs.second];
   for (const [first, second] of [ids, ids.toReversed()]) {
-    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "multi", args: askForm("unrelated", first, second) });
+    const form = await openForm("multi", askForm(first, second));
     await until(() => ui.panel() !== undefined);
     expect(ui.panel()).toContain(`<${current.live.url}#${first}>`);
     expect(ui.panel()).not.toContain(`#${second}`);
-    await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "multi" });
+    await form.close();
     expect(ui.panel()).toBeUndefined();
   }
 });
 
-test("an ask with no question id in the bound Flow links to the bound Stage", async () => {
+test("a stray ask execution event shows no panel without a guarded native form", async () => {
   const w = setup();
-  const opened = await w.ok(["open", "--title", "Stage fallback", "--skill", "implement", "--session", "fallback"]);
-  const receipt = await publishQuestions(w, "fallback", "local");
-  await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "newer"]);
-  await w.ok(["open", "--title", "Unrelated Flow", "--skill", "implement", "--session", "foreign"]);
-  const foreign = await publishQuestions(w, "foreign", "foreign-first", "foreign-second");
-  const current = await w.ok(["bound", "--session", "fallback"]);
-  expect(current.live).toMatchObject({ state: "serving" });
-  const h = w.host("fallback");
+  await w.ok(["open", "--title", "Stray start", "--skill", "implement", "--session", "stray"]);
+  const h = w.host("stray");
   const ui = panelUI(h);
-  for (const [index, args] of [
-    askForm(), askForm("unrelated"), askForm(opened.stage),
-    askForm("question-999"), askForm(foreign.refs["foreign-second"]),
-  ].entries()) {
-    const toolCallId = `fallback-${index}`;
-    await h.emit("tool_execution_start", { toolName: "ask", toolCallId, args });
-    await until(() => ui.panel() !== undefined);
-    expect(ui.panel()).toContain(`<${current.live.url}#${opened.stage}>`);
-    expect(ui.panel()).not.toContain(`#${receipt.ask.questions[0].id}`);
-    await h.emit("tool_execution_end", { toolName: "ask", toolCallId });
-    expect(ui.panel()).toBeUndefined();
-  }
+  await h.emit("session_start");
+  const before = h.execCalls.length;
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "stray", args: askForm("unrelated") });
+  expect(h.execCalls).toHaveLength(before);
+  expect(ui.widgets).toEqual([]);
 });
 
 test("a bound ask shows the Flow panel above the composer while it runs, without holding the picker", async () => {
@@ -537,14 +694,13 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("panel");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const lookups = holdLookups(h);
   const input = { html: receipt.ask.html };
-  expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "ask-1", input })).toEqual([undefined]);
-  lookups.release();
-  await Bun.sleep(300);
-  expect(ui.shown()).toBe(0);
-  const start = { toolName: "ask", toolCallId: "ask-1", args: input };
-  expect(await returnsBefore(h.emit("tool_execution_start", start))).toBe("returned");
+  const pending = openForm("ask-1", input);
+  expect(await returnsBefore(pending)).toBe("returned");
+  const form = await pending;
   expect(ui.panel()).toBeUndefined();
   await until(() => lookups.held() === 1);
   lookups.release();
@@ -554,7 +710,7 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   expect(panel).toContain(current.live.url);
   expect(panel).not.toContain("Enter or Esc");
   expect(ui.widgets.filter(widget => widget.content).map(widget => widget.options)).toEqual([{ placement: "aboveEditor" }]);
-  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "ask-1", isError: false });
+  await form.close();
   expect(ui.panel()).toBeUndefined();
   expect(new Set(ui.widgets.map(widget => widget.key)).size).toBe(1);
   expect(input).toEqual({ html: receipt.ask.html });
@@ -562,14 +718,66 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   expect(h.saved).toEqual([]);
 });
 
+test("an ordinary native form owns the Flow panel and presence before tool completion", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Native form", "--skill", "implement", "--session", "native"]);
+  const receipt = await publishQuestions(w, "native", "first", "second");
+  const h = w.host("native");
+  const ui = panelUI(h);
+  let submit!: () => void;
+  h.ctx.ui.formDialog = () => new Promise<void>(resolve => { submit = resolve; });
+  await h.emit("session_start");
+
+  const target = () => w.ok(["target", "--session", "native"]);
+  const stageUrl = `${opened.live.url}#${opened.stage}`;
+  const questionUrl = `${opened.live.url}#${receipt.refs.first}`;
+  const call = { toolName: "ask", toolCallId: "native-form" };
+  const args = { html: receipt.ask.html };
+
+  const history = h.ctx.ui.formDialog(args.html);
+  expect(await target()).toMatchObject({ target: stageUrl, picker: null });
+  expect(ui.panel()).toBeUndefined();
+  submit();
+  await history;
+
+  expect(await h.emit("tool_call", { ...call, input: args })).toEqual([undefined]);
+  await h.emit("tool_execution_start", { ...call, args });
+  expect(await target()).toMatchObject({ target: stageUrl, picker: null });
+  expect(ui.panel()).toBeUndefined();
+
+  const pending = h.ctx.ui.formDialog(args.html);
+  await until(() => ui.panel()?.includes(questionUrl) ?? false);
+  const presenceUrl = new URL("presence", opened.live.url);
+  const presence = async () => (await (await fetch(presenceUrl)).json() as { presences: unknown[] }).presences;
+  const waitPresence = async (count: number) => {
+    const deadline = Date.now() + 5000;
+    let rows = await presence();
+    while (rows.length !== count && Date.now() < deadline) {
+      await Bun.sleep(20);
+      rows = await presence();
+    }
+    return rows;
+  };
+  expect(await waitPresence(1)).toMatchObject([{ session: "native", questions: [receipt.refs.first, receipt.refs.second] }]);
+  submit();
+  await pending;
+  expect(ui.panel()).toBeUndefined();
+  expect(await waitPresence(0)).toEqual([]);
+  expect(await target()).toMatchObject({ target: stageUrl, picker: null });
+  await h.emit("tool_execution_end", call);
+});
+
 test("a picker that closes before its link lookup finishes leaves no panel behind", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Fast answer", "--skill", "implement", "--session", "fast"]);
+  const receipt = await publishQuestions(w, "fast", "first");
   const h = w.host("fast");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const lookups = holdLookups(h);
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "fast", args: {} });
-  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "fast", isError: true });
+  const form = await openForm("fast", { html: receipt.ask.html });
+  await form.close();
   lookups.release();
   await until(() => lookups.finished() === 1);
   await Bun.sleep(100);
@@ -581,19 +789,22 @@ test("a late lookup from a closed picker never replaces the panel of a call that
   const w = setup();
   await w.ok(["open", "--title", "Old Flow", "--skill", "implement", "--session", "reuse-a"]);
   await w.ok(["open", "--title", "New Flow", "--skill", "implement", "--session", "reuse-b"]);
+  const a = await publishQuestions(w, "reuse-a", "first");
+  const b = await publishQuestions(w, "reuse-b", "first");
   const old = await w.ok(["bound", "--session", "reuse-a"]);
   const current = await w.ok(["bound", "--session", "reuse-b"]);
   expect(old.live).toMatchObject({ state: "serving" });
   expect(current.live).toMatchObject({ state: "serving" });
   const h = w.host("reuse-a");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const lookups = holdLookups(h);
-  const call = { toolName: "ask", toolCallId: "same", args: {} };
-  await h.emit("tool_execution_start", call);
-  await h.emit("tool_execution_end", { ...call, isError: true });
+  const first = await openForm("same", { html: a.ask.html });
+  await first.close();
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "reuse-b" };
   await h.emit("session_switch");
-  await h.emit("tool_execution_start", call);
+  const second = await openForm("same", { html: b.ask.html });
   await until(() => lookups.held() === 2);
   lookups.release(1);
   await until(() => ui.panel()?.includes(current.live.url) ?? false);
@@ -602,6 +813,7 @@ test("a late lookup from a closed picker never replaces the panel of a call that
   await Bun.sleep(100);
   expect(ui.panel()).toContain(current.live.url);
   expect(ui.panel()).not.toContain(old.live.url);
+  await second.close();
 });
 
 test("native host approval shows the panel while its dialog is open and follows session lifecycle", async () => {
@@ -649,10 +861,12 @@ test("native host approval shows the panel while its dialog is open and follows 
 test("a failed, cancelled, or abandoned picker removes the panel", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Abandoned questions", "--skill", "implement", "--session", "gone"]);
+  const receipt = await publishQuestions(w, "gone", "first");
   const h = w.host("gone");
   const ui = panelUI(h);
   let fail!: (error: Error) => void;
   h.ctx.ui.askDialog = async () => new Promise((_resolve, reject) => { fail = reject; });
+  const openForm = nativeForms(h);
   await h.emit("session_start");
   const failing = h.ctx.ui.askDialog([]);
   await until(() => ui.panel() !== undefined);
@@ -661,50 +875,47 @@ test("a failed, cancelled, or abandoned picker removes the panel", async () => {
   expect(ui.panel()).toBeUndefined();
   for (const end of ["agent_end", "session_switch", "session_shutdown"]) {
     await h.emit("session_start");
-    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: end, args: {} });
+    const pending = await openForm(end, { html: receipt.ask.html });
     await until(() => ui.panel() !== undefined);
     await h.emit(end);
     expect(ui.panel()).toBeUndefined();
+    await pending.close();
   }
 });
 
-test("each retry gets one fresh panel that leaves when its delegated dialog closes, before the tool ends", async () => {
+test("each retry gets a fresh panel that closes with the native form, before the tool ends", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Repeated questions", "--skill", "implement", "--session", "retry"]);
+  const receipt = await publishQuestions(w, "retry", "first");
   const h = w.host("retry");
   const ui = panelUI(h);
-  let picks = 0;
-  let close!: () => void;
-  h.ctx.ui.askDialog = async () => { picks++; return new Promise<undefined>(resolve => { close = () => resolve(undefined); }); };
+  const openForm = nativeForms(h);
   await h.emit("session_start");
   for (const index of [0, 1, 2]) {
-    const call = { toolName: "ask", toolCallId: `retry-${index}`, args: askForm("same") };
-    await h.emit("tool_execution_start", call);
-    const dialog = h.ctx.ui.askDialog([]);
+    const form = await openForm(`retry-${index}`, { html: receipt.ask.html });
     await until(() => ui.panel() !== undefined);
     await Bun.sleep(300);
     expect(ui.shown()).toBe(index + 1);
-    close();
-    expect(await dialog).toBeUndefined();
+    expect(await form.close()).toBeUndefined();
     expect(ui.panel()).toBeUndefined();
-    await h.emit("tool_execution_end", { toolName: call.toolName, toolCallId: call.toolCallId, isError: false });
+    await h.emit("tool_execution_end", { ...form.call, isError: false });
     expect(ui.panel()).toBeUndefined();
   }
-  expect(picks).toBe(3);
   expect(h.saved).toEqual([]);
   expect(h.sent).toEqual([]);
 });
 
-test("a lookup that finishes after the delegated dialog closed shows no panel while the tool still runs", async () => {
+test("a lookup that finishes after the native form closes shows no panel while the tool still runs", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Slow answer images", "--skill", "implement", "--session", "images"]);
+  const receipt = await publishQuestions(w, "images", "first");
   const h = w.host("images");
   const ui = panelUI(h);
-  h.ctx.ui.askDialog = async () => "answered";
+  const openForm = nativeForms(h);
   await h.emit("session_start");
   const lookups = holdLookups(h);
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "images", args: {} });
-  expect(await h.ctx.ui.askDialog([])).toBe("answered");
+  const form = await openForm("images", { html: receipt.ask.html });
+  expect(await form.close("answered")).toBe("answered");
   lookups.release();
   await until(() => lookups.finished() === 1);
   await Bun.sleep(100);
@@ -717,22 +928,22 @@ test("a dialog from an earlier ask never clears the panel of a newer ask", async
   const w = setup();
   await w.ok(["open", "--title", "Earlier ask", "--skill", "implement", "--session", "owner-a"]);
   await w.ok(["open", "--title", "Newer ask", "--skill", "implement", "--session", "owner-b"]);
+  const first = await publishQuestions(w, "owner-a", "first");
+  const second = await publishQuestions(w, "owner-b", "second");
   const newer = await w.ok(["bound", "--session", "owner-b"]);
   expect(newer.live).toMatchObject({ state: "serving" });
   const h = w.host("owner-a");
   const ui = panelUI(h);
-  let close!: () => void;
-  h.ctx.ui.askDialog = async () => new Promise<undefined>(resolve => { close = () => resolve(undefined); });
+  const openForm = nativeForms(h);
   await h.emit("session_start");
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "earlier", args: {} });
-  const earlier = h.ctx.ui.askDialog([]);
+  const earlier = await openForm("earlier", { html: first.ask.html });
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "owner-b" };
   await h.emit("session_switch");
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "newer", args: {} });
+  const current = await openForm("newer", { html: second.ask.html });
   await until(() => ui.panel()?.includes(newer.live.url) ?? false);
-  close();
-  await earlier;
+  await earlier.close();
   expect(ui.panel()).toContain(newer.live.url);
+  await current.close();
 });
 
 test("only this main agent's bound interactive TUI gets a panel", async () => {
@@ -753,12 +964,12 @@ test("only this main agent's bound interactive TUI gets a panel", async () => {
     const ui = panelUI(h);
     h.ctx.mode = mode;
     h.ctx.hasUI = hasUI;
-    h.ctx.ui.askDialog = async () => "original";
+    h.ctx.ui.formDialog = async () => "original";
     await h.emit("session_start");
     expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "isolated", input: askForm("unpublished") })).toEqual([undefined]);
     if (session !== "unbound") expect(h.execCalls).toEqual([]);
     expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "isolated", args: {} })).toEqual([undefined]);
-    expect(await h.ctx.ui.askDialog([])).toBe("original");
+    expect(await h.ctx.ui.formDialog(askForm("unpublished").html)).toBe("original");
     await Bun.sleep(300);
     expect(ui.shown()).toBe(0);
     expect(h.sent).toEqual([]);
@@ -768,18 +979,22 @@ test("only this main agent's bound interactive TUI gets a panel", async () => {
 test("an unavailable bound host shows its error in the panel without host interference", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Offline handoff", "--skill", "implement", "--session", "offline"]);
+  const receipt = await publishQuestions(w, "offline", "first");
   await w.ok(["host", "stop"]);
   const listener = Bun.serve({ port: Number(w.port), fetch: () => new Response("other listener") });
   try {
     const bound = await w.ok(["bound", "--session", "offline"]);
     const h = w.host("offline");
     const ui = panelUI(h);
-    expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "offline", args: {} })).toEqual([undefined]);
+    const openForm = nativeForms(h);
+    await h.emit("session_start");
+    const pending = await openForm("offline", { html: receipt.ask.html });
     await until(() => ui.panel() !== undefined);
     expect(ui.panel()).toContain(bound.live.error);
     expect(await (await fetch(`http://127.0.0.1:${w.port}`)).text()).toBe("other listener");
     expect(h.sent).toEqual([]);
     expect(h.saved).toEqual([]);
+    await pending.close();
   } finally { listener.stop(true); }
 });
 
@@ -788,13 +1003,13 @@ test("a disabled host shows its state in the panel with no model or session pres
   await w.ok(["open", "--title", "Host off", "--skill", "implement", "--session", "off"]);
   const receipt = await publishQuestions(w, "off", "host-off");
   const h = w.host("off");
+  const openForm = nativeForms(h);
   const ui = panelUI(h);
   await h.emit("session_start");
   const entries = h.ctx.sessionManager.getEntries();
   await h.emit("before_agent_start");
   const input = { html: receipt.ask.html };
-  expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "off", input })).toEqual([undefined]);
-  expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "off", args: input })).toEqual([undefined]);
+  const pending = await openForm("off", input);
   await until(() => ui.panel() !== undefined);
   expect(ui.panel()).toContain("off");
   expect(h.ctx.sessionManager.getEntries()).toEqual(entries);
@@ -803,6 +1018,7 @@ test("a disabled host shows its state in the panel with no model or session pres
   expect(h.saved).toEqual([]);
   const history = [{ role: "user", content: "Continue?" }];
   expect(await h.emit("context", { messages: history })).toEqual([{ messages: history }]);
+  await pending.close();
 });
 
 test("a main picker publishes presence and clears it on answer, cancellation, timeout, and failure", async () => {
@@ -813,8 +1029,8 @@ test("a main picker publishes presence and clears it on answer, cancellation, ti
   const h = w.host("present");
   const ui = panelUI(h);
   let finish!: (value: unknown) => void;
-  let fail!: (error: Error) => void;
-  h.ctx.ui.askDialog = async () => new Promise((resolve, reject) => { finish = resolve; fail = reject; });
+  h.ctx.ui.askDialog = async () => new Promise(resolve => { finish = resolve; });
+  const openForm = nativeForms(h);
   await h.emit("session_start");
   const read = async () => {
     const r = await fetch(new URL("presence", opened.live.url));
@@ -834,9 +1050,8 @@ test("a main picker publishes presence and clears it on answer, cancellation, ti
   };
   const ids = [receipt.refs.second, receipt.refs.first];
   for (const outcome of ["answer", "cancel", "timeout", "failure", "ratchet"]) {
-    const call = { toolName: "ask", toolCallId: outcome, args: askForm("--home", ...ids) };
-    if (outcome !== "ratchet") await h.emit("tool_execution_start", call);
-    const pending = h.ctx.ui.askDialog([]);
+    const form = outcome === "ratchet" ? undefined : await openForm(outcome, askForm(...ids));
+    const pending = form?.settled ?? h.ctx.ui.askDialog([]);
     const [presence] = await waitPresence(1);
     expect(presence).toMatchObject({
       session: "present", flow: opened.flow, stage: opened.stage,
@@ -849,16 +1064,19 @@ test("a main picker publishes presence and clears it on answer, cancellation, ti
     expect(ui.panel()).toContain(`<${target.target}>`);
     if (outcome === "failure") {
       void pending.catch(() => {});
-      fail(new Error("picker failed"));
+      form!.fail(new Error("picker failed"));
       await expect(pending).rejects.toThrow("picker failed");
     } else {
-      finish(outcome === "answer" ? { kind: "submit", results: [] } : outcome === "timeout" ? { kind: "timeout" } : undefined);
-      await pending;
+      const value = outcome === "answer" ? { kind: "submit", results: [] } : outcome === "timeout" ? { kind: "timeout" } : undefined;
+      if (form) await form.close(value);
+      else {
+        finish(value);
+        await pending;
+      }
     }
     expect(ui.panel()).toBeUndefined();
     await waitPresence(0);
     expect((await w.ok(["target", "--session", "present"])).target).toBe(`${opened.live.url}#${opened.stage}`);
-    if (outcome !== "ratchet") await h.emit("tool_execution_end", call);
   }
 });
 
@@ -928,6 +1146,8 @@ test("a delayed old presence write never replaces a newer picker's presence", as
   const receipt = await publishQuestions(w, "owner", "old", "new");
   const h = w.host("owner");
   const ui = panelUI(h);
+  const openForm = nativeForms(h);
+  await h.emit("session_start");
   const exec = h.pi.exec;
   let release!: () => void;
   let held = false;
@@ -942,10 +1162,10 @@ test("a delayed old presence write never replaces a newer picker's presence", as
       return await exec(...args);
     } finally { inFlight--; }
   };
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "old", args: askForm(receipt.refs.old) });
+  const first = await openForm("old", askForm(receipt.refs.old));
   await until(() => held && ui.panel() !== undefined);
-  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "old" });
-  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "new", args: askForm(receipt.refs.new) });
+  await first.close();
+  const second = await openForm("new", askForm(receipt.refs.new));
   await until(() => ui.panel() !== undefined);
   await Bun.sleep(100);
   release();
@@ -953,5 +1173,5 @@ test("a delayed old presence write never replaces a newer picker's presence", as
   const target = await w.ok(["target", "--session", "owner"]);
   expect(target.target).toBe(`${opened.live.url}#${receipt.refs.new}`);
   expect(target.picker).not.toBeNull();
-  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "new" });
+  await second.close();
 });
