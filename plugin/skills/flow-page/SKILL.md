@@ -100,7 +100,7 @@ The script applies all items to the bound Stage, or refuses all of them. Give a 
 
 To correct a finished Stage's Result or entry, publish ordinary replacement content and a `corrects` item together in a later Stage. Read [Correction fields](references/contributions.md) before writing the relation. The original stays in place with a warning and link. A closed Flow must be reopened first.
 
-Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and returns its receipt with `repeated: true`. This deduplicates publication, not asking. If the picker lost or never showed a question and no response is recorded, apply the own-run recovery rule: resubmit the same contribution to recover its receipt, then retry `ask` once with the receipt's `ask.html` unchanged. A recorded cancellation, timeout, or empty response is not an infrastructure failure. Once a non-consent response is recorded, author a linked round with `again` before asking it again. Preserve the earlier attempt and Q number.
+Submitting the Stage's latest contribution again applies nothing and returns its receipt with `repeated: true`. This deduplicates publication, not asking. For a lost question delivery, follow [Recover an unanswered round](#recover-an-unanswered-round).
 
 ## Validate without publishing
 
@@ -152,8 +152,8 @@ This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as 
 
 1. Prepare the complete round and visuals under [Reader needs and Visual kinds](references/reader-needs.md), then publish them once with CLI `submit`.
 2. If `live.state` is `serving`, fetch the receipt URL's read-scoped `content` endpoint. Verify its Flow id, committed revision, question ids from `ask.questions`, and authored context. A generic successful Nuxt shell response is not proof. A mismatch needs correction before asking. Publication failure still leaves the question unanswered. Host unavailability or `off` does not block a committed question or authorize an answer.
-3. Pass the receipt's `ask.html` unchanged as the `html` argument to ordinary `ask`. For a lost-picker retry, reuse the same form from the repeated receipt. Preserve the tool's ordinary retry, cancellation, approval tier, timeout, and integration behavior.
-4. Record each observed answer through CLI `submit`, preserving raw words and non-consent separately from interpretation as below.
+3. Pass the receipt's `ask.html` unchanged as the `html` argument to ordinary `ask`.
+4. Classify the native result. Record actual answers and non-consent responses separately through CLI `submit`. Record interruptions and delivery failures as evidence, not answers.
 
 The extension owns link presentation. While a main-agent `ask` picker is open in an interactive TUI with this session and agent's binding, it shows a Flow panel above the composer. The panel's title is `Flow page` and its body is the full clickable live URL ending in the first asked Flow question's fragment. For several questions, it follows their order in the picker. When no question id belongs to the bound Flow, the link targets the bound Stage instead. The picker opens at once, with no dismissal step, and the panel goes away when the picker returns, whether answered, cancelled, timed out, or failed. Several questions in one call share one panel; each later call or retry gets a fresh one. The extension looks up the binding and URL itself. The panel text stays in the UI, outside session entries, model context, compaction, and branch summaries. Write no pre-ask chat link and put no URL in the picker payload. There is no notification, card, delivery queue, or retry gate.
 
@@ -177,20 +177,26 @@ Preserve each returned selected-option Note in a Document Result. Link to the qu
 
 `/tree` re-answer changes omp session history. It does not replace an earlier Flow answer, Note, or attachment. For a new decision on the Flow, use a linked round with `again`.
 
-Set `status: "answered"` only for an explicit user selection or user-authored words for the question. A result headed `No answer before the timeout; submitted the form's current values automatically (not the user's choice):` stays `timed-out`, even when its values match the recommendation. A reported timeout without values also stays `timed-out`. A whole-call cancellation can be a cancelled tool error without per-question results. Record cancellation for the unanswered questions in that call. Preserve earlier answers and do not reconstruct partial answers the tool did not return.
+- `answered`: the user explicitly submitted a pick or their own words for the question. A pick takes no `reading`.
+- `empty`: the user submitted the form without a value for the question. An empty value by itself does not prove submission.
+- `cancelled`: the tool reports that the user cancelled the ask. A native Cancel can produce `Ask tool was cancelled by the user` without per-question results. Record cancellation for the unanswered questions in that call. A turn abort or an unrelated error does not prove native Cancel.
+- `timed-out`: the tool flags `timedOut` or reports a timeout. `No answer before the timeout; submitted the form's current values:` introduces automatically returned values. Keep observed listed values in `picks` as non-consent evidence, and preserve other returned data separately. `The ask timed out before the user answered its required fields; no answer was given.` has no values to record.
+- `headless`: no user was asked. Keep any observed recommendation as an assumption, not consent. Stop actions that require user confirmation.
 
-An empty selection alone proves neither timeout nor cancellation. An unrelated failure, unavailable route, repeated call, or chat response is not a cancelled or approved answer. Report the observed outcome and leave unanswered questions open.
-
-- `answered`: the user picked or wrote something. A pick is the answer, whatever its note says. It takes no `reading`.
-- `empty`, `cancelled`, `timed-out`: the user gave no answer. Keep any observed automatic selection in `picks`, outside the decision.
-- `headless`: no user was asked. Any recorded recommendation is an assumption, not consent. Stop actions that require user confirmation.
+If a plain composer message closes the form, keep the question open. Record the interruption and any returned draft as separate evidence, with no `answer` contribution for it. Apply the same separation to missing results and tool failures: record what happened without inventing an empty response or cancellation. Leave any earlier answers unchanged.
 
 Words with no pick need a `reading`, your interpretation, kept apart from the words:
 
 - `{ "outcome": "resolved", "decision", "basis", "maps_to"? }` when the words plainly settle the decision. `decision` is what is now true, `basis` is why the words settle it, and `maps_to` is the letter of the option they match. The page shows the user's words, your reading, and its basis, and records no pick.
 - `{ "outcome": "question" | "concern" | "ambiguous", "unresolved" }` when they ask for information, raise a concern, or leave the choice open. `unresolved` is the part still to decide. Ask that part in the next round with `again`, and reply to the rest on the page.
 
-Only a pick or a resolved reading is the user's answer. Everything else keeps the question open until it is asked again or its Stage retires it.
+Only an explicit submitted pick or a resolved reading of submitted words is the user's answer. Everything else keeps the question open until it is asked again or its Stage retires it.
+
+### Recover an unanswered round
+
+- If delivery failed and no response was recorded, apply the own-run recovery rule. Resubmit the unchanged latest contribution, check the repeated receipt against live content when serving, and call `ask` once more with the same `ask.html`. Keep the original round, Q number, and Stage. Preserve the actual failure and recovery outcome. Do not restore a retired Picker draft.
+- If a non-consent response is already recorded, follow the calling skill's re-ask policy. To ask again, publish a new round linked with `again`. Keep the earlier attempt, and keep the Q number when you re-ask in the same Stage.
+- If the user sends a different message, respond to that message. Do not treat it as a retry request. Record a recoverable blocker and leave the Stage in progress when the unanswered decision still blocks work.
 
 ## Close the Stage
 

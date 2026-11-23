@@ -222,7 +222,7 @@ The stub proves delivery and presentation mechanics, not whether a model follows
 
 #### Stock native ask baseline
 
-Use `scripts/flow-questions-tui.py` with `--case native`. Pin `omp` to 19.1.1 and `tern` to 0.9.30 on `PATH`. Run once with `--tern` and once without it, each in a new run directory:
+Use `scripts/flow-questions-tui.py` with `--case native`. Pin `omp` to 19.1.1 and `tern` to 0.9.32 on `PATH`. Run once with `--tern` and once without it, each in a new run directory:
 
 ```sh
 	python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
@@ -266,54 +266,24 @@ subprocess.run([
 
 Each case retains the CLI and Tern commands, provider requests, tool results, screen captures, and Flow export. Require `cleanup.ok: true`, no remaining process, and `cleanup.port_listening: false` in `summary.json`. Scripted approvals prove transport, not human consent.
 
-#### Legacy Verify cases
+#### Native non-consent and recovery
 
-Use `scripts/flow-questions-tui.py --tern`, not RPC `drive.ts`, for visible native proof. It starts a real interactive omp process in its own headless Tern renderer and stubs only the model provider. Both plugins load normally. The ordinary `ask` integration and Ratchet's host dialog stay unchanged. Its Tern control endpoint and config directory are independent of the user's working window.
+Use the stock native launcher above. Run each case in a new evidence directory. Keep `--tern` for native Cancel and the linked later round. The other outcome cases can also run in the classic TUI. Use Tern to prove the inline card and panel teardown. Neither RPC nor a PTY proves a Tern click.
 
-Preconditions:
+- Step `flow-page-questions-guard-refusal`: Use `native`. Require the tool refusal to name `renamed-control` and recommend `ask.html`. The refused call opens neither a form nor a Flow panel.
+- Step `flow-page-questions-tui`: Use `tui --tern`, the submitted native answer and history journey above. Require the real option Note, its returned image, and Other words. For Flow link clicks and same-tab following, use `native --tern`.
+- Step `flow-page-questions-timeout`: Use `timeout`. Leave the recommended Alpha value untouched until `ask.timeout` elapses. Compare `observed-outcome.json`, `outcome-show.json`, and `outcome-content.json`. Require `timed-out` with the returned default retained as non-consent, and an open question.
+- Step `flow-page-questions-required-timeout`: Use `required-timeout`. Leave the required input blank in the unbound native form. Require the distinct timeout result with no values and a null binding in `unbound-native-session.json`. The helper records that result through a separate public Flow fixture, never by changing a receipt. Inspect `required-timeout-recorded-{show,content}.json`. In the separate synthetic headless fixture, inspect `synthetic-headless-result.json` and `synthetic-headless-recorded-{show,content}.json`. Neither public fixture is a bound native ask.
+- Step `flow-page-questions-cancel`: Use `cancel --tern`. Click the native **Cancel** button. Require the actual cancellation result, a closed form and panel, and an open Flow question with status `cancelled`. An Escape at the composer can abort the turn but cannot prove the Cancel button.
+- Step `flow-page-questions-empty`: Use `empty`. Activate native **Submit** with no value set. Require the actual submitted empty data and a separate Flow answer with status `empty`. The question stays open.
+- Step `flow-page-questions-interrupted`: Use `interrupted`. Change the draft to Beta. Focus the composer and send a plain message without clicking **Submit**. Require the interruption result with Beta as draft data. Compare `interrupted-show.json` with `interrupted-content.json`. Both retain the raw evidence and the blocker separately from the open question and have no answer for it. The Stage remains in progress.
+- Step `flow-page-questions-retry`: Use `retry`. Abort the first turn from the composer while the form waits. Before recording any answer, submit the unchanged contribution again. Require `repeated: true` in `contribution-receipt.json`, the same revision and form, and one round. Verify `lost-delivery-{show,content}.json` and `repeated-{show,content}.json`. A new native `ask` opens that form without a restored draft. Submit Beta and record it separately. Require the original failure in `failed-delivery-evidence-{show,content}.json`.
+- Step `flow-page-questions-offline`: Use `offline`, the stock `native-offline` journey. Require the actual `bound.live.error` beside the usable native form and separate recording of the explicit fixture pick.
+- Step `flow-page-questions-abort`: Use `abort`. Focus the composer and interrupt the turn while the form waits. Require `settled.card.json` and `settled.panel.json` to show no form and no panel in Tern. Require no Picker presence, the actual tool error, and an in-progress Stage with no answer in `aborted-{show,content}.json`.
+- Step `flow-page-questions-later-round`: Use `later-round --tern`. Click native **Cancel** and record that non-consent. Publish a new round with `again`. In `later-publication-{show,content}.json`, require the same Stage and Q number, a new question id, links between attempts, and the retained cancellation. Check that the second native call uses the new receipt unchanged. Submit Continue and check `later-tool-result.json` and `later-answer-{show,content}.json` for the separately recorded answer and unchanged earlier response.
 
-- Use Python 3.9 or newer on macOS or Linux. Installations must already provide `omp`, Bun, Git, Tern developer controls, and `cwebp` for lossless conversion. Request missing dependencies rather than installing them silently.
-- Pin a real Bun executable on `PATH`, as in `flow-session`.
-- Set `OMP_TOOLS` to the explicit omp-tools checkout or installed plugin path under test.
-- Use a new run directory for each case. The helper refuses existing evidence or `data/` paths. HOME and cwd stay outside the real home.
+Step `flow-page-questions-evidence`: Retain the command, binary versions, disposable HOME, session records, provider requests, and CLI and HTTP readbacks. Read `ask-calls.json`, `tool-results.json`, and `commands.json` together. The outcome cases' `active*` and `settled*` files show the user action and its aftermath. With Tern, keep the native trees, the lossless WebP images, and the control log. The classic TUI retains only PTY bytes and stripped text. Require `cleanup.ok: true`, no remaining process or listener, and `human_consent: false`.
 
-```sh
-	CHECKOUT=/absolute/path/to/checkout
-	SKILL_DIR="$CHECKOUT/.omp/skills/verify-vstack"
-	OMP_TOOLS=/absolute/path/to/omp-tools
-	VERIFY_RUN_DIR="<Scratch dir>/verify/vstack-$(date +%Y%m%d-%H%M%S)-flow-panel"
-	mkdir -p "$VERIFY_RUN_DIR"
-	bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
-	python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
-		--omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR" --case tui --tern
-	jq '{ok,assertions,error,export_error,cleanup}' "$VERIFY_RUN_DIR/flow-questions-tui/summary.json"
-```
-
-Step `flow-page-questions-guard-refusal`: In `--case tui`, the fixture binds the actual child session and main agent. It publishes a round through the CLI and verifies the committed question ids in the live `content` response. It first asks with one control renamed. Require a tool refusal that names `renamed-control` and recommends `ask.html`, with no picker or Flow panel.
-
-Step `flow-page-questions-tui`: After the refusal in the same session, the provider passes the receipt's `ask.html` unchanged. It emits no assistant-chat Flow URL. In one native tree snapshot, require the `Flow page` panel above the open picker and the picker's `Add note` control. The panel link ends in the first question's fragment, as specified by `0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md`. Click the link and require the exact URL, including the fragment, in a new browser pane owned by the isolated Tern instance. The helper records the destination and closes only that pane.
-
-The real picker accepts Alpha and Beta, an option note, Other words, and a submit note. Through a later CLI contribution, the helper records the observed answers and writes the submit note verbatim as a separate Document Result. Verify both in `answered-live-content.json`. The fixture's concern reading grants no real approval. After submit, the panel role must be absent from the native tree. Inspect `panel.webp` and `clicked-link.webp` alongside `panel.panel.json` and `panel.tree.json`. For click proof, require `click-target.json` and `click-destination.json` with the matching question fragment.
-
-Run each additional case in a fresh run directory with the same command, changing `--case`:
-
-- Step `flow-page-questions-timeout`: `timeout` runs `ask.timeout: 1` on the actual picker with the panel beside it. Every returned question is timed out, Flow answers stay empty, and the panel is gone afterward.
-- Step `flow-page-questions-cancel`: `cancel` presses Escape on the picker. The aborted ordinary ask records no consent, and `after-cancel.panel.json` shows no panel.
-- Step `flow-page-questions-retry`: `retry` cancels the picker, then sends native F5. A fresh panel appears beside the retried picker, and the eventual answers retain the original ids with only one publication.
-- Step `flow-page-questions-offline`: `offline` stops only the proof host and occupies its port with a listener owned by the helper. The panel displays the actual `bound.live.error` beside the picker, which can be cancelled. Neither delivery nor cancellation records an answer. No host recovery runs during the handoff.
-- Step `flow-page-questions-abort`: `abort` sends Ctrl+C while the picker and panel are open. Require `after-abort.panel.json` with no panel, `after-abort.tree.json` with no picker, and no Flow answer.
-
-Step `flow-page-questions-later-round`: Run `--case later-round` for a later authored round distinct from retry. The helper records the first round's answers, publishes a new complete round under the same child's binding, then uses that round's `ask.html` unchanged. Require another panel beside the later picker, a new question id, separate answer recording, and both retained rounds. Inspect `later-publication.json`, `later-panel.panel.json`, `later-panel.tree.json`, `later-panel.webp`, `later-tool-result.json`, and `later-answers-receipt.json`. The extension tests also cover lookup races, repeated call ids, mode and binding isolation, host-off states, wrapper order, session switching, and turn ends.
-
-Step `flow-page-questions-evidence`: Require these evidence files under `flow-questions-<case>/`:
-
-- `identity.json`, `launch.json`, `runtime-inventory.json`, `commands.json`, `child-session-id.txt`, and `binding.json` pin the binaries, plugin paths, actual child identity, and the CLI `bound` receipt.
-- `publication.json`, `live-identity.json`, `live-page.html`, and `live-content.json` establish committed content identity. `offline-bound.json` retains the real unavailable-host diagnosis.
-- For `--case tui`, `guard-refusal.json`, `guard-refusal.tree.json`, and `guard-refusal.panel.json` record the refusal and the native UI before the valid form runs.
-- `panel.panel.json`, `panel.tree.json`, `panel.state.json`, and the lossless WebP shots prove native presentation. Click cases also record the target and destination. The `after-<step>.panel.json` files prove removal. `inputs.json` shows that no key dismissed anything before the picker.
-- `terminal.bin` and `terminal.txt` hold native tree snapshots with `--tern`, not raw terminal bytes. Without `--tern`, they retain PTY bytes and stripped text only. Preserve those limits.
-- `sessions/*.jsonl`, `model-requests.jsonl`, `ask-calls.json`, and `tool-results.json` retain the real calls and outcomes. The helper requires the panel role and its URL to be absent from both persisted entries and model requests. Hidden authoring identity and historical-card filtering keep their existing rules.
-- `committed-before-answers.json`, `normalized-answers.json` when applicable, `persisted-state.json`, and the CLI `show` and `bound` snapshots in `export/` distinguish authoring from delivery. In `offline`, compare `committed-before-answers.json` with `cancelled-state.json` and `persisted-state.json`. All three must show the published revision and both questions open. In `cancel`, use `cancelled-state.json` in place of `committed-before-answers.json`. In `abort`, use `persisted-state.json`; neither case resumes the model. `flow-messages.json` must remain empty, with no result-only completion link.
 
 Step `flow-page-questions-compaction`: For compaction and branch-summary isolation, retain a native case's session file, then use `drive.ts --session` with the same run directory and a fresh drive name. Switch to that exact file with RPC `switch_session`, run `compact`, and inspect the summarizer's captured provider request. If the short fixture is below the default retained-history window, set `compaction.keepRecentTokens: 100` only in that run's disposable HOME and use another fresh drive name; retain the original refusal. For branch summaries, use `get_entries` to choose an earlier entry, then `navigate_tree` with that id and `summarize: true`. Require an actual summarizer request and persisted compaction or branch-summary entry, not merely a successful RPC response. Check both requests and summaries for the panel role and exact URL. Record unavailable summarizers honestly. These are continuation checks on an isolated fixture, never the maintainer's session.
 
@@ -325,7 +295,7 @@ Keep RPC and native PTY evidence distinct. An ordinary `ask` call in `drive.ts` 
 
 Step `flow-page-rpc-ask`: Use `--ui-replies` to choose a label or Other, then inspect raw tool details and later Flow answers. State that the stub authored any normalization. Preserve headless non-consent and the separate Ratchet `r.approve` exception.
 
-Step `flow-page-rpc-presentation`: For presentation regression proof, run the native `tui`, `cancel`, `timeout`, `retry`, and `later-round` cases above. Completed and aborted turns must add no automatic Flow card. Each authored question round gets its panel under flow-page's common contract while ordinary `ask` is open. The retry case must reopen the real picker with its original question identities and no republished round. RPC cancellation can establish an aborted event, but cannot prove physical Escape or F5 behavior.
+Step `flow-page-rpc-presentation`: Use the stock native baseline and the native outcome cases for presentation. Completed and aborted turns add no automatic Flow card. Retrying a committed round opens a fresh native form using the original receipt. RPC replies do not prove native gestures or link presentation.
 
 ### Reader styling migration
 

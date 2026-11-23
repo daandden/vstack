@@ -10,7 +10,6 @@ import os
 from pathlib import Path
 import pty
 import re
-import secrets
 import select
 import shlex
 import shutil
@@ -26,6 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import urlopen
 
 from flow_native_answers import NativeAnswers, initial_questions
+from flow_native_outcomes import CASES as OUTCOME_CASES, CONTINUE, REQUIRED, STEER, NativeOutcomes, non_consent
 
 PANEL = '[data-role="vstack.flow-panel"]'
 FORM = '[data-role="omp.ask.card"]'
@@ -169,11 +169,11 @@ def recorded_answers(stage):
             if "response" in question["answer"]}
 
 
-def actual_model(args):
-    """Observe a fresh Session-model TUI; keyboard policy is never scenario input."""
+def actual_model(args, stack):
+    """Observe a fresh Session-model UI; controller policy is never scenario input."""
     import hashlib
 
-    checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
+    checkout, run = (Path(p).resolve() for p in (args.checkout, args.run))
     source = Path(args.session_source or os.environ.get("PI_SESSION_FILE", ""))
     records = lines(source)
     model = next((r["model"] for r in reversed(records) if r.get("type") == "model_change"), None)
@@ -206,11 +206,11 @@ def actual_model(args):
     sessions = run / "sessions"
     argv = ["omp", "--no-title", "--model", model, "--thinking", thinking,
             "--approval-mode", "yolo", "--no-rules", "--no-context-files",
-            "--no-extensions", "-e", str(checkout / "plugin"), "-e", str(tools),
+            "--no-extensions", "-e", str(checkout / "plugin"),
             "--config", str(config), "--session-dir", str(sessions),
             "--cwd", str(run), effective_prompt]
     save(run / "launch.json", {"argv": argv, "session_source": str(source), "model": model,
-         "thinking": thinking, "checkout": str(checkout), "omp_tools": str(tools),
+         "thinking": thinking, "checkout": str(checkout), "renderer": "tern" if args.tern else "classic",
          "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
          "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest(),
          "effective_prompt_sha256": hashlib.sha256(effective_prompt.encode()).hexdigest(),
@@ -219,12 +219,43 @@ def actual_model(args):
          "cleared_variables": [k for k in os.environ if k.startswith(("PI_", "OMP_"))],
          "home": env.get("HOME"), "port": env["VSTACK_FLOW_PORT"],
          "automated_controller": args.case, "human_consent": False})
-    master, slave = pty.openpty()
-    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
-    child = subprocess.Popen(argv, cwd=run, env=env, stdin=slave, stdout=slave, stderr=slave,
-                             start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
-    os.close(slave)
-    captured, inputs, started = bytearray(), [], time.monotonic()
+    master = child = tern = None
+    if args.tern:
+        helper = Path(__file__).resolve().with_name("tern-verify")
+        outside = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="vstack-verify-", dir="/tmp")))
+        window = outside / "tern"
+        window.mkdir()
+        tern_env = {"PATH": env["PATH"], "HOME": str(window / "data/home"), "TERM": "xterm-256color",
+                    "TERN_VERIFY_HOME": str(window / "data/home"), "VSTACK_CHECKOUT": str(checkout)}
+
+        def tern(*words):
+            result = subprocess.run([helper, words[0], window, *map(str, words[1:])], env=tern_env,
+                                    capture_output=True, text=True, timeout=32)
+            with (run / "tern-commands.jsonl").open("a") as log:
+                log.write(json.dumps({"argv": words, "exit": result.returncode, "stdout": result.stdout,
+                                      "stderr": result.stderr}) + "\n")
+            result.check_returncode()
+            return result.stdout
+
+        def stop_window():
+            if (window / "data").exists():
+                tern("stop")
+
+        stack.callback(stop_window)
+        tern("start")
+        tern("doctor")
+        pane = json.loads(tern("ctl", "state"))["focused"]["id"]
+        # Keep real HOME for the Session credentials, not for the isolated Tern window.
+        executable = str(Path(shutil.which("omp")).resolve())
+        command = ["env", f"HOME={env['HOME']}", f"PI_CONFIG_FILES={config}",
+                   f"VSTACK_FLOW_PORT={env['VSTACK_FLOW_PORT']}", executable, *argv[1:]]
+        tern("tern", "run", pane, shlex.join(command))
+    else:
+        master, slave = pty.openpty()
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
+        child = subprocess.Popen(argv, cwd=run, env=env, stdin=slave, stdout=slave, stderr=slave,
+                                 start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
+        os.close(slave)
     summary = {"transport_complete": False, "human_consent": False, "case": args.case}
 
     message_sessions = {}
@@ -298,15 +329,20 @@ def actual_model(args):
         save(run / "publication.json", receipt)
         save(run / "ask-call.json", ask_calls[-1])
         save(run / "before-picker.json", {"elapsed_seconds": time.monotonic() - started,
-             "picker_text_offset": text.find("n add note"), "output_bytes": len(captured),
+             "native_submit_observed": "Submit" in text, "output_bytes": len(captured),
              "normal_home_extension_bound": False, "popup_proven": False,
              "question_context": [visible[identity] for identity in ids]})
 
     try:
-        controlled, submitted_empty, completed_calls, terminal_reply = False, False, 0, False
+        controlled, completed_calls = False, 0
         deadline = time.monotonic() + args.deadline_seconds
         while time.monotonic() < deadline:
-            if select.select([master], [], [], 0.15)[0]:
+            card = None
+            if tern:
+                card = json.loads(tern("ctl", "tree", FORM))
+                chunk = (json.dumps(card) + "\n").encode()
+                time.sleep(0.15)
+            elif select.select([master], [], [], 0.15)[0]:
                 try:
                     chunk = os.read(master, 65536)
                 except OSError as error:
@@ -314,6 +350,9 @@ def actual_model(args):
                         chunk = b""
                     else:
                         raise
+            else:
+                chunk = b""
+            if chunk:
                 captured.extend(chunk)
                 with (run / "terminal.bin").open("ab") as log:
                     log.write(chunk)
@@ -322,21 +361,32 @@ def actual_model(args):
             calls = [m for m in current if m.get("role") == "toolResult" and m.get("toolName") == "ask"]
             save(run / "tool-results.json", calls)
             text = plain(captured)
-            if not controlled and "n add note" in text:
+            form_visible = bool(card["nodes"]) if card is not None else "│   Submit" in text
+            if not controlled and form_visible:
                 verify_picker(current, text)
                 if args.case == "cancelled":
-                    send("cancel actual picker", b"\x1b")
+                    buttons = json.loads(tern("ctl", "tree", FORM + " .sf-btn-label"))["nodes"]
+                    cancel = next(n for n in buttons if n.get("text") == "Cancel" and n["rect"][2] > 0)
+                    x, y, width, height = cancel["rect"]
+                    tern("clear")
+                    tern("ctl", "click", x + min(8, width / 2), y + min(8, height / 2))
+                    save(run / "inputs.json", [{"label": "activate native Cancel", "rect": cancel["rect"]}])
                 elif args.case == "empty":
-                    # Shift+Tab reaches the submit review without selecting an option.
-                    send("open picker submit review without a selection", b"\x1b[Z")
+                    count = len(json.loads((run / "publication.json").read_text())["ask"]["questions"])
+                    for _ in range(count):
+                        send("move to the next native field without selecting an option", b"\t")
+                    send("activate native Submit without a selection", b"\r")
                 controlled = True
-            if args.case == "empty" and controlled and not submitted_empty and "n add submit note" in text:
-                send("submit actual picker with no selection", b"\r")
-                submitted_empty = True
             if calls and len(calls) != completed_calls:
                 completed_calls = len(calls)
                 summary["attempts"] = [{"isError": m.get("isError", False), "details": m.get("details"),
                                         "content": m.get("content")} for m in calls]
+                if completed_calls == 1:
+                    raw = calls[0]
+                    expected = {"cancelled": "cancelled", "timeout": "timed-out", "empty": "empty"}[args.case]
+                    status, _ = non_consent(raw, submitted_empty=args.case == "empty")
+                    if not controlled or status != expected:
+                        raise AssertionError(f"Expected {expected} from the observed native form, got {raw}")
                 if calls[-1].get("isError"):
                     summary.update(transport_complete=True, aborted_tool_result=True,
                                    model_continuation_observed=False)
@@ -349,7 +399,7 @@ def actual_model(args):
                 if terminal_reply:
                     summary["transport_complete"] = True
                     break
-            if child.poll() is not None:
+            if child is not None and child.poll() is not None:
                 raise RuntimeError(f"omp exited {child.returncode} before the scenario completed")
         else:
             raise RuntimeError("Controller deadline reached without a terminal scenario result; this is not a picker timeout")
@@ -359,15 +409,18 @@ def actual_model(args):
     except Exception as error:
         summary["error"] = repr(error)
     finally:
-        os.close(master)
-        if child.poll() is None:
-            child.terminate()
-            try:
-                child.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                child.kill()
-                child.wait()
-        summary["exit_code"] = child.returncode
+        if child is not None:
+            os.close(master)
+            if child.poll() is None:
+                child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait()
+            summary["exit_code"] = child.returncode
+        if tern:
+            stop_window()
         save(run / "summary.json", summary)
         print(json.dumps(summary, indent=2))
     return 0 if summary["transport_complete"] and not summary.get("unavailable") else 1
@@ -376,10 +429,9 @@ def actual_model(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkout", required=True)
-    parser.add_argument("--omp-tools", help="omp-tools plugin for legacy Verify cases only")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["native", "native-offline", "native-answers", "tui", "timeout", "cancel",
-                        "retry", "offline", "abort", "ratchet", "cancelled", "empty", "later-round", "eval", "eval-read-error"],
+    parser.add_argument("--case", choices=["native", "native-offline", "native-answers", "tui",
+                        "ratchet", "cancelled", "offline", "eval", "eval-read-error", *OUTCOME_CASES],
                         default="native")
     parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
     parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
@@ -387,61 +439,49 @@ def main():
     parser.add_argument("--session-source", help="Persistent caller session for model and thinking discovery")
     parser.add_argument("--deadline-seconds", type=int, default=1800)
     args = parser.parse_args()
-    native = args.case in ("native", "native-offline", "native-answers")
-    if args.case == "native-answers" and not args.tern:
-        parser.error("--case native-answers requires an isolated native Tern window")
-    specialized = args.case in ("eval", "eval-read-error", "ratchet")
-    if (native or specialized) and args.omp_tools:
-        parser.error("native cases use stock omp ask; omit --omp-tools")
-    if not (native or specialized or args.omp_tools):
-        parser.error("legacy Verify cases still require --omp-tools")
     if args.prompt:
         if not args.config or args.case not in ("cancelled", "timeout", "empty"):
             parser.error("--prompt requires --config and --case cancelled|timeout|empty")
-        return actual_model(args)
-    if args.case in ("cancelled", "empty"):
-        parser.error("--case cancelled|empty requires an actual-model --prompt and --config")
-    if specialized and not args.tern:
-        parser.error(f"--case {args.case} requires --tern for native panel and dialog snapshots")
+        if args.tern != (args.case == "cancelled"):
+            parser.error("actual-model cancel needs --tern; use classic TUI for timeout and empty")
+        with ExitStack() as stack:
+            return actual_model(args, stack)
+    if args.case == "cancelled":
+        parser.error("--case cancelled is for actual-model mode; use --case cancel for the localhost fixture")
+    if args.case in ("native-answers", "tui", "eval", "eval-read-error", "ratchet", "cancel", "later-round") and not args.tern:
+        parser.error(f"--case {args.case} requires --tern for its native control gestures")
+    if args.case == "tui":
+        args.case = "native-answers"
+        args.evidence_case = "tui"
+    elif args.case == "offline":
+        args.case = "native-offline"
+        args.evidence_case = "offline"
+    native = args.case in ("native", "native-offline", "native-answers")
     checkout, run = (Path(p).resolve() for p in (args.checkout, args.run))
-    tools = Path(args.omp_tools).resolve() if args.omp_tools else None
-    plugins = [(checkout / "plugin", "vstack")]
-    if tools:
-        plugins.append((tools, "omp-tools"))
-    for root, name in plugins:
-        if json.loads((root / "package.json").read_text())["name"] != name:
-            parser.error(f"{root} does not name {name}")
+    if json.loads((checkout / "plugin/package.json").read_text())["name"] != "vstack":
+        parser.error(f"{checkout}/plugin does not name vstack")
     binaries = ["omp", "bun", "git"] + (["tern", "cwebp"] if args.tern else [])
     for binary in binaries:
         if not shutil.which(binary):
             parser.error(f"missing prerequisite: {binary}")
     with ExitStack() as stack:
-        return run_case(args, checkout, run, tools, native, stack)
+        return run_case(args, checkout, run, native, stack)
 
 
-def run_case(args, checkout, run, tools, native, stack):
-    out = run / ("flow-questions-" + args.case)
+def run_case(args, checkout, run, native, stack):
+    case = getattr(args, "evidence_case", args.case)
+    out = run / ("flow-questions-" + case)
     out.mkdir(parents=True, exist_ok=False)
     data = run / "data"
     data.mkdir(exist_ok=False)
     eval_case = args.case in ("eval", "eval-read-error")
     read_fault = args.case == "eval-read-error"
-    stock = native or eval_case or args.case == "ratchet"
-    owned_window = stock and args.tern
+    owned_window = args.tern
     temp = "/tmp" if owned_window else tempfile.gettempdir()
     temp = Path(temp).resolve()
     if temp.is_relative_to(Path.home().resolve()):
         raise RuntimeError("OS temp directory is inside the real home; use TMPDIR outside it")
-    if stock:
-        outside = Path(tempfile.mkdtemp(prefix="vstack-verify-", dir=temp))
-    else:
-        while True:
-            outside = temp / ("vstack-verify-" + secrets.token_hex(3))
-            try:
-                outside.mkdir()
-                break
-            except FileExistsError:
-                continue
+    outside = Path(tempfile.mkdtemp(prefix="vstack-verify-", dir=temp))
     (data / "outside").symlink_to(outside, target_is_directory=True)
     tern_run = outside / "tern"
     home = tern_run / "data/home" if owned_window else outside / "home"
@@ -454,11 +494,10 @@ def run_case(args, checkout, run, tools, native, stack):
         port = free.getsockname()[1]
         env["VSTACK_FLOW_PORT"] = str(port)
     versions = {}
-    if stock:
-        pins = {"omp": "omp/19.1.1", **({"tern": "tern 0.9.30"} if args.tern else {})}
-        for binary, pin in pins.items():
-            versions[binary] = subprocess.check_output([binary, "--version"], env=env, text=True, timeout=10).strip()
-            assert versions[binary].split(" (")[0] == pin, versions
+    pins = {"omp": "omp/19.1.1", **({"tern": "tern 0.9.32"} if args.tern else {})}
+    for binary, pin in pins.items():
+        versions[binary] = subprocess.check_output([binary, "--version"], env=env, text=True, timeout=10).strip()
+        assert versions[binary].split(" (")[0] == pin, versions
     if owned_window:
         tern_run.mkdir()
         helper = Path(__file__).resolve().with_name("tern-verify")
@@ -530,10 +569,13 @@ def run_case(args, checkout, run, tools, native, stack):
             raise RuntimeError(f"{label} failed: {result.stderr}")
         return result.stdout
 
-    def flow_read(*args):
+    def flow_call(*args, connect=True):
         session = (out / "child-session-id.txt").read_text()
         argv = ["bun", str(cli), *args, "--home", str(home), "--session", session, "--agent", "main"]
-        return json.loads(command(argv, f"read Flow {args[0]}", connect=False))
+        return json.loads(command(argv, f"Flow {args[0]}", connect=connect))
+
+    def flow_read(*args):
+        return flow_call(*args, connect=False)
 
     def export_flow(state, binding):
         export = out / "export"
@@ -541,22 +583,17 @@ def run_case(args, checkout, run, tools, native, stack):
         save(export / "show.json", state)
         save(export / "bound.json", binding)
 
-    if tools:
-        command(["omp", "plugin", "link", str(checkout / "plugin")], "link vstack")
-        command(["omp", "plugin", "link", str(tools)], "link omp-tools")
-    else:
-        generation = cli.with_name("generation.ts").as_uri()
-        dest = home / ".omp/plugins/node_modules/vstack/skills"
-        assert dest.resolve().is_relative_to(home), dest
-        command(["bun", "-e", f"""
+    generation = cli.with_name("generation.ts").as_uri()
+    dest = home / ".omp/plugins/node_modules/vstack/skills"
+    assert dest.resolve().is_relative_to(home), dest
+    command(["bun", "-e", f"""
 import {{ coherentRuntime, runtimePackages, stageRuntime }} from {json.dumps(generation)};
 stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
 """, str(dest)], "stage candidate Flow runtime into disposable HOME")
-        save(out / "staged-runtime.json", {"entry": str(dest / "flow-page/scripts/flow-page.ts"),
-             "manifest": str(dest / "flow-page/runtime.json"),
-             "source": str(checkout / "plugin/skills")})
-    save(out / "identity.json", {"checkout": str(checkout), "omp_tools": str(tools) if tools else None,
-         "home": str(home), "project": str(project), "env": env, "versions": versions,
+    save(out / "staged-runtime.json", {"entry": str(dest / "flow-page/scripts/flow-page.ts"),
+         "manifest": str(dest / "flow-page/runtime.json"), "source": str(checkout / "plugin/skills")})
+    save(out / "identity.json", {"checkout": str(checkout), "home": str(home),
+         "project": str(project), "env": env, "versions": versions,
          "omp": str(Path(shutil.which("omp")).resolve()),
          "bun": str(Path(shutil.which("bun")).resolve()),
          "plugins": command(["omp", "plugin", "list"], "list plugins"),
@@ -581,6 +618,12 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         first["title"] = "Which fixture path should the form record?"
         second["title"] = "Which optional control should remain unpicked?"
         second["description"] = "Leave this question open in the baseline."
+    elif args.case in OUTCOME_CASES:
+        first = contribution["items"][1]["questions"][0]
+        del first["multi"]
+        contribution["items"][1]["questions"] = [first]
+        if args.case == "timeout":
+            first["options"][0]["recommended"] = "Default choice for timeout evidence."
     if eval_case:
         del contribution["items"][1]["questions"][0]["multi"]
     if args.case == "ratchet":
@@ -635,6 +678,8 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
 
     answer_case = (NativeAnswers(out, project, cli, identity, save, asks, published_stage, published_state)
                    if args.case == "native-answers" else None)
+    outcome_case = (NativeOutcomes(args.case, out, save, flow_call, published_state, published_stage)
+                    if args.case in OUTCOME_CASES else None)
 
     def live_question():
         nonlocal receipt
@@ -786,8 +831,12 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                         done.set()
                     else:
                         assert "ask" in names and "bash" in names, names
-                        reply = {"tool": "bash", "args": {"command": open_command}}
-                        phase = 1
+                        if args.case == "required-timeout":
+                            reply = {"tool": "ask", "args": REQUIRED}
+                            phase = "required-done"
+                        else:
+                            reply = {"tool": "bash", "args": {"command": open_command}}
+                            phase = 1
                 elif phase == 1:
                     if owned_window and args.case == "native" and not follow_ready.wait(timeout=25):
                         raise RuntimeError("Second session did not bind before publication")
@@ -796,7 +845,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 elif phase == 2:
                     reply = live_question()
                     phase = 3
-                    if args.case == "tui" or (native and not answer_case):
+                    if native and not answer_case:
                         reply = {"tool": "ask", "args": renamed_ask(receipt)}
                         phase = "guard"
                     elif args.case == "eval":
@@ -813,6 +862,20 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                     phase = 3
                 elif answer_case:
                     reply, phase = answer_case.provider(phase, receipt, done)
+                elif outcome_case:
+                    def is_continuation(message):
+                        if message.get("role") != "user":
+                            return False
+                        content = message.get("content")
+                        return content == CONTINUE or isinstance(content, list) and any(
+                            block.get("text") == CONTINUE for block in content)
+
+                    continued = any(is_continuation(message) for message in body["messages"])
+                    if phase == 3 and outcome_case.next_form is not None and continued:
+                        reply = {"tool": "ask", "args": fixture_ask(outcome_case.next_form)}
+                        phase = 4
+                    else:
+                        reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                 elif phase == 3:
                     result = asks()
                     assert result, "No dialog tool result"
@@ -855,35 +918,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                             raise RuntimeError("Native controller did not observe the direct native form close")
                         reply = eval_ask(fixture_ask(receipt))
                         phase = 4
-                    elif args.case in ("tui", "retry", "later-round"):
-                        assert not result[-1].get("isError"), result[-1]
-                        pick_id, words_id = [question["id"] for question in receipt["ask"]["questions"]]
-                        values = html_answers(result[-1])
-                        assert values == {pick_id: ["A. Alpha", "B. Beta"], words_id: "fixture-custom-concern"}, values
-                        notes = [note["text"] for note in raw["notes"]
-                                 if note["name"] == pick_id and note["option"] == "A. Alpha"]
-                        words = [entry["text"] for entry in raw["other"] if entry["name"] == words_id]
-                        assert notes == ["fixture-option-note"] and words == ["fixture-custom-concern"], raw
-                        option_note, custom_input = notes[0], words[0]
-                        assert raw.get("submitNote") == "fixture-submit-note", raw
-                        normalized = {"version": 1, "items": [
-                            {"kind": "answer", "question": pick_id, "response": {
-                                "status": "answered", "picks": ["A", "B"], "text": option_note}},
-                            {"kind": "answer", "question": words_id, "response": {
-                                "status": "answered", "text": custom_input},
-                             "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}},
-                            {"kind": "result", "shape": "document", "title": "Note on all answers",
-                             "sections": [{"heading": "Submit note", "blocks": [{"prose": raw["submitNote"]}]}]},
-                        ]}
-                        save(out / "normalized-answers.json", normalized)
-                        reply = {"tool": "bash", "args": {"command":
-                            f'bun {q(str(cli))} submit {q(str(out / "normalized-answers.json"))} --home "$HOME" {identity} > {q(str(out / "answers-receipt.json"))}'}}
-                        phase = 4
-                    else:
-                        assert args.case == "timeout", "Cancellation unexpectedly resumed the model"
-                        assert raw.get("timedOut") is True, raw
-                        reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
-                        done.set()
                 elif phase == 4 and read_fault:
                     result = asks()
                     assert len(result) == 2 and eval_answers(result[-1]) == alpha(), result
@@ -900,50 +934,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                     })
                     reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                     done.set()
-                elif phase == 4 and args.case == "later-round":
-                    assert len(recorded_answers(published_stage(published_state(receipt), receipt))) == 2, \
-                        "First answers were not separately recorded"
-                    later = {"version": 1, "items": [{"kind": "round", "questions": [{
-                        "ref": "later", "title": "Choose the later fixture path",
-                        "description": "This is a new authored round, not a retry of the first picker.",
-                        "needs": [{"need": "Compare the later fixture paths.", "kind": "prose"}],
-                        "options": [
-                            {"label": "Continue", "does": "Continue the fixture.", "gains": ["Exercise a later round"], "costs": ["Fixture only"]},
-                            {"label": "Stop", "does": "Stop the fixture.", "gains": ["No continuation"], "costs": ["No later answer"]},
-                        ],
-                    }]}]}
-                    save(out / "later-contribution.json", later)
-                    reply = {"tool": "bash", "args": {"command":
-                        f'bun {q(str(cli))} submit {q(str(out / "later-contribution.json"))} --home "$HOME" {identity} > {q(str(out / "later-publication.json"))}'}}
-                    phase = 5
-                elif phase == 5 and args.case == "later-round":
-                    later = json.loads((out / "later-publication.json").read_text())
-                    assert later["live"]["state"] == "serving", later
-                    assert later["flow"] == receipt["flow"] and later["live"]["url"] == receipt["live"]["url"]
-                    with urlopen(later["live"]["url"].rstrip("/") + "/content", timeout=10) as response:
-                        content = json.loads(response.read())
-                    expected_ids = [q["id"] for q in receipt["ask"]["questions"] + later["ask"]["questions"]]
-                    assert content["flow"]["id"] == later["flow"] and content["revision"] == later["revision"], content
-                    assert [q["id"] for q in content["questions"]] == expected_ids, content
-                    assert "This is a new authored round" in json.dumps(content), content
-                    save(out / "later-live-content.json", content)
-                    reply = {"tool": "ask", "args": fixture_ask(later)}
-                    phase = 6
-                elif phase == 6 and args.case == "later-round":
-                    result = asks()
-                    assert len(result) == 2 and not result[-1].get("isError"), result
-                    save(out / "later-tool-result.json", result[-1])
-                    later = json.loads((out / "later-publication.json").read_text())
-                    assert html_answers(result[-1]) == {later["ask"]["questions"][0]["id"]: "A. Continue"}, result[-1]
-                    assert len(recorded_answers(published_stage(published_state(receipt), receipt))) == 2, \
-                        "Later ask delivery authored an answer"
-                    normalized = {"version": 1, "items": [{"kind": "answer",
-                        "question": later["ask"]["questions"][0]["id"],
-                        "response": {"status": "answered", "picks": ["A"]}}]}
-                    save(out / "later-normalized-answer.json", normalized)
-                    reply = {"tool": "bash", "args": {"command":
-                        f'bun {q(str(cli))} submit {q(str(out / "later-normalized-answer.json"))} --home "$HOME" {identity} > {q(str(out / "later-answers-receipt.json"))}'}}
-                    phase = 7
                 else:
                     reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                     done.set()
@@ -987,71 +977,42 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         maxTokens: 8192
 """)
     config = "startup:\n  setupWizard: false\n  showSplash: false\n"
+    if outcome_case:
+        config += "composer:\n  predictions: false\n"
     if answer_case:
         config += "branchSummary:\n  enabled: false\n"
-    if args.case == "timeout":
-        config += "ask:\n  timeout: 1\n"
+    if args.case in ("timeout", "required-timeout"):
+        config += "ask:\n  timeout: 5\n"
     if args.case == "ratchet":
         config += "ratchet:\n  enabled: true\n"
     (home / ".omp/agent/config.yml").write_text(config)
-    argv = ["omp", "--no-title", "--model", "stub/stub-model", "--session-dir", str(session_dir)]
-    if stock:
-        argv[0] = str(Path(shutil.which("omp")).resolve())
-        argv += ["--cwd", str(project), "--approval-mode", "yolo", "--no-rules", "--no-context-files",
-                 "--no-skills", "--no-extensions", "-e", str(checkout / "plugin")]
+    argv = [str(Path(shutil.which("omp")).resolve()), "--no-title", "--model", "stub/stub-model",
+            "--session-dir", str(session_dir), "--cwd", str(project), "--approval-mode", "yolo", "--no-rules",
+            "--no-context-files", "--no-skills", "--no-extensions", "-e", str(checkout / "plugin")]
     argv += ["Run the disposable Flow questions fixture through the scripted provider."]
     save(out / "launch.json", {"argv": argv, "cwd": str(project), "case": args.case})
-    child = master = tern_control = tern_log = None
+    child = master = None
 
     def ctl(*words):
-        if owned_window:
-            if words[0] in ("click", "key", "type"):
-                native_tern("clear")
-            return json.loads(native_tern("ctl", *words))
-        result = subprocess.run(["tern", "ctl", "--control", tern_control, *words],
-                                capture_output=True, text=True, timeout=30)
-        if result.returncode:
-            raise RuntimeError(f"tern ctl {words}: {result.stdout} {result.stderr}")
-        value = json.loads(result.stdout)
-        if not value.get("ok"):
-            raise RuntimeError(f"tern ctl {words}: {value}")
-        return value
+        if words[0] in ("click", "key", "type"):
+            native_tern("clear")
+        return json.loads(native_tern("ctl", *words))
 
     def launch_native():
-        nonlocal child, master, tern_control, tern_log
+        nonlocal child, master
         if owned_window:
             ctl("size", "1600", "1000")
             run_omp(ctl("state")["focused"]["id"], argv)
             return
-        if args.tern:
-            with socket.socket() as free:
-                free.bind(("127.0.0.1", 0))
-                tern_control = str(free.getsockname()[1])
-            tern_env = {**os.environ, "TERN_CONFIG_DIR": str(out / "tern-config")}
-            tern_log = (out / "tern.log").open("w")
-            child = subprocess.Popen(["tern", "serve", "--control", tern_control, "--out", str(out), str(project)],
-                                     env=tern_env, stdout=tern_log, stderr=tern_log)
-            deadline = time.monotonic() + 30
-            while time.monotonic() < deadline:
-                try:
-                    ctl("state")
-                    break
-                except (RuntimeError, json.JSONDecodeError):
-                    time.sleep(0.1)
-            ctl("size", "1600", "1000")
-            launch = "env -i " + " ".join(q(k + "=" + v) for k, v in env.items()) + " " + shlex.join(argv)
-            ctl("run", json.dumps(launch))
-            save(out / "tern-control.json", {"endpoint": tern_control, "pid": child.pid, "launch": launch})
-        else:
-            master, slave = pty.openpty()
-            try:
-                fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
-                child = subprocess.Popen(argv, cwd=project, env=env, stdin=slave, stdout=slave, stderr=slave,
-                                         start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
-            finally:
-                os.close(slave)
+        master, slave = pty.openpty()
+        try:
+            fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
+            child = subprocess.Popen(argv, cwd=project, env=env, stdin=slave, stdout=slave, stderr=slave,
+                                     start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
+        finally:
+            os.close(slave)
         with (data / "pids").open("a") as log:
-            log.write(f"{child.pid} {'tern' if args.tern else 'omp'} flow-questions {args.case}\n")
+            log.write(f"{child.pid} omp flow-questions {case}\n")
 
     def with_env(args):
         return ["env", *(k + "=" + v for k, v in env.items()), *args]
@@ -1067,8 +1028,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                        "output_byte_offset": len(captured)})
         save(out / "inputs.json", inputs)
         if args.tern:
-            keys = {b"\r": "Enter", b"\x1b": "Escape", b"\x1b[15~": "F5", b" ": "Space", b"\x03": "Ctrl+c",
-                    b"n": "n", b"j": "j"}
+            keys = {b"\r": "Enter", b"\x1b": "Escape", b"\t": "Tab"}
             if value in keys:
                 ctl("key", keys[value])
             else:
@@ -1080,18 +1040,18 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             read_output(0.03)
 
     def wait_for_text(text, after=0):
-        if args.tern:
-            text = {"n add note": "Add note", "Space/Enter/n type answer": "Type answer",
-                    "n add submit note": "Submit note"}.get(text, text)
-        deadline = time.monotonic() + (15 if native else 90)
+        deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             if text in plain(captured[after:]):
                 return
             if inventory_error:
                 raise AssertionError(inventory_error)
-            failed = next((m for m in asks() if m.get("isError") and m["toolCallId"] != refused_call_id), None)
-            if failed and args.case not in ("cancel", "retry"):
-                raise RuntimeError(f"ordinary ask failed before the picker: {failed}")
+            if handler_errors:
+                raise RuntimeError(handler_errors[0])
+            if not outcome_case:
+                failed = next((m for m in asks() if m.get("isError") and m["toolCallId"] != refused_call_id), None)
+                if failed:
+                    raise RuntimeError(f"ordinary ask failed before the picker: {failed}")
             read_output(0.1)
             if child is not None and child.poll() is not None:
                 raise RuntimeError(f"omp exited before {text!r}")
@@ -1128,11 +1088,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         ctl("click", *point, *modifiers)
         read_output(0.15)
 
-    def click_option(label):
-        options = ctl("tree", '[role="listbox"] .sf-act')["nodes"]
-        row = next(node for node in options if node.get("text", "").endswith(label))
-        native_click(f"click option {label}", row)
-
     summary = {"ok": False, "case": args.case}
 
     def panel_nodes():
@@ -1146,44 +1101,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             return None
         return current if not require_ask or "ask" in current else None
 
-    def panel_with_picker(name, after=0, round_file="publication.json"):
-        # A later round has its own receipt; its question title and fragment differ from the first round's.
-        current = round_receipt(round_file)
-        if args.tern:
-            deadline = time.monotonic() + 30
-            while (receipt is None or current is None) and time.monotonic() < deadline:
-                read_output(0.1)
-                current = round_receipt(round_file)
-            assert receipt is not None and current is not None, "No publication receipt before native picker"
-        current = current or receipt
-        if args.tern:
-            wait_for_text(current["ask"]["questions"][0]["question"], after=after)
-        else:
-            wait_for_text("n add note", after=after)
-        if args.case == "offline":
-            expected = json.loads((out / "offline-bound.json").read_text())["live"]["error"]
-        else:
-            expected = current["live"]["url"] + "#" + current["ask"]["questions"][0]["id"]
-        wait_for_text(expected, after=after)
-        if args.tern:
-            # Judge one snapshot taken while panel and picker show together: a timeout case can close both
-            # while the screenshot converts.
-            deadline = time.monotonic() + 5
-            while True:
-                tree, panel = ctl("tree"), ctl("tree", PANEL)
-                together = ("Flow page" in json.dumps(panel) and expected in json.dumps(panel)
-                            and "Add note" in json.dumps(tree))
-                if together or time.monotonic() >= deadline:
-                    break
-                read_output(0.1)
-            save(out / f"{name}.tree.json", tree)
-            save(out / f"{name}.panel.json", panel)
-            save(out / f"{name}.state.json", ctl("state"))
-            assert together, "No Flow panel holds the expected text beside the open picker"
-            shot = ctl("shot", name)
-            subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / f"{name}.webp")], check=True,
-                           capture_output=True)
-        return expected
 
     def panel_gone(label):
         if not args.tern:
@@ -1443,19 +1360,142 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             time.sleep(0.15)
         save(out / "ratchet-reuse.target.json", native_target())
 
-    try:
-        launch_native()
+    class OutcomeUI:
+        offset = 0
+
+        def capture(self, name):
+            read_output(0.05)
+            if args.tern:
+                save(out / f"{name}.card.json", ctl("tree", FORM))
+                save(out / f"{name}.panel.json", ctl("tree", PANEL))
+                tern_shot(name)
+            else:
+                (out / f"{name}.terminal.txt").write_text(plain(captured[self.offset:]))
+
+        def active(self, name, title, current):
+            link = current["live"]["url"] + "#" + current["ask"]["questions"][0]["id"] if current else None
+            if args.tern:
+                wait_native(title, lambda: title in json.dumps(ctl("tree", FORM)))
+                if link:
+                    wait_native("matching Flow panel", lambda: link in json.dumps(ctl("tree", PANEL)))
+                else:
+                    assert not panel_nodes(), "Unbound form unexpectedly has a Flow panel"
+            else:
+                wait_for_text(title, self.offset)
+                wait_for_text("Submit", self.offset)
+                if link:
+                    wait_for_text(link, self.offset)
+            assert len(asks()) == (0 if name == "active" else 1), "Form settled before its gesture"
+            if current:
+                target = wait_native("Picker presence", lambda: (row := native_target())["picker"] and row)
+                assert target["target"] == link, target
+                save(out / f"{name}.target.json", target)
+            self.capture(name)
+
+        def settled(self, name, current):
+            if args.tern:
+                wait_native("native form and panel removed", lambda: not ctl("tree", FORM)["nodes"] and not panel_nodes())
+            if current:
+                target = wait_native("Picker presence cleared", lambda: (row := native_target())["picker"] is None and row)
+                save(out / f"{name}.target.json", target)
+            self.capture(name)
+
+        def click_text(self, selector, label):
+            def visible():
+                return next((n for n in ctl("tree", FORM + " " + selector)["nodes"]
+                             if n.get("text") == label and n["rect"][2] > 0), None)
+
+            native_click(label, wait_native(label, visible))
+
+        def action(self, label):
+            if args.tern:
+                self.click_text(".sf-btn-label", label)
+            else:
+                assert label == "Submit", "The classic rows renderer has no native Cancel button"
+                send("focus native Submit", b"\t")
+                send("activate native Submit", b"\r")
+
+        def pick(self, label):
+            if args.tern:
+                self.click_text(".sf-item-label", label)
+            else:
+                if label.startswith("B. "):
+                    send("focus the second native option", b"\x1b[B")
+                send("change the draft without submitting", b" ")
+
+        def focus_composer(self, while_asking):
+            if args.tern:
+                composer = wait_native("composer", lambda: ctl("tree", COMPOSER)["nodes"])
+                native_click("focus composer", composer[0])
+            elif while_asking:
+                send("focus native Submit", b"\t")
+                send("leave native Submit for the composer", b"\t")
+
+        def message(self, text):
+            self.focus_composer(while_asking=text != CONTINUE)
+            send("type plain composer message", text.encode())
+            if text != CONTINUE:
+                self.capture("composer-with-draft")
+            self.offset = len(captured)
+            send("send plain composer message", b"\r")
+
+        def abort(self):
+            self.focus_composer(while_asking=True)
+            send("interrupt the whole turn from the composer", b"\x1b")
+
+        def result(self, count):
+            def observed():
+                read_output(0.05)
+                results = asks()
+                assert len(results) <= count, results
+                return results[-1] if len(results) == count else None
+
+            return wait_native("native ask tool result", observed, 20)
+
+    def drive_outcomes():
+        required = args.case == "required-timeout"
+        first = None if required else wait_native(
+            "checked live publication", lambda: (out / "live-identity.json").exists() and receipt, 25)
+        assertions = outcome_case.drive(first, OutcomeUI())
+        outcomes = asks()
+        calls = [block for message in messages() if message.get("role") == "assistant"
+                 for block in message.get("content", []) if isinstance(block, dict)
+                 and block.get("type") == "toolCall" and block.get("name") == "ask"]
+        expected = [REQUIRED if required else fixture_ask(first)]
+        if outcome_case.next_form:
+            expected.append(fixture_ask(outcome_case.next_form))
+        assert [call["arguments"] for call in calls] == expected, calls
+        assert [call["id"] for call in calls] == [result["toolCallId"] for result in outcomes], outcomes
+        assert not handler_errors, handler_errors
+        save(out / "ask-calls.json", calls)
+        save(out / "tool-results.json", outcomes)
+        if required:
+            session, = [entry["id"] for file in session_dir.rglob("*.jsonl") for entry in lines(file)
+                        if entry.get("type") == "session"]
+            (out / "child-session-id.txt").write_text(session)
+            binding = flow_read("bound")
+            assert binding["binding"] is None, binding
+            save(out / "unbound-native-session.json", binding)
+            assertions += outcome_case.public_only(outcomes[0], contribution["items"])
+        else:
+            if args.case == "interrupted":
+                assert any(m.get("role") == "user" and STEER in json.dumps(m.get("content")) for m in messages())
+            assert all(first["live"]["url"] not in file.read_text() for file in session_dir.rglob("*.jsonl"))
+            assert first["live"]["url"] not in json.dumps(requests), "Flow link leaked into model requests"
+        summary.update(ok=True, assertions=assertions, stub_requests=len(requests), human_consent=False)
+
+    def drive_regular():
+        nonlocal refused_call_id
         peer = launch_follow_peer() if owned_window and args.case == "native" else None
         following = None
-        if native and not answer_case or args.case == "tui":
+        if native and not answer_case:
             deadline = time.monotonic() + 30
             while True:
                 read_output(0.1)
                 if args.tern:
                     tree = ctl("tree")
-                    form_visible = ctl("tree", FORM)["nodes"] if native else "Add note" in json.dumps(tree)
-                    assert not panel_nodes() and not form_visible, "Renamed control opened a form or Flow panel"
-                assert ("A. Alpha" if native else "n add note") not in plain(captured), "Renamed control opened a form"
+                    assert not panel_nodes() and not ctl("tree", FORM)["nodes"], "Renamed control opened a form or Flow panel"
+                assert "A. Alpha" not in plain(captured), "Renamed control opened a form"
                 if handler_errors:
                     raise RuntimeError(handler_errors[0])
                 result = asks()
@@ -1489,124 +1529,10 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             drive_specialized_dialog("ratchet", 0)
             direct_close_observed.set()
             observe_ratchet_reuse()
-        else:
-            panel_url = panel_with_picker("panel")
-            if args.case != "timeout":
-                assert len(asks()) == (1 if args.case == "tui" else 0), "Picker returned before it was shown"
-        if args.tern and not stock and args.case not in ("offline", "timeout"):
-            before_click = ctl("state")
-            save(out / "before-click.state.json", before_click)
-            omp_pane = before_click["focused"]["id"]
-            save(out / "before-click.system.json", ctl("system"))
-            links = ctl("tree", PANEL + " a")
-            save(out / "panel-links.json", links)
-            link = next(node for node in links["nodes"]
-                        if node.get("tag") == "a" and node.get("text") == panel_url)
-            x, y, _, _ = link["rect"]
-            save(out / "click-target.json", ctl("pick", str(x + 8), str(y + 8)))
-            native_click("click exact Flow Markdown link", link)
-            deadline = time.monotonic() + 5
-            while True:
-                destination = ctl("tree", ".kit-web-url")
-                after_click = ctl("state")
-                if any(node.get("value") == panel_url for node in destination["nodes"]) or time.monotonic() >= deadline:
-                    break
-                time.sleep(0.1)
-            save(out / "after-click.system.json", ctl("system"))
-            save(out / "after-click.state.json", after_click)
-            save(out / "after-click.tree.json", ctl("tree"))
-            save(out / "click-destination.json", destination)
-            if not any(node.get("value") == panel_url for node in destination["nodes"]):
-                summary["click_error"] = "Native click opened no matching live URL"
-            elif after_click["focused"]["id"] == omp_pane:
-                summary["click_error"] = "Native click did not focus a separate browser pane"
-            else:
-                shot = ctl("shot", "clicked-link")
-                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "clicked-link.webp")], check=True,
-                               capture_output=True)
-                ctl("close")
-            assert ctl("state")["focused"]["id"] == omp_pane, "Picker pane is not focused after the link step"
-        if args.case == "abort":
-            send("cancel the whole turn while the picker and panel are open", b"\x03")
-            panel_gone("abort")
-            if args.tern:
-                after_abort = ctl("tree")
-                save(out / "after-abort.tree.json", after_abort)
-                assert "Add note" not in json.dumps(after_abort), "Turn cancellation left the picker open"
-            done.set()
-        if args.case in ("cancel", "retry", "offline"):
-            send("Escape cancels the actual ordinary ask picker", b"\x1b")
-            deadline = time.monotonic() + 20
-            while not asks() and time.monotonic() < deadline:
-                read_output(0.1)
-            assert asks() and asks()[-1].get("isError"), "Escape did not produce an aborted ask result"
-            cancelled = published_state(receipt)
-            save(out / "cancelled-state.json", cancelled)
-            assert not recorded_answers(published_stage(cancelled, receipt)), "Cancellation must not record consent"
-            panel_gone("cancel")
-            if args.case in ("cancel", "offline"):
-                done.set()
-            else:
-                for _ in range(10):
-                    read_output(0.1)
-                before_retry = len(captured)
-                send("F5 native retry of the aborted turn", b"\x1b[15~")
-                panel_with_picker("retry-panel", after=before_retry)
-        if args.case in ("tui", "retry", "later-round"):
-            send("open Alpha option note", b"n")
-            wait_for_text("Note for")
-            send("type option note", b"fixture-option-note")
-            time.sleep(0.15)
-            send("save option note", b"\r")
-            time.sleep(0.2)
-            send("pick Alpha", b" ")
-            if args.tern:
-                click_option("B. Beta")
-            else:
-                send("move to Beta", b"j")
-                send("pick Beta", b" ")
-            send("advance from the multiselect question", b"\r")
-            time.sleep(0.2)
-            send("move to Other", b"j")
-            time.sleep(0.15)
-            send("move to Other again", b"j")
-            wait_for_text("Space/Enter/n type answer")
-            send("open Other editor", b"n")
-            wait_for_text("Other answer")
-            send("type custom words", b"fixture-custom-concern")
-            time.sleep(0.15)
-            send("save custom words", b"\r")
-            time.sleep(0.2)
-            send("advance to submit review", b"\r")
-            wait_for_text("n add submit note")
-            send("open submit note", b"n")
-            time.sleep(0.2)
-            send("type submit note", b"fixture-submit-note")
-            time.sleep(0.15)
-            send("save submit note", b"\r")
-            time.sleep(0.2)
-            before_submit = len(captured)
-            send("submit real picker", b"\r")
-            if args.case == "tui" and args.tern:
-                panel_gone("submit")
-                after_submit = ctl("tree")
-                save(out / "after-submit.tree.json", after_submit)
-                assert "Add note" not in json.dumps(after_submit), "Submit left the picker open"
-        if args.case == "later-round":
-            panel_with_picker("later-panel", after=before_submit, round_file="later-publication.json")
-            assert len(asks()) == 1, "Later picker returned before it was shown"
-            before_later_pick = len(captured)
-            send("pick Continue in later round", b"\r")
-            deadline = time.monotonic() + 20
-            while len(asks()) < 2 and time.monotonic() < deadline:
-                read_output(0.1)
-                if ("Submit note" if args.tern else "n add submit note") in plain(captured[before_later_pick:]):
-                    send("submit later round picker", b"\r")
-                    break
-        deadline = time.monotonic() + (15 if stock else 90)
+        deadline = time.monotonic() + 15
         while not done.is_set() and time.monotonic() < deadline:
             read_output(0.1)
-            if stock and handler_errors:
+            if handler_errors:
                 raise RuntimeError(handler_errors[0])
             if child is not None and child.poll() is not None:
                 raise RuntimeError("omp exited before fixture completion")
@@ -1620,11 +1546,10 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                          and entry.get("display") is not False]
         save(out / "flow-messages.json", flow_messages)
         assert not flow_messages, "Unsolicited Flow message after question or completion"
-        if args.case not in ("cancel", "offline", "abort"):
-            completion = next(m for m in reversed(messages()) if m.get("role") == "assistant")
-            completion_text = "".join(c.get("text", "") for c in completion.get("content", []) if isinstance(c, dict))
-            assert "FLOW_QUESTIONS_FIXTURE_COMPLETE" in completion_text, "Missing terminal completion"
-            assert receipt["live"]["url"] not in completion_text, "Completion repeats the Flow link"
+        completion = next(m for m in reversed(messages()) if m.get("role") == "assistant")
+        completion_text = "".join(c.get("text", "") for c in completion.get("content", []) if isinstance(c, dict))
+        assert "FLOW_QUESTIONS_FIXTURE_COMPLETE" in completion_text, "Missing terminal completion"
+        assert receipt["live"]["url"] not in completion_text, "Completion repeats the Flow link"
         save(out / "tool-results.json", result)
         panel_phrases = ["vstack.flow-panel", receipt["live"]["url"]]
         for file in session_dir.rglob("*.jsonl"):
@@ -1632,17 +1557,13 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         assert all(phrase not in json.dumps(requests) for phrase in panel_phrases), "Flow panel leaked into model requests"
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
-        if args.case != "abort":
-            assert len(result) == (2 if stock or args.case in ("tui", "retry", "later-round") else 1), result
+        assert len(result) == 2, result
         opened = json.loads((out / "open.json").read_text())
         state = published_state(opened)
         stage = published_stage(state, opened)
         save(out / "persisted-state.json", state)
-        later = json.loads((out / "later-publication.json").read_text()) if args.case == "later-round" else None
-        assert len(stage["rounds"]) == (2 if later or answer_case else 1), state
+        assert len(stage["rounds"]) == (2 if answer_case else 1), state
         expected_ids = [q["id"] for q in receipt["ask"]["questions"]]
-        if later:
-            expected_ids.append(later["ask"]["questions"][0]["id"])
         if answer_case:
             expected_ids.append(answer_case.second["refs"]["typed"])
         assert [q["id"] for q in stage["questions"]] == expected_ids, stage
@@ -1662,37 +1583,12 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 assert content["revision"] == state["revision"]
                 assert {q["id"]: q["answer"]["response"] for q in content["questions"]
                         if q["stage"] == receipt["stage"] and "response" in q["answer"]} == {pick: expected_answer}
-        elif args.case in ("tui", "retry", "later-round"):
-            with urlopen(receipt["live"]["url"].rstrip("/") + "/content", timeout=10) as response:
-                content = json.load(response)
-            save(out / "answered-live-content.json", content)
-            results = published_stage(content, receipt)["results"]
-            assert [result["title"] for result in results] == ["Disposable picker fixture", "Note on all answers"], results
-            note = results[1]
-            assert note["shape"] == "document" and [
-                block["prose"] for section in note["doc"]["sections"] for block in section["blocks"]
-            ] == ["fixture-submit-note"], note
-            assert set(answers) == set(expected_ids), answers
-            pick, words = (answers[receipt["refs"][ref]] for ref in ("pick", "words"))
-            assert pick["response"]["picks"] == ["A", "B"], pick
-            assert pick["response"]["text"] == "fixture-option-note", pick
-            assert words["response"]["text"] == "fixture-custom-concern", words
-            assert words["reading"]["outcome"] == "concern", words
-            if later:
-                assert answers[later["refs"]["later"]]["response"]["picks"] == ["A"], answers
         else:
             assert [r["id"] for r in stage["results"]] == [receipt["refs"]["fixture"]], stage
-            assert not answers, "Picker delivery must not record Flow answers"
-            assert state["revision"] == receipt["revision"]
-            if args.case == "timeout":
-                assert result[0]["details"].get("timedOut") is True, result
-            elif args.case == "ratchet":
-                assert "FIRST_APPROVAL" in json.dumps(result)
-            elif read_fault:
+            assert not answers and state["revision"] == receipt["revision"], stage
+            if read_fault:
                 failures = failures_path.read_text().splitlines()
                 assert len(failures) > direct_failures and all("ask-status --session " in call for call in failures), failures
-            elif args.case != "abort":
-                assert result[0].get("isError"), result
         calls = [c for m in messages() if m.get("role") == "assistant"
                  for c in m.get("content", []) if isinstance(c, dict) and c.get("type") == "toolCall"]
         ask_calls = [c for c in calls if c.get("name") == "ask"]
@@ -1710,14 +1606,11 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             if answer_case:
                 expected = fixture_ask(answer_case.second if index == 1 else receipt)
             else:
-                expected = (renamed_ask(receipt) if (native or args.case == "tui") and index == 0
-                            else fixture_ask(later if later and index == 1 else receipt))
+                expected = renamed_ask(receipt) if native and index == 0 else fixture_ask(receipt)
             assert original["arguments"] == expected, "Ask HTML differs from the expected receipt form"
-        if args.case == "retry":
-            assert result[0].get("isError") and not result[-1].get("isError"), result
         publications = [c for c in calls if c.get("name") == "bash" and
                         str(out / "contribution.json") in c.get("arguments", {}).get("command", "")]
-        assert len(publications) == 1, "Retry must not republish the question round"
+        assert len(publications) == 1, "Expected exactly one round publication"
         session_id = (out / "child-session-id.txt").read_text()
         bound = flow_read("bound")
         binding = bound["binding"]
@@ -1729,7 +1622,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                       "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
         if args.case != "ratchet" and args.case != "eval":
             assertions.append("ordinary ask sends the receipt's ask.html unchanged")
-        if not answer_case and (args.case == "tui" or native):
+        if not answer_case and native:
             assertions.append("the renamed control is refused without opening the picker or Flow panel")
         if answer_case:
             drive_answer_history()
@@ -1745,10 +1638,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 if following:
                     assertions.append("selected-session changes, form opening, and the actual panel click move only the existing same-tab page")
                     assertions.append("closing the form clears the lease without moving the page")
-        elif args.case == "abort":
-            assertions.append("Ctrl+C closes the picker and removes the Flow panel")
-        elif args.case == "offline":
-            assertions.append("actual host error appears in the Flow panel beside the picker and cancellation grants no consent")
         elif read_fault:
             assertions.append("the unchanged receipt passed the live and ask-status checks before fault injection")
             assertions.append("direct and Eval native forms show the actual read error and each clears its panel and presence")
@@ -1758,24 +1647,18 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         elif args.case == "ratchet":
             assertions.append("the fresh approval shows the native gate and Stage link, then clears its panel and presence")
             assertions.append("reused approval opens neither a gate nor a Flow panel, and no ordinary ask runs")
-        else:
-            assertions.append("Flow panel URL is on screen while the picker is open, with no dismissal step")
-            if args.tern and args.case != "timeout":
-                assertions.append("native Flow panel link click opens the exact live URL")
         if args.tern:
             assertions.append("Flow panel is gone once the picker closes")
-        if args.case in ("tui", "retry", "later-round"):
-            assertions.append("picks, option note, and Other words recorded as answers; submit note recorded once as a Document Result")
-        if args.case == "retry":
-            assertions.append("F5 retry shows a fresh Flow panel and preserves the question identities without republication")
-        if args.case == "later-round":
-            assertions.append("a new authored round gets a fresh Flow panel and separate answer while preserving earlier history")
-        if args.case == "timeout":
-            assertions.append("configured timeout remains non-consent")
-        assert "click_error" not in summary, summary.get("click_error")
         summary.update(ok=True, flow=opened["flow"],
                        session_id=session_id, stub_requests=len(requests), live=receipt["live"], assertions=assertions,
                        human_consent=False)
+
+    try:
+        launch_native()
+        if outcome_case:
+            drive_outcomes()
+        else:
+            drive_regular()
     except Exception as error:
         summary["error"] = repr(error)
     finally:
@@ -1809,8 +1692,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         def stop_child():
             if child.poll() is not None:
                 return
-            if not args.tern:
-                child.terminate()
+            child.terminate()
             try:
                 child.wait(timeout=5)
             except subprocess.TimeoutExpired:
@@ -1832,12 +1714,8 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         if owned_window:
             cleanup_step("quit owned Tern window", lambda: ctl("quit"))
         if child is not None:
-            if args.tern and child.poll() is None:
-                cleanup_step("quit owned Tern", lambda: ctl("quit"))
             cleanup_step("stop native child", stop_child)
         cleanup_step("join provider requests", server.server_close)
-        if tern_log:
-            cleanup_step("close Tern log", tern_log.close)
         if competing:
             cleanup_step("stop competing listener", competing.shutdown)
             cleanup_step("close competing listener", competing.server_close)
@@ -1847,7 +1725,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         if owned_window:
             cleanup_step("stop owned Tern daemon", stop_window)
         cleanup_step("verify Flow shutdown", lambda: verify_host_stopped(home, port, cleanup))
-        if stock and not cleanup["errors"]:
+        if not cleanup["errors"]:
             cleanup_step("remove disposable HOME and fixture data", lambda: (shutil.rmtree(outside), shutil.rmtree(data)))
         cleanup["ok"] = not cleanup["errors"]
         if not cleanup["ok"]:
