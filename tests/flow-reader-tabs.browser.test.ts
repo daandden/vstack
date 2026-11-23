@@ -488,6 +488,8 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
   const a = cli(["open", "--skill", "grill-me", "--title", "Map keyboard controls"]);
   const pending = submit(a.flow, a.stage, [{ kind: "round", questions: [question("map-q", "Keep the map controls?")] }]);
   const children = Array.from({ length: 24 }, () => cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]));
+  const grandchild = cli(["open", "--skill", "prototype", "--flow", a.flow, "--parent", children[0].stage]);
+  submit(a.flow, grandchild.stage, [{ kind: "stage", state: "finished" }]);
   const context = await browser.newContext({ viewport: { width: 320, height: 700 } });
   try {
     const page = await context.newPage();
@@ -507,16 +509,32 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     expect(await map.getByRole("tab", { name: "Matt flow path", exact: true }).getAttribute("aria-selected")).toBe("true");
     await page.keyboard.press("l");
     expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
-    const stageLinks = map.locator(".tree a");
-    expect(await stageLinks.count()).toBe(25);
+    const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
+    const cards = pane.getByRole("list", { name: "Stage cards" });
+    const stageLinks = cards.getByRole("link");
+    const expectedStages = [a, children[0], grandchild, ...children.slice(1)];
+    expect(await stageLinks.evaluateAll(links => links.map(link => link.getAttribute("href")))).toEqual(
+      expectedStages.map(stage => `#${stage.stage}`),
+    );
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
-    expect(await map.locator(".tree > li > .quiet").textContent()).toContain("In progress · 1 open");
-    expect(await map.locator(".tree > li > ul > li").count()).toBe(24);
+    const items = cards.getByRole("listitem");
+    expect(await items.nth(0).innerText()).toContain("In progress · 1 open");
+    expect(await items.nth(2).innerText()).toContain("Finished · 0 open");
+    for (const i of [1, ...children.slice(1).map((_, i) => i + 3)]) {
+      expect(await items.nth(i).innerText()).toContain("In progress · 0 open");
+    }
+    const edges = pane.locator("path[data-parent][data-child]");
+    await edges.first().waitFor({ state: "attached", timeout: 3000 });
+    expect(await edges.evaluateAll(paths => paths.map(path => [
+      path.getAttribute("data-parent"), path.getAttribute("data-child"),
+    ].join(" -> ")).sort())).toEqual([
+      ...children.map(child => `${a.stage} -> ${child.stage}`),
+      `${children[0].stage} -> ${grandchild.stage}`,
+    ].sort());
     await page.keyboard.press("j");
     expect(await stageLinks.nth(1).evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("k");
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
-    const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
     await page.keyboard.press("ArrowDown");
     const panned = await pane.evaluate((el) => el.scrollTop);
     expect(panned).toBeGreaterThan(0);
