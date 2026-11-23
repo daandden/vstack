@@ -1,5 +1,15 @@
 import type { Page } from "playwright-core";
 
+export function stagesButton(page: Page) {
+  return page.getByRole("navigation", { name: "Flow navigation", exact: true })
+    .getByRole("button", { name: /^Stages(?: · .+)?$/ });
+}
+
+export function jumpButton(page: Page) {
+  return page.getByRole("navigation", { name: "Flow navigation", exact: true })
+    .getByRole("button", { name: /^Jump(?: · .+)?$/ });
+}
+
 export function useWideReaderFont(page: Page) {
   return page.addStyleTag({ content: `
     @font-face {

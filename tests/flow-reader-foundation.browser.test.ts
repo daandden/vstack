@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import { stagesButton } from "./support/reader-layout.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-foundation-")));
@@ -120,7 +121,7 @@ test("completed and reopened Flows keep lifecycle metadata, topic links, and com
       expect(await backgrounds.getByRole("list").evaluate(el => getComputedStyle(el).paddingInlineStart)).toBe("12px");
       await capture(page, `context/${theme}`);
       await notes.click();
-      await page.getByRole("button", { name: "Stages", exact: true }).click();
+      await stagesButton(page).click();
       await page.getByRole("tabpanel", { name: "Stages", exact: true }).getByRole("link", { name: "Topics", exact: true }).click();
       const topics = page.getByRole("region", { name: "Topic notes", exact: true });
       const topic = topics.getByRole("link", { name: "Per-cart cap", exact: true });
@@ -238,7 +239,7 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
         return [css.padding, css.borderTopWidth, css.borderRadius, css.boxShadow, el.getBoundingClientRect().width];
       })).toEqual(["8px", "1px", "4px", "none", 1024]);
       await capture(page, `${label!.toLowerCase()}-overview`);
-      await page.getByRole("button", { name: "Stages", exact: true }).click();
+      await stagesButton(page).click();
       await page.getByRole("tabpanel", { name: "Stages", exact: true }).getByRole("link", { name: "Implement", exact: true }).click();
       await page.getByRole("img", { name: "Read then choose" }).waitFor();
     }

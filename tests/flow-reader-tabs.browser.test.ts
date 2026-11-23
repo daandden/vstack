@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
 import { ENV, git } from "./support/fixture.ts";
-import { useWideReaderFont, waitForReaderLayout } from "./support/reader-layout.ts";
+import { jumpButton, stagesButton, useWideReaderFont, waitForReaderLayout } from "./support/reader-layout.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const SETUP = "./node_modules/.bin/playwright-core install --only-shell chromium (CI: the \"Install Chromium\" step in .github/workflows/check-register.yml)";
@@ -58,7 +58,7 @@ const barOf = (page: Page) => page.getByRole("navigation", { name: "Flow navigat
 const selected = (page: Page) => page.locator("main > section[data-tab]:visible").getAttribute("data-tab");
 const shown = (page: Page, id: string) => page.locator(`main > section[id="${id}"]`).waitFor();
 const goViaMap = async (page: Page, id: string) => {
-  await barOf(page).getByRole("button", { name: "Stages", exact: true }).click();
+  await stagesButton(page).click();
   await page.getByRole("tabpanel", { name: "Stages", exact: true }).locator(`a[href="#${id}"]`).click();
   await shown(page, id);
 };
@@ -124,8 +124,8 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     await waitForReaderLayout(page);
     const overview = bar.getByRole("link", { name: title, exact: true });
     const current = bar.getByRole("link", { name: /How should the rollout handle an unavailable zone\?.*Concern/ });
-    const stages = bar.getByRole("button", { name: /^Stages\b/ });
-    const jump = bar.getByRole("button", { name: /^Jump\b/ });
+    const stages = stagesButton(page);
+    const jump = jumpButton(page);
     expect(await overview.getAttribute("href")).toBe("#overview");
     expect(await bar.getByText("regional-service-catalogue", { exact: true }).isVisible()).toBe(true);
     expect(await bar.getByText(work, { exact: true }).isVisible()).toBe(true);
@@ -227,6 +227,15 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
 
     await page.setViewportSize({ width: 2560, height: 1000 });
     await waitForReaderLayout(page);
+    await assertBarFits();
+    await assertCount(waitingCount, waitingIds, 4);
+    expect(await bar.getByRole("link", { name: /Keep the fallback for zone 1\?.*Concern recorded/ }).innerText()).toContain("!");
+    await capture(page, "bar-2560-light");
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    expect(await bar.evaluate(el => el.getBoundingClientRect().top)).toBe(0);
+
+    await page.setViewportSize({ width: 3840, height: 1000 });
+    await waitForReaderLayout(page);
     const lastWaitingCount = bar.getByRole("button", { name: /\+1 waiting Stage$/ });
     await lastWaitingCount.waitFor();
     const shownWaiting = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
@@ -234,10 +243,6 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     expect(shownWaiting).toHaveLength(3);
     expect(shownWaiting.every(label => label?.includes("1"))).toBe(true);
     expect(await lastWaitingCount.isVisible()).toBe(true);
-    expect(await bar.getByRole("link", { name: /Keep the fallback for zone 1\?.*Concern recorded/ }).innerText()).toContain("!");
-    await capture(page, "bar-2560-light");
-    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-    expect(await bar.evaluate(el => el.getBoundingClientRect().top)).toBe(0);
   } finally {
     await page.close();
   }
@@ -417,7 +422,7 @@ test("Jump lists the latest attempts, one Assumed-picks entry, and exact reading
     await page.goto(`${opened.live.url}#${first.long}`);
     await page.locator(`#${first.long}`).waitFor();
     const jump = page.getByRole("dialog", { name: "Jump" });
-    const trigger = page.getByRole("button", { name: "Jump", exact: true });
+    const trigger = jumpButton(page);
     expect(await jump.isVisible()).toBe(false);
     await page.keyboard.press("g");
     await jump.waitFor({ timeout: 3000 });
@@ -892,18 +897,18 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     expect(await map.getByRole("tab", { name: "Matt flow path", exact: true }).getAttribute("aria-selected")).toBe("true");
     await page.keyboard.press("Escape");
     await map.waitFor({ state: "hidden" });
-    const stagesButton = barOf(page).getByRole("button", { name: "Stages", exact: true });
-    await stagesButton.click();
+    const trigger = stagesButton(page);
+    await trigger.click();
     await map.waitFor();
     expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
     await page.keyboard.press("j");
     await page.keyboard.press("Enter");
     await map.waitFor({ state: "hidden" });
     await shown(page, children[0].stage);
-    await stagesButton.click();
+    await trigger.click();
     await map.getByRole("button", { name: "Close", exact: true }).click();
     await map.waitFor({ state: "hidden" });
-    expect(await stagesButton.evaluate((el) => el === document.activeElement)).toBe(true);
+    expect(await trigger.evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("m");
     await map.waitFor();
     await page.mouse.click(1, 1);
@@ -924,7 +929,7 @@ test("Escape returns focus to the Stages Map trigger after keyboard opening", as
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    const trigger = page.getByRole("button", { name: "Stages", exact: true });
+    const trigger = stagesButton(page);
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     expect(await trigger.getAttribute("aria-haspopup")).toBe("dialog");
     for (const openWith of ["m", "Enter"] as const) {
@@ -973,14 +978,14 @@ test("Map stays open when m reopens it before the previous native close event", 
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    const stagesButton = barOf(page).getByRole("button", { name: "Stages", exact: true });
+    const trigger = stagesButton(page);
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     for (const reopenBeforeCloseEvent of [true, false]) {
-      await stagesButton.click();
+      await trigger.click();
       await map.waitFor();
-      const state = await map.evaluate(async (el, rapid) => {
+      const opener = await trigger.elementHandle();
+      const state = await map.evaluate(async (el, { rapid, opener }) => {
         const dialog = el as HTMLDialogElement;
-        const opener = document.getElementById("flow-stages")!;
         const closed = new Promise<boolean>((resolve) => dialog.addEventListener("close", (e) => resolve(e.isTrusted), { once: true }));
         dialog.querySelector<HTMLButtonElement>("header button")!.click();
         await Promise.resolve();
@@ -994,7 +999,7 @@ test("Map stays open when m reopens it before the previous native close event", 
         const nativeClose = await closed;
         await new Promise(requestAnimationFrame);
         return { dismissed, openerRestored, reopened, nativeClose, stayedOpen: dialog.open, focusInside: dialog.contains(document.activeElement) };
-      }, reopenBeforeCloseEvent);
+      }, { rapid: reopenBeforeCloseEvent, opener });
       expect(state).toEqual({ dismissed: true, openerRestored: true, reopened: true, nativeClose: true, stayedOpen: true, focusInside: true });
       await page.keyboard.press("Escape");
       await map.waitFor({ state: "hidden" });
