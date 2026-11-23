@@ -32,7 +32,7 @@ A height and opacity transition around 200ms can preserve document flow where sc
 
 ## Group entrance
 
-For an occasional group entrance, start with an 8px translation and opacity over about 300ms. A 30–80ms stagger can clarify order when it does not delay use. Remove decorative stagger for reduced motion. Avoid repeating the entrance on frequently visited lists or blocking interaction while it plays.
+Use one entrance per container. For an occasional group, keep the container still when its children enter. Start near an 8px translation with opacity, and vary the delays, for example 0, 50, 90, and 120ms. Use the total timing budget and role guidance in skill://choreograph. Omit decorative stagger under reduced motion and on frequently visited lists. Never block interaction while an entrance plays.
 
 ## Hold to confirm
 

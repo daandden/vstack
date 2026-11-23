@@ -7,7 +7,7 @@ description: "Use when reviewing existing web animation or a motion diff for tim
 
 Apply Emil Kowalski's motion-review bar inside the current review. The existing review owner retains scope, reviewer delegation, finding format, blocking decisions, verification, and evidence. This Utility skill neither starts a flow nor edits the application. Review non-motion code through the existing owner.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/review-animations). The [MIT notice](LICENSE) ships alongside the adaptation.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/review-animations). The [MIT notice](LICENSE) ships alongside the adaptation.
 
 Read [STANDARDS.md](STANDARDS.md) before judging motion. It supplies the frequency table, precise curves, duration budgets, spring and gesture guidance, rendering qualifications, and accessibility rules. Inspect every changed animation and any unchanged interaction needed to establish its behavior.
 

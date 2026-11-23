@@ -20,9 +20,9 @@ Select cases for the rendered values mapped in [SKILL.md](SKILL.md). Each exampl
 
 | Cases | What to observe |
 | --- | --- |
-| `bartholomew.fitzgerald@northwind-industries-holdings.example.com` | Unbroken text must not push actions out of the container |
-| `a@b.co`, `first.last+billing-notifications@example.com` | Short content and legitimate plus-addressing |
-| `ops@sub.department.region.example.co.uk` | Subdomains and multi-part public suffixes invalidate naive domain extraction |
+| `bartholomew.fitzgerald@northwind-industries-holdings.test` | Unbroken text must not push actions out of the container |
+| `a@b.test`, `first.last+billing-notifications@example.test` | Short content and legitimate plus-addressing |
+| `ops@sub.department.region.example.co.uk.test` | Subdomains and a multi-part suffix. In a parser fixture, define `co.uk.test` as a synthetic suffix and check for `example.co.uk.test`. The live public suffix list does not define `co.uk.test`. |
 | `https://example.com/workspaces/acme/projects/q3-launch/docs/9f8e7d6c5b4a?tab=comments&filter=unresolved` | Long URL with a meaningful suffix |
 | `9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f` | Fixed-shape identifier width |
 | `Q3 Board Deck FINAL (revised) v12 [approved by legal].pdf`, `IMG_20250914_183022_HDR_portrait_edited_edited.HEIC` | Distinguishing version and extension must remain available |

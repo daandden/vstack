@@ -4,13 +4,8 @@ description: "Apply after completing a task, before declaring done. Verify again
 disable-model-invocation: true
 ---
 
-
 # Prove It Works
 
-Verify the output by checking the real thing. Compilation, file mtimes, cached screenshots, and a subagent's report are not proof of runtime behavior.
+Verify every output by checking the real thing directly: run the feature, read the actual value, inspect the diff. Proxies (file mtimes, self-reports, cached output, "it compiles") do not count. When a check fails, suspect the observation method before the system.
 
-Check process liveness directly. Read the actual value rather than a derived value. When verification fails, check the observation method before blaming the system.
-
-## Script the check
-
-Write a deterministic script when it can repeat the same comparison. Run it and keep its output so a reviewer can repeat the proof. Keep evidence visible to the human. Commit proof artifacts for large or complex work that needs a lasting audit trail.
+Script the check when you can. A deterministic script that reruns the comparison beats a one-time look. Keep its output where the human can see it, and commit it only when the trail must be auditable later.

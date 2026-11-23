@@ -22,7 +22,7 @@ Track every hypothesis worker through skill://vstack-fan-out/WORKER-LIFECYCLE.md
 
 ## 1. Ground the workload and architecture
 
-Run skill://how over the target. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint. If none does, fix the reproduction before measuring hypotheses. Use the metric, unit, direction, target, and stop predicate that the grill settled. If that contract is missing, report the gap instead of starting the loop or inventing numbers.
+Trace the target mechanism and workload before proposing hypotheses. Cite the source and the workload evidence. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint. If none does, fix the reproduction before measuring hypotheses. Use the metric, unit, direction, target, and stop predicate that the grill settled. If that contract is missing, report the gap instead of starting the loop or inventing numbers.
 
 ## 2. Build, prove, and freeze the harness
 

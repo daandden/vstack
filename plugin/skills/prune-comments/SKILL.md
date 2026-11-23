@@ -26,7 +26,7 @@ Pass the scope without restating the critic's rules.
 
 Inspect the report and diff. Reject application-code edits, scope escapes, exception-protected deletions, and misstated `MUST KILL` reasons. Reject flags that treat kept intentional code as guilty. Reshape flags on our-code surprises stay actionable. Do not restore those comments. A keep survives only with proof about something we cannot change.
 
-Audit missed scoped lint and TypeScript suppressions. Correctness or safety suppressions stay actionable `MUST KILL`s. Restore deletions only with exact exceptions and scoped proof. Before accepting thin `IMPORTANT` or `do not remove` kills or keeps, run `skill://how` or `skill://why` on their symbol. If a kill is ambiguous, do not restore it. If a keep is refuted or still ambiguous, delete it.
+Audit missed scoped lint and TypeScript suppressions. Correctness or safety suppressions stay actionable `MUST KILL`s. Restore deletions only with exact exceptions and scoped proof. Before accepting thin `IMPORTANT` or `do not remove` kills or keeps, trace the named symbol or call directly. Use `skill://why` when the claim depends on rationale. If a kill is ambiguous, do not restore it. If a keep is refuted or still ambiguous, delete it.
 
 Revert a rejected report's edits and request one corrected run from the same critic with the failure named. Use its existing context, not a second critic. If the second report is rejected, report it open and fail prune-comments.
 

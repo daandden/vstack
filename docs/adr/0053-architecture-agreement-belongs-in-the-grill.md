@@ -6,6 +6,8 @@ status: accepted
 
 > [ADR 0062](0062-the-agent-picks-test-seams-and-asks-only-for-costly-ones.md) ends to-spec's seam confirmation: the agent picks test seams and asks only for a Costly seam. to-spec still asks about real capability-map forks.
 
+> [ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts](20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts.md) replaces the activation rule. `grill-with-docs` traces the affected systems and sketches two shapes for every change. It runs compare-attempts for a large or contested design. The sketch level, the user's agreement, and the Architecture brief stay as below.
+
 We will integrate pstack architect's grounding, alternative-design reasoning, screening, and rationale into `grill-with-docs`, ending at shared understanding rather than implementation. `/to-spec` keeps its synthesis role and existing seam and capability-map confirmations. This preserves the Matt flow while preventing consequential architecture choices from being invented during implementation.
 
 This records the accepted design policy. The skill instructions and Decision register have not been changed by this decision-recording run.

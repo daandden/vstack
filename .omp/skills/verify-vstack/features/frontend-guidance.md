@@ -76,11 +76,11 @@ Step `frontend-guidance-source`: Prepare the normal cache clones named in `pins.
 
 ```sh
 bun scripts/check-register.ts --json --upstreams "$CACHE"
-bun scripts/vstack-maintain.ts plan emil@7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c --upstreams "$CACHE" --scratch "$VERIFY_RUN_DIR"
+bun scripts/vstack-maintain.ts plan emil@64eb3deb9a5fbfa041faf783e0bc3fd635872e9c --upstreams "$CACHE" --scratch "$VERIFY_RUN_DIR"
 bun .omp/skills/verify-vstack/scripts/frontend-maintenance.ts "$CHECKOUT" "$VERIFY_RUN_DIR/future-source" "$CACHE"
 ```
 
-The register must account for all eighteen UI-upstream items at the current Pin. All twelve selected items must be adapt with matching pinned identities and shipped artifact associations. No selected item remains deferred. The six permanent exclusions remain reject.
+The register must account for twenty UI-upstream items at this Pin. Twelve are shipped adaptations with matching source identities and artifact associations. Six are permanent exclusions. Confirm `ask-emil` is also reject, with no artifact, and `learn-taste` is merge into `plugin/skills/session`. None of the adaptations is deferred.
 
 The helper runs the real register CLI, then reads the cache's configured source URL and explicitly fetches the exact Pin and its objects into an isolated fixture remote. The normal cache may be blobless and contain only `refs/vstack/pins/*`, with no local branches. It changes an upstream timing recommendation deterministically, constructs fixture-only Git objects, and runs public `plan` and `check` commands over an isolated checkout. The resulting plan must identify the changed UI item and retain its adapted Disposition and artifact group. It compares content hashes before and after to prove the real Pin and checkout and the fixture checkout stayed unchanged. The fixture baseline commit is not a product commit. Each command's stdout, stderr, exit result, plan, and final `outcome.json` remain in the new evidence directory.
 
@@ -96,14 +96,14 @@ Step `frontend-guidance-package`: Use the public package command from `$CHECKOUT
 npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$VERIFY_RUN_DIR/npm-cache"
 ```
 
-Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
+Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, `write-swift`, `ask-emil`, or `learn-taste` entered the archive. The taste contribution belongs in the packaged `session`. Vstack's existing `prototype` must still ship. Compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
 Step `frontend-guidance-gates`: Run applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all twelve UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; improve-animations/AUDIT.md and PLAN-TEMPLATE.md; and choreograph/RECIPES.md. Include animation-performance, find-animation-opportunities, remove-animations, and gestures in the inventory. Interrogate must also be listed and command-visible, without an Addon catalog key. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native or browser prerequisite stays unavailable or unmet even when mechanical gates pass.
 
 ## Gotchas
 
 - Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. The UI skills are visible Utilities; inspect actual description selection and any independently applicable references. Good-css has no Emil hand-off.
-- The Decision register and maintainer guide identify all twelve selected items as shipped adaptations, with none deferred. Keep each demonstration within its behavioral scope and preserve all six exclusions. Choreograph and gestures retain existing execution, review, verification, and evidence owners. Browser proof of their behavior needs real scoped interactions, not inventory checks.
+- Keep each demonstration within its behavioral scope. Choreograph and gestures retain existing execution, review, verification, and evidence owners. Browser proof of their behavior needs real scoped interactions, not inventory checks.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.
 - Record model changes, fallbacks, and incomplete captures. A successful stub transport run is not native instruction-following proof.

@@ -7,7 +7,7 @@ description: "Use when building or reviewing mobile-web touch behavior, viewport
 
 Make the existing web UI usable on a phone. Despite its retained Upstream name, this is mobile-web guidance, not React Native, Expo, or Swift development. The running vstack skill and its workers retain edits, planning, review, verification, and evidence ownership. Keep the current stack and user scope.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/mobile-native). The [MIT notice](LICENSE) ships with this skill.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/64eb3deb9a5fbfa041faf783e0bc3fd635872e9c/skills/mobile-native). The [MIT notice](LICENSE) ships with this skill.
 
 ## Apply where the symptom applies
 
@@ -18,7 +18,7 @@ Use CSS and platform capabilities before device sniffing or JavaScript workaroun
 | Touch | Give immediate press feedback, preserve release activation and cancellation, and provide usable hit targets. Use `touch-action: manipulation` on ordinary tappable controls where appropriate. |
 | Viewport | Use `dvh` for an app shell that tracks changing browser chrome. Use `svh` for a stable hero. Keep content and actions reachable after resizing and in landscape. |
 | Safe areas | Pair `viewport-fit=cover` with `env(safe-area-inset-*, 0px)` padding on edge-attached chrome and sheets. Preserve ordinary spacing as well as the inset. |
-| Hover | Put every hover effect inside `@media (hover: hover) and (pointer: fine)`. Keep touch press and keyboard focus feedback independent. |
+| Hover | Put every hover effect inside `@media (hover: hover) and (pointer: fine)`. A stylus can be a fine pointer without hover. Keep touch press and keyboard focus feedback independent. |
 | Inputs | Keep input, textarea, and select text at least 16 CSS pixels where iOS focus zoom applies. Preserve user zoom and choose appropriate field types and keyboard hints. |
 | Scroll | Use `overscroll-behavior` only where scroll chaining or pull-to-refresh interferes with app behavior. Prefer native scrolling and scroll snap to custom gesture code. |
 | Browser chrome | Match supported `theme-color` metadata to the actual top surface and theme. Installed-PWA behavior needs its own observation. |
