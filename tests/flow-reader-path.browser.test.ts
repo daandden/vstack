@@ -44,7 +44,7 @@ test("the Matt path lives only in the Map panel with recorded states and is abse
   try {
     const page = await context.newPage();
     await page.goto(grill.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     expect(await page.locator(".reader > .matt-path").count()).toBe(0);
     await page.keyboard.press("m");
     const map = page.getByRole("dialog", { name: "Map", exact: true });
@@ -57,6 +57,7 @@ test("the Matt path lives only in the Map panel with recorded states and is abse
       })).toEqual(["28px", "8px"]);
     }
     expect(await map.getByRole("tab").allTextContents()).toEqual(["Matt flow path", "Stages"]);
+    await page.keyboard.press("h");
     const path = map.getByRole("region", { name: "Matt flow path" });
     expect(await path.isVisible()).toBe(true);
     expect(await path.locator("ol").count()).toBeGreaterThan(0);
@@ -76,9 +77,9 @@ test("the Matt path lives only in the Map panel with recorded states and is abse
     expect(page.url()).toBe(initial);
     await page.keyboard.press("Enter");
     await map.waitFor({ state: "hidden" });
-    await page.locator(`.bar .tabs a[href="#${grill.stage}"][aria-current="page"]`).waitFor();
+    await page.locator(`#${grill.stage}`).waitFor();
     await page.goto(offPath.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     await page.keyboard.press("m");
     await map.waitFor();
     expect(await map.getByRole("tab").allTextContents()).toEqual(["Stages"]);
@@ -99,9 +100,10 @@ test("repeated Matt path Stages have distinct labels and nonoverlapping compact 
     try {
       const page = await context.newPage();
       await page.goto(first.live.url);
-      await page.locator(".bar .tabs").waitFor();
+      await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
       await page.keyboard.press("m");
       await page.getByRole("dialog", { name: "Map", exact: true }).waitFor();
+      await page.keyboard.press("h");
       const step = page.locator('[data-path-step="implement"]');
       const skill = step.getByText("implement", { exact: true });
       const links = step.getByRole("link");
@@ -124,10 +126,17 @@ test("repeated Matt path Stages have distinct labels and nonoverlapping compact 
           && rects.every((r, i) => rects.slice(i + 1).every((s) => r.bottom <= s.top || s.bottom <= r.top || r.right <= s.left || s.right <= r.left));
       })).toBe(true);
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
-      await step.getByRole("link", { name: "Implement 3", exact: true }).click();
-      expect(new URL(page.url()).hash).toBe(`#${third.stage}`);
-      await page.locator(`.bar .tabs a[href="#${third.stage}"][aria-current="page"]`).waitFor();
-      expect(await page.getByRole("navigation", { name: "Flow tabs", exact: true }).getByRole("link", { name: "Implement 3", exact: true }).getAttribute("aria-current")).toBe("page");
+      for (const [index, stage] of [[2, second], [3, third]] as const) {
+        await step.getByRole("link", { name: `Implement ${index}`, exact: true }).click();
+        expect(new URL(page.url()).hash).toBe(`#${stage.stage}`);
+        await page.locator(`#${stage.stage}`).waitFor();
+        expect(await page.getByRole("navigation", { name: "Flow navigation", exact: true }).getByText(`Implement ${index}`, { exact: true }).isVisible()).toBe(true);
+        if (index === 2) {
+          await page.keyboard.press("m");
+          await page.keyboard.press("h");
+          await step.waitFor();
+        }
+      }
     } finally { await context.close(); }
   }
 }, 120_000);

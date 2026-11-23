@@ -90,7 +90,7 @@ function rule(t: Transition): string {
       <Button variant="bare" :class="demoControl" data-reset @click="reset">Reset</Button>
     </div>
     <p class="text-small text-flow-subtext">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
-    <details class="text-small open:grid open:gap-1 [&>:not(summary)]:text-body">
+    <details :id="`${id}-instructions`" class="text-small open:grid open:gap-1 [&>:not(summary)]:text-body">
       <summary>How it works</summary>
       <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-flow-toned [&_dd]:ms-0">
         <template v-for="a in demo.actions" :key="a.name">

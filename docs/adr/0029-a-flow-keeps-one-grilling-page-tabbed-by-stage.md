@@ -4,6 +4,8 @@
 
 > [ADR 0052](0052-the-flow-page-reads-by-stage-tab-in-first-publication-order.md) brings back the Overview, Stage, and Topics tabs after ADR 0048 replaced them. A Stage tab now lists its content in first-publication order instead of Background, then Results, then rounds.
 
+> [ADR 20261123-the-flow-page-leads-with-the-open-decision](20261123-the-flow-page-leads-with-the-open-decision.md) moves the Stage list from visible tabs into the Map panel; each Stage keeps its own view.
+
 > [ADR 0062](0062-the-agent-picks-test-seams-and-asks-only-for-costly-ones.md) replaces the seam consequence below. The agent picks test seams itself and asks only before it uses a Costly seam.
 
 ADR 0013 gave each grilling session its own Grilling page, named after an issue or a topic slug, and only grilling wrote one. Every other skill asked through a plain `ask`, so the decisions of one flow were spread over the page, the chat, tracker comments, and code-review's chat report. A later Stage often runs days later in a new omp session, and nothing carried the page's path to it. Now one flow keeps one Grilling page across all its Stages, and every `ask` in the flow is a question on that page.

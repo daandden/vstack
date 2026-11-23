@@ -62,9 +62,12 @@ class NativeOutcomes:
         assert stage["open_questions"] == live_stage["open_questions"], (stage, live_stage)
         questions = stage["questions"]
         live_questions = [q for q in live["questions"] if q["stage"] == receipt["stage"]]
-        fields = ("id", "q", "open", "again", "asked_again_by", "answer")
+        fields = ("id", "q", "open", "again", "asked_again_by", "answer", "brief")
         assert [[q.get(k) for k in fields] for q in questions] == [
             [q.get(k) for k in fields] for q in live_questions], (questions, live_questions)
+        live_rounds = [item["round"] for item in live_stage["items"] if item["type"] == "round"]
+        assert [(r["id"], r["now"]) for r in stage["rounds"]] == [
+            (r["id"], r["now"]) for r in live_rounds], (stage, live_rounds)
         if before is not None:
             assert stage["rounds"] == before["rounds"], stage
         if evidence is not None:
@@ -117,12 +120,15 @@ class NativeOutcomes:
         prior = earlier["questions"][0]
         new = question("later", "Which later fixture path should the form record?", ["Continue", "Stop"])
         new["again"] = prior["id"]
-        later = self.submit("later-publication", [{"kind": "round", "questions": [new]}])
+        new["brief"]["asked_again_because"] = "The first attempt was cancelled before a decision."
+        now = "The first attempt's cancellation is recorded."
+        later = self.submit("later-publication", [{"kind": "round", "now": now, "questions": [new]}])
         new_id = later["refs"]["later"]
         stage = self.observe("later-publication", later)
         previous, current = stage["questions"]
         assert later["stage"] == receipt["stage"] and later["flow"] == receipt["flow"], later
         assert len(stage["rounds"]) == 2 and stage["rounds"][0] == earlier["rounds"][0], stage
+        assert stage["rounds"][1]["now"] == now and current["brief"] == new["brief"], stage
         assert current["id"] == new_id != prior["id"] and current["open"], current
         assert previous["answer"] == prior["answer"] and previous["q"] == prior["q"], previous
         assert current["q"] == previous["q"] and current["again"] == previous["id"], current

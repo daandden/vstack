@@ -99,6 +99,7 @@ test("Flow offers one-line remove batches before keep batches without changing w
     const question = items[0].questions[0];
     const group = roundIndex < 2 ? "Agent says remove" : "Agent says keep";
     expect(question.title).toContain(group);
+    expect(items[0].now).toContain(`"${group}" batch`);
     expect(question.ref).toBe(round.question_ref);
     expect(question).not.toHaveProperty("results");
     const visible = JSON.stringify(question);
@@ -126,6 +127,8 @@ test("Flow offers one-line remove batches before keep batches without changing w
     const receipt = JSON.parse(published.stdout);
     const asked = receipt.ask.questions[0];
     expect(asked.multi).toBe(true);
+    expect(asked).not.toHaveProperty("recommended");
+    expect(receipt.ask.html).not.toMatch(/<input[^>]* checked>/);
     expect(asked.options.map(({ label }: any) => label)).toEqual(
       round.mapping.map(({ letter, label }: any) => `${letter}. ${label}`),
     );

@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,7 +9,7 @@ import { ENV } from "./support/fixture.ts";
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 type Receipt = { flow: string; stage: string; revision: number; refs: Record<string, string>; live: { url: string } };
 const doc = (ref: string, title = ref) => ({ kind: "result", ref, shape: "document", title, sections: [{ heading: "Evidence", blocks: [{ prose: `Recorded evidence for ${title}.` }] }] });
-const question = (ref: string) => ({ ref, title: "Choose the recovery route", description: "Which route should we use?", needs: [{ need: "Understand the route", kind: "prose" }], options: [
+const question = (ref: string) => ({ ref, title: "Choose the recovery route", brief: decisionBrief("the recovery route"), description: "Which route should we use?", needs: [{ need: "Understand the route", kind: "prose" }], options: [
   { label: "Keep", does: "Keeps the route", gains: ["Stable"], costs: ["No change"] },
   { label: "Change", does: "Changes the route", gains: ["New route"], costs: ["Work"] },
 ] });
@@ -32,7 +33,8 @@ async function fixture() {
   return { root, home, cli, browser, async close() { await browser.close(); cli(["host", "stop"]); rmSync(root, { recursive: true, force: true }); } };
 }
 
-const index = (page: Page) => page.getByRole("navigation", { name: "Changed since last visit", exact: true });
+const index = (page: Page) => page.getByRole("navigation", { name: "Changed since your last visit", exact: true });
+const openIndex = (page: Page) => page.locator("#overview > details > summary").filter({ hasText: /^Changed since your last visit$/ }).click();
 const links = (page: Page) => index(page).getByRole("link").evaluateAll(elements => elements.map(el => el.getAttribute("href")));
 const order = (page: Page) => page.locator("[data-reading]").evaluateAll(elements => elements.map(el => ({ id: el.getAttribute("data-reading"), position: el.getAttribute("data-position"), historical: el.hasAttribute("data-historical") })));
 async function capture(page: Page, name: string) {
@@ -53,14 +55,21 @@ test("returning readers find new and revised blocks in place without authoring o
       { type: "page", id: "page", title: "Returning reader" },
       { type: "stage", id: "first", skill: "grill-me", state: "in-progress", order: 1 },
       { type: "round", id: "r1", stage: "first", time: "2026-10-28T20:09:59+07:00", session: 1, round: 1 },
-      { type: "question", id: "old-question", round: "r1", q: 1, title: "Historical route?", description: "Pick one.", options: [{ label: "A. Keep", does: "Keeps it", gains: ["Stable"], costs: ["None"] }] },
+      { type: "question", id: "old-question", round: "r1", q: 1, title: "Historical route?", description: "Pick one. The earlier notes cover the alternative.", options: [{ label: "A. Keep", does: "Keeps it", gains: ["Stable"], costs: ["None"] }] },
     ].map(row => JSON.stringify(row)).join("\n") + "\n");
     const opened = f.cli(["migrate", historical]);
     const stage = f.cli(["open", "--flow", opened.flow, "--skill", "research"]);
     const submit = (items: unknown[], target = stage.stage) => f.cli(["submit", "--flow", opened.flow, "--stage", target], items);
-    const seed = submit([doc("report", "Recovery evidence"), { kind: "round", questions: [question("route")] }, doc("unchanged", "Untouched evidence")]);
+    const seed = submit([doc("report", "Recovery evidence"), { kind: "round", now: "The recovery report is ready to review.", questions: [question("route")] }, doc("unchanged", "Untouched evidence")]);
     let page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
+    const decisions = page.getByRole("region", { name: "Open decisions", exact: true });
+    const historicalRow = decisions.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Historical route?", exact: true }) });
+    await historicalRow.getByText("Pick one.", { exact: true }).waitFor();
+    expect(await historicalRow.getByText("The earlier notes cover the alternative.", { exact: false }).count()).toBe(0);
+    expect(await historicalRow.locator("time").getAttribute("datetime")).toBe("2026-10-28T20:09:59+07:00");
+    expect(await historicalRow.getByRole("link").getAttribute("href")).toBe("#old-question");
+    await openIndex(page);
     await index(page).getByText("First visit", { exact: false }).waitFor();
     expect(await links(page)).toEqual([]);
     const firstOrder = await order(page);
@@ -69,6 +78,7 @@ test("returning readers find new and revised blocks in place without authoring o
     await page.close();
     page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
+    await openIndex(page);
     await index(page).getByText("No new or revised blocks", { exact: false }).waitFor();
     expect(await links(page)).toEqual([]);
     expect(f.cli(["show", "--flow", opened.flow])).toEqual(beforeViewing);
@@ -84,6 +94,7 @@ test("returning readers find new and revised blocks in place without authoring o
     const authored = f.cli(["show", "--flow", opened.flow]);
     page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
+    await openIndex(page);
     await index(page).getByRole("link", { name: /Recovery evidence, revised/ }).waitFor();
     expect(await links(page)).toEqual(["#old-question", `#${seed.refs.report}-changes-${seed.revision}`, `#${seed.refs.route}`, `#${changed.refs.new}`]);
     expect(await index(page).getByRole("listitem").first().innerText()).toContain("Historical");
@@ -93,7 +104,7 @@ test("returning readers find new and revised blocks in place without authoring o
     expect(afterOrder.slice(0, firstOrder.length)).toEqual(firstOrder);
     expect(afterOrder[0]).toMatchObject({ id: "old-question", historical: true, position: null });
     for (const href of await links(page)) {
-      await page.getByRole("link", { name: "Overview", exact: true }).click();
+      await page.getByRole("navigation", { name: "Flow navigation" }).getByRole("link", { name: "Returning reader", exact: true }).click();
       const link = index(page).locator(`a[href="${href}"]`);
       await link.focus();
       await page.keyboard.press("Enter");
@@ -104,7 +115,7 @@ test("returning readers find new and revised blocks in place without authoring o
     }
     await page.locator(`#${seed.refs.report}`).getByText("Earlier revisions (1)", { exact: true }).click();
     expect(await page.locator(`#${seed.refs.report}-r1`).getByRole("heading", { name: "Recovery evidence", exact: true }).isVisible()).toBe(true);
-    await page.getByRole("link", { name: "Overview", exact: true }).click();
+    await page.getByRole("navigation", { name: "Flow navigation" }).getByRole("link", { name: "Returning reader", exact: true }).click();
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280, 2560]) {
@@ -121,10 +132,12 @@ test("returning readers find new and revised blocks in place without authoring o
     const fresh = await f.browser.newContext();
     const independent = await fresh.newPage();
     await independent.goto(`${opened.live.url}#overview`);
+    await openIndex(independent);
     await index(independent).getByText("First visit", { exact: false }).waitFor();
     expect(await links(independent)).toEqual([]);
     await fresh.close();
     await page.reload();
+    await openIndex(page);
     await index(page).getByText("No new or revised blocks", { exact: false }).waitFor();
     expect(await links(page)).toEqual([]);
     expect(f.cli(["show", "--flow", opened.flow])).toEqual(authored);
@@ -138,8 +151,10 @@ test("the live visit index handles one and a thousand new blocks without duplica
     const opened = f.cli(["open", "--skill", "research", "--title", "Large returning visit"]);
     const page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
+    await openIndex(page);
     await index(page).getByText("First visit", { exact: false }).waitFor();
     await page.reload();
+    await openIndex(page);
     await index(page).getByText("No new or revised blocks", { exact: false }).waitFor();
     const first = f.cli(["submit"], [doc("single", "One new finding")]);
     await index(page).getByRole("link", { name: /One new finding/ }).waitFor();

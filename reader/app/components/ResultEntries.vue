@@ -56,7 +56,7 @@ const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id)
           <dt>Location</dt><dd v-html="inline(str(e.location))" />
         </template>
       </dl>
-      <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body"><summary>Evidence</summary><p v-html="inline(str(e.evidence))" /></details>
+      <details :id="`${e.anchor}-evidence`" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body"><summary>Evidence</summary><p v-html="inline(str(e.evidence))" /></details>
       <FigureList :figures="figures(e.figures)" />
       <EntryAsks :questions="e.questions" />
     </li>

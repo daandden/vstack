@@ -598,12 +598,14 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
     contribution = {"version": 1, "items": [
         {"kind": "result", "shape": "document", "ref": "fixture", "title": "Disposable picker fixture",
          "sections": [{"heading": "Context", "blocks": [{"prose": "Fixture evidence, not a real user decision."}]}]},
-        {"kind": "round", "questions": [
+        {"kind": "round", "now": "The disposable fixture is ready for the first picker.", "questions": [
             {"ref": "pick", "title": "Pick fixture paths", "description": "Full authored context retained on Flow.", "multi": True,
+             "brief": {"unblocks": "Record the selected fixture paths.", "undo": "Run the disposable fixture again.", "no_recommendation": "Selecting either path exercises the same picker behavior."},
              "needs": [{"need": "Compare fixture tradeoffs.", "kind": "prose"}],
              "options": [{"label": "Alpha", "does": "Use Alpha.", "gains": ["First fixture"], "costs": ["Fixture only"]},
                          {"label": "Beta", "does": "Use Beta.", "gains": ["Second fixture"], "costs": ["Fixture only"]}]},
             {"ref": "words", "title": "Describe the fixture concern", "description": "Preserve Other words without inventing consent.",
+             "brief": {"unblocks": "Verify how the session retains your note.", "undo": "Use a new test session to enter a different note.", "no_recommendation": "The concern is supplied by the test driver."},
              "needs": [{"need": "Explain the fixture concern.", "kind": "prose"}],
              "options": [{"label": "Proceed", "does": "Continue.", "gains": ["Progress"], "costs": ["Unresolved concern"]},
                          {"label": "Pause", "does": "Wait.", "gains": ["Review"], "costs": ["Delay"]}]}]}]}
@@ -620,6 +622,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         del first["multi"]
         contribution["items"][1]["questions"] = [first]
         if args.case == "timeout":
+            del first["brief"]["no_recommendation"]
             first["options"][0]["recommended"] = "Default choice for timeout evidence."
     if eval_case:
         del contribution["items"][1]["questions"][0]["multi"]
@@ -633,6 +636,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         contribution["items"][1]["questions"] = [{
             "ref": "approval", "title": "Approve fixture inputs?",
             "description": "The complete input set is one disposable case with id fixture. This is UI proof, not tuning approval.",
+            "brief": {"unblocks": "Drive the native Ratchet approval gate.", "undo": "Recreate the disposable approval run.", "no_recommendation": "The fixture leaves the native gate unselected."},
             "needs": [{"need": "Review the complete disposable input set.", "kind": "prose"}],
             "results": ["fixture/input"],
             "options": [
@@ -710,6 +714,12 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                                 "Full authored context retained on Flow.", "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]
         for context in required_context:
             assert context in authored, context
+        fixture_round = contribution["items"][1]
+        stage = published_stage(content, receipt)
+        live_round, = [item["round"] for item in stage["items"] if item["type"] == "round"]
+        assert live_round["now"] == fixture_round["now"], live_round
+        assert [q["brief"] for q in content["questions"]] == [
+            q["brief"] for q in fixture_round["questions"]], content["questions"]
         save(out / "live-identity.json", {"url": url, "status": status, "content_url": content_url,
              "content_status": content_status, "flow": receipt["flow"],
              "revision": receipt["revision"], "question_ids": [x["id"] for x in receipt["ask"]["questions"]]})
@@ -1507,6 +1517,15 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 following = prepare_following(*peer)
             refusal_observed.set()
         if answer_case:
+            current = wait_native("checked live answer fixture", lambda: (out / "live-identity.json").exists() and receipt, 25)
+            link = current["live"]["url"] + "#" + current["ask"]["questions"][0]["id"]
+            wait_native("answer fixture form", lambda: ctl("tree", FORM)["nodes"])
+            wait_native("exact first-question panel link", lambda: any(
+                node.get("text") == link for node in ctl("tree", PANEL + " a")["nodes"]))
+            assert len(panel_nodes()) == 1 and not asks(), "Expected one panel beside the unsettled answer form"
+            save(out / "panel.panel.json", ctl("tree", PANEL))
+            save(out / "panel.tree.json", ctl("tree"))
+            tern_shot("panel")
             drive_answer_history = answer_case.drive(ctl, native_click, wait_native, tern_shot)
         elif native:
             drive_native(following)
@@ -1620,6 +1639,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             assertions.append("the renamed control is refused without opening the picker or Flow panel")
         if answer_case:
             drive_answer_history()
+            assertions.append("the unsettled native answer form has one Flow panel with the exact first-question URL")
             assertions.append("listed and exact Other values record the same pick; multi and concern words survive CLI and HTTP readback")
             assertions.append("the selected-option Note and returned image stay linked to the original Flow question")
             assertions.append("the native /tree re-answer creates a different session answer without changing Flow history")

@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -54,6 +55,27 @@ test("validate refuses a pending schema migration without changing the database"
   expect(storageSnapshot(w.home, w.cwd)).toEqual(original);
   expect(ok(await cli(w, ["open", "--title", "Migrated", "--skill", "explain"])).revision).toBe(1);
 });
+
+test("validate waits for an exclusive WAL writer and reads the committed Flow alias", async () => {
+  const w = world();
+  const opened = ok(await cli(w, ["open", "--title", "Concurrent validation", "--skill", "explain"]));
+  const alias = "ticket:fixture/validation";
+  const writer = new Database(join(w.scratch, "flow.db"));
+  let checked: ReturnType<typeof cli>;
+  try {
+    // An ordinary WAL write allows readers. Exclusive locking holds the database until close.
+    writer.exec("PRAGMA locking_mode = EXCLUSIVE; BEGIN IMMEDIATE");
+    writer.query("INSERT INTO aliases (flow, alias, lookup) VALUES (?, ?, ?)").run(opened.flow, alias, alias);
+    checked = cli(w, ["validate", "--flow", alias, "--stage", opened.stage], contribution("Dry run"));
+    await Bun.sleep(500);
+    writer.exec("COMMIT");
+  } finally {
+    writer.close();
+  }
+  expect(await checked).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] }, stderr: "" });
+  expect(ok(await cli(w, ["show", "--flow", opened.flow])).revision).toBe(opened.revision);
+});
+
 test("validate ignores unrelated failed imports and preserves prepared storage", async () => {
   const w = world(), fixture = legacyFlowFixture(w.home, w.cwd);
   legacyFlow(w.home, w.cwd, "second-flow", { ...fixture.state, flow: { ...fixture.state.flow, id: "second-flow" }, aliases: ["folder:second-flow"] });

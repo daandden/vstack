@@ -201,7 +201,8 @@ async function flow(req: Request, endpoint: FlowRoute): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
   if (endpoint === "shell" || endpoint === "content") {
     const content = view(s);
-    const initial = { ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) } satisfies Content;
+    const project = key === "_global" ? "Global" : key.replace(/-[0-9a-f]{6}$/, "");
+    const initial = { ...content, project, questions: [...content.questions.values()], runtimes: await runtimes(s, key) } satisfies Content;
     if (endpoint === "content") return json(initial);
     return response(req.method === "HEAD" ? null : JSON.stringify({ content: initial, hostGeneration: instance, readerGeneration: readerVersion }), 200, {
       "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,

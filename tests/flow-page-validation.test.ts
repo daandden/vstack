@@ -33,12 +33,104 @@ const open = () => {
 };
 const envelope = (...items: unknown[]) => ({ version: 1, items });
 const option = (label: string) => ({ label, does: `${label} changes ownership`, gains: [`${label} benefit`], costs: [`${label} cost`] });
+const needs = [{ need: "Compare the ownership tradeoff.", kind: "prose" }];
+const now = "Both implementations passed the contract tests.";
+const brief = { unblocks: "Assign ownership of the configuration.", undo: "Move the setting back before the next deploy." };
+
+test("Decision brief diagnostics identify the fields and refuse the entire contribution", () => {
+  const opened = open();
+  const before = run(["show"]).json;
+  const input = envelope(
+    { kind: "assumed", decision: "Preserve other work", pick: "Keep the branch", why: "The branch has one active ticket." },
+    { kind: "round", questions: [
+      { title: "Which owner?", description: "Local and shared are both possible.", needs, brief: { undo: brief.undo, typo: true }, options: [option("Local"), option("Shared")] },
+      { title: "Who deploys?", description: "Two teams can deploy.", needs: [{ need: "Compare the teams.", kind: "prose" }], brief: { ...brief, no_recommendation: "The teams have not given estimates." }, options: [{ ...option("First"), recommended: "Maintains the pipeline." }, { ...option("Second"), recommended: "Operates the service." }] },
+    ] },
+  );
+  const validate = run(["validate"], input);
+  const submit = run(["submit"], input);
+  expect(submit.code).toBe(1);
+  expect(validate.code).toBe(1);
+  expect(submit.json).toEqual(validate.json);
+  expect(submit.json).not.toHaveProperty("ask");
+  expect(submit.json.diagnostics.map((d: any) => d.path)).toEqual(expect.arrayContaining([
+    "$.items[1].now",
+    "$.items[1].questions[0].brief.unblocks",
+    "$.items[1].questions[0].brief.typo",
+    "$.items[1].questions[0].brief.no_recommendation",
+    "$.items[1].questions[1].brief.no_recommendation",
+    "$.items[1].questions[1].options[1].recommended",
+  ]));
+  expect(run(["show", "--flow", opened.flow]).json).toEqual(before);
+});
+
+test("a re-ask needs a reason even before the previous attempt gets an answer", () => {
+  const opened = open();
+  const question = { title: "Which owner?", description: "Both implementations are available.", needs, brief, options: [{ ...option("Local"), recommended: "Owns the release." }, option("Shared")] };
+  const first = run(["submit"], envelope({ kind: "round", now, questions: [{ ...question, ref: "first" }] }));
+  expect(first.code).toBe(0);
+  const before = run(["show"]).json;
+  const missing = envelope({ kind: "round", now, questions: [{ ...question, again: first.json.refs.first }] });
+  const refused = run(["submit"], missing);
+  expect(refused).toMatchObject({ code: 1, json: { diagnostics: [{ path: "$.items[0].questions[0].brief.asked_again_because" }] } });
+  expect(run(["validate"], missing).json).toEqual(refused.json);
+  expect(run(["show"]).json).toEqual(before);
+  const reason = "The shared team has now confirmed coverage. The earlier attempt has no answer.";
+  const retry = run(["submit"], envelope({ kind: "round", now, questions: [{ ...question, again: first.json.refs.first, brief: { ...brief, asked_again_because: reason } }] }));
+  expect(retry.code).toBe(0);
+  expect(retry.json.ask.questions[0]).toMatchObject({ recommended: 0, question: "Q1. Which owner?" });
+  const stored = flowContent(home, cwd, opened.flow);
+  expect(stored.questions.find(q => q.id === retry.json.ask.questions[0].id)).toMatchObject({ brief: { ...brief, asked_again_because: reason }, answer: { state: "open" } });
+  expect(stored.questions.find(q => q.id === first.json.refs.first)?.answer).toMatchObject({ state: "open" });
+});
+
+test("repeated Decision brief text is refused within a round", () => {
+  open();
+  const question = (which: string, id: number) => ({
+    title: `Which owner for ${which}?`, description: `The ${which} service is ready.`,
+    needs: [{ need: `Compare ownership of ${which}.`, kind: "prose" }],
+    brief: { unblocks: `Assign the team for Q${id}.`, undo: `Revert the ${which} configuration.` },
+    options: [{ ...option(which), recommended: "Owns the release." }],
+  });
+  const input = envelope({ kind: "round", now, questions: [question("search", 1), question("catalog", 2)] });
+  const refused = run(["validate"], input);
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("brief.unblocks");
+  expect(refused.stderr).toContain("option 1 recommended");
+  expect(run(["submit"], input).json).toEqual(refused.json);
+});
+
+test("the committed brief round-trips and only a recommendation preselects a picker option", () => {
+  const opened = open();
+  const noRecommendation = { unblocks: "Set a rollout window.", undo: "Change the scheduled job before it starts.", no_recommendation: "Neither window has user-traffic measurements." };
+  const input = envelope({ kind: "round", now, questions: [
+    { ref: "owner", title: "Which owner?", description: "Both owners are available.", needs, brief, options: [option("Shared"), { ...option("Local"), recommended: "Owns the release." }] },
+    { ref: "window", title: "Which window?", description: "Choose a time for the rollout.", needs: [{ need: "Compare the rollout times.", kind: "prose" }], brief: noRecommendation, options: [option("Morning"), option("Afternoon")] },
+  ] });
+  expect(run(["validate"], input)).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] } });
+  const receipt = run(["submit"], input);
+  expect(receipt.code).toBe(0);
+  const ask = receipt.json.ask;
+  expect(ask.questions[0].recommended).toBe(1);
+  expect(ask.questions[1]).not.toHaveProperty("recommended");
+  expect(ask.html.match(/<input[^>]* checked>/g)).toHaveLength(1);
+  expect(ask.html).toMatch(/value="B\. Local" checked>/);
+  expect(run(["submit"], input).json).toMatchObject({ revision: receipt.json.revision, repeated: true, ask });
+  const shown = run(["show"]).json.stages[0];
+  expect(shown.rounds[0]).toMatchObject({ now, questions: [receipt.json.refs.owner, receipt.json.refs.window] });
+  expect(shown.questions[0]).toMatchObject({ brief, options: [{ label: "A. Shared" }, { label: "B. Local", recommended: "Owns the release." }] });
+  expect(shown.questions[1]).toMatchObject({ brief: noRecommendation });
+  const content = flowContent(home, cwd, opened.flow);
+  expect(content.stages[0]?.items[0]).toMatchObject({ type: "round", round: { now } });
+  expect(content.questions[0]).toMatchObject({ brief, answer: { state: "open" } });
+  expect(content.questions[1]).toMatchObject({ brief: noRecommendation, answer: { state: "open" } });
+});
 
 test("validate reports independent nested errors and submit refuses identically without changing stored content or the file", () => {
   const opened = open();
   const before = run(["show", "--flow", opened.flow]).json;
   const input = envelope(
-    { kind: "round", questions: [{ title: "Which owner?", description: "Choose the owner.", needs: [{ need: "Compare ownership", kind: "prose" }], options: [{ ...option("Local"), gains: 42 }, { ...option("Shared"), costs: [] }] }] },
+    { kind: "round", now, questions: [{ title: "Which owner?", description: "Choose the owner.", needs: [{ need: "Compare ownership", kind: "prose" }], brief: { ...brief, no_recommendation: "Neither owner has confirmed support." }, options: [{ ...option("Local"), gains: 42 }, { ...option("Shared"), costs: [] }] }] },
     { kind: "result", shape: "ledger", title: "Claims", entries: [{ claim: "The change works", status: "maybe", evidence: "No check", missing_proof: "A check", consequence: "Do not ship" }] },
   );
   const file = join(cwd, "contribution.json");
@@ -79,8 +171,8 @@ test("validation collects independent table row and reference errors with their 
   open();
   const input = envelope(
     { kind: "result", shape: "table", title: "Counts", columns: ["Name", "Count"], rows: [{ cells: ["One"] }, { cells: ["Two", "2", "extra"] }] },
-    { kind: "round", questions: [
-      { title: "Which owner?", description: "Choose the owner.", needs: [{ need: "Compare ownership", kind: "prose" }], options: [option("Local"), option("Shared")], topics: ["absent-one", "absent-two"] },
+    { kind: "round", now, questions: [
+      { title: "Which owner?", description: "Choose the owner.", needs: [{ need: "Compare ownership", kind: "prose" }], brief: { ...brief, no_recommendation: "Neither owner has confirmed support." }, options: [option("Local"), option("Shared")], topics: ["absent-one", "absent-two"] },
     ] },
   );
   const checked = run(["validate"], input);

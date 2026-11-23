@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Bare Flow links open Overview with waiting questions grouped by Stage. Progress and other details fold below the queue, and theme controls move to the footer.",
+    "Flow page validation and picker preflight wait for SQLite writers instead of refusing prepared storage when it is briefly locked."
+  ]
+}

@@ -135,14 +135,14 @@ Read the semantic rules for the kind you are about to publish:
 - Before Comparison or Metrics, also read [Comparison and Metrics fields](references/comparison-metrics.md).
 - Before a prototype demo, runnable-artifact Result, or Quiz, also read [Interactive Result fields](references/interactive-results.md).
 - Before capturing attachments, canonical file revisions, question/Background figures, option previews, or real HTML/app/terminal artifacts, read [Captured attachments](references/attachments.md). Capture actual redacted evidence and preserve canonical deliverables.
-- Before every new or re-asked question, read [Reader needs and Visual kinds](references/reader-needs.md). Declare and satisfy the actual needs, then publish the complete question once, atomically with its visuals.
+- Before every new or re-asked question, read [Reader needs and Visual kinds](references/reader-needs.md). Write its Decision brief, declare and satisfy its reader needs, and publish the complete round atomically with its visuals.
 
 
 ## The receipt
 
 A submit receipt holds the Flow and Stage ids, the committed `revision`, `live`, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
 
-`ask.html` is the short form for the picker. Each question has its numbered title, and each option has its lettered label as the control's value. The controls use Flow question ids as names. They are radio buttons unless `multi` calls for checkboxes. A recommended option is checked. Descriptions, Today facts, figures, and the Flow URL stay off the form.
+`ask.html` is the short form for the picker. Each question has its numbered title, and each option has its lettered label as the control's value. The controls use Flow question ids as names. They are radio buttons unless `multi` calls for checkboxes. A recommended option is checked. When there is no recommendation, nothing is selected. The Decision brief, descriptions, Today facts, figures, and the Flow URL stay off the form.
 
 `ask.questions` keeps the same ids, titles, labels, `multi` flags, and recommendation indices for checks and answer recording. Both fields follow declared round order, even when a re-ask keeps an earlier Q number. A repeated submit returns the same form, including when the stored receipt predates `ask.html`.
 
@@ -150,7 +150,7 @@ A submit receipt holds the Flow and Stage ids, the committed `revision`, `live`,
 
 This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as the Stage entry rule says. Inside a Flow, every ordinary question follows this sequence:
 
-1. Prepare the complete round and visuals under [Reader needs and Visual kinds](references/reader-needs.md), then publish them once with CLI `submit`.
+1. Prepare the complete round under [Reader needs and Visual kinds](references/reader-needs.md), including the Decision brief and any required visuals. Publish it once with CLI `submit`.
 2. If `live.state` is `serving`, fetch the receipt URL's read-scoped `content` endpoint. Verify its Flow id, committed revision, question ids from `ask.questions`, and authored context. A generic successful Nuxt shell response is not proof. A mismatch needs correction before asking. Publication failure still leaves the question unanswered. Host unavailability or `off` does not block a committed question or authorize an answer.
 3. Pass the receipt's `ask.html` unchanged as the `html` argument to ordinary `ask`.
 4. Classify the native result. Record actual answers and non-consent responses separately through CLI `submit`. Record interruptions as evidence, not answers. For lost delivery without a recorded response, follow [Recover an unanswered round](#recover-an-unanswered-round) before committing failure evidence.
@@ -165,7 +165,7 @@ The check does not start or wait for the Local Flow host. If the CLI cannot read
 
 When the bound host is unavailable or off, the panel shows its actual error or state beside the picker. Apply the own-run recovery rule to host failures, without resubmitting a committed question just to repair its host. A shared-host restart needs the maintainer; host unavailability alone still does not block asking a committed question. Unbound sessions, subagents, print, RPC, and ACP get no panel. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
 
-For Ratchet's native approval gate, publish the complete question and review material first and apply the same current-content check when serving. Pass the receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The extension composes with the existing `ui.askDialog` integration and shows the same panel while its original dialog is open. Ratchet supplies no Flow question ids, so its panel link ends in the bound Stage's fragment. Reused current approval opens neither dialog nor panel. Ratchet's `ui.select` fallback when `askDialog` is absent is not covered. The native gate, not a second ordinary picker, collects approval. Preserve reused approval, revision feedback, abort, cancellation, and unanswered states separately.
+For Ratchet's native approval gate, publish the complete question with its Decision brief and review material first and apply the same current-content check when serving. Pass the receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The extension composes with the existing `ui.askDialog` integration and shows the same panel while its original dialog is open. Ratchet supplies no Flow question ids, so its panel link ends in the bound Stage's fragment. Reused current approval opens neither dialog nor panel. Ratchet's `ui.select` fallback when `askDialog` is absent is not covered. The native gate, not a second ordinary picker, collects approval. Preserve reused approval, revision feedback, abort, cancellation, and unanswered states separately.
 
 ### Record the raw answer and separate reading
 

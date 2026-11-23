@@ -193,8 +193,12 @@ test("contribution discovery covers nested questions, readings, closes, Stage st
     expect(compact.stdout).toContain('kind type=string required=true enum=');
   }
   const round = describeKind("round");
+  expect(round.required).toEqual(["kind", "now", "questions"]);
   const question = round.fields.questions.items;
-  expect(question.required).toEqual(["title", "description", "needs", "options"]);
+  expect(question.required).toEqual(["title", "description", "brief", "needs", "options"]);
+  expect(question.fields.brief.required).toEqual(["unblocks", "undo"]);
+  expect(question.fields.brief.fields.no_recommendation.selection).toContain("no option has recommended");
+  expect(question.fields.brief.fields.asked_again_because.selection).toContain("again is set");
   const option = question.fields.options.items;
   expect(option.required).toEqual(["label", "does", "gains", "costs"]);
   for (const name of ["gains", "costs"]) {
@@ -223,7 +227,8 @@ test("contribution discovery covers nested questions, readings, closes, Stage st
 
 test("discovered required non-Result fields validate, diagnose omissions and bad option elements atomically, and replay unchanged", () => {
   const contract = describeKind("round");
-  const round = fromRequired(contract) as { questions: Pick<Question, "title" | "description" | "needs" | "options">[] };
+  const round = fromRequired(contract) as { questions: Pick<Question, "title" | "description" | "needs" | "options" | "brief">[] };
+  round.questions[0]!.brief!.no_recommendation = "Both owners can do the work.";
   expect(run(["open", "--skill", "implement", "--title", "Non-Result discovery"]).code).toBe(0);
   const before = run(["show"]).json;
   expect(run(["validate"], envelope(round))).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] } });
@@ -316,7 +321,8 @@ test("non-Result discovery and validation follow the same changed option constra
   expect(described.code).toBe(0);
   expect(described.json.contract.fields.questions.items.fields.options.items.fields.gains.min).toBe(2);
   expect(run(["open", "--skill", "implement", "--title", "Changed option constraint"]).code).toBe(0);
-  const round = fromRequired(describeKind("round"));
+  const round = fromRequired(describeKind("round")) as { questions: Pick<Question, "brief">[] };
+  round.questions[0]!.brief!.no_recommendation = "Both owners can do the work.";
   const refused = run(["validate"], envelope(round), wrapper);
   expect(refused.code).toBe(1);
   expect(refused.json.diagnostics).toContainEqual(expect.objectContaining({

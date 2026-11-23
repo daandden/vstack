@@ -157,7 +157,7 @@ async function save(text: string) {
       <component :is="commentForm.Field" v-slot="{ field }" name="text">
         <Field :id="`${r.anchor}-comment`" label="Comment" required :errors="field.state.value.trim() ? field.state.meta.errors : []">
           <template #default="{ control }">
-            <Textarea v-bind="control" :model-value="field.state.value" :rows="3" :disabled="pending" class="field-sizing-content min-h-18 max-h-[12lh]" @update:model-value="field.handleChange($event ?? '')" @blur="field.handleBlur()" />
+            <Textarea v-bind="control" :data-reload-focus="`${r.anchor}-comment`" :model-value="field.state.value" :rows="3" :disabled="pending" class="field-sizing-content min-h-18 max-h-[12lh]" @update:model-value="field.handleChange($event ?? '')" @blur="field.handleBlur()" />
           </template>
           <template #error-detail>
             <p v-if="field.state.value.length > COMMENT_LIMIT" class="ms-auto whitespace-nowrap tabular-nums">{{ countFormat.format(field.state.value.length) }} / {{ countFormat.format(COMMENT_LIMIT) }}</p>

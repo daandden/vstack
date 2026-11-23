@@ -39,13 +39,16 @@ test("readers compare known Document and typed edits without losing snapshots or
     const first = submit([doc("Recovered 9 requests [@run]."), table("9"), metrics(9)]);
     let page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
+    const openVisit = () => page.locator("#overview > details > summary").filter({ hasText: /^Changed since your last visit$/ }).click();
+    await openVisit();
     await page.getByText("First visit in this browser", { exact: false }).waitFor();
     await page.close();
     submit([{ ...doc("Recovered 10 requests [@run].", true), revises: first.refs.doc }, { ...table("10", true), revises: first.refs.table }, { ...metrics(10), revises: first.refs.metrics }]);
     const authored = cli(["show"]);
     page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
-    const index = page.getByRole("navigation", { name: "Changed since last visit", exact: true });
+    await openVisit();
+    const index = page.getByRole("navigation", { name: "Changed since your last visit", exact: true });
     const changed = index.getByRole("link", { name: /Recovery report/ });
     await changed.waitFor();
     await changed.focus(); await page.keyboard.press("Enter");

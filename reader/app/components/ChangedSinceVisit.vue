@@ -80,7 +80,7 @@ onMounted(() => {
 
 <template>
   <nav class="grid gap-1.5 text-small" aria-labelledby="visit-changes-title">
-    <h3 id="visit-changes-title">Changed since last visit</h3>
+    <h3 id="visit-changes-title" class="sr-only">Changed since your last visit</h3>
     <p v-if="storageUnavailable" class="quiet">Browser-local viewing state is unavailable. This visit cannot be remembered.</p>
     <p v-else-if="!previous" class="quiet">First visit in this browser. This revision is remembered locally for your next visit.</p>
     <template v-else>

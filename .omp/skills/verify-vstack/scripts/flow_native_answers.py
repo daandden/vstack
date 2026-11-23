@@ -17,6 +17,9 @@ PASTE_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfD
 def question(ref, title, labels, *, multi=False):
     return {"ref": ref, "title": title, "multi": multi,
             "description": f"Compare {labels[0]} and {labels[1]} for this disposable fixture.",
+            "brief": {"unblocks": f"Record the submitted value for {ref}.",
+                      "undo": f"Use a new session to submit a different value for {ref}.",
+                      "no_recommendation": f"The driver exercises {ref} without an initial selection."},
             "needs": [{"need": f"See the alternatives for {ref}.", "kind": "prose"}],
             "options": [{"label": label, "does": f"Use {label} for {ref}.",
                          "gains": [f"Change to {label} for {ref}."],
@@ -229,8 +232,8 @@ class NativeAnswers:
                                              ids["concern"]: CONCERN_WORDS}), 4
         if phase == 4:
             self.readback(receipt, 0)
-            self.write("native-second-round.json", [{"kind": "round", "questions": [
-                question("typed", "Which path should typed Other record?", ["Alpha", "Beta"])]}])
+            self.write("native-second-round.json", [{"kind": "round", "now": "The first form's answers are recorded.",
+                "questions": [question("typed", "Which path should typed Other record?", ["Alpha", "Beta"])]}])
             return self.submit("native-second-round.json", "native-second-receipt.json"), 5
         if phase == 5:
             self.second = self.read("native-second-receipt.json")
@@ -252,7 +255,9 @@ class NativeAnswers:
             return ctl("tree", css)["nodes"]
 
         def visible(css, text):
-            return next((node for node in nodes(css) if node.get("text", "") == text and node["rect"][2] > 0), None)
+            matches = [node for node in nodes(css) if node.get("text") == text
+                       and node["rect"][2] > 0 and node["rect"][3] > 0]
+            return matches[0] if len(matches) == 1 else None
 
         def action(text):
             node = wait(text, lambda: visible(form + " .sf-btn-label", text))
@@ -262,13 +267,15 @@ class NativeAnswers:
             self.save(self.out / f"{name}.tree.json", ctl("tree"))
             shot(name)
 
+        option = form + ' [role="listbox"] [role="option"] .sf-item-label'
+
         def pick(text):
             previous_rect = None
 
             def stable_hittable_option():
                 nonlocal previous_rect
-                node = visible(form + " .sf-item-label", text)
-                if not node or node["rect"][3] <= 0:
+                node = visible(option, text)
+                if not node:
                     previous_rect = None
                     return None
                 rect = node["rect"]
@@ -284,8 +291,8 @@ class NativeAnswers:
             click(text, wait(f"stable, hittable option {text}", stable_hittable_option))
 
         def expand(title, first_option):
-            node = wait(title, lambda: visible(form + " .sf-item-label", first_option) or next(
-                (row for row in nodes(form + " .sf-act") if title in row.get("text", "")), None))
+            node = wait(title, lambda: visible(option, first_option) or next(
+                (row for row in nodes(form + ' [title="Answer this question"]') if title in row.get("text", "")), None))
             if node.get("text") != first_option:
                 click(title, node)
 

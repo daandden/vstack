@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -67,10 +68,9 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
       + parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) + 6,
     ));
     await selected.setViewportSize({ width: 1280, height: endViewport });
-    const selectedLink = selected.getByRole("link", { includeHidden: true }).and(selected.locator(`[href="#${seed.refs.selected}"]`));
     await selected.evaluate((id) => { location.hash = id; }, seed.refs.selected);
     await selected.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    expect(await selectedLink.getAttribute("aria-current")).toBe("location");
+    expect(await indexedStop(selected)).toBe(`#${seed.refs.selected}`);
     const position = await selected.locator(`#${seed.refs.selected}`).evaluate((el) => el.getBoundingClientRect().top);
     const address = selected.url();
     const focus = await selected.evaluate(() => document.activeElement?.id);
@@ -104,7 +104,7 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
     await selected.waitForFunction((previous) => scrollY > previous, scroll);
     expect(selected.url()).toBe(address);
     expect(await selected.evaluate(() => document.activeElement?.id)).toBe(focus);
-    expect(await selectedLink.getAttribute("aria-current")).toBe("location");
+    expect(await indexedStop(selected)).toBe(`#${seed.refs.selected}`);
     expect(Math.abs(await selected.locator(`#${seed.refs.selected}`).evaluate((el) => el.getBoundingClientRect().top) - position)).toBeLessThan(2);
     expect((await (await fetch(new URL("versions", opened.live.url))).json() as any).revision).toBe(updated.revision);
     expect(methods.length).toBeGreaterThan(0);
@@ -126,8 +126,10 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
   }
 }, 60_000);
 
-const question = (ref: string, title = ref) => ({
+const question = (ref: string, title = ref, again?: string) => ({
   ref, title, description: `Choose the ${title} route.`,
+  brief: decisionBrief(title, { again: again ? "The reader has not yet settled the earlier route." : undefined }),
+  ...(again ? { again } : {}),
   needs: [{ need: `Understand the ${title} consequence.`, kind: "prose" }],
   options: [
     { label: "Keep", does: `${title}: keeps the route.`, gains: [`${title}: stability`], costs: [`${title}: no change`] },
@@ -160,7 +162,7 @@ async function liveReader() {
   const submit = (stage: string, items: object[]) => cli(["submit", "--flow", opened.flow, "--stage", stage], { version: 1, items });
   const seed = submit(opened.stage, [
     documentResult("reading", 300),
-    { kind: "round", questions: [question("existing")] },
+    { kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("existing")] },
     { kind: "result", ref: "lesson", shape: "quiz", title: "Learning while questions arrive", questions: [
       { ref: "word", prompt: "Type Flow", answer: { text: ["Flow"] }, explanation: "A learning answer does not settle a real ask." },
     ] },
@@ -181,12 +183,19 @@ async function liveReader() {
   };
 }
 
-const selectedStop = (page: Page) => page.locator(".bar .jump-row a[aria-current]").getAttribute("href");
+const selectedStop = (page: Page) => page.evaluate(() => `#${document.activeElement?.id ?? ""}`);
 const pagePosition = (page: Page) => page.evaluate(() => ({
-  tab: document.querySelector(".bar .tabs a[aria-current]")?.getAttribute("href"),
-  stop: document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href"),
+  tab: `#${document.querySelector("main > [data-tab]:not([hidden])")?.id}`,
   scroll: scrollY,
 }));
+async function indexedStop(page: Page) {
+  await page.keyboard.press("g");
+  const jump = page.getByRole("dialog", { name: "Jump", exact: true });
+  const target = await jump.locator('a[aria-current="location"]').getAttribute("href");
+  await page.keyboard.press("Escape");
+  await jump.waitFor({ state: "hidden" });
+  return target;
+}
 const renderedUpdate = (page: Page, stage: string, title: string) => page.locator(`[data-tab="${stage}"]`).getByRole("heading", { name: title, includeHidden: true }).waitFor({ state: "attached" });
 
 test("live questions select and reveal only the Focused Stage, even from another reading block", async () => {
@@ -194,13 +203,13 @@ test("live questions select and reveal only the Focused Stage, even from another
   const { page, opened, other, seed, submit } = f;
   try {
     const before = await pagePosition(page);
-    submit(other.stage, [{ kind: "round", questions: [question("parallel", "Parallel ticket question")] }]);
+    submit(other.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("parallel", "Parallel ticket question")] }]);
     await renderedUpdate(page, other.stage, "Parallel ticket question");
     expect(await pagePosition(page)).toEqual(before);
 
-    const fresh = submit(opened.stage, [{ kind: "round", questions: [question("new", "New focused question")] }]);
+    const fresh = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("new", "New focused question")] }]);
     await renderedUpdate(page, opened.stage, "New focused question");
-    await page.waitForFunction((id) => document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href") === `#${id}`, fresh.refs.new, { timeout: 5000 });
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).locator(`a[href="#${fresh.refs.new}"][aria-current="location"]`).waitFor({ timeout: 5000 });
     expect(await selectedStop(page)).toBe(`#${fresh.refs.new}`);
     expect(await page.evaluate((id) => {
       const box = document.getElementById(id)!.getBoundingClientRect();
@@ -215,7 +224,7 @@ test("live questions select and reveal only the Focused Stage, even from another
     await page.goto(`${opened.live.url}#overview`);
     await page.locator("#overview").waitFor();
     const overview = await pagePosition(page);
-    submit(opened.stage, [{ kind: "round", questions: [question("offstage", "Question while on Overview")] }]);
+    submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("offstage", "Question while on Overview")] }]);
     await renderedUpdate(page, opened.stage, "Question while on Overview");
     expect(await pagePosition(page)).toEqual(overview);
     expect(onOverview.tab).toBe(`#${opened.stage}`);
@@ -233,7 +242,7 @@ test("typing holds new questions and outside fragment navigation, then applies o
     await page.getByRole("textbox").fill("My draft");
     const before = await pagePosition(page);
     const input = page.getByRole("textbox", { includeHidden: true });
-    const fresh = submit(opened.stage, [{ kind: "round", questions: [question("held", "Held while typing")] }]).refs.held;
+    const fresh = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("held", "Held while typing")] }]).refs.held;
     await renderedUpdate(page, opened.stage, "Held while typing");
     expect(await pagePosition(page)).toEqual(before);
     expect(await input.inputValue()).toBe("My draft");
@@ -247,7 +256,7 @@ test("typing holds new questions and outside fragment navigation, then applies o
     submit(opened.stage, [{ ...documentResult("expanded-reading", 500), revises: seed.refs.reading }]);
     await renderedUpdate(page, opened.stage, "expanded-reading");
     const typing = await pagePosition(page);
-    submit(opened.stage, [{ kind: "round", questions: [question("before-fragment", "Question before outside fragment")] }]);
+    submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("before-fragment", "Question before outside fragment")] }]);
     await renderedUpdate(page, opened.stage, "Question before outside fragment");
     expect(await pagePosition(page)).toEqual(typing);
     await page.goto(`${opened.live.url}#${seed.refs.existing}`);
@@ -289,15 +298,16 @@ for (const field of ["textarea", "select", "contenteditable"]) {
       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
       const before = await pagePosition(page);
       const input = page.locator("#draft-editor");
-      submit(opened.stage, [{ kind: "round", questions: [question("first", "First held question")] }]);
+      submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("first", "First held question")] }]);
       await renderedUpdate(page, opened.stage, "First held question");
-      const latest = submit(opened.stage, [{ kind: "round", questions: [question("latest", "Latest held question")] }]).refs.latest;
+      const latest = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("latest", "Latest held question")] }]).refs.latest;
       await renderedUpdate(page, opened.stage, "Latest held question");
       expect(await pagePosition(page)).toEqual(before);
       expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
       const realInput = page.getByRole("textbox").filter({ visible: true }).last();
       await realInput.focus();
-      expect<string | null | undefined>(await selectedStop(page)).toBe(before.stop);
+      expect(await pagePosition(page)).toEqual(before);
+      expect(await realInput.evaluate(el => el === document.activeElement)).toBe(true);
       await realInput.blur();
       await page.waitForFunction((id) => location.hash === `#${id}`, latest);
       expect(await selectedStop(page)).toBe(`#${latest}`);
@@ -307,7 +317,7 @@ for (const field of ["textarea", "select", "contenteditable"]) {
       const typing = await pagePosition(page);
       await page.goto(`${opened.live.url}#${parallel}`);
       expect(await pagePosition(page)).toEqual(typing);
-      const newest = submit(opened.stage, [{ kind: "round", questions: [question("newest", "New question after outside fragment")] }]).refs.newest;
+      const newest = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("newest", "New question after outside fragment")] }]).refs.newest;
       await renderedUpdate(page, opened.stage, "New question after outside fragment");
       expect(await pagePosition(page)).toEqual(typing);
       await input.blur();
@@ -325,14 +335,17 @@ test("answers, superseded asks, and retirement updates leave the reading place u
   const { page, opened, seed, submit } = f;
   try {
     const before = await pagePosition(page);
+    const stop = await indexedStop(page);
+    expect(stop).toBe(`#${seed.refs.reading}`);
     const readingTop = () => page.locator(`#${seed.refs.reading}`).evaluate((el) => el.getBoundingClientRect().top);
     const top = await readingTop();
     submit(opened.stage, [{ kind: "answer", question: seed.refs.existing, response: { status: "answered", picks: ["A"] } }]);
     await page.locator(`#${seed.refs.existing}[data-state="picked"]`).waitFor();
-    expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
+    expect((await pagePosition(page)).tab).toBe(before.tab);
+    expect(await indexedStop(page)).toBe(stop);
     expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
     const settled = submit(opened.stage, [
-      { kind: "round", questions: [{ ...question("superseding", "Reconsidered and settled"), again: seed.refs.existing }, question("retired", "Deferred question")] },
+      { kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("superseding", "Reconsidered and settled", seed.refs.existing), question("retired", "Deferred question")] },
       { kind: "answer", question: "superseding", response: { status: "answered", picks: ["B"] } },
       { kind: "close", decisions: [
         { question: "superseding", text: "The changed route holds." },
@@ -341,8 +354,10 @@ test("answers, superseded asks, and retirement updates leave the reading place u
       { kind: "stage", state: "finished", retire: [{ question: "retired", reason: "Deferred until another ticket." }] },
     ]);
     await page.locator(`#${settled.refs.retired}[data-retired]`).waitFor();
-    expect(await page.locator(`#${seed.refs.existing} a[href="#${settled.refs.superseding}"]`).count()).toBe(1);
-    expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
+    const retryLink = page.locator(`#${seed.refs.existing}`).getByRole("link", { name: /Latest attempt/ });
+    expect(await retryLink.getAttribute("href")).toBe(`#${settled.refs.superseding}`);
+    expect((await pagePosition(page)).tab).toBe(before.tab);
+    expect(await indexedStop(page)).toBe(stop);
     expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
   } finally {
     await f.close();

@@ -19,8 +19,10 @@ Item kinds and their fields:
   - Corrections change an agent's interpretation, never the user's words, explicit picks, or non-consent statuses. A reading Correction only withdraws: its replacement reading is never `resolved`, so it cannot turn an unresolved reading into consent or swap one resolved decision for another. If a withdrawn decision is still needed, publish a new question with `again` in the active Stage, call the ordinary picker, and record its actual answer. Correcting an Assumed pick does not turn it into a user answer or replace the existing `reopens` rules.
 - Before an `attachment`, figure, option preview, captured revision, or real runnable artifact, read [Captured attachments](attachments.md).
 - `assumed`: optional `ref`, `decision`, `pick`, and `why`, one decision settled without asking. `why` cites its repo fact with file and line, its ADR, or its convention. Submit it before the round when it explains a remaining question. The close lists every Assumed pick no question reopened.
-- `round`: `questions`, in declared reading order. Both `ask.html` and `ask.questions` in the receipt keep that order, including re-asks that retain an earlier Q number. One contribution holds at most one round, because one round is one `ask`. Each question has optional `ref`, `title` (one question that ends with "?"), `description`, required nonempty `needs` as `{ need, kind }`, and `options`. Before preparing a question, follow the authoritative [Reader needs and Visual kinds checklist](reader-needs.md) for self-contained context, evidence, option tradeoffs, and where shared explanations belong. Each option has `label` (the label alone. The script adds `A. `, `B. `), `does`, `gains`, `costs`, and an optional `recommended` reason on at most one option. `costs` covers general downsides and trade-offs, including qualitative ones. Present material trade-offs accurately and concretely. When a cost matters to the decision and can be estimated, state its approximate size in appropriate units. If it cannot be estimated, say so. Include significant costs carried over from earlier decisions when they affect the option. An option can add `preview: { attachment: "<ref or id>", kind: "<Visual kind>" }` or `{ text: "<actual output or usage>", kind: "<Visual kind>" }`. A question can add:
-  - `multi`: optional boolean, default false. Set true for one question that accepts several selections. The form uses checkboxes for that question. Omit `recommended` when no preselection is allowed.
+- `round`: `now`, a shared account of where the work stands, and `questions` in declared reading order. Both `ask.html` and `ask.questions` keep that order, including re-asks that retain an earlier Q number. One contribution holds at most one round. Each question has `title`, `description`, `brief`, nonempty `needs` as `{ need, kind }`, and `options`. Use a question title that ends with `?`. A question can also have a `ref` to use in another item. Follow the [question checklist](reader-needs.md) for Decision brief wording, context, evidence, and trade-offs.
+  - `brief`: requires `unblocks`, what the answer lets the author do, and `undo`, how to reverse the decision or why it cannot be undone. With `again`, add `asked_again_because`, even if the earlier attempt never received an answer. Otherwise omit it. Give exactly one option a `recommended` reason or set `brief.no_recommendation` to explain why there is no recommended option. With no recommendation, the picker starts with nothing selected. The brief records context, not an answer or consent. Stored questions without briefs keep their original descriptions and choices.
+  - Each option requires `label`, `does`, `gains`, and `costs`. Give the label alone; the CLI adds the letter. Explain material trade-offs, including significant costs carried over from earlier decisions. Estimate each cost that matters in appropriate units, or say when there is no estimate. An option can include `preview: { attachment: "<ref or id>", kind: "<Visual kind>" }` or `{ text: "<actual output or usage>", kind: "<Visual kind>" }`.
+  - `multi`: optional boolean, default false. Set true for one question that accepts several selections. The picker uses checkboxes. Set `brief.no_recommendation` and omit `recommended` when no preselection is allowed.
   - `again`: the earlier question it asks again. In the same Stage it names a question of an earlier round and keeps that Q number. From a finished Stage it names that Stage's latest ask of the Q number and takes a new Q number here. Both questions link to each other.
   - `reopens`: the Assumed pick it reopens, of this Stage or a finished one. That pick leaves the close. This question's decision replaces it.
   - `today`: `{ text, source }` facts about how things work now, each with its file-and-line source.
@@ -32,7 +34,7 @@ Item kinds and their fields:
 
   Option `gains` and `costs` are lists with one or more nonempty strings. Empty lists, scalar strings, and empty or whitespace-only elements are refused.
 
-  A newly submitted round is refused when different questions reuse the same description, need text, or option `does`, `gains`, or `costs` text, ignoring finding and question identifiers such as F01 or Q3. Reused option labels are allowed. This check catches copied wording, not whether the questions explain meaningful differences. Apply the reader-needs checklist before submission. The refusal applies only within the new round, not to stored questions, answers, or historical data.
+  A new round is refused when different questions reuse text in the same brief field, description, reader need, or option `does`, `gains`, `costs`, or `recommended` field. The check ignores finding and question numbers such as F01 or Q3. Reused option labels are allowed. Put shared status in `now` and shared background in the Stage Background. The check does not apply to stored or migrated questions.
 - `answer`: `question`, `response`, and, for words with no pick, `reading`. A question takes one answer. To reopen it, ask it again with `again`, which keeps the earlier answer beside the new one.
 - `reading`: optional `ref`, `question`, and `reading`, using the same outcome fields as an answer's reading. It is ordinary agent-authored content, not another answer. It needs an existing answered response with words and no explicit pick, and must be the replacement of an atomic `corrects` relation. Its id is a later correction target. Overview and `show` use the current reading. The original answer's payload stays unchanged, and `show` retains the earlier interpretation as `recorded_reading`.
 - `close`: optional `ref`, `decisions`, one `{ question, text }` for the latest ask of each Q number of the Stage, and optional `extra` bullets. A later Stage can also include an earlier question only when that decision is the replacement in an atomic Correction of an earlier close decision. The close adds every Assumed pick of the Stage that no question reopened, and records each decision's answer provenance. A close with no decisions and no Assumed picks needs `extra`. Historical close text and recorded provenance stay unchanged. Its projected `current_answer`, `current_reading`, and `current_text` expose corrected state, and `affected` marks summaries changed by a Correction.
@@ -42,9 +44,44 @@ Item kinds and their fields:
 
 Text fields are plain text. A blank line starts a paragraph, a block of `- ` lines is a bullet list, and `` `code` `` and `[text](https://url)` links are kept. In Document, Comparison, Metrics, and attachment text, a link to anything but `https://`, `http://`, or a `#` anchor is refused. The script stores each source string once, however many records cite it.
 
+## Example round
+
+This contribution recommends **Keep**. The picker selects it by default, but that default is not a recorded answer.
+
+```json
+{
+	"version": 1,
+	"items": [{
+		"kind": "round",
+		"now": "One retry recovered interrupted requests in the local tests. Release review is next.",
+		"questions": [{
+			"title": "Keep one retry for interrupted requests?",
+			"description": "The retry waits one second before trying the request again.",
+			"brief": {
+				"unblocks": "Finalize the retry policy for the release.",
+				"undo": "Restore the no-retry setting and redeploy."
+			},
+			"needs": [{ "need": "Compare recovery against a faster failure notice.", "kind": "prose" }],
+			"options": [{
+				"label": "Keep",
+				"does": "Retries the interrupted request once.",
+				"gains": ["The reader does not have to repeat the request."],
+				"costs": ["The failure notice can arrive one second later."],
+				"recommended": "The local test recovered without another reader action."
+			}, {
+				"label": "Remove",
+				"does": "Reports the interruption without retrying.",
+				"gains": ["The reader sees the interruption at once."],
+				"costs": ["The reader has to repeat the request."]
+			}]
+		}]
+	}]
+}
+```
+
 ## Record progress
 
-The Overview opens with a progress strip built from these items. Each is its own fact. A finished Stage, a task count, a PR, a check, and the End state never stand in for one another. Authored PRs and checks stay labelled as reported, beside the host's separate read-only observations.
+The **Progress** row on Overview opens a strip built from these items. Each is its own fact. A finished Stage, a task count, a PR, a check, and the End state never stand in for one another. Authored PRs and checks stay labelled as reported, beside the host's separate read-only observations.
 
 - `task`: a step of the Flow's work. A new task has optional `ref`, `title`, and optional `state`, `evidence`, and `reason`. Update it with `{ "kind": "task", "task": "<ref or id>", ... }` and only the fields that change. Do not send the title again. The states are `pending` (the default), `active`, `done`, `skipped`, and `inapplicable`.
   - `done` needs `evidence`: one or more strings, such as a command and its outcome, a commit, or a path. Evidence adds to what the task has.

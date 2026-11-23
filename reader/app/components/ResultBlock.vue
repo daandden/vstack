@@ -45,7 +45,7 @@ const earlier = computed(() => [...props.r.history].reverse());
     </div>
     <ResultChanges v-if="!historical && r.history.length" :r="r" />
     <ResultComments :r="r" :content="content" />
-    <details v-if="r.history.length" class="text-small open:grid open:gap-2 [&>:not(summary)]:text-body">
+    <details v-if="r.history.length" :id="`${r.anchor}-history`" class="text-small open:grid open:gap-2 [&>:not(summary)]:text-body">
       <summary>Earlier revisions ({{ r.history.length }})</summary>
       <ResultBlock v-for="h in earlier" :key="h.anchor" :r="h" historical />
     </details>

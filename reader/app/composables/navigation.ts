@@ -3,15 +3,20 @@ import { savedState } from "~/composables/reload";
 
 export const current = ref<string>();
 export const mapOpen = ref(false);
-export const mapTab = ref("path");
+export const mapTab = ref("stages");
+export const jumpOpen = ref(false);
 export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
-export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]")].filter(shown);
+export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]:not(details[open])")].filter(el => {
+  if (!shown(el)) return false;
+  const parent = el.matches("details[data-reading-fold] > summary") ? el.parentElement?.parentElement : el.parentElement;
+  return !parent?.closest("details[data-reading-fold]:not([open])");
+});
 const tabs = () => [...document.querySelectorAll<HTMLElement>("[data-tab]")].map((el) => el.dataset.tab!);
 export const tabOf = (el: Element) => el.closest<HTMLElement>("[data-tab]")?.dataset.tab;
 
-export function resolve(id: string): HTMLElement | null {
+function findTarget(id: string): HTMLElement | null {
   const { flow } = useReaderState();
   if (!id) return null;
   let el = document.getElementById(id);
@@ -20,6 +25,13 @@ export function resolve(id: string): HTMLElement | null {
     seen.add(alias);
     el = document.getElementById(alias);
   }
+  return el;
+}
+
+export function resolve(id: string): HTMLElement | null {
+  const el = findTarget(id);
+  const fold = el?.dataset.foldTarget ? document.getElementById(el.dataset.foldTarget) : el;
+  if (fold instanceof HTMLDetailsElement && fold.hasAttribute("data-reading-fold")) fold.open = true;
   for (let parent = el?.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement) parent.open = true;
   return el;
 }
@@ -33,17 +45,11 @@ async function reveal(el: HTMLElement) {
 }
 
 function focusOn(el: HTMLElement) {
-  if (!el.matches("a[href], button, input, select, textarea, [tabindex]")) el.tabIndex = -1;
+  if (!el.matches("a[href], button, input, select, summary, textarea, [tabindex]")) el.tabIndex = -1;
   el.focus({ preventScroll: true });
 }
 
-export function measureHeader() {
-  const bar = document.querySelector<HTMLElement>(".bar");
-  if (bar) document.documentElement.style.setProperty("--bar", `${bar.offsetHeight}px`);
-}
-
 function place(el: HTMLElement) {
-  measureHeader();
   el.scrollIntoView({ block: "start", behavior: "instant" });
   keepSelectionAtCurrentScroll();
 }
@@ -74,15 +80,6 @@ export async function goTo(id: string, focus: boolean, replaceFragment = false):
   return true;
 }
 
-export async function openFirstOpenQuestionTab() {
-  const { flow } = useReaderState();
-  const first = flow.value?.next[0];
-  const el = first ? document.getElementById(first) : null;
-  tab.value = (el && tabOf(el)) ?? "overview";
-  await nextTick();
-  markFromScroll();
-}
-
 async function select(el: HTMLElement | undefined) {
   if (!el) return;
   await reveal(el);
@@ -92,10 +89,15 @@ async function select(el: HTMLElement | undefined) {
   focusOn(el);
 }
 
-function step(list: HTMLElement[], by: number) {
+export function nextReadingIndex(at: number, length: number, by: -1 | 1): number {
+  if (!length) return -1;
+  return at < 0 ? (by > 0 ? 0 : length - 1) : Math.min(Math.max(at + by, 0), length - 1);
+}
+
+function step(list: HTMLElement[], by: -1 | 1) {
   const exact = list.findIndex((el) => el.id === current.value);
   const at = exact >= 0 ? exact : list.findIndex((el) => el.contains(document.getElementById(current.value ?? "")));
-  void select(list[at < 0 ? (by > 0 ? 0 : list.length - 1) : Math.min(Math.max(at + by, 0), list.length - 1)]);
+  void select(list[nextReadingIndex(at, list.length, by)]);
 }
 
 function switchTab(by: number) {
@@ -133,10 +135,17 @@ export function onScroll() {
   markFromScroll();
 }
 
+function hidingDisclosure(el: Element): HTMLDetailsElement | undefined {
+  for (let child = el; child.parentElement; child = child.parentElement) {
+    const parent = child.parentElement;
+    if (parent instanceof HTMLDetailsElement && !parent.open && child !== parent.querySelector(":scope > summary")) return parent;
+  }
+}
+
 export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
   const visible = (el: Element | null) => {
     const box = el?.getBoundingClientRect();
-    return !!box && box.top < innerHeight && box.bottom > 0;
+    return !!el && !!box && box.top < innerHeight && box.bottom > 0 && !hidingDisclosure(el);
   };
   const target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
   const selected = current.value ? document.getElementById(current.value) : null;
@@ -152,42 +161,82 @@ export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
   }
   keepSelectionAtCurrentScroll();
 }
+
+const readingDetail = "details:is([id], [data-reload-key]):not([data-navigation-fold])";
+const readingDetails = () => document.querySelectorAll<HTMLDetailsElement>(readingDetail);
+const detailKey = (el: HTMLDetailsElement) => el.id || JSON.stringify([el.parentElement?.closest("[id]")?.id, el.dataset.reloadKey]);
+const generatedId = /^v-\d/;
+
+function focusKey(el: Element): string | undefined {
+  if (!(el instanceof HTMLElement)) return;
+  if (el.dataset.reloadFocus) return `control:${el.dataset.reloadFocus}`;
+  if (el.id && !generatedId.test(el.id)) return `id:${el.id}`;
+  if (el.matches("summary") && el.parentElement instanceof HTMLDetailsElement && el.parentElement.matches(readingDetail)) {
+    return `summary:${detailKey(el.parentElement)}`;
+  }
+  if (el instanceof HTMLAnchorElement && el.hasAttribute("href")) {
+    const scope = el.closest("[id], details[data-reload-key]");
+    return `link:${JSON.stringify([scope instanceof HTMLDetailsElement ? detailKey(scope) : scope?.id, el.getAttribute("href")])}`;
+  }
+}
+
+function findFocus(key: string) {
+  if (key.startsWith("id:")) return document.getElementById(key.slice(3));
+  const matches = [...document.querySelectorAll<HTMLElement>("summary, [data-reload-focus], a[href]")].filter(el => focusKey(el) === key);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function revealAncestors(el: HTMLElement | null | undefined) {
+  for (let fold = el && hidingDisclosure(el); fold; fold = hidingDisclosure(fold)) fold.open = true;
+}
+
 export function captureReadingPlace() {
   const anchor = readingAnchor();
   const focused = document.activeElement;
   return {
     hash: location.hash, tab: tab.value, current: current.value, y: scrollY,
     anchor: anchor?.el.id, top: anchor?.top,
-    details: [...document.querySelectorAll("details")].flatMap((el, i) => el.open ? [i] : []),
-    focus: focused instanceof HTMLElement ? focused.id : "",
+    openDetails: [...readingDetails()].filter(el => el.open).map(detailKey),
+    focusKey: focused ? focusKey(focused) : undefined,
     selection: focused instanceof HTMLTextAreaElement ? [focused.selectionStart, focused.selectionEnd] : undefined,
   };
 }
 
 export async function restoreReadingPlace(value: unknown): Promise<boolean> {
-  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", details: "list", focus: "string", selection: "number pair", anchor: "string", top: "number" });
+  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", openDetails: "list", folds: "list", focusKey: "string", focus: "string", selection: "number pair", anchor: "string", top: "number" });
   if (!saved || saved.hash !== location.hash) return false;
   if (!tabs().includes(saved.tab)) return false;
   tab.value = saved.tab;
   if (saved.current !== undefined) current.value = saved.current;
   await nextTick();
-  if (saved.details) {
-    const details = saved.details;
-    document.querySelectorAll("details").forEach((el, i) => { el.open = details.includes(i); });
+  if (saved.openDetails) {
+    const open = new Set(saved.openDetails);
+    for (const el of readingDetails()) {
+      if (el.open !== open.has(detailKey(el))) el.open = !el.open;
+    }
+  } else {
+    // Before this format, `details` held ordinals in a layout that no longer exists.
+    // Restore only the old ID-based folds, anchor, and focus.
+    for (const id of saved.folds ?? []) {
+      const el = typeof id === "string" && document.getElementById(id);
+      if (el instanceof HTMLDetailsElement && el.hasAttribute("data-reading-fold")) el.open = true;
+    }
   }
+  const id = saved.anchor || (saved.hash.length > 1 ? decodeURIComponent(saved.hash.slice(1)) : "");
+  if (id) {
+    document.dispatchEvent(new CustomEvent("flow-reveal", { detail: id }));
+    await nextTick();
+  }
+  const anchor = saved.openDetails ? findTarget(id) : resolve(id);
+  const field = saved.focusKey ? findFocus(saved.focusKey)
+    : saved.focus && !generatedId.test(saved.focus) ? document.getElementById(saved.focus) : null;
+  if (!saved.openDetails) revealAncestors(field);
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
-  measureHeader();
-  if (saved.focus !== undefined) {
-    const field = document.getElementById(saved.focus);
-    field?.focus({ preventScroll: true });
-    if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
-  }
+  field?.focus({ preventScroll: true });
+  if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
   scrollTo({ top: saved.y, behavior: "instant" });
-  if (saved.anchor !== undefined && saved.top !== undefined) {
-    const el = document.getElementById(saved.anchor);
-    if (el) restoreReadingAnchor({ el, top: saved.top });
-  }
+  if (anchor && saved.top !== undefined && !hidingDisclosure(anchor)) restoreReadingAnchor({ el: anchor, top: saved.top });
   keepSelectionAtCurrentScroll();
   return true;
 }
@@ -233,24 +282,32 @@ function restoreTypingPositionAfterFragmentNavigation() {
 }
 
 export function onHashChange() {
-  const id = decodeURIComponent(location.hash.slice(1));
+  const id = decodeURIComponent(location.hash.slice(1)) || "overview";
   if (typing?.field.isConnected) {
     heldMove = { id, focus: true, replaceFragment: false };
     restoreTypingPositionAfterFragmentNavigation();
     return;
   }
+  mapOpen.value = false;
+  jumpOpen.value = false;
   void goTo(id, true);
 }
 
 export function onKey(e: KeyboardEvent) {
   const { flow } = useReaderState();
   if (!shortcutEligible(e)) return;
-  if (e.key === "m") {
+  if (e.key === "m" && !jumpOpen.value) {
     e.preventDefault();
+    if (!mapOpen.value) mapTab.value = "stages";
     mapOpen.value = !mapOpen.value;
     return;
   }
-  if (mapOpen.value) return;
+  if (e.key === "g" && !mapOpen.value) {
+    e.preventDefault();
+    jumpOpen.value = !jumpOpen.value;
+    return;
+  }
+  if (mapOpen.value || jumpOpen.value) return;
   if (e.key === "n") {
     const focusedStage = flow.value?.stage.has(tab.value) ? tab.value : undefined;
     const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id))
@@ -280,6 +337,7 @@ export function onClick(e: MouseEvent) {
   const id = decodeURIComponent(a.getAttribute("href")!.slice(1));
   e.preventDefault();
   if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
-  void goTo(id, true);
   mapOpen.value = false;
+  jumpOpen.value = false;
+  void goTo(id, true);
 }
