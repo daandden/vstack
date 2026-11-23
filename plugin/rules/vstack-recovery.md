@@ -10,7 +10,7 @@ For an infrastructure failure, apply this rule before a skill's failure stop or 
 Recoverable cases include:
 
 - Start the Local Flow host when none is running. Flow-page commands already start it on demand. Restart a host only when this run started it in its own isolated `--home` namespace.
-- Republish and ask again a question the picker lost or never showed. In a Flow, resubmit the same contribution to recover its committed receipt and generated payload, then call `ask` once more. Preserve any recorded responses. A repeated receipt deduplicates publication, not asking.
+- Republish and ask again a question the picker lost or never showed. In a Flow, resubmit the same contribution to recover its committed receipt. Then call `ask` once more with the receipt's `ask.html` unchanged. Preserve any recorded responses. A repeated receipt deduplicates publication, not asking.
 - Rebuild a Verifier's clone inputs owned by this run and prepare a fresh isolated verification attempt. Keep the original refusal and evidence. Require the same SHAs, inputs, isolation checks, and proof.
 - Read branch state again after a stale-state failure and retry under the existing branch and SHA guards. Re-reading never authorizes accepting an unexplained tip, changing the recorded branch, force-pushing, or bypassing a guard.
 

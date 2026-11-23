@@ -29,7 +29,7 @@ Work out every manual step the human must take and every value that gets capture
 - For a migration or transition: the current state, the target state, and the irreversible actions between them.
 - For an env-file destination, establish from the repo's runtime commands and configuration that Bun actually loads that file. Decline env-file writes for Node, generic dotenv, shell sourcing, or an unknown reader. This restriction does not apply to CI-secret or manual-only procedures. [ADR 0075](../../../docs/adr/0075-wizard-env-files-use-bun-literal-semantics.md) records the reader trade-off.
 
-Publish the ordered list of stages and the values each produces with one complete confirmation round under flow-page's "Every ask in a Flow" contract, then call `ask` with the receipt's generated question. The user may add, drop, or reorder stages through the picker's custom answer. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the wizard and say why. Unavailable questioning grants no approval.
+Publish the ordered list of stages and the values each produces with one complete confirmation round. Follow `skill://flow-page`'s "Every ask in a Flow" contract. The user may add, drop, or reorder stages through Other. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the wizard and say why. Unavailable questioning grants no approval.
 
 **Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a CI service secret or variable, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
 

@@ -1,4 +1,5 @@
 import { mock } from "bun:test";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 /** One judgment that the extension sent through the candidate of omp's judge chain. */
 export interface JudgeCall {
@@ -41,6 +42,13 @@ export function judgeAnswers(scores: Record<string, number>): void {
 const judgmentCache = { name: "shared judgment cache" };
 
 mock.module("@oh-my-pi/pi-coding-agent", () => ({ settings: {} }));
+const approvalScope = new AsyncLocalStorage<object>();
+export function withToolApprovalScope<T>(run: () => T): T {
+  return approvalScope.run({}, run);
+}
+mock.module("@oh-my-pi/pi-coding-agent/tools/approval-scope", () => ({
+  toolApprovalScopeToken: () => approvalScope.getStore(),
+}));
 mock.module("@oh-my-pi/pi-tui", () => ({
   Markdown: class {
     constructor(readonly source: string) {}
