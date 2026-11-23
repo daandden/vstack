@@ -64,6 +64,26 @@ test("creates a branch without moving the source and deletes only that branch on
   expect(f.git("branch", "--list", "main")).not.toBe("");
 });
 
+test("an ovnfs removal refusal retains the checkout, record and new source branch", () => {
+  const f = fixture();
+  const branch = "research/unsaved";
+  const opened = f.open(["--new-branch", branch, "--ref", f.base]);
+  expect(opened.code).toBe(0);
+  const path = opened.record.path;
+  const committed = Bun.spawnSync([Bun.which("git")!, "-C", path, "-c", "user.name=Fixture", "-c", "user.email=fixture@example.test",
+    "commit", "--allow-empty", "-qm", "unsaved landing commit"]);
+  expect(committed.exitCode).toBe(0);
+  const before = readFileSync(f.record, "utf8");
+  const result = f.run("remove", [], { FAKE_OVNFS_PROTECT_COMMITS: "1" });
+  expect(result.code).toBe(2);
+  expect(result.record.error).toContain("checkout has unsaved commits");
+  expect(readFileSync(f.record, "utf8")).toBe(before);
+  expect(JSON.parse(before).removed).toBe(false);
+  expect(f.git("rev-parse", branch)).toBe(f.base);
+  expect(existsSync(path)).toBe(true);
+  expect(f.calls().filter(call => call.args.includes("rm")).map(call => call.args)).toEqual([["--json", "rm", opened.record.name]]);
+});
+
 test("checks out an existing branch without deleting it", () => {
   const f = fixture(); f.git("branch", "existing", f.base);
   const r = f.open(["--branch", "existing"]); expect(r.code).toBe(0);
@@ -192,4 +212,23 @@ test("failed creation from an ovnfs source cannot fall back to a shared Git dire
   expect(f.calls().some(call => call.args.includes("add"))).toBe(false);
   expect(Bun.spawnSync([Bun.which("git")!, "branch", "--list", "must-not-exist"], { cwd: parent.record.path }).stdout.toString().trim()).toBe("");
   expect(f.run("remove").code).toBe(0);
+});
+
+test.each([true, false])("open reports a missing runtime input according to the head backend, ovnfs=%s", ovnfs => {
+  const f = fixture();
+  const inputs = join(f.dir, "inputs.json");
+  writeFileSync(inputs, '["node_modules/missing"]');
+  const result = f.open(["--commit", f.base, "--inputs", inputs], ovnfs ? {} : { FAKE_OVNFS_FAIL: "1", FAKE_OMP_CLONED: "1" });
+  expect(result.code).toBe(2);
+  expect(result.record.cleanup.checkout).toMatchObject({ backend: ovnfs ? "ovnfs" : "omp-wt", removed: true });
+  expect(result.record.error).toContain("node_modules/missing");
+  expect(result.record.error).toMatch(/missing.*head checkout/);
+  if (ovnfs) {
+    expect(result.record.error).not.toContain("worktree.clone");
+    expect(result.record.error).not.toContain("/skill:setup-vstack");
+  } else {
+    expect(result.record.error).toContain("worktree.clone");
+    expect(result.record.error).toContain("/skill:setup-vstack");
+  }
+  expect(existsSync(f.record)).toBe(false);
 });

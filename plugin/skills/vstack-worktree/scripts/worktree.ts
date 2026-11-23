@@ -101,7 +101,10 @@ try {
       const tracked = (await checked(record.path, ["git", "ls-files", "-z"])).split("\0").filter(Boolean);
       refuseCommittedOverlap(tracked, inputs);
       for (const input of inputs) {
-        if (!existsSync(resolve(record.path, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing from the created head. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
+        if (!existsSync(resolve(record.path, input))) {
+          const advice = record.backend === "omp-wt" ? " Check worktree.clone and /skill:setup-vstack." : "";
+          throw new Error(`Required runtime input ${JSON.stringify(input)} is missing from the head checkout.${advice}`);
+        }
       }
       const paths = await run(record.path, ["git", "ls-files", "--others", "-z", "--", ".", ...inputs.map(input => `:(exclude,literal)${input}`)]);
       if (paths.code) throw new Error(`Cannot enumerate carried inputs: ${paths.stderr.trim()}`);

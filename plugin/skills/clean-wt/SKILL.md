@@ -69,7 +69,7 @@ The JSON contains `base`, `evidence_gaps`, and `checkouts`. Each checkout has:
 
 ovnfs checkouts pass the same Git work-state and history guards inside their checkout and private Git directory. ovnfs's dirty flag or `diff` output never proves a checkout clean. An inactive ovnfs checkout is removed only through ovnfs's `rm` operation, followed by listing and directory checks. Keep using these guards for legacy APFS copies. `omp worktree clear` is not a substitute.
 
-The removal keeps the checkout's ovnfs snapshots. From ovnfs v0.3.0, `ovnfs rm` deletes them by default, and a snapshot can hold work that the Git guards never see, such as edits saved with `ovnfs snap` and then reset. The script sends `ovnfs ctl rm` with `sticky_snapshots`. A daemon older than v0.3.0 rejects that field and never deletes snapshots, so the script then runs plain `ovnfs rm`.
+After those guards pass, the script runs `ovnfs --json rm --force --sticky-snapshots <name>`. `--force` permits removal of a verified squash-merged draft whose history the guards found elsewhere but ovnfs still considers unsaved. `--sticky-snapshots` keeps work saved outside Git. If ovnfs rejects the flags or otherwise fails, the script reports its output and does not try another removal command.
 
 Mounted metadata can outlast a successful native removal. Once the native listing confirms absence, the script waits up to 65 seconds for the mounted directory to disappear, then checks native identity again. It reports the wait through `--progress` and never repeats removal. A visibility deadline or changed identity remains a failure, not permission to remove again.
 
