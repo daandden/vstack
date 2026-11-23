@@ -189,7 +189,7 @@ The absolute directory where a run writes the project's vstack config and workfl
 _Avoid_: artifact dir, private root
 
 **Scratch**:
-A vstack output kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Flow page.
+A vstack output kept under `~/.vstack/tmp/`, grouped by project and by the omp session that wrote it, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Flow page.
 _Avoid_: temp files, artifacts, tmp output
 
 **Flow**:
