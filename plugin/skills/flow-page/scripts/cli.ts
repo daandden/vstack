@@ -12,7 +12,7 @@ import { homedir } from "node:os";
 import { join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
-import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
+import { addAliases, aliasesOf, closeFlow, contribute, latestAsks, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
 import { projectStore, type FlowWrite } from "./store.ts";
 import { connect, flowUrl, hostCommand, originOf, prepareStorage } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
@@ -23,7 +23,7 @@ import { describeContribution, describeResult } from "./discovery.ts";
 import { registerObservation } from "./observations.ts";
 import { projectCommonDir } from "../../vstack-tmp/scripts/scratch.ts";
 
-const COMMANDS = ["open", "bind", "submit", "validate", "catalog", "describe", "alias", "close", "reopen", "find", "move", "show", "bound", "target", "picker", "host", "migrate"];
+const COMMANDS = ["open", "bind", "submit", "validate", "catalog", "describe", "alias", "close", "reopen", "find", "move", "show", "bound", "ask-status", "target", "picker", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -40,6 +40,7 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts move [--flow <flow>] --to <folder-key>
        bun flow-page.ts show [--flow <flow>]
        bun flow-page.ts bound
+       bun flow-page.ts ask-status [<question-id>...]
        bun flow-page.ts target --session <id>
        bun flow-page.ts picker open|clear --picker <id> [<question-id>...]
        bun flow-page.ts host status|stop
@@ -52,6 +53,21 @@ every command: [--session <id>] [--agent <id>] [--home <dir>]
 const refuse = (message: string): never => {
   throw new Refusal(message);
 };
+
+function askFormHtml(questions: NonNullable<ReturnType<typeof contribute>["ask"]>["questions"]): string {
+  let html = "<form>";
+  for (const q of questions) {
+    const name = Bun.escapeHTML(q.id);
+    const type = q.multi ? "checkbox" : "radio";
+    html += `<fieldset><legend>${Bun.escapeHTML(q.question)}</legend>`;
+    for (const [i, option] of q.options.entries()) {
+      const label = Bun.escapeHTML(option.label);
+      html += `<label><input type="${type}" name="${name}" value="${label}"${i === q.recommended ? " checked" : ""}>${label}</label>`;
+    }
+    html += "</fieldset>";
+  }
+  return html + "</form>";
+}
 
 const stringOptions = ["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"] as const;
 let parsed;
@@ -69,7 +85,7 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], validate: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  catalog: [], describe: ["compact"], find: [], move: ["flow", "to"], show: ["flow"], bound: [], target: [], picker: ["picker"], host: [], migrate: [],
+  catalog: [], describe: ["compact"], find: [], move: ["flow", "to"], show: ["flow"], bound: [], "ask-status": [], target: [], picker: ["picker"], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
@@ -79,6 +95,7 @@ const positional: Record<string, [number, number, string]> = {
   host: [1, 1, "needs status or stop"],
   migrate: [1, 1, "needs exactly one Grilling page folder"],
   picker: [1, Infinity, "needs open or clear, and optional question ids"],
+  "ask-status": [0, Infinity, "takes optional question ids"],
 };
 const [least, most, says] = positional[command] ?? [0, 0, "takes no positional arguments"];
 if (rest.length < least || rest.length > most) usage(`${command} ${says}`);
@@ -100,8 +117,9 @@ if (command === "describe") {
 }
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
-if (command !== "host" && command !== "validate") await prepareStorage(home);
-const store = projectStore(home, process.cwd(), command === "validate");
+const readonly = command === "validate" || command === "ask-status";
+if (command !== "host" && !readonly) await prepareStorage(home);
+const store = projectStore(home, process.cwd(), readonly);
 const session = (opt.session as string | undefined) ?? process.env.PI_SESSION_ID ?? undefined;
 const agent = (opt.agent as string | undefined) ?? "main";
 const time = nowIso();
@@ -304,10 +322,10 @@ async function main(): Promise<object> {
       }
       const apply = (write: FlowWrite | undefined, s: State) => {
         try {
-          const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
+          const { revision, repeated, refs, ask } = contribute(s, t.stage, input, time, io);
           if (command === "validate") return { ok: true, diagnostics: [] };
           if (!repeated) publish(write!, s);
-          return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
+          return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), refs, ...(ask ? { ask: { ...ask, html: askFormHtml(ask.questions) } } : {}) };
         } catch (error) {
           if (error instanceof ContributionRefusal) throw error;
           throw new ContributionRefusal([refusalDiagnostic(error, input)]);
@@ -377,6 +395,25 @@ async function main(): Promise<object> {
       }
       return { binding: b ?? null, ...(b ? { flow: b.flow, stage: b.stage } : {}), presence };
     }
+    case "ask-status": {
+      const binding = session ? store.binding(session, agent, true) : undefined;
+      if (!binding) return { binding: null };
+      const s = store.read(locate(binding.flow).id) ?? refuse(`bound Flow ${binding.flow} could not be read`);
+      stageOf(s, binding.stage, "bound");
+      const latest = latestAsks(s, binding.stage);
+      const refusals: string[] = [];
+      for (const name of rest) {
+        const q = s.questions.find(q => q.id === name);
+        const reason = !q ? "not a published question"
+          : q.stage !== binding.stage ? `belongs to Stage ${q.stage}, not the bound Stage ${binding.stage}`
+          : latest.get(q.q)?.id !== name ? "superseded by a re-ask"
+          : s.retirements.some(r => r.question === name) ? "question is retired"
+          : s.answers.some(a => a.question === name) ? "already has a recorded answer"
+          : undefined;
+        if (reason) refusals.push(`${JSON.stringify(name)}: ${reason}`);
+      }
+      return { binding, refusals };
+    }
     case "target":
     case "bound": {
       const b = session ? store.binding(session, command === "target" ? "main" : agent) : undefined;
@@ -395,7 +432,7 @@ async function main(): Promise<object> {
 }
 
 const unbound = ["bound", "target", "picker"].includes(command) && (!session || !store.binding(session, command === "bound" ? agent : "main")) && !(command === "picker" && rest[0] === "clear");
-const live = command === "host" || command === "validate" || unbound ? undefined : await connect(home);
+const live = command === "host" || readonly || unbound ? undefined : await connect(home);
 try {
   const result = await main() as { flow?: string | { id: string }; stage?: string; target?: string | null; picker?: string | null };
   if (live && result.flow) {

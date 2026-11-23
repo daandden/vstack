@@ -74,8 +74,8 @@ export class FlowStore {
     return this.db.select({ id: aliases.flow }).from(aliases).where(eq(aliases.lookup, lookup(alias))).all().map(row => ({ flow: { id: row.id } }));
   }
   migratedFrom(source: string): State | undefined { const identity = this.migration(source); return identity && this.read(identity.flow); }
-  binding(session: string, agent: string): Binding | undefined {
-    if (!this.readonly && !this.opened && !existsSync(join(this.scratch, "flow.db")) && !existsSync(join(this.dir, ".bindings"))) return undefined;
+  binding(session: string, agent: string, missingAsUnbound = !this.readonly): Binding | undefined {
+    if (missingAsUnbound && !this.opened && !existsSync(join(this.scratch, "flow.db")) && !existsSync(join(this.dir, ".bindings"))) return undefined;
     if (this.readonly) {
       this.connection;
       const dir = join(this.dir, ".bindings");

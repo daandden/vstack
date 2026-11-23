@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Refuse a Flow-bound `ask` that has no controls, has hidden controls, or names a question outside the bound Stage's latest unanswered asks. Keep the picker available when the Flow read fails and show the error in the Flow panel."
+  ]
+}

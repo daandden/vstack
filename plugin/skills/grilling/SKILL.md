@@ -50,7 +50,7 @@ A note, Other text, or pushback that names an Assumed decision reopens it, whate
 ## Each round in a Flow
 
 1. Prepare the newly settled `assumed` items followed by one complete `round` containing every other frontier decision and its visuals. If the whole frontier is settled without questions, submit only the Assumed items and recompute the frontier.
-2. Publish that complete contribution through the Flow CLI and call `ask` with the receipt's generated questions under flow-page's "Every ask in a Flow" contract. Wait for the response before advancing dependent decisions.
+2. Publish and ask through `skill://flow-page`'s "Every ask in a Flow" contract. Wait for the response before advancing dependent decisions.
 3. Record an `answer` for each question through that common contract, preserving the user's words separately from your interpretation:
    - Preserve cancellations, timeouts, empty and headless responses, including any automatic picks, as non-consent. Their decisions remain open.
    - An explicit pick settles its decision. A note beside a pick does not undo it; reply to the note in a Document Result or open a new frontier question when needed.
