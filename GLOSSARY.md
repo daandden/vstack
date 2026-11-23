@@ -133,7 +133,7 @@ omp's private copy of a checkout for one subagent, with its own repository metad
 _Avoid_: sandbox, worktree (for this), isolated checkout
 
 **Merger**:
-The subagent that lands one implementer's patch on implement-spec's integration branch as one commit. It owns scope by file path, conflict resolution, and checks on a tree no implementer has tested; content review belongs to code-review.
+The subagent that lands one patch on implement-spec's integration branch. It commits a ticket or stages a non-maintain review-fix wave for the later shared commit. It owns path scope, conflict resolution, and checks on unproven trees. Content review belongs to code-review.
 _Avoid_: merge agent, lander, reviewer (for this)
 
 **Headless run**:
