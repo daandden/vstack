@@ -1,0 +1,1 @@
+export{t as sankey}from"#entry";

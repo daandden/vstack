@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useReaderState } from "~/composables/reader";
-const { flow } = useReaderState();
+import Button from "~/components/ui/Button.vue";
 import { mapOpen, mapTab, shortcutEligible } from "~/composables/navigation";
 
+const { flow } = useReaderState();
+
 const f = computed(() => flow.value!);
-const roots = computed(() => f.value.stages.filter((st) => !st.parent));
 const tabs = computed(() => [
   ...(f.value.path ? [{ id: "path", label: "Matt flow path" }] : []),
   { id: "stages", label: "Stages" },
@@ -37,9 +38,16 @@ watch(flow, () => {
 }, { flush: "post" });
 function closed() {
   // A queued native close event can arrive after the dialog has reopened.
-  if (dialog.value?.open) return;
+  const d = dialog.value;
+  if (!d || d.open) return;
   mapOpen.value = false;
-  if (opener instanceof HTMLElement && opener.isConnected && location.hash === openingHash) opener.focus({ preventScroll: true });
+  const focused = document.activeElement;
+  if (location.hash !== openingHash || (focused !== document.body && !d.contains(focused))) return;
+  if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) {
+    opener.focus({ preventScroll: true });
+  } else {
+    document.getElementById("stages-map-trigger")?.focus({ preventScroll: true });
+  }
 }
 async function switchTab(id: string) {
   mapTab.value = id;
@@ -71,26 +79,37 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="map-panel m-auto [inline-size:min(48rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-default bg-muted p-0 text-default open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)] [&_[data-map-item]:focus-visible]:outline-2 [&_[data-map-item]:focus-visible]:outline-info [&_[data-map-item]:focus-visible]:-outline-offset-2" aria-labelledby="map-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (mapOpen = false)">
-    <header class="flex flex-none items-center justify-between gap-3 border-be border-flow-line px-4 py-2">
+  <dialog ref="dialog" class="map-panel m-auto [inline-size:min(48rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-flow-line bg-flow-muted p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--color-base)_70%,transparent)] [&_[data-map-item]:focus-visible]:outline-2 [&_[data-map-item]:focus-visible]:outline-flow-blue [&_[data-map-item]:focus-visible]:-outline-offset-2" aria-labelledby="map-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (mapOpen = false)">
+    <header class="flex flex-none items-center justify-between gap-2 border-be border-flow-line p-2">
       <h2 id="map-title">Map</h2>
-      <UButton color="neutral" variant="outline" class="min-h-11" @click="mapOpen = false">Close</UButton>
+      <Button class="map-control" @click="mapOpen = false">Close</Button>
     </header>
-    <div class="map-tabs flex flex-none flex-wrap gap-2 px-4 py-3" role="tablist" aria-label="Map views">
-      <UButton v-for="t in tabs" :id="`map-tab-${t.id}`" :key="t.id" color="neutral" variant="outline" class="min-h-11 aria-selected:border-info aria-selected:text-info" role="tab" :aria-selected="mapTab === t.id" :aria-controls="`map-${t.id}`" :tabindex="mapTab === t.id ? 0 : -1" @click="switchTab(t.id)">{{ t.label }}</UButton>
+    <div class="map-tabs flex flex-none flex-wrap gap-2 p-2" role="tablist" aria-label="Map views">
+      <Button v-for="t in tabs" :id="`map-tab-${t.id}`" :key="t.id" class="map-control" role="tab" :aria-selected="mapTab === t.id" :aria-controls="`map-${t.id}`" :tabindex="mapTab === t.id ? 0 : -1" @click="switchTab(t.id)">{{ t.label }}</Button>
     </div>
     <div v-if="f.path" id="map-path" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-path" :hidden="mapTab !== 'path'">
       <MattPath />
     </div>
     <div id="map-stages" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-stages" :hidden="mapTab !== 'stages'">
-      <ul v-if="roots.length" class="tree grid list-none gap-1 px-4 py-3">
-        <StageTreeNode v-for="st in roots" :key="st.id" :stage="st" />
-      </ul>
-      <p v-else class="quiet">No Stages recorded.</p>
+      <StageGraph :stages="f.stages" />
     </div>
     <div v-if="f.wayfinder" id="map-wayfinder" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-wayfinder" :hidden="mapTab !== 'wayfinder'">
       <WayfinderMap :tickets="f.wayfinder.tickets" />
     </div>
-    <p class="map-help quiet flex-none border-bs border-flow-line px-4 py-3"><kbd>h</kbd> <kbd>l</kbd> tabs · <kbd>j</kbd> <kbd>k</kbd> items · Enter opens · arrows pan</p>
   </dialog>
 </template>
+
+<style scoped>
+.map-panel { border-color: var(--color-surface1); }
+
+.map-control {
+  border-color: var(--color-surface1);
+  font-weight: normal;
+}
+
+.map-control[aria-selected="true"] {
+  border-color: var(--color-blue);
+  color: var(--color-blue);
+  background: color-mix(in oklch, var(--color-blue) 8%, var(--color-base));
+}
+</style>

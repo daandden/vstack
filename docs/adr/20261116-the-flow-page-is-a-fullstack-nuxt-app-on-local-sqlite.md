@@ -10,7 +10,7 @@ Existing JSON Flows import automatically, keeping ids, aliases, revisions, readi
 
 vstack-clean lists Flow rows under the unchanged retention rules and user confirmation. It deletes a Flow's row, assets, bindings, comments, learning progress, and JSON backup together, keeps the id tombstone and migration identity, then compacts the database.
 
-web-fullstack's curation stays Cloudflare-only. This stack is specific to the Flow page, like its Nuxt UI choice under [ADR 0072](0072-the-flow-reader-uses-nuxt-ui-tailwind-and-vueuse-in-the-catppuccin-look.md).
+web-fullstack's curation stays Cloudflare-only. This server stack is specific to the Flow page. Its frontend follows web-fullstack's frontend choices under [ADR 20261119-the-flow-reader-uses-web-fullstack-frontend-choices-and-the-doop-compact-design](20261119-the-flow-reader-uses-web-fullstack-frontend-choices-and-the-doop-compact-design.md).
 
 ## Considered options
 

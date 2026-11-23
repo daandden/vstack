@@ -1,1 +1,0 @@
-export{r as sankey}from"#entry";

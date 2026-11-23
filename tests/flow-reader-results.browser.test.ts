@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import type { Learning } from "../plugin/skills/flow-page/scripts/host-api.ts";
 
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const proof = process.env.FLOW_READER_EVIDENCE;
@@ -41,7 +42,10 @@ test("all Results retain compact themed rendering, learning progress and isolate
       { kind: "attachment", ref: "app", type: "artifact", caption: "Captured prototype", origin: "Browser fixture", revision: "fixture-1", launch: "Open the captured viewer", runtime: "html", bundle: { entry: "index.html", files: [{ path: "index.html", source: "artifact.html" }, { path: "app.js", source: "app.js" }] } },
       { kind: "result", ref: "cards", shape: "cards", title: "Cards", entries: [{ ...finding, location: undefined }] },
       { kind: "result", ref: "review", shape: "review", title: "Review", axes: [{ axis: "standards", status: "findings" }, { axis: "spec", status: "clean", reason: "Covered." }, { axis: "blast-radius", status: "unavailable", reason: "No external caller." }], entries: [{ ...finding, axis: "standards" }] },
-      { kind: "result", ref: "ledger", shape: "ledger", title: "Ledger", entries: [{ ref: "claim", claim: "Reconnect keeps answers.", status: "unproven", evidence: "One local run.", missing_proof: "Restart evidence.", consequence: "Do not claim persistence yet." }] },
+      { kind: "result", ref: "ledger", shape: "ledger", title: "Ledger", entries: [
+        { ref: "claim", claim: "Reconnect keeps answers.", status: "unproven", evidence: "One local run.", missing_proof: "Restart evidence.", consequence: "Do not claim persistence yet." },
+        { ref: "confirmed", claim: "Drafts remain during polling.", status: "confirmed", evidence: "Two candidate poll cycles.", missing_proof: "None for polling.", consequence: "Keep the draft on the current page." },
+      ] },
       { kind: "result", ref: "table", shape: "table", title: "Table", columns: ["Target", "Status"], rows: [{ ref: "row", cells: ["reader/app/components/QuizBody.vue", "Covered"] }] },
       { kind: "result", ref: "document", shape: "document", title: "Document", sections: [{ heading: "Procedure", blocks: [{ prose: "Keep the answer [@source]." }, { list: ["Reconnect", "Read again"], ordered: true }, { code: "const saved = true;\n", language: "ts" }] }], citations: [{ ref: "source", source: "answers.ts:42" }], limitations: ["Local run only."], sources: ["GLOSSARY.md"] },
       { kind: "result", ref: "code", shape: "code", title: "Code and diff", entries: [{ ref: "source", file: "answers.ts", line: 10, language: "ts", code: "const saved = true;\n" }, { ref: "diff", file: "answers.ts", language: "ts", diff: "--- a/answers.ts\n+++ b/answers.ts\n@@ -1 +1 @@\n-const saved = false;\n+const saved = true;\n" }] },
@@ -60,6 +64,10 @@ test("all Results retain compact themed rendering, learning progress and isolate
     await page.locator(`#${seeded.refs.artifact} iframe`).waitFor();
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
+      const confirmed = page.getByRole("region", { name: "Ledger", exact: true }).getByText("Confirmed", { exact: true });
+      expect(await confirmed.evaluate(el => getComputedStyle(el).color)).toBe(
+        theme === "Light" ? "oklch(0.625 0.177 140.4)" : "oklch(0.858 0.109 142.7)",
+      );
       for (const width of [360, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -71,8 +79,17 @@ test("all Results retain compact themed rendering, learning progress and isolate
         }
       }
     }
-    expect(await page.locator(`#${seeded.refs.cards}`).evaluate((el) => getComputedStyle(el).rowGap)).toBe("10px");
+    expect(await page.locator(`#${seeded.refs.cards}`).evaluate((el) => getComputedStyle(el).rowGap)).toBe("8px");
     expect(await page.locator(`#${seeded.refs.quiz} form`).first().evaluate((el) => getComputedStyle(el).display)).toBe("grid");
+    const quizRegion = page.getByRole("region", { name: "Quiz", exact: true });
+    for (const control of [quizRegion.getByRole("button", { name: "Check answer" }).first(), quizRegion.getByRole("textbox", { name: "Answer", exact: true }).first()]) {
+      expect(await control.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.minBlockSize, css.paddingInlineStart];
+      })).toEqual(["28px", "8px"]);
+    }
+    expect(await quizRegion.getByRole("radio", { name: "A real ask" }).evaluate(el => getComputedStyle(el.closest("label")!).minBlockSize)).toBe("28px");
+    expect(await quizRegion.getByRole("textbox", { name: "Answer", exact: true }).first().evaluate(el => el.getBoundingClientRect().width)).toBe(320);
     for (const ref of ["cards", "review", "ledger", "table", "document", "code", "timeline", "comparison", "metrics", "quiz", "demo", "artifact"]) expect(await page.locator(`#${seeded.refs[ref]}`).isVisible()).toBe(true);
     expect(await page.getByRole("table", { name: "Review summary" }).innerText()).toContain("Keep saved answers");
     expect(await page.locator(`#${seeded.refs.comparison}`).innerText()).toContain("Not assessed");
@@ -83,23 +100,97 @@ test("all Results retain compact themed rendering, learning progress and isolate
     await revisions.locator(":scope > summary").focus();
     await page.keyboard.press("Enter");
     expect(await revisions.innerText()).toContain("A reader loses an answer.");
+    expect(await revisions.getByRole("article").first().evaluate(el => getComputedStyle(el).borderInlineStartWidth)).toBe("2px");
     const demo = page.locator(`#${seeded.refs.demo}`);
+    expect(await demo.getByRole("group", { name: "Actions" }).evaluate(el => getComputedStyle(el.parentElement!).rowGap)).toBe("4px");
+    expect(await demo.getByRole("button", { name: "Add item" }).evaluate(el => {
+      const css = getComputedStyle(el);
+      return [css.minBlockSize, css.fontSize];
+    })).toEqual(["28px", "12px"]);
     await demo.getByRole("button", { name: "Add item", exact: true }).click();
     expect(await demo.locator("strong").innerText()).toBe("Full");
     expect(await demo.getByRole("button", { name: "Add item", exact: true }).getAttribute("aria-disabled")).toBe("true");
     const iframe = page.locator(`#${seeded.refs.artifact} iframe`);
     expect(new URL((await iframe.getAttribute("src"))!).origin).not.toBe(new URL(opened.live.url).origin);
+    expect(await iframe.evaluate(el => getComputedStyle(el.parentElement!).padding)).toBe("8px");
     expect(await iframe.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin");
     await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Try prototype" }).click();
     expect(await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Prototype works" }).isVisible()).toBe(true);
     const quiz = page.locator(`#${seeded.refs.quiz}`);
+    for (const [colorScheme, correct, incorrect] of [
+      ["light", "oklch(0.625 0.177 140.4)", "oklch(0.692 0.204 42.4)"],
+      ["dark", "oklch(0.858 0.109 142.7)", "oklch(0.824 0.101 52.6)"],
+    ] as const) {
+      const themed = await browser.newContext({ colorScheme });
+      try {
+        await themed.route("**/learning", (route) => route.request().method() === "POST" ? route.abort() : route.continue());
+        const quizPage = await themed.newPage();
+        await quizPage.goto(`${seeded.live.url}#${seeded.refs.quiz}`);
+        await quizPage.waitForFunction(theme => document.documentElement.dataset.theme === theme, colorScheme);
+        const question = quizPage.getByRole("radio", { name: "A real ask" }).locator("xpath=ancestor::form");
+        for (const [option, feedback, color] of [
+          ["A quiz click", /^Not yet\./, incorrect],
+          ["A real ask", /^Correct\./, correct],
+        ] as const) {
+          await question.getByRole("radio", { name: option }).check();
+          await question.getByRole("button", { name: "Check answer" }).click();
+          expect(await question.getByRole("status").filter({ hasText: feedback }).evaluate(el => getComputedStyle(el).color)).toBe(color);
+        }
+        expect(await quizPage.getByRole("status").filter({ hasText: "Lesson in progress." }).evaluate(el => getComputedStyle(el).color)).toBe(correct);
+      } finally { await themed.close(); }
+    }
     await page.route("**/learning", (route) => route.request().method() === "POST" ? route.abort() : route.continue());
-    await quiz.getByLabel("A real ask", { exact: true }).check();
-    await quiz.locator('form[data-question="authority"]').getByRole("button", { name: "Check answer" }).click();
-    await quiz.getByRole("spinbutton").fill("5");
-    await quiz.getByRole("spinbutton").press("Enter");
-    await quiz.getByRole("textbox").fill("Flow");
-    await quiz.getByRole("textbox").press("Enter");
+    const choice = quiz.locator('form[data-question="authority"]');
+    const numeric = quiz.locator('form[data-question="sum"]');
+    const written = quiz.locator('form[data-question="word"]');
+    const radio = choice.getByRole("radio", { name: "A real ask" });
+    const numberAnswer = numeric.getByRole("textbox", { name: "Answer" });
+    const textAnswer = written.getByRole("textbox", { name: "Answer" });
+    for (const [question, message] of [
+      [choice, "Choose an answer."],
+      [written, "Enter an answer."],
+      [numeric, "Enter a number, such as 5 or 2.5."],
+    ] as const) {
+      const error = question.getByText(message, { exact: true });
+      if (question === numeric) await numberAnswer.fill("about 5");
+      expect(await error.isVisible()).toBe(false);
+      await question.getByRole("button", { name: "Check answer" }).click();
+      await error.waitFor({ timeout: 5000 });
+      const fields = question.getByRole(question === choice ? "radio" : "textbox");
+      for (const field of await fields.all()) {
+        expect(await field.getAttribute("aria-invalid")).toBe("true");
+        expect(await field.getAttribute("aria-describedby")).toBe(await error.evaluate(el => el.closest("[role=alert]")?.id ?? null));
+        expect(await field.getAttribute("aria-describedby")).not.toBeNull();
+      }
+    }
+    expect(await numberAnswer.getAttribute("inputmode")).toBe("decimal");
+    expect(await numberAnswer.inputValue()).toBe("about 5");
+    expect(await quiz.getByText(/Attempts:/).count()).toBe(0);
+    if (proof) {
+      for (const theme of ["Dark", "Light"]) {
+        await page.getByRole("button", { name: theme, exact: true }).click();
+        await numberAnswer.focus();
+        const name = `quiz-invalid-${theme.toLowerCase()}`;
+        await quiz.screenshot({ path: join(proof, `${name}.png`) });
+        writeFileSync(join(proof, `${name}.aria.txt`), await quiz.ariaSnapshot());
+      }
+    }
+    await radio.focus();
+    await radio.press("Space");
+    await choice.getByText("Choose an answer.", { exact: true }).waitFor({ state: "hidden" });
+    expect(await radio.getAttribute("aria-invalid")).not.toBe("true");
+    await radio.press("Enter");
+    await choice.getByRole("status").filter({ hasText: "Correct." }).waitFor();
+    await numberAnswer.fill("05.0");
+    await numeric.getByText("Enter a number, such as 5 or 2.5.", { exact: true }).waitFor({ state: "hidden" });
+    expect(await numberAnswer.getAttribute("aria-describedby")).toBeNull();
+    await numberAnswer.press("Enter");
+    await numeric.getByRole("status").filter({ hasText: "Correct." }).waitFor();
+    await textAnswer.fill("Flow");
+    await written.getByText("Enter an answer.", { exact: true }).waitFor({ state: "hidden" });
+    expect(await textAnswer.getAttribute("aria-invalid")).not.toBe("true");
+    await textAnswer.press("Enter");
+    await written.getByRole("status").filter({ hasText: "Correct." }).waitFor();
     await page.waitForFunction((id) => document.getElementById(id)!.textContent!.includes("3 attempt(s) saved"), seeded.refs.quiz);
     expect(await quiz.innerText()).toContain("Lesson complete.");
     await page.reload();
@@ -121,6 +212,10 @@ test("all Results retain compact themed rendering, learning progress and isolate
       await restored.goto(`${opened.live.url}#${seeded.refs.quiz}`);
       await restored.waitForFunction((id) => document.getElementById(id)?.textContent?.includes("Lesson complete."), seeded.refs.quiz);
       expect(await restored.locator(`#${seeded.refs.quiz}`).innerText()).toContain("Attempts: 1.");
+      const response = await restored.request.get(new URL("learning", opened.live.url).href);
+      expect(response.ok()).toBe(true);
+      const { attempts } = await response.json() as Learning;
+      expect(attempts.find(attempt => attempt.question === "sum")?.answer).toBe("5");
     } finally { await fresh.close(); }
     await demo.getByRole("button", { name: "Reset", exact: true }).click();
     expect(await demo.locator("strong").innerText()).toBe("Ready");

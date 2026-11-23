@@ -209,8 +209,8 @@ The Local Flow host's short-lived record that one omp session has a question pic
 _Avoid_: open ask, asking state, active ask
 
 **Map panel**:
-The Flow page panel that the `m` key opens, with one tab for the Matt flow path, one for the Stage tree, and, in a Flow with a wayfinder map, one for the ticket graph.
-_Avoid_: Stage tree (for the whole panel), Stages popup, path banner
+The Flow page dialog that the `m` key opens. It shows the Matt flow path when present, the graph of Stage relationships, and the Wayfinder ticket graph when present.
+_Avoid_: Stage tree, Stages popup, path banner
 
 **Local Flow host**:
 The detached local server for one operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The normal host uses the user's home namespace, while an explicit isolated `--home` namespace has its own host identity.

@@ -37,8 +37,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
 </script>
 
 <template>
-  <UApp :toaster="null">
-  <div class="reader grid [grid-template-columns:minmax(var(--gutter),1fr)_min(100%_-_var(--gutter)*2,var(--content))_minmax(var(--gutter),1fr)] gap-y-3 [padding-block:0_4rem] [&>*]:[grid-column:2]">
+  <div class="reader grid [grid-template-columns:minmax(var(--spacing-gutter),1fr)_min(100%_-_var(--spacing-gutter)*2,var(--container-content))_minmax(var(--spacing-gutter),1fr)] gap-y-2 pbe-6 [&>*]:[grid-column:2]">
     <p v-if="!flow && failure" class="notice" role="alert">
       This Flow could not be read: {{ failure }}. The reader needs the running Local Flow host; run any flow-page command, such as
       <code>bound</code>, to start it, then reload.
@@ -53,20 +52,19 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
       <p v-if="updateFailure" class="notice" role="status">{{ updateFailure }}</p>
       <ContextNotes />
       <main id="reading" class="grid" aria-label="Flow content">
-        <section id="overview" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
+        <section id="overview" class="panel grid gap-2 py-entry border-bs border-flow-line" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
           <h2 id="overview-title">Overview</h2>
           <ProgressPanel />
           <ChangedSinceVisit />
           <StageOverview />
-          <p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next tab, <kbd>n</kbd> next open question, <kbd>m</kbd> Map.</p>
         </section>
         <StagePanel v-for="st in flow.stages" :key="st.id" :stage="st" />
-        <section v-if="flow.topics.length" id="topics" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="topics" :hidden="tab !== 'topics'" aria-labelledby="topics-title">
+        <section v-if="flow.topics.length" id="topics" class="panel grid gap-2 py-entry border-bs border-flow-line" data-tab="topics" :hidden="tab !== 'topics'" aria-labelledby="topics-title">
           <h2 id="topics-title">Topic notes</h2>
-          <ul class="bullets">
+          <ul class="bullets gap-1 ps-3">
             <li v-for="t in flow.topics" :key="t.id"><a :href="`#${t.id}`" v-html="inline(t.title)" /> <span class="quiet" v-html="inline(t.summary)" /></li>
           </ul>
-          <section v-if="stageless.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-default" aria-labelledby="topics-historical">
+          <section v-if="stageless.length" class="grid gap-1 py-2 border-bs border-flow-line" aria-labelledby="topics-historical">
             <h3 id="topics-historical" class="eyebrow">Historical content in retained order</h3>
             <p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p>
             <ReadingEntry v-for="b in stageless" :key="b.id" :block="b" />
@@ -76,5 +74,4 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
       <MapPanel />
     </template>
   </div>
-  </UApp>
 </template>

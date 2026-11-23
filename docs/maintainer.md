@@ -106,9 +106,9 @@ When reader or server source changes, run `bun run reader:build` and commit its 
 
 After changing Flow runtime scripts or their shipped dependencies, run `bun plugin/skills/flow-page/scripts/generation.ts seal`. Commit `plugin/skills/flow-page/runtime.json` with those changes. The reader shipment command also seals this manifest after copying the complete reader. It records every Flow script, reader file, and shipped Scratch and figure script by hash. Do not seal a partial installation.
 
-The reader uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` loads them, and `theme.css` owns the Catppuccin Latte/Mocha palette, compact sizing, IosevkaTerm font stacks, Nuxt UI semantic colors, and Pele variables. Components use Nuxt UI and Tailwind utilities; no legacy question or Result stylesheet remains. Do not add another palette.
+The desktop reader uses UnoCSS presetWind4, copied shadcn-vue controls, and VueUse. The Doop compact design supplies the Catppuccin Latte and Mocha tokens in `reader/app/assets/theme.css`. Keep spacing, typography, and control sizing on those tokens. TanStack Form uses omptype schemas for comments and quiz answers. Result tables use TanStack Table, and Metrics charts use Unovis.
 
-Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
+The reader uses installed IosevkaTerm fonts when available and ships no fonts. UnoCSS generates icon masks from the local Lucide collection. `@nuxtjs/color-mode` keeps the browser's existing `flow-reader:theme` preference. The shipped reader makes no external font, icon, or color-mode requests and runs under the host's existing CSP.
 
 The rendering hook authenticates the capability and checks Flow availability before Nuxt receives content. Initial Flow state belongs to the request and hydrates from Nuxt's escaped payload, so concurrent page responses cannot share Flow data. The final HTML response hashes its executable inline scripts into the existing CSP. Scripts receive neither `unsafe-inline` nor `unsafe-eval`. Preserve Nuxt's payload escaping when changing response hooks. Diagram drawing and historical figure caption enhancement run only after hydration.
 
@@ -208,7 +208,7 @@ Selection-only trigger evals across the twelve UI descriptions and interrogate, 
 
 ### Web stack Utility
 
-`web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader's Nuxt UI and Tailwind choice remains application-specific under ADR 0072.
+`web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader follows its frontend choices under [ADR 20261119](adr/20261119-the-flow-reader-uses-web-fullstack-frontend-choices-and-the-doop-compact-design.md); its local server does not use the Cloudflare recipe.
 
 The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. Its conditional recipes cover framework and manager choice, copied shadcn-vue controls adapted to UnoCSS, UnoCSS icons, and TanStack Form with omptype. Optional state and query tools stay conditional.
 

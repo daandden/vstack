@@ -25,9 +25,9 @@ const ordinal = computed(() => (props.position === undefined ? undefined : Strin
 </script>
 
 <template>
-  <div class="entry grid gap-2 [padding-block:var(--entry-space)] [&+.entry]:border-bs [&+.entry]:border-muted" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
+  <div class="entry grid gap-2 py-entry [&+.entry]:border-bs [&+.entry]:border-flow-line" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
     <p class="meta">
-      <span v-if="ordinal" class="text-toned font-bold tabular-nums" :title="`First published at position ${position}`">{{ ordinal }}</span>
+      <span v-if="ordinal" class="text-flow-toned font-bold tabular-nums" :title="`First published at position ${position}`">{{ ordinal }}</span>
       <span v-if="round" :id="round.first ? round.round.id : undefined">
         <template v-if="round.round.session !== undefined">Session {{ round.round.session }}, </template>Round {{ round.round.n }}
         <time v-if="round.round.time" :datetime="round.round.time">{{ formatTime(round.round.time) }}</time>

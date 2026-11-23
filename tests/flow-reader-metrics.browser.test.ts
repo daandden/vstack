@@ -44,22 +44,72 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
       (window as any).cspViolations = [];
       document.addEventListener("securitypolicyviolation", e => (window as any).cspViolations.push(`${e.violatedDirective}: ${e.blockedURI}`));
     });
-    await page.goto(`${opened.live.url}#${seeded.refs.metrics}`);
+    const response = await page.goto(`${opened.live.url}#${seeded.refs.metrics}`);
+    const html = await response!.text();
+    expect(html).toContain("Latency trend chart data</caption>");
+    expect(html).not.toContain('aria-roledescription="chart"');
     const result = page.locator(`#${seeded.refs.metrics}`);
     const charts = result.locator('[aria-roledescription="chart"]');
-    await charts.nth(2).waitFor();
+    await charts.nth(2).waitFor({ timeout: 5_000 }).catch(error => {
+      throw new Error(`Metrics plots did not mount. Browser errors: ${errors.join("; ")}`, { cause: error });
+    });
     expect(await charts.count()).toBe(3);
     expect(await result.getByRole("table", { name: "Latency trend chart data" }).innerText()).toContain("10");
     expect(await result.getByRole("table", { name: "Memory relation chart data" }).innerText()).toContain("-2");
     const samples = result.getByRole("table", { name: "Latency distribution chart data" });
     expect(await samples.locator("tbody tr").count()).toBe(7);
+    const captionPositions = await Promise.all(["Latency trend", "Memory relation", "Latency distribution"].map(async name => {
+      const table = result.getByRole("table", { name: `${name} chart data`, exact: true });
+      const aboveHeader = await table.evaluate((el: HTMLTableElement) => {
+        const caption = el.caption!.getBoundingClientRect();
+        const header = el.tHead!.getBoundingClientRect();
+        return caption.height > 0 && header.height > 0 && caption.bottom <= header.top;
+      });
+      return [name, aboveHeader];
+    }));
+    expect(captionPositions).toEqual([["Latency trend", true], ["Memory relation", true], ["Latency distribution", true]]);
     expect(await result.innerText()).toContain("Main (baseline)");
     expect(await result.innerText()).toContain("95% CI");
     expect(await result.innerText()).toContain("-3 ms");
     expect(await result.innerText()).toContain("-2 ms");
-    expect(await charts.nth(0).locator('path[stroke-dasharray="5 3"]').count()).toBeGreaterThan(0);
-    expect(await charts.nth(1).locator("circle").count()).toBeGreaterThan(0);
-    expect(await charts.nth(2).locator("rect").count()).toBeGreaterThan(0);
+    const scalar = result.getByRole("region", { name: "Scalar latency (ms)" });
+    const branchValue = scalar.getByRole("row", { name: /Branch/ }).getByRole("cell", { name: "8 ms" });
+    const scalarBar = branchValue.locator("progress");
+    expect(await scalarBar.count()).toBe(1);
+    expect(await scalarBar.evaluate((bar: HTMLProgressElement) => ({ position: bar.position, width: bar.getBoundingClientRect().width })))
+      .toEqual({ position: 0.8, width: 96 });
+    expect(await scalar.getByRole("progressbar").count()).toBe(0);
+    const baselinePaint = (chart: number) => charts.nth(chart).evaluate(el => {
+      const base = getComputedStyle(document.body).backgroundColor;
+      const seriesColor = getComputedStyle(el.closest("section")!.querySelector("li span")!).color;
+      const paths = Array.from(el.querySelectorAll("path"));
+      const dots = Array.from(el.querySelectorAll("circle, path")).filter(mark => {
+        const { width, height } = mark.getBoundingClientRect();
+        return width >= 4 && width <= 10 && Math.abs(width - height) < 0.1;
+      });
+      return {
+        base,
+        seriesColor,
+        dashed: paths.some(path => {
+          const paint = getComputedStyle(path);
+          return paint.stroke === seriesColor && paint.strokeDasharray !== "none";
+        }),
+        outlined: dots.some(dot => {
+          const paint = getComputedStyle(dot);
+          return paint.fill === base && paint.stroke === seriesColor;
+        }),
+        filled: dots.some(dot => {
+          const paint = getComputedStyle(dot);
+          return paint.fill === paint.stroke && paint.fill !== "none";
+        }),
+      };
+    });
+    expect(await baselinePaint(0)).toMatchObject({ dashed: true, outlined: true });
+    expect(await baselinePaint(1)).toMatchObject({ outlined: true, filled: true });
+    const bars = () => charts.nth(2).locator("rect").evaluateAll(rects =>
+      rects.filter(rect => getComputedStyle(rect).fillOpacity === "0.25" && rect.getBoundingClientRect().height > 0).length,
+    );
+    expect(await bars()).toBeGreaterThan(0);
     for (let i = 0; i < 3; i++) {
       await charts.nth(i).focus();
       await page.keyboard.press("Home");
@@ -75,24 +125,36 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
       await page.keyboard.press("End");
       expect(await status.innerText()).toMatch(/(Main|Branch).*(ms|MB)/);
     }
-    const color = () => charts.nth(1).locator("circle").first().evaluate(el => getComputedStyle(el).fill);
     let previousColor = "";
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
-      const current = await color();
+      const paint = await Promise.all([baselinePaint(0), baselinePaint(1)]);
+      const current = paint[1].seriesColor;
       if (previousColor) expect(current).not.toBe(previousColor);
+      expect(paint[0]).toMatchObject({ dashed: true, outlined: true });
+      expect(paint[1]).toMatchObject({ outlined: true });
+      expect(await result.getByRole("heading", { name: /Latency trend/ }).evaluate(el => getComputedStyle(el).color))
+        .toBe(theme === "Light" ? "oklch(0.435 0.043 279.3)" : "oklch(0.879 0.043 272.3)");
+      if (proof) {
+        mkdirSync(proof, { recursive: true });
+        writeFileSync(join(proof, `${theme.toLowerCase()}-chart-paint.json`), JSON.stringify(paint, null, 2));
+      }
       previousColor = current;
       for (const width of [360, 1280]) {
         await page.setViewportSize({ width, height: 900 });
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         expect((await charts.first().boundingBox())!.width).toBeLessThanOrEqual(width);
         if (proof) {
-          mkdirSync(proof, { recursive: true });
           await result.screenshot({ path: join(proof, `${theme.toLowerCase()}-${width}-metrics.png`) });
           writeFileSync(join(proof, `${theme.toLowerCase()}-${width}-metrics.aria.txt`), await result.ariaSnapshot());
         }
       }
     }
+    const exactValues = result.getByRole("table", { name: "Latency trend chart data" });
+    const alignment = await exactValues.getByRole("row").nth(1).getByRole("cell").evaluateAll(cells =>
+      cells.map(cell => getComputedStyle(cell).textAlign),
+    );
+    expect(alignment).toEqual(["start", "end", "end", "end"]);
     expect(await page.evaluate(() => (window as any).cspViolations)).toEqual([]);
     expect(errors).toEqual([]);
     expect(external).toEqual([]);

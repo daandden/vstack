@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useEventListener } from "@vueuse/core";
+import Select from "~/components/ui/Select.vue";
 import type { ResultView } from "~/utils/flow";
 import { difference, object, type ObjectValue } from "~/utils/difference";
 
@@ -42,16 +43,22 @@ const changes = computed(() => difference(content(earlier.value), content(props.
     <details class="open:grid open:gap-2.5">
       <summary>Compare revisions</summary>
       <div :id="anchor(earlier)" class="grid gap-2.5">
-      <UFormField label="Earlier snapshot" :name="`${r.id}-earlier`" class="max-w-full">
-        <USelect :model-value="earlier.changed" :items="snapshots" class="max-w-full pointer-coarse:min-h-[44px]" @update:model-value="selected = $event" />
-      </UFormField>
+      <div class="grid max-w-full justify-items-start gap-1">
+        <label :for="`${r.id}-earlier`" class="font-medium">Earlier snapshot</label>
+        <Select
+          :id="`${r.id}-earlier`"
+          :model-value="earlier.changed"
+          :items="snapshots"
+          @update:model-value="selected = $event"
+        />
+      </div>
       <p class="font-semibold tabular-nums">{{ label(earlier) }} → {{ label(r) }}</p>
       <p class="flex flex-wrap gap-x-4 gap-y-1"><a :href="`#${earlier.anchor}`">Complete earlier snapshot</a><a :href="`#${r.anchor}`">Complete current Result</a></p>
       <p class="quiet">Only changed fields are shown. Removed content is struck through; additions are underlined. Full snapshots keep their citations, attachments, and interactions.</p>
       <ul v-if="changes.length" class="grid list-none gap-2.5 ps-0">
-        <li v-for="(c, i) in changes" :key="i" class="grid min-w-0 gap-1 border-s-2 border-default ps-3 [overflow-wrap:anywhere]">
+        <li v-for="(c, i) in changes" :key="i" class="grid min-w-0 gap-1 border-s-2 border-flow-border ps-3 [overflow-wrap:anywhere]">
           <p class="font-semibold">{{ c.path }}</p>
-          <p class="whitespace-pre-wrap tabular-nums">{{ c.prefix }}<del v-if="c.removed !== undefined && c.removed !== ''" class="bg-error/10 text-error">{{ c.removed }}</del><ins v-if="c.added !== undefined && c.added !== ''" class="bg-success/10 text-success">{{ c.added }}</ins>{{ c.suffix }}<span v-if="c.before === '' || c.after === ''" class="text-muted"> {{ c.before === '' ? '(previously empty)' : '(now empty)' }}</span></p>
+          <p class="whitespace-pre-wrap tabular-nums">{{ c.prefix }}<del v-if="c.removed !== undefined && c.removed !== ''" class="bg-[var(--color-red)]/10 text-flow-red">{{ c.removed }}</del><ins v-if="c.added !== undefined && c.added !== ''" class="bg-[var(--color-green)]/10 text-flow-green">{{ c.added }}</ins>{{ c.suffix }}<span v-if="c.before === '' || c.after === ''" class="text-flow-subtext"> {{ c.before === '' ? '(previously empty)' : '(now empty)' }}</span></p>
         </li>
       </ul>
       <p v-else class="quiet">No content changes between these snapshots.</p>

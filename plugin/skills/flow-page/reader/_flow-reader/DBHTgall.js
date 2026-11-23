@@ -1,4 +1,4 @@
-import{n as e,r as t,t as n}from"./BxrxwxIF.js";import{t as r}from"./DIWJVMiN.js";import{t as i}from"./DOzvca2k.js";import{i as a,s as o,t as s}from"./cWIjF4Ta.js";import{r as c}from"./DciMwFJ1.js";import{S as l,_ as u,a as d,b as f,c as p,h as m,i as h,n as ee,o as g,t as _,u as v,v as y,x as b}from"./qj2FSERp.js";import{c as te,d as x,f as S}from"./CQJ_2c2w.js";var C=class{type=`kanban`;title;sections=[];getType=n;last;sectionLevel=0;misplaced;addNode(e,t,n,i,a){let o={id:t,level:e,label:n};if(a!==void 0){let e=a.includes(`
+import{n as e,r as t,t as n}from"./BxrxwxIF.js";import{s as r}from"#entry";import{t as i}from"./DOzvca2k.js";import{i as a,s as o,t as s}from"./cWIjF4Ta.js";import{r as c}from"./DciMwFJ1.js";import{S as l,_ as u,a as d,b as f,c as p,h as m,i as h,n as ee,o as g,t as _,u as v,v as y,x as b}from"./qj2FSERp.js";import{c as te,d as x,f as S}from"./CQJ_2c2w.js";var C=class{type=`kanban`;title;sections=[];getType=n;last;sectionLevel=0;misplaced;addNode(e,t,n,i,a){let o={id:t,level:e,label:n};if(a!==void 0){let e=a.includes(`
 `)?a+`
 `:`{
 `+a+`
