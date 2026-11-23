@@ -2,9 +2,10 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import type { Subprocess } from "bun";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { writeExecutable } from "./support/executable.ts";
 import { ENV, git } from "./support/fixture.ts";
+import { holdSessionLease, stopSessionLeaseHolders } from "./support/session-lease-holder.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "clean-wt", "scripts", "clean-wt.ts");
 const FAKE_OMP = join(import.meta.dir, "support", "fake-omp-worktree.ts");
@@ -45,34 +46,15 @@ beforeEach(async () => {
   await holdLease(OWN);
 });
 
-afterEach(() => {
-  for (const h of holders) h.kill();
+afterEach(async () => {
+  await stopSessionLeaseHolders(holders);
   rmSync(dir, { recursive: true, force: true });
 });
 
-/** The name omp's Linux file lock binds in the abstract socket namespace for a lock path. */
-function abstractLockName(lockPath: string): string {
-  const high = Bun.hash.xxHash64(lockPath, 0x4f4d502d4c4f434bn);
-  const low = Bun.hash.xxHash64(lockPath, 0x50492d46494c454cn);
-  return `omp-file-lock-${high.toString(16).padStart(16, "0")}${low.toString(16).padStart(16, "0")}`;
-}
-
-/** Starts a process that holds a session lease the way omp does on this platform, optionally with its session file open as omp keeps it. */
 async function holdLease(id: string, sessionFile?: string) {
-  const lockPath = `${resolve(owners, id)}.lock`;
-  const keepOpen = "\nfor p in sys.argv[2:]: open(p)";
-  const code =
-    process.platform === "linux"
-      ? `import socket,sys,time\ns=socket.socket(socket.AF_UNIX,socket.SOCK_DGRAM)\ns.bind('\\0'+sys.argv[1])${keepOpen}\nprint('ready',flush=True)\ntime.sleep(3600)`
-      : `import fcntl,sys,time\nf=open(sys.argv[1],'a')\nfcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)\nkept=[open(p) for p in sys.argv[2:]]\nprint('ready',flush=True)\ntime.sleep(3600)`;
-  const arg = process.platform === "linux" ? abstractLockName(lockPath) : lockPath;
-  const p = Bun.spawn(["python3", "-c", code, arg, ...(sessionFile ? [sessionFile] : [])], { stdout: "pipe", stderr: "inherit" });
-  holders.push(p);
-  const reader = p.stdout.getReader();
-  const { value } = await reader.read();
-  reader.releaseLock();
-  expect(new TextDecoder().decode(value)).toContain("ready");
-  return p;
+  const holder = await holdSessionLease(id, { ownersDir: owners, sessionFile });
+  holders.push(holder);
+  return holder;
 }
 
 function session(id: string, cwd: string, rel = `-${id}/2026-10-21T00-00-00-000Z_${id}.jsonl`, extra: Record<string, unknown> = {}) {
