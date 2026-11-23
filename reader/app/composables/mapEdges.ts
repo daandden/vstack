@@ -36,7 +36,6 @@ function route(origin: DOMRect, from: DOMRect, to: DOMRect, columnSpan: number, 
   const x = from.right - origin.left, y = from.top - origin.top + from.height / 2;
   const endX = to.left - origin.left, endY = to.top - origin.top + to.height / 2;
   if (columnSpan > 1) {
-    // Fixed-width columns leave equal gutters. Route over intervening cards using the two nearest gutters.
     const halfGap = (endX - x - (columnSpan - 1) * from.width) / (2 * columnSpan);
     return `M${x} ${y} H${x + halfGap} V${rail} H${endX - halfGap} V${endY} H${endX}`;
   }

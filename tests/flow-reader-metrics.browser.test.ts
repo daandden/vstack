@@ -58,6 +58,16 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
     expect(await result.getByRole("table", { name: "Memory relation chart data" }).innerText()).toContain("-2");
     const samples = result.getByRole("table", { name: "Latency distribution chart data" });
     expect(await samples.locator("tbody tr").count()).toBe(7);
+    const captionPositions = await Promise.all(["Latency trend", "Memory relation", "Latency distribution"].map(async name => {
+      const table = result.getByRole("table", { name: `${name} chart data`, exact: true });
+      const aboveHeader = await table.evaluate((el: HTMLTableElement) => {
+        const caption = el.caption!.getBoundingClientRect();
+        const header = el.tHead!.getBoundingClientRect();
+        return caption.height > 0 && header.height > 0 && caption.bottom <= header.top;
+      });
+      return [name, aboveHeader];
+    }));
+    expect(captionPositions).toEqual([["Latency trend", true], ["Memory relation", true], ["Latency distribution", true]]);
     expect(await result.innerText()).toContain("Main (baseline)");
     expect(await result.innerText()).toContain("95% CI");
     expect(await result.innerText()).toContain("-3 ms");

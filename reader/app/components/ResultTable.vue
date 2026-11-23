@@ -36,7 +36,6 @@ const numberSort: SortingFn<Entry> = (a, b, id) => {
 };
 
 const allStatuses = "all";
-// Encode the option so empty and literal "all" statuses remain filterable.
 const exactStatus: FilterFn<Entry> = (row, id, value: string) => row.getValue(id) === value;
 exactStatus.resolveFilterValue = (value: string) => value.slice(1);
 

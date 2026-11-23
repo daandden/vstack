@@ -172,10 +172,28 @@ test("Jump labels identify Assumed subjects and each published attempt without m
     expect(await firstJump.getAttribute("href")).toBe(`#${first.refs["choice-0"]}`);
     expect(await firstJump.locator("code").innerText({ timeout: 2000 })).toBe("captured evidence");
     expect(await firstJump.getByRole("link").count()).toBe(0);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    const shortJump = row.getByRole("link", { name: "Q2", exact: true });
+    for (const link of [firstJump, shortJump]) {
+      const { height, padding } = await link.evaluate(el => {
+        const { paddingInlineStart, paddingInlineEnd } = getComputedStyle(el);
+        return { height: el.getBoundingClientRect().height, padding: [paddingInlineStart, paddingInlineEnd] };
+      });
+      expect(height, `Hit height of ${await link.textContent()}`).toBeGreaterThanOrEqual(28);
+      expect(padding).toEqual(["8px", "8px"]);
+    }
+    const gap = await firstJump.locator("code").evaluate(code => {
+      const prose = code.previousSibling as Text;
+      const range = document.createRange();
+      range.setStart(prose, 0);
+      range.setEnd(prose, prose.data.trimEnd().length);
+      return code.getBoundingClientRect().left - range.getBoundingClientRect().right;
+    });
+    expect(gap, "Rendered space between Keep and the inline code").toBeGreaterThan(1);
     for (let i = 1; i < subjects.length; i++) {
       expect(await row.locator(`a[href="#${first.refs[`choice-${i}`]}"]`).innerText()).toBe(`Assumed: ${subjects[i]}`);
     }
-    expect(await row.locator(`a[href="#${first.refs.single}"]`).innerText()).toBe("Q2");
+    expect(await shortJump.innerText()).toBe("Q2");
     for (const [i, id] of attempts.entries()) {
       const link = row.getByRole("link", { name: `Q1 (attempt ${i + 1})`, exact: true });
       expect(await link.getAttribute("href")).toBe(`#${id}`);
@@ -185,7 +203,7 @@ test("Jump labels identify Assumed subjects and each published attempt without m
       expect(await row.locator("a[aria-current]").getAttribute("href")).toBe(`#${id}`);
       expect(await page.locator(`#${id}`).evaluate((el) => el.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(-1);
     }
-    await firstJump.click();
+    await firstJump.press("Enter");
     expect(await hash(page)).toBe(first.refs["choice-0"]);
     await page.keyboard.press("j");
     expect(await hash(page)).toBe(first.refs["choice-1"]);

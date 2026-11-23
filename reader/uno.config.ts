@@ -49,7 +49,6 @@ export default defineConfig({
   rules: [
     [/^(text|bg|border|outline)-(flow-[a-z-]+)$/, ([, type, token]) => {
       const color = colors[token!];
-      // Opaque palette colors keep their OKLCH values instead of mixing in sRGB.
       if (color) return { [paintProperties[type!]!]: color };
     }],
     ["text-flow-state", { color: "var(--state, var(--color-subtext0))" }],

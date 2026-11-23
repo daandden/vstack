@@ -39,7 +39,9 @@ onMounted(measureHeader);
       </li>
     </ul>
     <nav v-if="jumps.length" class="jump-row flex flex-wrap gap-x-2 gap-y-1 border-bs border-flow-line text-small" aria-label="In this tab">
-      <a v-for="j in jumps" :key="j.id" :href="`#${j.id}`" :aria-current="at === j.id ? 'location' : undefined" class="jump-link inline-flex min-h-6 items-center px-1 text-flow-toned no-underline tabular-nums" v-html="inlineLinkLabel(j.label)" />
+      <a v-for="j in jumps" :key="j.id" :href="`#${j.id}`" :aria-current="at === j.id ? 'location' : undefined" class="jump-link reader-control inline-flex items-center text-flow-toned no-underline tabular-nums">
+        <span v-html="inlineLinkLabel(j.label)" />
+      </a>
     </nav>
   </nav>
 </template>

@@ -67,6 +67,7 @@ const table = useVueTable({
 }
 
 .chart-data-caption {
+  caption-side: top;
   color: var(--color-subtext0);
 }
 
