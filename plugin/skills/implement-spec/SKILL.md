@@ -96,9 +96,11 @@ Otherwise, retain the worker's reported changed paths and evidence reference in 
 
 Spawn one `vstack-merger` via `task` (`agent: "vstack-merger"`): the ticket with its spec pointer, the captured patch path, the integration branch name, the worker's recorded base SHA, its reported changed paths, its evidence reference, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent never merges a ticket itself, so report each unmerged patch path.
 
-If the merger returns a branch guard failure, stop the run with that blocker, as shared step 0b's branch guard says. If it returns any other failure, put its ticket back on the frontier once, for a fresh implementer from the current tip.
+Preserve the failed attempt's useful patch, retry inputs, and evidence outside its clone. Retain it while conflict resolution or the retry still needs it. Otherwise release it through the shared lifecycle contract.
 
-Preserve the failed attempt's useful patch, retry inputs, and evidence outside its clone. Retain it while conflict resolution or the retry still needs it; otherwise release it through the shared lifecycle contract. A second failure leaves the ticket open, not its worker unaccounted for.
+If the Merger returns a branch guard failure or an incomplete rollback, stop the run before another landing or worker starts. For the branch guard, follow shared step 0b. After an incomplete rollback, resume only when the Shared checkout is safely restored.
+
+For another landing failure, put the ticket back on the frontier once for a fresh implementer from the current tip, after the Merger verifies restoration. The Merger's once-only recovery of its own check inputs is part of the same landing, not a fresh implementer attempt. A second landing failure leaves the ticket open.
 
 A ticket is complete when its commit is on the integration branch and no gating question about it is unanswered. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Keep the Merger's return with the ticket's handle, base SHA, changed paths, evidence reference, seam picks, open questions, patch path, and commit SHA or held patch in the run record.
 
@@ -136,13 +138,13 @@ When skill://vstack-maintain is not loaded, record a stage-only wave with its id
 
 Spawn one `vstack-merger` via `task` (`agent: "vstack-merger"`): the stage-only wave with its conflict pointers, the captured patch path, the integration branch name, the fixer's recorded base SHA, its reported changed paths, its evidence reference, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent never lands this patch itself, so report the unmerged review-fix patch path.
 
-Use step 5's landing failure routes for the wave. A branch guard failure stops the run. Any other landing failure gets the once-only fresh fixer attempt from the current tip. A second failure leaves the fixes open. On success, retain the Merger's common return and staged paths in the run record before shared step 6. Leave the wave staged for that step.
+Use step 5's landing failure routes for the wave, including its hard stops and once-only fresh fixer attempt. On success, retain the Merger's common return and staged paths in the run record. Leave the wave staged for shared step 6.
 
 When skill://vstack-maintain is loaded, follow its landing rule after `gates` passes. Read the patch, then apply it atomically with `git apply -- "<patchPath>"`. A conflict lands nothing. Use the once-only retry above to send the wave to a fresh isolated fixer from the current integration branch tip. Resolve the conflict there and run the required `gates` after the final edit before landing the new patch. A second failed apply leaves the fixes open. Never resolve a conflict by editing plugin text in the parent checkout.
 
 For a maintain wave, keep its gate evidence and apply outcome in the run record.
 
-Draft review fixes only in the isolated worker, never directly in the parent checkout.
+Draft review fixes only in the isolated worker, never directly in the parent checkout. If a required fix is blocked or still unlanded after its allowed retry, stop before shared step 6. Keep the ticket commits. Record the open fixes, blocker, held patches, and evidence, and reconcile worker lifecycles before returning. Do not verify a final head, close tickets, or continue the delivery chain.
 
 ### 8. Commit and close
 
