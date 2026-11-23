@@ -8,7 +8,7 @@ Slots:
 - `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks.
 - `<role brief>`: what the subagent does and returns, from the skill's text.
 - `<reason>`: what the stop reports, beyond the undone parts and why the subagents did not start.
-- When the subagent writes Scratch, add `, the Scratch dir` after `the vstack root`.
+- When the subagent writes Scratch, add `, the Scratch dir and session id` after `the vstack root`. Forward both values unchanged. If the id is missing, the subagent writes no Scratch and returns it as an open question.
 
 ## Fan-out
 

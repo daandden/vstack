@@ -373,23 +373,25 @@ Moving the old private store is mandatory for every registered worktree. If the 
 Run `bun install --frozen-lockfile` in each clone before running these commands.
 
 ```sh
-bun scripts/vstack-maintain.ts plan [--scratch <dir>] [<upstream>|<upstream>@<ref> ...]
+bun scripts/vstack-maintain.ts plan [--scratch <dir> [--session-id <id>]] [<upstream>|<upstream>@<ref> ...]
 bun scripts/vstack-maintain.ts merge --plan <plan.json> [--decisions <file>]
 bun scripts/vstack-maintain.ts check [--plan <plan.json>] [<artifact> ...] \
   [--take <upstream>:<path>] [--rename <artifact>=<to>] [--remove <artifact>]
 bun scripts/vstack-maintain.ts prepare --decisions <file> [--plan <plan.json>]
-bun scripts/vstack-maintain.ts gates [--scratch <dir>]
+bun scripts/vstack-maintain.ts gates [--scratch <dir> [--session-id <id>]]
 ```
+
+`plan` and `gates` require an omp session id in `PI_SESSION_ID`. A delegated run passes its parent's project Scratch dir and session id as `--scratch` and `--session-id`.
 
 | Command | Output and effects |
 |---|---|
-| `plan` | Prints the absolute path of `plan.json` in one Scratch entry under `~/.vstack/tmp/<repo-key>/maintain/`, or under `<dir>/maintain/` with `--scratch <dir>`. It reads the checkout's Pins, register, and House style. It clones or fetches each selected Upstream in the external cache, finds its next Pin, and writes staged adopt copies and normalized sides in Scratch. With no arguments, it selects all Upstreams. `<upstream>@<ref>` fixes the chosen ref. An automatic Pin never moves backwards. A run with no moved Pin still writes a full plan with `moved: false`. |
+| `plan` | Prints the absolute path of `plan.json` in one Scratch entry under the marked `maintain/<session-id>/` folder. It reads the checkout's Pins, register, and House style. It clones or fetches each selected Upstream in the external cache, finds its next Pin, and writes staged adopt copies and normalized sides in Scratch. With no arguments, it selects all Upstreams. `<upstream>@<ref>` fixes the chosen ref. An automatic Pin never moves backwards. A run with no moved Pin still writes a full plan with `moved: false`. |
 | `merge` | Prints JSON `{rows}` with `id`, `effective_old`, `overlaps`, and `changes` for rows with normalized sides. Each change names its path, binary status, overlapping regions, and local and Upstream edits. It previews overlaps without writing drafts or checkout files. `--decisions` can supply `file_maps: {<row id>: {<Upstream file>: <local suffix>}}`. |
 | `check` | Prints JSON `{targets}` for named artifacts and artifacts in `--plan`. It classifies additions and edits, reports register rows, dispositions, callers, and name clashes, and previews takes. Renames and removals also report adopt callers. Repeat `--take`, `--rename`, or `--remove` for multiple targets. A name clash refuses with the Upstream item and a possible take or another-name remedy. At least one target is required. |
 | `prepare` | Prints JSON `{note, level, rows, targets, taken}`. It rebuilds the register, Pins, Hold fields, House style, adopt copies, and takes from branch HEAD, then writes one Change note. Version and CHANGELOG stay unchanged. implement must write adapt and merge text, move renamed artifacts, remove deleted artifacts, and update callers first. |
 | `gates` | Prints JSON `{ok, outcome, stages, durationMs, phaseOccupancyMs, identity, evidence}`. It runs quick_validate for changed skills, prepares the required Upstream cache and checks the register, runs the full test command, and runs the load smoke. Every phase records its outcome, duration, producing command, working directory, and timestamps. Register checking includes cache preparation in its duration. Test-runner subphases include non-browser tests, browser tests, and candidate-reader preparation when present. The smoke runs outside the home directory and retains its existing validation requirements. It does not run the live Addon judge. |
 
-Every invocation writes a persistent `maintain/<entry>/report.json` under Scratch. The report includes the invocation, Git head and base, dirty diff hash and status, runtime and platform identity, dependency-file hashes, and an environment hash. It records selected nonsecret environment values rather than their full contents. Command stdout and stderr remain in separate files beside the report and in the phase's `output`. Failed smoke artifacts join that entry, excluding the native-addon cache. The temporary smoke directory is always removed.
+Every `gates` invocation writes a persistent `maintain/<session-id>/<entry>/report.json` under the project Scratch dir. The report includes the invocation, Git head and base, dirty diff hash and status, runtime and platform identity, dependency-file hashes, and an environment hash. It records selected nonsecret environment values rather than their full contents. Command stdout and stderr remain in separate files beside the report and in the phase's `output`. Failed smoke artifacts join that entry, excluding the native-addon cache. The temporary smoke directory is always removed.
 
 Reports begin with `outcome: "running"` before the first phase and update after each phase completes. SIGINT and SIGTERM mark active work interrupted, forward the signal to the command's process group, and retain diagnostics. Failed, interrupted, or incomplete child phases cannot pass because their runner exited zero. An uncatchable process kill can leave a report running, which is incomplete evidence, not a completed runtime. A tool's background acknowledgement is not a gate completion.
 

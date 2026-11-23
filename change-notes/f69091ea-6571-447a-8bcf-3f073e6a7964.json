@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Write ordinary Scratch to marked omp session folders, share the root session id with delegated writers, and publish new session folders atomically."
+  ]
+}

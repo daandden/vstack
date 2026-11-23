@@ -10,7 +10,7 @@ Scratch holds vstack output such as explanations, proof, and eval workspaces. Or
 
 ## Get the dir
 
-Run the path script with the bash tool from inside the repo the work is about:
+At the top level, run the path script with the bash tool from inside the repo the work is about. In a subagent, use the [explicit mode](#subagents) instead.
 
 ```sh
 bun "$(realpath skill://vstack-tmp/scripts/path.ts)"          # project Scratch dir
@@ -29,15 +29,15 @@ The script creates the directory and prints its absolute path with a trailing sl
 
 ## Subagents
 
-The top-level agent runs the script with no kind. Pass the absolute project Scratch dir and your `PI_SESSION_ID` to every subagent that writes Scratch.
+The top-level agent runs the script with no kind when a child needs Scratch. Pass the absolute project Scratch dir and your `PI_SESSION_ID` as the Scratch session id.
 
-A subagent uses only the explicit mode. Pass the dir and parent session id from the brief:
+A subagent never uses the identity-resolving mode. To write Scratch, use the explicit mode with the dir and session id from the brief:
 
 ```sh
 bun "$(realpath skill://vstack-tmp/scripts/path.ts)" --scratch-dir "$SCRATCH_DIR" --session-id "$PARENT_SESSION_ID" <kind>
 ```
 
-This mode does not resolve repo identity. It creates and marks `<Scratch dir>/<kind>/<parent session id>/` with the same refusal rules. Forward the dir and id unchanged to any child that writes Scratch. If the brief omits the id, write no Scratch and return the missing id as an open question.
+The explicit mode resolves no repo identity and uses no session id from the environment. Put run-specific files or subfolders inside the marked folder it prints. Forward the dir and session id unchanged to any child that writes Scratch. If the brief omits either value, write no Scratch and return the missing value as an open question.
 
 ## Not Scratch
 

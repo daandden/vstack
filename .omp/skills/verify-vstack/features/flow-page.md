@@ -233,7 +233,7 @@ Preconditions:
 	CHECKOUT=/absolute/path/to/checkout
 	SKILL_DIR="$CHECKOUT/.omp/skills/verify-vstack"
 	OMP_TOOLS=/absolute/path/to/omp-tools
-	VERIFY_RUN_DIR="<Scratch dir>/verify/vstack-$(date +%Y%m%d-%H%M%S)-flow-panel"
+	VERIFY_RUN_DIR="$VERIFY_SESSION_DIR/vstack-$(date +%Y%m%d-%H%M%S)-flow-panel"  # VERIFY_SESSION_DIR is the marked verify folder from Evidence step 1
 	mkdir -p "$VERIFY_RUN_DIR"
 	bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
 	python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \

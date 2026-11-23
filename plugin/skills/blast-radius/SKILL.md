@@ -28,13 +28,9 @@ Step 4 is usually a small script that imports the same library version that the 
 
 ## Scratch
 
-Read `skill://vstack-tmp`. The top-level agent runs its path script with no argument once, from the repo under review:
+Open the marked `blast-radius` session folder through `skill://vstack-tmp`. When this run delegates, pass the project Scratch dir and session id through `skill://vstack-fan-out`.
 
-```sh
-bun "$(realpath skill://vstack-tmp/scripts/path.ts)"
-```
-
-Use a distinct `<Scratch dir>/blast-radius/<run-id>/` entry for the proof scripts, outputs, and disposable data. Write these only in Scratch, not the product tree or a PR worktree. A child uses the absolute project Scratch dir from its prompt, appends `blast-radius/`, and never runs the path script. Nested runners each get a disjoint entry. The vstack root is separate from Scratch and is passed unchanged to nested writers.
+Use a distinct run entry inside the marked folder for proof scripts, outputs, and disposable data. Keep each runner's entry disjoint. The vstack root is separate from Scratch and is passed unchanged to nested writers.
 
 ## Steps
 
@@ -50,9 +46,9 @@ Use a distinct `<Scratch dir>/blast-radius/<run-id>/` entry for the proof script
 5. Prove the safety fact. Write a script or test in this run's Scratch entry that executes the real code, run it, and paste the observed output. For a PR, run it from the PR worktree so that it executes the head SHA's code. Preserve its command and script path. If you cannot run a proof, state the missing prerequisite and mark the fact unproven. A source citation alone is not executed proof.
 6. Run `skill://compare-attempts` only when the user explicitly asks for compare-attempts or several attempts. A big or wide diff alone never starts it. If the caller says "skip step 6", skip it even when the request mentions several attempts. Without an explicit request, a big or wide diff gets one optional question through `ask` offering the pass, not an automatic run. A reviewer worker returns that question to its coordinator.
 
-For step 6, declare kind `reply`. Give each runner the pinned diff command, commit list, any PR worktree path, this skill's steps 1–5, and "skip step 6" to prevent recursion. Require the full hand-back, proof script, command, and observed output. Pass the absolute Scratch dir and a distinct run entry for each runner.
+For step 6, declare kind `reply`. Give each runner the pinned diff command, commit list, any PR worktree path, this skill's steps 1–5, and "skip step 6" to prevent recursion. Require the full hand-back, proof script, command, and observed output. Pass the project Scratch dir, session id, and each runner's distinct entry inside the marked folder.
 
-Keep the rubric with the parent. It covers the safety fact, depth on the proof ladder, risks with real `file:line` citations, and cleared items. Pick the strongest hand-back as the draft. Graft confirmed risks from the others and drop unproven duplicates. Re-run every retained proof script in `<Scratch dir>/blast-radius/<run-id>/` and record its output. Apply no patch for kind `reply`. Retain the compare-attempts synthesis note and evidence paths.
+Keep the rubric with the parent. It covers the safety fact, depth on the proof ladder, risks with real `file:line` citations, and cleared items. Pick the strongest hand-back as the draft. Graft confirmed risks from the others and drop unproven duplicates. Re-run every retained proof script in this run's entry in the marked `blast-radius` folder and record its output. Apply no patch for kind `reply`. Retain the compare-attempts synthesis note and evidence paths.
 
 The Blast radius reviewer in `skill://code-review` always skips step 6. That skill owns the Blast radius trigger list. Do not add a second trigger list here.
 

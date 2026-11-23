@@ -48,7 +48,7 @@ Put real questions through `ask` under `skill://flow-page`'s "Every ask in a Flo
    - LOGIC: outside a Flow, open the standalone HTML artifact directly. In a Flow, open the Flow page's demo or isolated artifact. In both modes, follow every walkthrough and check the visible state after each step.
    - BEHAVIOR: run the script and keep its output or timing.
 
-   Save the evidence files (screenshots, output, timings) in the Scratch dir under the `prototype` kind: run `bun "$(realpath skill://vstack-tmp/scripts/path.ts)" prototype` with the bash tool from inside the repo, and it prints the dir. In Private mode, save them in the prototype's `vstack/artifacts/<topic>/` dir instead.
+   Save evidence files (screenshots, output, and timings) in the marked `prototype` session folder from `skill://vstack-tmp`. In Private mode, save the evidence in the prototype's `vstack/artifacts/<topic>/` dir instead.
 
 ## Private mode
 

@@ -4,7 +4,7 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 
 ## Baseline preconditions
 
-- `VERIFY_RUN_DIR` is a new run entry under `<Scratch dir>/verify/`, made as `../SKILL.md` Evidence step 1 says. Proof and notes go at its top level, and throwaway data goes in `data/`.
+- `VERIFY_RUN_DIR` is a new run entry in the marked `verify` session folder, made as `../SKILL.md` Evidence step 1 says. Proof and notes go at its top level, and throwaway data goes in `data/`.
 - `CHECKOUT` is the vstack checkout or worktree under test, and `$CHECKOUT/plugin/package.json` names `vstack`.
 - `omp`, `bun`, `jq`, and `git` are on `PATH`.
 - For stub-driver recipes, `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.

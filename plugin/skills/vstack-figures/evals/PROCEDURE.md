@@ -17,15 +17,15 @@ Read `cfg://task`, or the user's omp config, and inspect these `task.agentModelO
 
 Save the explorer key's original value, including whether it was absent. Before judging, apply the session-only override in step 6 if needed, then restore the original value after the judges finish. The `task` tool has no per-item `model` field. Workers and judges select their respective named-agent overrides.
 
-Read skill://vstack-tmp. A top-level maintainer's agent obtains the Scratch kind directory with:
+Read `skill://vstack-tmp`. At the top level, open the marked `vstack-figures` session folder with:
 
 ```sh
 bun "$(realpath skill://vstack-tmp/scripts/path.ts)" vstack-figures
 ```
 
-Create `<Scratch dir>/vstack-figures/<run-id>/`, abbreviated `<run>` below. A subagent uses the Scratch dir its parent supplied instead of running the path script. Put every run output under `<run>`, never in tracked files.
+In a subagent, open that kind using the explicit mode in `skill://vstack-tmp`. Create `<run-id>/` inside the marked folder, abbreviated `<run>` below. Put every run output under `<run>`, never in tracked files.
 
-Save a `manifest.json` with the refs, resolved commit ids, the worker model and the required judge model, the explorer key's original value and presence, seed `234`, run id, vstack root, Scratch dir, start time, browser version, viewport, device scale factor, and display width. Copy the fixed briefs and rubric into the run folder and record their checksums. Use that same copy for both sides and every judge. Source paths in briefs.json identify the original session JSONL line and task name. They are provenance, not inputs for workers or judges.
+Save a `manifest.json` with the refs, resolved commit ids, the worker model and the required judge model, the explorer key's original value and presence, seed `234`, run id, vstack root, Scratch dir and session id, start time, browser version, viewport, device scale factor, and display width. Copy the fixed briefs and rubric into the run folder and record their checksums. Use that same copy for both sides and every judge. Source paths in briefs.json identify the original session JSONL line and task name. They are provenance, not inputs for workers or judges.
 
 The set has 3 simple, 5 normal, and 10 complex cases. Complex cases exercise a larger graph or explicit lanes, rows, or panels. c1 has 12 flowchart nodes. c3 preserves a real two-panel sequence with six lifelines, three repeated roles per panel. It does not claim six distinct participant roles.
 
@@ -46,7 +46,7 @@ Create `<run>/<side>/figures/`. Check `uptime` and the logical core count, `sysc
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per brief per side. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-worker"`. Each `task`: write and render its fixed brief's figure from the prompt below and return its SVG path or failure, the vstack root, the Scratch dir. Do not wait; keep working. If they cannot start, stop: record each unstarted worker's side, brief, and failure reason, and report the run as incomplete without parent-drawn replacements.
+Fan-out (skill://vstack-fan-out): parts: one per brief per side. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-worker"`. Each `task`: write and render its fixed brief's figure from the prompt below and return its SVG path or failure, the vstack root, the Scratch dir and session id. Do not wait; keep working. If they cannot start, stop: record each unstarted worker's side, brief, and failure reason, and report the run as incomplete without parent-drawn replacements.
 
 For each item, use this prompt, with absolute paths substituted:
 
@@ -62,7 +62,7 @@ Figure:
 <brief text, with {out} replaced by <run>/<side>/figures/>
 
 vstack root: <absolute vstack root>
-Scratch dir: <absolute Scratch dir>
+Scratch dir and session id: <absolute project Scratch dir and root omp session id>
 ```
 
 Collect every task result. Preserve the result, the Mermaid source, the SVG, and the subagent transcript path. Inspect the transcript's reads and script paths to confirm that it used its extracted chain. A side that read installed versioned text or ran the installed render script is contaminated, not a valid trial.
@@ -133,7 +133,7 @@ Read `cfg://task/agentModelOverrides` again before judging. If `vstack-explorer`
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per pair directory in `pairs/` and `pairs-swapped/`, 36 in all. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: act as the blind judge, read only the pair directory's `RUBRIC.md`, `brief.txt`, `A.png`, and `B.png`, and return the rubric's JSON verdict for its brief id, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: record each unstarted judge and its failure reason, restore the original explorer override, and report the run as incomplete.
+Fan-out (skill://vstack-fan-out): parts: one per pair directory in `pairs/` and `pairs-swapped/`, 36 in all. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: act as the blind judge, read only the pair directory's `RUBRIC.md`, `brief.txt`, `A.png`, and `B.png`, and return the rubric's JSON verdict for its brief id, the vstack root. Wait for every result. If they cannot start, stop: record each unstarted judge and its failure reason, restore the original explorer override, and report the run as incomplete.
 
 After all started judges settle, restore the original explorer value through `cfg://task/agentModelOverrides`, using session-only scope again. If the original entry was absent, remove the temporary entry. Preserve the other current entries. Restore the value even when judging fails, and record whether restoration succeeded. If a judge cannot read both images, record the failure and no verdict for that pair.
 

@@ -12,7 +12,7 @@ Typing `/skill:clean-wt` authorizes machine-wide removal of unused clean omp che
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before inventory. The page records approval. It never replaces the deletion guards.
 
-Before inventory, create a `clean-wt` Scratch entry and start `summary-records.json` as described in [Summary records](references/summary-records.md). Keep raw command results, investigator reports, approval mappings, and checkout accounting there. Publish no evidence attachments or process Topic notes.
+Before inventory, open the marked `clean-wt` session folder through `skill://vstack-tmp`. Create this run's entry inside that folder and start `summary-records.json` as described in [Summary records](references/summary-records.md). Keep raw command results, investigator reports, approval mappings, and checkout accounting there. Publish no evidence attachments or process Topic notes.
 
 Validate and submit the renderer's contribution, not an agent-written report. Do this before finishing the Stage. When publication is unavailable, retain the contribution in Scratch and report the failure.
 

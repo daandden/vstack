@@ -6,7 +6,7 @@ This Notes app and its `control-notes` harness are examples, not commands for th
 
 ## Baseline preconditions
 
-- Resolve Scratch through `skill://vstack-tmp`. Set `VERIFY_RUN_DIR=<Scratch dir>/verify/notes-$RUN_ID`. Keep proof and notes there, and disposable app data in `data/`.
+- Open the marked `verify` session folder through `skill://vstack-tmp`. Set `VERIFY_RUN_DIR` to `notes-$RUN_ID` inside that folder. Keep proof and notes there, and disposable app data in `data/`.
 - Launch Notes at `http://127.0.0.1:4173` with a disposable data directory.
 - Set `NOTES_DATA_DIR=$VERIFY_RUN_DIR/data` so concurrent runs do not share state.
 - Seed notes titled `Quarterly plan` and `Grocery list`.

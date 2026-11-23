@@ -1,7 +1,7 @@
 // Ordinary writes use <home>/.vstack/tmp/<repo-key>/<kind>/<session-id>/.
 
 import { createHash } from "node:crypto";
-import { closeSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
 
@@ -32,20 +32,30 @@ export function createScratchSession(scratchDir: string, kind: string, id: strin
   if (!KIND.test(kind) || !isScratchSessionId(id)) throw new Error("Invalid Scratch kind or session id");
   const parent = join(scratchDir, kind);
   const dir = join(parent, id);
+  const existing = lstatSync(dir, { throwIfNoEntry: false });
+  if (existing) return readScratchSession(dir, existing) === id ? dir : undefined;
   mkdirSync(parent, { recursive: true });
+  const pending = mkdtempSync(join(parent, ".vstack-scratch-"));
+  let published = false;
   try {
-    mkdirSync(dir);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    return readScratchSession(dir) === id ? dir : undefined;
+    writeFileSync(join(pending, SESSION_MARK), `${id}\n`, { flag: "wx" });
+    // On POSIX, rename can replace an empty directory. Leave old entries in place.
+    const appeared = lstatSync(dir, { throwIfNoEntry: false });
+    if (appeared) return readScratchSession(dir, appeared) === id ? dir : undefined;
+    try {
+      renameSync(pending, dir);
+      published = true;
+      return dir;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "EEXIST" && code !== "ENOTEMPTY" && code !== "EPERM") throw error;
+      const winner = lstatSync(dir, { throwIfNoEntry: false });
+      if (!winner) throw error;
+      return readScratchSession(dir, winner) === id ? dir : undefined;
+    }
+  } finally {
+    if (!published) rmSync(pending, { recursive: true, force: true });
   }
-  try {
-    writeFileSync(join(dir, SESSION_MARK), `${id}\n`, { flag: "wx" });
-  } catch (error) {
-    try { rmdirSync(dir); } catch { /* Leave any existing contents untouched. */ }
-    throw error;
-  }
-  return dir;
 }
 
 /** `<home>/.vstack/tmp`, the only directory clean.ts deletes in. */

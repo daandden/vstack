@@ -40,7 +40,7 @@ If several targets remain, choose through `ask` under `skill://flow-page`'s "Eve
 
 For a Private-mode target with no link, create an absolute `.omp/skills/verify-<app>` symlink in this checkout to the shared skill directory. Add `.omp/skills/verify-*` once to `git rev-parse --git-path info/exclude`, leaving shared ignores unchanged. Report any conflicting directory or link instead of overwriting it. Read SKILL.md by absolute path for the rest of the session. Discovery sees a new link next session.
 
-Read the target skill and follow its helper paths relative to the directory its SKILL.md was read from. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the parent's Scratch dir. Keep run notes and proof at `<Scratch dir>/verify/<app>-<run-id>/`, and throwaway app data in its `data/`. Never commit those paths.
+Read the target skill and follow its helper paths relative to the directory its SKILL.md was read from. Open the marked `verify` session folder through `skill://vstack-tmp`. Keep run notes and proof in a distinct `<app>-<run-id>/` entry inside it, and throwaway app data in its `data/`. Never commit those paths.
 
 On a committing run, run the dirty check now, before any edit, as skill://setup-app-verification step 2 says. Add `--target <dir>`, where `<dir>` is the directory the target's SKILL.md was read from. If `state` refuses because the target is not `.omp/skills/verify-<app>/`, the run is not a committing run. Tell the user in one line that vstack commits only `.omp/skills/verify-<app>/`. Then continue, and leave the corrections uncommitted.
 

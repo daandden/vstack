@@ -10,7 +10,7 @@ Never merge, enable auto-merge, enqueue a merge, retarget a base, or change stac
 
 Follow these rules in skill://implement/END-STATE.md:
 
-- Step 0a: the chain facts, Code host and CI service routing, and the reuse of the vstack root and Scratch dir.
+- Step 0a: the chain facts, Code host and CI service routing, and the reuse of the vstack root and Scratch dir and session id.
 - Step 0b: the push to the remote branch, the branch guard before every fix commit, and the last SHA this run pushed. Fix waves are fast-forward pushes.
 
 Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress" and keep frontier tasks and blockers current.

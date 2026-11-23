@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
 import { chmodSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 import { fakeGitHub } from "./support/fake-github.ts";
 import { checkout, git, makeUpstreams, passingSpec, writeFiles } from "./support/fixture.ts";
+import { MAINTAIN_SESSION_ID } from "./support/update-fixture.ts";
 
 const fixtures: ReturnType<typeof lifecycleFixture>[] = [];
 const fixture = () => { const f = lifecycleFixture(); fixtures.push(f); return f; };
@@ -85,8 +86,10 @@ test("plan writes one maintain Scratch entry and merge reports overlaps without 
   const f = fixture();
   writeFiles(f.root, { "plugin/skills/wording/SKILL.md": "---\nname: wording\ndescription: wording\n---\nRead GLOSSARY.md first. Start the `todo` list now. Ask poteto. Keep .git/old-root.\nThen keep the local plan.\n" });
   const { plan, path } = await planned(f);
-  expect(path).toContain("/.vstack/tmp/"); expect(path).toContain("/maintain/");
-  const entries = readdirSync(join(plan.out, "..")); expect(entries).toHaveLength(1);
+  expect(path).toContain("/.vstack/tmp/");
+  expect(path).toContain(`/maintain/${MAINTAIN_SESSION_ID}/`);
+  expect(read(join(plan.out, ".."), ".vstack-scratch-session")).toBe(`${MAINTAIN_SESSION_ID}\n`);
+  expect(readdirSync(dirname(plan.out)).sort()).toEqual([".vstack-scratch-session", basename(plan.out)]);
   expect(JSON.parse(readFileSync(path, "utf8")).rows).toEqual(plan.rows);
   const r = await f.run(f.root, ["merge", "--plan", path]); expect(r.code).toBe(0);
   expect(r.plan.rows.find((x: any) => x.id === "matt/wording").overlaps).toContain("plugin/skills/wording/SKILL.md");
@@ -114,17 +117,34 @@ test("plan at the current refs still writes Scratch and invalid selections refus
 }, 30000);
 
 test("plan --scratch writes its entry under the supplied Scratch dir and refuses a relative one", async () => {
-  const f = fixture(); const scratch = join(f.dir, "scratch"), maintain = join(scratch, "maintain");
-  const r = await f.run(f.root, ["plan", "--scratch", scratch, "matt@v1.2.0"]);
-  expect(r.stdout.trim().startsWith(`${maintain}/`)).toBe(true);
+  const f = fixture(); const scratch = join(f.dir, "scratch");
+  const parentId = "019abcde-1234-7abc-8def-000000000002";
+  const parent = join(scratch, "maintain", parentId);
+  const r = await f.run(f.root, ["plan", "--scratch", scratch, "--session-id", parentId, "matt@v1.2.0"]);
   expect(r.code).toBe(0);
-  const entries = readdirSync(maintain); expect(entries).toHaveLength(1);
-  expect(r.stdout.trim()).toBe(join(maintain, entries[0], "plan.json"));
-  expect(r.plan.out).toBe(join(maintain, entries[0])); expect(r.plan.root).toBe(f.root);
+  expect(readdirSync(join(scratch, "maintain"))).toEqual([parentId]);
+  expect(read(parent, ".vstack-scratch-session")).toBe(`${parentId}\n`);
+  expect(r.stdout.trim()).toBe(join(r.plan.out, "plan.json"));
+  expect(dirname(r.plan.out)).toBe(parent);
+  expect(r.plan.root).toBe(f.root);
   expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
   const relative = await f.run(f.root, ["plan", "--scratch", "scratch", "matt@v1.2.0"]);
   expect(relative.code).toBe(2); expect(JSON.parse(relative.stdout).ok).toBe(false);
-  expect(readdirSync(maintain)).toHaveLength(1); expect(existsSync(join(f.root, "scratch"))).toBe(false);
+  expect(readdirSync(join(scratch, "maintain"))).toEqual([parentId]);
+  expect(existsSync(join(f.root, "scratch"))).toBe(false);
+}, 30000);
+
+test("maintain Scratch writers refuse a missing session id without writing Scratch", async () => {
+  const f = fixture();
+  const scratch = join(f.dir, "scratch");
+  const plan = await f.run(f.root, ["plan", "matt@v1.2.0"], { PI_SESSION_ID: "" });
+  const gates = await f.run(f.root, ["gates", "--scratch", scratch], { PI_SESSION_ID: "" });
+  for (const result of [plan, gates]) {
+    expect(result.code).toBe(2);
+    expect(JSON.parse(result.stdout).reason).toContain("PI_SESSION_ID");
+  }
+  expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
+  expect(existsSync(scratch)).toBe(false);
 }, 30000);
 
 test("plan --scratch refuses a Scratch dir inside a checkout and writes nothing there", async () => {
@@ -507,12 +527,16 @@ test("gates isolate smoke output from home, delete temp output, and retain failu
   }
 }, 30000);
 test("gates --scratch retain failed smoke evidence under the supplied Scratch dir", async () => {
-  const f = fixture(); const scratch = join(f.dir, "scratch"), maintain = join(scratch, "maintain");
-  const result = await f.run(f.root, ["gates", "--scratch", scratch], { ...smokeCommands(f), FAIL_STAGE: "smoke" });
-  expect(result.stdout).toContain(`Smoke output retained at ${maintain}/`);
+  const f = fixture(); const scratch = join(f.dir, "scratch");
+  const parentId = "019abcde-1234-7abc-8def-000000000002";
+  const parent = join(scratch, "maintain", parentId);
+  const result = await f.run(f.root, ["gates", "--scratch", scratch, "--session-id", parentId], { ...smokeCommands(f), FAIL_STAGE: "smoke" });
+  expect(result.stdout).toContain(`Smoke output retained at ${parent}/`);
   expect(result.code).toBe(2);
-  const entries = readdirSync(maintain); expect(entries).toHaveLength(1);
+  expect(readdirSync(join(scratch, "maintain"))).toEqual([parentId]);
+  expect(read(parent, ".vstack-scratch-session")).toBe(`${parentId}\n`);
   const retained = dirname(JSON.parse(result.stdout).evidence);
+  expect(dirname(retained)).toBe(parent);
   const stage = JSON.parse(result.stdout).stages.find((s: any) => s.name === "smoke");
   expect(stage.output).toContain(`Smoke output retained at ${retained}`);
   for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) expect(read(retained, name)).toBe(`Smoke evidence: ${name}`);

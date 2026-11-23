@@ -10,6 +10,7 @@ import { ENV, git } from "./support/fixture.ts";
 const PATH_SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "path.ts");
 const PUBLISH_SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "to-tickets", "scripts", "publish.ts");
 const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
+const PAUSE_SCRATCH_MARK = join(import.meta.dir, "support", "pause-scratch-mark.ts");
 const SESSION = "019abcde-1234-7abc-8def-000000000001";
 
 let dir: string;
@@ -169,6 +170,10 @@ test("default mode creates and reopens only a marked session folder for an ordin
   const scratch = invokePath(repo, isolatedHome).stdout.trim();
   const session = join(scratch, "explain", SESSION);
   mkdirSync(session, { recursive: true });
+  const emptyInode = statSync(session).ino;
+  expect(run(SESSION)).toMatchObject({ code: 2, stdout: "" });
+  expect(statSync(session).ino).toBe(emptyInode);
+  expect(readdirSync(session)).toEqual([]);
   writeFileSync(join(session, "keep.txt"), "old scratch");
   const refused = run(SESSION);
   expect(refused.code).toBe(2);
@@ -223,6 +228,31 @@ test("subagent mode uses only the supplied Scratch dir and parent session id", (
   expect(readFileSync(join(session, ".vstack-scratch-session"), "utf8")).toBe(`${SESSION}\n`);
   expect(existsSync(isolatedHome)).toBe(false);
   expect(existsSync(gitLog)).toBe(false);
+});
+
+test("overlapping writers publish and reuse one fully marked session folder", async () => {
+  const repo = makeRepo(dir, "concurrent-writers");
+  const isolatedHome = join(dir, "concurrent-home");
+  const scratch = invokePath(repo, isolatedHome).stdout.trim();
+  const session = join(scratch, "explain", SESSION);
+  const release = join(dir, "release-mark");
+  const first = Bun.spawn([process.execPath, "--preload", PAUSE_SCRATCH_MARK, PATH_SCRIPT, "--home", isolatedHome, "explain"], {
+    cwd: repo, env: { ...ENV, PI_SESSION_ID: SESSION, VSTACK_MARK_RELEASE: release }, stdout: "pipe", stderr: "pipe",
+  });
+  const stderr = first.stderr.getReader();
+  try {
+    const paused = await stderr.read();
+    expect(new TextDecoder().decode(paused.value)).toBe("Scratch mark paused\n");
+    expect(invokePath(repo, isolatedHome, undefined, "--scratch-dir", scratch, "--session-id", SESSION, "explain"))
+      .toMatchObject({ code: 0, stdout: `${session}/\n` });
+  } finally {
+    writeFileSync(release, "");
+    await first.exited;
+  }
+  expect(first.exitCode).toBe(0);
+  expect(await new Response(first.stdout).text()).toBe(`${session}/\n`);
+  expect(readFileSync(join(session, ".vstack-scratch-session"), "utf8")).toBe(`${SESSION}\n`);
+  expect(readdirSync(join(scratch, "explain"))).toEqual([SESSION]);
 });
 
 test("to-tickets resume derives the same reserved record path in another session", () => {

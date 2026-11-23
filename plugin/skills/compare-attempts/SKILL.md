@@ -22,10 +22,10 @@ The runners receive one shared prompt. The rubric stays with the parent.
 2. Declare the caller's artifact kind. implement uses `tree`, a change at real target paths in the working tree. The grill uses `reply`, a written answer. Its patch is evidence only, never a change to apply.
 3. Derive 3–6 concrete criteria from what success means for this task. Keep the rubric out of every runner's prompt.
 4. Use three runners by default. The user's count overrides this, such as "5 attempts". When the caller or user supplies directions, give each runner its direction line. Otherwise each gets the same prompt in a fresh context.
-5. Resolve the absolute vstack root and, for nested Scratch writers, the project Scratch dir once. Follow "What every subagent prompt carries" in `skill://vstack-fan-out`. A child uses these paths from its prompt and never resolves them again.
+5. Resolve the absolute vstack root once. When a runner or its child writes Scratch, follow "What every subagent prompt carries" in `skill://vstack-fan-out` for the project Scratch dir and session id.
 6. For `tree`, name the real target paths relative to the checkout. Each runner writes them inside its own clone. Make sure that the target paths are not gitignored, because ignored files do not enter the patch. The candidate never goes through the vstack root. That path is only for nested writers of vstack artifacts, which must use disjoint paths. Follow `skill://principle-separate-before-serializing-shared-state`.
 
-The shared prompt includes the task, artifact kind, target paths, grounding paths, and the caller's brief. It instructs the runner to produce the artifact plus a rationale naming the alternatives it considered and rejected. It also requires a plain-text final reply with the artifact for kind `reply`, the rationale, and every path written. For kind `tree`, the artifact is the patch, not a separate candidate directory. Pass the absolute vstack root. Pass the Scratch dir when any nested writer needs it.
+The shared prompt includes the task, artifact kind, target paths, grounding paths, and the caller's brief. It instructs the runner to produce the artifact plus a rationale naming the alternatives it considered and rejected. It also requires a plain-text final reply with the artifact for kind `reply`, the rationale, and every path written. For kind `tree`, the artifact is the patch, not a separate candidate directory. Pass the absolute vstack root. Pass the Scratch dir and session id when any nested writer needs them.
 
 omp captures the delta against the parent's working tree at the start of each runner, including its uncommitted state. Keep the candidate paths unchanged in the parent until Pick. Writes through the vstack root are immediate and are outside the patch.
 
@@ -33,7 +33,7 @@ omp captures the delta against the parent's working tree at the start of each ru
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per runner. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the vstack root, the Scratch dir. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If they cannot start or isolation is off, stop: compare-attempts needs isolated attempts, so run `/skill:setup-vstack`.
+Fan-out (skill://vstack-fan-out): parts: one per runner. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the vstack root, the Scratch dir and session id. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If they cannot start or isolation is off, stop: compare-attempts needs isolated attempts, so run `/skill:setup-vstack`.
 
 Make sure that `omp config get task.isolation.enabled` prints `true` before starting. Every runner starts at once, each in its own clone.
 

@@ -24,7 +24,7 @@ The contract carries the agreed task facts, not an Addon pointer or pick list. i
 
 ## Enter implement's existing run
 
-implement owns the branch, run record, shared steps in `skill://implement/END-STATE.md`, and End state. Reuse its absolute vstack root, Scratch dir, and Flow. Follow `skill://flow-page`'s "Stage entry/exit line" for one tune-llm-flow child Stage parented to implement. This run's questions, Results, and gate history join that Stage. Save and restore implement's active binding on return. The training analyzer only returns evidence and opens no Stage. Never start a separate landing chain or close the Flow here.
+implement owns the branch, run record, shared steps in `skill://implement/END-STATE.md`, and End state. Reuse its absolute vstack root, Scratch dir and session id, and Flow. Follow `skill://flow-page`'s "Stage entry/exit line" for one tune-llm-flow child Stage parented to implement. This run's questions, Results, and gate history join that Stage. Save and restore implement's active binding on return. The training analyzer only returns evidence and opens no Stage. Never start a separate landing chain or close the Flow here.
 
 Run in the parent interactive session's checkout. Before any UI-only Ratchet operation, stop in a subagent, isolated worker, or headless context and return the missing requirement: the parent interactive session must run tune-llm-flow in its own checkout with its UI. Approvals need that session's UI and Ratchet's state lives under its working directory. Never invoke `/ratchet` or its kickoff round. Do not change project, session, or machine Ratchet settings.
 
@@ -80,7 +80,7 @@ Before the first candidate, retain the checkout's existing edits and staged stat
 
 Before this step, read skill://vstack-fan-out.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): analyze only the supplied Ratchet train view and current tuned files for one hypothesis within the agreed scope, return its mechanism, training evidence and trace paths, permitted edit scope, and expected regressions without edits using the Session model, the vstack root as an absolute path, the Scratch dir. Wait for its result. If it cannot be spawned, stop: a fresh training analyzer is required before another candidate.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): analyze only the supplied Ratchet train view and current tuned files for one hypothesis within the agreed scope, return its mechanism, training evidence and trace paths, permitted edit scope, and expected regressions without edits using the Session model, the vstack root as an absolute path. Wait for its result. If it cannot be spawned, stop: a fresh training analyzer is required before another candidate.
 
 3. Apply one hypothesis only within `change` paths. Save its one-line summary and rationale in `<variant>/change.md` and its exact candidate-only diff in `<variant>/change.patch`. Include new candidate files in that patch. Preserve the prior accepted tree and unrelated edits; never use a whole-tree reset or checkout as rejection cleanup.
 4. Call `await r.check("vN")`, execute its returned command, then `gate = await r.gate("vN", change="<one-line hypothesis>")`. Use Ratchet's actual verdict. `keep` requires improvement beyond noise on both train and test without held-metric regressions. Cost or latency never wins by degrading graded answer quality.
