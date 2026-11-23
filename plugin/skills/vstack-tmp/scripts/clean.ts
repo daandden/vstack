@@ -5,8 +5,9 @@ import { parseArgs } from "node:util";
 import { removeEntry } from "../../flow-page/scripts/files.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
 import { compactFlowDatabase, deleteFlowEntry } from "../../flow-page/scripts/store.ts";
-import { buildRows, DAY, flowStatus, sessionTitles, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
+import { buildRows, DAY, flowStatus, readDeleteArchives, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
 import { isScratchSessionId, scratchRoot, TICKETS_KIND } from "./scratch.ts";
+import { sessionTitles } from "./session-archives.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 
@@ -93,9 +94,9 @@ function display([repo_key, kind, name]: RowKey, titles: Map<string, string>, ro
 const print = (v: unknown) => new Promise<void>((done, fail) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`, (e) => (e ? fail(e) : done())));
 
 if (!values.delete) {
-  const inventory = buildRows(ctx);
+  const { rows: inventory, archiveTitles } = await buildRows(ctx);
   const ready = inventory.filter(row => row.status.state === "offered");
-  const titles = sessionTitles(ctx.ompHome, new Set(ready.filter(row => row.key[1] === "session").map(row => row.key[2])));
+  const titles = archiveTitles ?? sessionTitles(ctx.ompHome, new Set(ready.filter(row => row.key[1] === "session").map(row => row.key[2])));
   const rows = ready.map(row => {
     const [_, kind, name] = row.key;
     const closed = row.flow?.retention;
@@ -117,7 +118,9 @@ if (!values.delete) {
 
 if (positionals.length === 0) usage("--delete needs at least one row snapshot");
 const targets = [...new Set(positionals)].map(parseSnapshot);
-const titles = sessionTitles(ctx.ompHome, new Set(targets.filter(snap => snap[2] === request && snap[1][1] === "session").map(snap => snap[1][2])));
+const selected = targets.filter(snap => snap[2] === request).map(snap => snap[1]);
+const archives = await readDeleteArchives(ctx, selected);
+const titles = archives.titles ?? sessionTitles(ctx.ompHome, new Set(selected.filter(key => key[1] === "session").map(key => key[2])));
 type Completed = ReturnType<typeof display> & { removed: string[]; freed: number };
 type Failure = { path: string; reason: string };
 const deleted: Completed[] = [];
@@ -132,15 +135,18 @@ for (const [_, key, scope, members, newest] of targets) {
     continue;
   }
   let row: Row | undefined;
+  let archiveError: string | undefined;
   try {
     checkAncestors(root);
-    [row] = buildRows(ctx, key);
+    const rebuilt = await buildRows(ctx, { key, archives });
+    [row] = rebuilt.rows;
+    archiveError = rebuilt.archiveError;
   } catch (error) {
     skipped.push({ ...display(key, titles), reason: (error as Error).message });
     continue;
   }
   const shown = display(key, titles, row);
-  const reason = !row ? "Row is missing"
+  const reason = !row ? (key[1] === "session" || key[1] === "folder" ? archiveError : undefined) ?? "Row is missing"
     : row.status.state !== "offered" ? row.status.reason
     : membersHash(row) !== members ? "Row members changed or were replaced"
     : !row.flow && newestHash(row) !== newest ? "Newest file or its time changed"

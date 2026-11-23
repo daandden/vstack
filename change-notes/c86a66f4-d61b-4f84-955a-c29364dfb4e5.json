@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "/vstack-clean groups old Scratch by the most recently active omp session whose archive names it. Unlinked entries stay in project and kind rows. Cleanup checks the archives again before deleting and withholds rows when archive evidence is unavailable."
+  ]
+}

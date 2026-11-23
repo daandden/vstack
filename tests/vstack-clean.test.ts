@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { chmodSync, existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV } from "./support/fixture.ts";
@@ -64,6 +64,211 @@ function marked(repo: string, kind: string, id = SESSION) {
   expect(path.exitCode).toBe(0);
   return join(path.stdout.toString().trim(), ".");
 }
+
+function archive(id: string, start: string, title: string, activity: number, ...mentions: string[]) {
+  const base = join(home, ".omp", "agent", "sessions", "project", `${start}_${id}`);
+  mkdirSync(dirname(base), { recursive: true });
+  writeFileSync(`${base}.jsonl`, [
+    { type: "title", title },
+    { type: "session", id, timestamp: start, cwd: "/project" },
+    ...mentions.map(text => ({ type: "message", message: { role: "user", content: text } })),
+  ].map(record => JSON.stringify(record)).join("\n") + "\n");
+  utimesSync(`${base}.jsonl`, daysAgo(activity), daysAgo(activity));
+  return base;
+}
+
+test.skipIf(process.platform === "win32")("joins archive-named old Scratch to marked members and deletes only the rebuilt row", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    marked("shop", "verify");
+    marked("other", "verify");
+    const markedFile = file(`shop/verify/${SESSION}/report.txt`, "abc", 30);
+    const other = file(`other/verify/${SESSION}/report.txt`, "keep", 30);
+    const old = file("shop/verify/historical/report.txt", "defg", 25);
+    const base = archive(SESSION, "2026-10-12T08-00-00", "Recovered diagnostics", 25, old);
+    const args = ["--home", home, ...leaseArgs()];
+    const listing = clean(...args);
+    expect(listing.code).toBe(0);
+    expect(listing.json.rows).toMatchObject([
+      { repo_key: "other", kind: "session", size: 4 },
+      { repo_key: "shop", kind: "session", label: "Recovered diagnostics", size: 7, age_days: 25 },
+    ]);
+    expect(listing.json.withheld).toEqual([]);
+    expect(lstatSync(old).mtimeMs).toBeLessThan(Date.now() - 24 * DAY);
+    const result = clean(...args, "--delete", listing.json.rows[1].snapshot);
+    expect(result.code).toBe(0);
+    expect(result.json).toMatchObject({
+      deleted: [{ repo_key: "shop", kind: "session", removed: [dirname(markedFile), dirname(old)], freed: 7 }],
+      skipped: [], partial: [],
+    });
+    expect(existsSync(markedFile)).toBe(false);
+    expect(existsSync(old)).toBe(false);
+    expect(existsSync(other)).toBe(true);
+    expect(existsSync(`${base}.jsonl`)).toBe(true);
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("scans one archive once when deleting two rows in a repo with old Scratch", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    for (const id of [SESSION, ANOTHER]) {
+      marked("shop", "verify", id);
+      file(`shop/verify/${id}/report.txt`, "marked", 30);
+    }
+    const old = file("shop/verify/unmarked/report.txt", "old", 30);
+    const base = archive(ANOTHER, "2026-10-12T08-00-00", "Recovered diagnostics", 25, old);
+    mkdirSync(base);
+    const log = join(base, "1.bash.log");
+    writeFileSync(log, "Tool history\n");
+    const args = ["--home", home, ...leaseArgs()];
+    const list = clean(...args);
+    expect(list.json.rows).toHaveLength(2);
+    const snapshots = (list.json.rows as Listed[]).sort((a, b) => a.size - b.size).map(row => row.snapshot);
+    const deleted = runClean([...args, "--delete", ...snapshots], "archive-read", log);
+    expect(deleted.code).toBe(0);
+    expect(deleted.json.deleted).toHaveLength(2);
+    expect(deleted.json.skipped).toEqual([]);
+    expect(existsSync(old)).toBe(false);
+    expect(readFileSync(`${log}.opens`, "utf8")).toBe("opened\n");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("uses exact normalized paths in the session, subagent transcript, and tool log", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const tilde = file("shop/verify/report.txt", "a", 30);
+    const escaped = file('shop/verify/quoted "report"/child.txt', "bb", 30);
+    const subagent = file("shop/explain/worker-only/run.txt", "ccc", 30);
+    const tool = file("shop/interrogate/tool-only/run.txt", "dddd", 30);
+    const unlinked = file("shop/verify/actual", "eeeee", 25);
+    file("shop/verify/more", "ffffff", 35);
+    const ticket = file("shop/to-tickets/record/approved.json", "ggggggg", 30);
+    const base = archive(SESSION, "2026-10-12T08-00-00", "Paths from all archive sources", 10,
+      `~${tilde.slice(home.length)}/`, ticket, "actual", `${unlinked}-copy`, `${unlinked}[suffix]`);
+    writeFileSync(`${base}.jsonl`,
+      JSON.stringify({ type: "message", message: { content: escaped } }).replaceAll("/", "\\/").replace(".vstack", "\\u002evstack") + "\n",
+      { flag: "a" });
+    mkdirSync(join(base, "worker"), { recursive: true });
+    writeFileSync(join(base, "worker", "worker.child.jsonl"), JSON.stringify({ path: subagent }));
+    const leadingBytes = 1024 * 1024 - tool.indexOf(".vstack") - "wrote `".length - 4;
+    writeFileSync(join(base, "1.bash.log"), `${"x".repeat(leadingBytes)}\nwrote \`${tool}\`\nignored ${unlinked}[suffix]\n`);
+    const args = ["--home", home, ...leaseArgs()];
+    const { code, json } = clean(...args);
+    expect(code).toBe(0);
+    expect(json.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ repo_key: "shop", kind: "session", session_id: SESSION, size: 10, age_days: 30 }),
+      expect.objectContaining({ repo_key: "shop", kind: "to-tickets", path: dirname(ticket), size: 7 }),
+    ]));
+    if (process.platform === "linux") {
+      expect(json.rows).toHaveLength(2);
+      expect(json.withheld).toEqual([{ reason: "unnamed lease holders cannot be enumerated on Linux", count: 1 }]);
+    } else {
+      expect(json.rows).toHaveLength(3);
+      expect(json.rows).toContainEqual(expect.objectContaining({ kind: "folder", name: "verify", size: 11, age_days: 25 }));
+      expect(json.withheld).toEqual([]);
+    }
+    expect(readFileSync(unlinked, "utf8")).toBe("eeeee");
+    expect(readFileSync(tool, "utf8")).toBe("dddd");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("uses archive activity rather than start time and protects the winning row from a late non-owner lease", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  const holders = [witness];
+  try {
+    const markedFile = join(marked("shop", "verify"), "marked");
+    file(`shop/verify/${SESSION}/marked`, "abc", 30);
+    const old = file("shop/verify/old.md", "defg", 30);
+    const earlier = archive(SESSION, "2026-09-10T08-00-00", "Earlier start", 5, old);
+    const later = archive(ANOTHER, "2026-10-10T08-00-00", "Later start", 20, old);
+    const args = ["--home", home, ...leaseArgs()];
+    const initial = clean(...args).json;
+    expect(initial.rows).toMatchObject([{ kind: "session", name: SESSION, size: 7 }]);
+    const selected = initial.rows[0].snapshot;
+    const lateLease = await holdSessionLease(ANOTHER, { home });
+    holders.push(lateLease);
+    expect(clean(...args).json).toMatchObject({ rows: [], kept: 1, withheld: [] });
+    expect(clean(...args, "--delete", selected).json.skipped)
+      .toMatchObject([{ reason: "A session linked by the archive holds a lease" }]);
+    await stopSessionLeaseHolders([lateLease]);
+    holders.pop();
+
+    const tied = daysAgo(5);
+    utimesSync(`${earlier}.jsonl`, tied, tied);
+    utimesSync(`${later}.jsonl`, tied, tied);
+    expect(clean(...args).json.rows).toMatchObject([{ name: SESSION, size: 7 }]);
+    utimesSync(`${later}.jsonl`, daysAgo(1), daysAgo(1));
+    expect(clean(...args, "--delete", selected).json.skipped)
+      .toMatchObject([{ reason: "Row members changed or were replaced" }]);
+    expect(clean(...args).json.rows).toMatchObject([{ name: SESSION, size: 3 }, { name: ANOTHER, size: 4 }]);
+    expect(readFileSync(old, "utf8")).toBe("defg");
+    expect(readFileSync(markedFile, "utf8")).toBe("abc");
+  } finally {
+    await stopSessionLeaseHolders(holders);
+  }
+});
+
+test.skipIf(process.platform === "win32")("keeps the title of an attributed session with a compressed archive", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const old = file("shop/verify/archived/report.txt", "old", 30);
+    const base = archive(SESSION, "2026-10-12T08-00-00", "Compressed diagnostics", 25, old);
+    writeFileSync(`${base}.jsonl.gz`, Bun.gzipSync(readFileSync(`${base}.jsonl`)));
+    rmSync(`${base}.jsonl`);
+    expect(clean("--home", home, ...leaseArgs()).json).toMatchObject({
+      rows: [{ kind: "session", label: "Compressed diagnostics", name: SESSION, size: 3 }],
+      withheld: [],
+    });
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("does not use a partial archive search when listing or deleting", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    marked("marked-only", "verify");
+    file(`marked-only/verify/${SESSION}/report.txt`, "untouched", 30);
+    const linked = file("first/verify/previous/run.txt", "linked", 30);
+    const unlinked = file("second/explain/previous.txt", "unlinked", 30);
+    const ticket = file("first/to-tickets/record/approved.json", "ticket", 30);
+    const base = archive(SESSION, "2026-10-12T08-00-00", "Read before failure", 25, linked);
+    const args = ["--home", home, ...leaseArgs()];
+    const list = clean(...args);
+    const selected = list.json.rows.find((row: Listed) => row.repo_key === "first" && row.kind === "session").snapshot;
+    const mtime = lstatSync(linked).mtimeMs;
+    mkdirSync(base);
+    const corrupt = join(base, "1.bash.log.gz");
+    writeFileSync(corrupt, "not a gzip stream");
+
+    const after = clean(...args);
+    expect(after.code).toBe(0);
+    expect(after.json.rows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ repo_key: "marked-only", kind: "session" }),
+      expect.objectContaining({ repo_key: "first", kind: "to-tickets", path: dirname(ticket) }),
+    ]));
+    expect(after.json.rows).toHaveLength(2);
+    expect(after.json.withheld).toEqual([{ reason: expect.stringContaining(corrupt), count: 2 }]);
+    const result = clean(...args, "--delete", selected);
+    expect(result.code).toBe(0);
+    expect(result.json).toMatchObject({
+      skipped: [{ repo_key: "first", kind: "session", reason: expect.stringContaining(corrupt) }],
+      deleted: [], partial: [],
+    });
+    expect(readFileSync(linked, "utf8")).toBe("linked");
+    expect(lstatSync(linked).mtimeMs).toBe(mtime);
+    expect(readFileSync(unlinked, "utf8")).toBe("unlinked");
+    expect(readFileSync(corrupt, "utf8")).toBe("not a gzip stream");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
 
 test.skipIf(process.platform === "win32")("lists one row across kinds per session and repo and labels by archive title or short id", async () => {
   const lease = await holdSessionLease(WITNESS, { home });

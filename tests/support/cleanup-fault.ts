@@ -10,12 +10,16 @@ if (fault === "lease" && process.platform !== "linux") {
     return Reflect.apply(spawnSync, Bun, args);
   }) as typeof spawnSync;
 }
-const { lstatSync, readFileSync, unlinkSync } = fs;
+const { appendFileSync, lstatSync, openSync, readFileSync, unlinkSync } = fs;
 mock.module("node:fs", () => ({
   ...fs,
   lstatSync: (...args: Parameters<typeof lstatSync>) => {
     if (fault === "measure" && args[0] === path) throw new Error("Injected unreadable child");
     return Reflect.apply(lstatSync, fs, args);
+  },
+  openSync: (...args: Parameters<typeof openSync>) => {
+    if (fault === "archive-read" && args[0] === path) appendFileSync(`${path}.opens`, "opened\n");
+    return Reflect.apply(openSync, fs, args);
   },
   readFileSync: (...args: Parameters<typeof readFileSync>) => {
     if (fault === "lease" && args[0] === "/proc/net/unix") throw new Error("Injected lease scan failure");
