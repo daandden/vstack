@@ -29,7 +29,7 @@ Each stub drive gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own
 
 omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. A stub drive's run dir is under the real home, so its working directory is a temp dir outside it. The first drive or load gate makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, later stub drives reuse it, and Cleanup deletes it.
 
-For the Flow question panel, use the native helper in `features/flow-page.md` with `--tern`. It starts its own headless Tern renderer with a separate control endpoint and config directory, outside the user's working window. HOME and cwd stay in the outside temp dir. The helper links omp-tools at the explicit path and drives omp's built-in `ask` form. The PTY-only mode retains terminal bytes, but neither those bytes nor RPC dialog replies prove native clickable links or the panel's removal.
+For stock native `ask` and the Flow panel, use [Stock native ask baseline](features/flow-page.md#stock-native-ask-baseline). Its Tern drive uses its own window, daemon, and control endpoint. The classic TUI drive captures PTY bytes. Neither PTY bytes nor RPC replies prove a clickable Tern link.
 
 Never use your already-running omp session as proof. It loaded the plugin when it started, so it does not show edits made since then. Stub drives use the throwaway home. The real-model enrollment recipe verifies instruction following with the actual provider in a fresh session, not the shared session.
 
@@ -69,18 +69,24 @@ Teardown: the script stops its own omp process and stub server. If it was killed
 `--rpc-ui` starts `omp --mode rpc-ui`. omp 18.13 registers the `ask` tool only in that mode; in `--mode rpc`, a stub `ask` call fails with `Tool ask not found`. Each `ask` question reaches the drive as an `extension_ui_request` `select` frame whose options end with `Other (type your own)`. Picking that option opens an `editor` frame for the custom words. `--ui-replies` answers both like any other dialog. Use it for every drive whose model calls `ask`.
 `--session` drops the `--no-session` flag that a drive passes by default. omp then writes the session file under `$VERIFY_RUN_DIR/data/home/.omp/agent/sessions/` and holds its lease under `$VERIFY_RUN_DIR/data/home/.omp/run/session-owners/` while the drive runs. Tool calls get `PI_SESSION_ID` in both modes, but only with `--session` does a session file and a held lease back it. Use it for a skill whose script checks the running session, such as clean-wt.
 
-For actual-model current-picker non-consent cases, use the PTY helper without a stub provider:
+For actual-model non-consent cases, run the controller through eval without a stub provider:
 
-```sh
-python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
-  --omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR/<new-case>" \
-  --prompt <scenario.md> --config <isolate.yml> --case <cancelled|timeout|empty> \
-  [--session-source <persistent-session.jsonl>] [--deadline-seconds 1800]
+```python
+import subprocess
+import sys
+
+subprocess.run([
+	sys.executable, f"{skill_dir}/scripts/flow-questions-tui.py",
+	"--checkout", checkout, "--run", run_dir, "--prompt", scenario,
+	"--config", overlay, "--case", case, *(["--tern"] if case == "cancelled" else []),
+], check=True)
 ```
 
-The helper reads the last model and thinking records from `PI_SESSION_FILE` or `--session-source`. It clears inherited session variables, retains real HOME for credentials, and starts a fresh interactive TUI with the supplied overlay. It loads the checkout's package and the named omp-tools package. It appends operational guidance requiring the checkout CLI's explicit `--home <new-case>/flow-home` on every Flow command and records that home, guidance, and effective prompt hash in `launch.json`. Follow `features/architecture-agreement.md`'s current-picker procedure. The normal-HOME native extension stays intentionally unbound. This proves isolated CLI publication plus ordinary native `ask`, not automatic binding or Flow-card acceptance. A free `VSTACK_FLOW_PORT` selects the owned host's startup port, not its namespace, and cannot override existing discovery.
+Use `cancelled`, `timeout`, or `empty` for `case`. The helper reads the last model and thinking records from `PI_SESSION_FILE` or `--session-source`. It clears inherited session variables and loads only the checkout's plugin. The omp process retains real HOME for credentials. A separate Tern window uses disposable HOME and its own control endpoint.
 
-Cancellation uses Escape in the actual picker. Timeout leaves it unanswered and requires `ask.timeout` in the overlay. Empty uses the real Submit tab without selecting an option, so it needs a generated multi-question or multiselect round. Unsupported routes remain unavailable. A controller deadline is not a picker timeout.
+Use `cancelled --tern` to click native **Cancel**. For `timeout`, set `ask.timeout` in the overlay and leave the form alone. A controller deadline is not a timeout response. For `empty`, move to native **Submit** without choosing an option and activate it. Check the raw result for empty data. Report a preselected value or unavailable native route as a proof gap.
+
+The helper appends instructions to use the recorded explicit `--home <new-case>/flow-home` for every Flow command. The normal-HOME extension stays intentionally unbound. This proves isolated publication and native `ask`, not a bound Flow panel. Follow [Architecture agreement](features/architecture-agreement.md#drive-native-non-consent) for isolation, grading, and cleanup.
 
 `summary.json` reports transport completion, not a behavioral pass. Inspect `terminal.bin`, `terminal.txt`, `inputs.json`, `tool-results.json`, `before-picker.json`, `launch.json`, and `sessions/` alongside the actual Flow and file inventory. Check that all Flow commands use the recorded isolated home and the child's own identity. Keep human confirmation separate from automated keyboard actions. Preserve failed attempts. Copy exports, close only owned Flows, and authenticate host cleanup with the same explicit `--home`. Record normal-HOME discovery, secrets, and binding hashes and nonsecret host identity before and after the proof, never their secret contents. Leave normal-HOME hosts and foreign listeners untouched.
 
@@ -160,7 +166,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/tern-verify start|doctor|ctl|tern|type|shot|lens|stop <run> [args...]`: owns and drives one isolated Tern instance. `VSTACK_CHECKOUT=<checkout>` chooses the packaged Tern plugin. Use `features/vstack-flow.md` and its baseline in `features/README.md`. The `lens` command installs a disposable native-link fixture only in that instance.
 - `scripts/tern-flow-fixture.ts seed|other|picker|target|stop <run> [args...]`: seeds disposable native-session Flow bindings and picker presence only inside a live `TERN_VERIFY_HOME=RUN/data/home`. Use `features/vstack-flow.md` for the exact fixture commands and safety refusals. It needs no driver-authored Flow command under a native session's identity.
 - `scripts/ticket-publication.ts <source checkout> <new evidence dir> [fixture checkout] [complete|blocked]`: drives the public publisher API with the documented MCP binding and captured provider fixtures. Use `features/ticket-publication.md`.
-- `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry|later-round|offline|abort|ratchet [--tern]`: drives the UI-only Flow panel beside the unchanged picker. `--tern` retains native trees, full-resolution lossless WebP shots, a real panel-link click and its browser destination, the panel's removal, keyboard inputs, session history, model requests, and a Flow export. The later-round case publishes and answers a new question after recording the first round's answers. The Ratchet case uses its actual eval prelude and verifies reused approval. Use `features/flow-page.md`.
+- `scripts/flow-questions-tui.py`: drives published Flow receipts through stock native `ask` with a localhost scripted provider. Use the [baseline](features/flow-page.md#stock-native-ask-baseline) or [non-consent and recovery cases](features/flow-page.md#native-non-consent-and-recovery).
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.
 - `scripts/cleanup.sh <run dir>`: stops this run's recorded processes and deletes `data/` and the temp working directory. See Cleanup.

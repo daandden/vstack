@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep unanswered native ask attempts open and distinguish receipt retry from a linked re-ask (#575).",
+    "Pin Verify's Tern launcher to 0.9.32 for the remaining isolated native ask proof. Preserve the earlier 0.9.30 evidence as recorded (maintainer decision, Flow question-4)."
+  ]
+}
