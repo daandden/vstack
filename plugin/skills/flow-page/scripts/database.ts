@@ -9,12 +9,14 @@ export * from "./schema.ts";
 
 const connections = new Map<string, ReturnType<typeof open>>();
 const migrations = readMigrationFiles({ migrationsFolder: join(import.meta.dir, "migrations") });
+const busyTimeout = 10_000;
+const busyTimeoutPragma = `PRAGMA busy_timeout = ${busyTimeout}`;
 function open(path: string) {
   mkdirSync(dirname(path), { recursive: true });
   const sqlite = new Database(path, { create: true, strict: true });
-  sqlite.exec("PRAGMA busy_timeout = 10000");
+  sqlite.exec(busyTimeoutPragma);
   // SQLite can return BUSY immediately while another opener switches the journal to WAL.
-  const deadline = Date.now() + 10000;
+  const deadline = Date.now() + busyTimeout;
   for (;;) {
     try { sqlite.exec("PRAGMA journal_mode = WAL"); break; }
     catch (error) {
@@ -37,6 +39,7 @@ export function projectDatabase(path: string, readonly = false) {
   if (readonly) {
     const sqlite = new Database(path, { readonly: true, strict: true });
     try {
+      sqlite.exec(busyTimeoutPragma);
       const latest = sqlite.query<{ created_at: number }, []>("SELECT created_at FROM __drizzle_migrations ORDER BY created_at DESC LIMIT 1").get();
       if (migrations.some(migration => !latest || latest.created_at < migration.folderMillis)) throw new Error("pending schema migrations");
       return { sqlite, db: drizzle(sqlite, { schema }) };
