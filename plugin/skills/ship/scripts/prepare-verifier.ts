@@ -55,6 +55,16 @@ try {
   refuseCommittedOverlap(git(repo, ["ls-tree", "-r", "-z", "--name-only", "--full-tree", record.head_sha!]).split("\0").filter(Boolean), requiredInputs);
   const diff = git(repo, ["diff", "--no-ext-diff", "--no-textconv", `${record.base_sha}...${record.head_sha}`]);
   record.patch_id = git(repo, ["patch-id", "--stable"], Buffer.from(diff)).trim().split(/\s+/)[0];
+  if (command === "preflight") {
+    for (const input of requiredInputs) {
+      if (existsSync(resolve(repo, input))) continue;
+      const name = JSON.stringify(input);
+      if (existsSync(resolve(shared, input))) {
+        throw new Error(`The Isolated clone did not carry required runtime input ${name} from the Shared checkout. The Verify skill must restore it in the head checkout or stop declaring it.`);
+      }
+      throw new Error(`Required runtime input ${name} is missing from the Isolated clone and missing from the Shared checkout. Set up the required input in the Shared checkout first.`);
+    }
+  }
   const common = realpathSync(git(repo, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim());
   const sharedCommon = realpathSync(git(shared, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim());
   const excludes = resolve(sharedCommon, "info/exclude");
@@ -94,7 +104,10 @@ try {
     validateTracked(worktree);
     const tracked = new Set(git(worktree, ["ls-files", "-z"]).split("\0").filter(Boolean));
     for (const input of requiredInputs) {
-      if (!existsSync(resolve(worktree, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
+      if (!existsSync(resolve(worktree, input))) {
+        const advice = checkout.backend === "omp-wt" ? " Check worktree.clone and /skill:setup-vstack." : "";
+        throw new Error(`Required runtime input ${JSON.stringify(input)} is missing from the head checkout.${advice}`);
+      }
     }
     const runtimeExclusions = [".", ...requiredInputs.map(input => `:(exclude,literal)${input}`)];
     const rawOthers = git(worktree, ["ls-files", "--others", "-z", "--", ...runtimeExclusions]);

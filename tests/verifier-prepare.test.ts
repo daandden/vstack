@@ -27,37 +27,35 @@ function fixture() {
   const inputsPath = join(dir, "inputs.json"); writeFileSync(inputsPath, "[]");
   const declare = (inputs: string[]) => writeFileSync(inputsPath, JSON.stringify(inputs));
   const args = ["--repo", clone, "--shared", shared, "--head", head, "--base", base, "--record", recordPath, "--inputs", inputsPath];
+  const bin = join(dir, "bin"); mkdirSync(bin);
+  const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
+  const gitBin = Bun.which("git")!;
+  for (const name of ["ovnfs", "omp"]) writeExecutable(join(bin, name), "bun", `await import(${JSON.stringify(fake)});`);
+  symlinkSync(gitBin, join(bin, "git"));
+  const env = { ...process.env, PATH: bin, FAKE_OVNFS_ROOT: dir, FAKE_GIT: gitBin, OMP_WORKTREE_DIR: dir,
+    GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" };
   function run(command: string, options = args) {
-    const p = Bun.spawnSync(["bun", script, command, ...options], { cwd: clone, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" } });
+    const p = Bun.spawnSync([process.execPath, script, command, ...options], { cwd: clone, env });
     return { code: p.exitCode, record: JSON.parse(p.stdout.toString()) };
   }
-  function create(revision = head, cloned = true, inputs: string[] = []) {
+  function create(revision = head, cloned = true, inputs: string[] = [], ovnfs = false) {
     declare(inputs);
-    const bin = join(dir, "bin"); mkdirSync(bin);
-    const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
-    for (const name of ["ovnfs", "omp"]) writeExecutable(join(bin, name), "bun", `await import(${JSON.stringify(fake)});`);
-    symlinkSync(Bun.which("git")!, join(bin, "git"));
     const p = Bun.spawnSync([process.execPath, resolve(import.meta.dir, "../plugin/skills/vstack-worktree/scripts/worktree.ts"), "open",
       "--repo", clone, "--purpose", "verify", "--commit", revision, "--record", recordPath, ...(cloned ? ["--inputs", inputsPath] : [])], {
-      env: { ...process.env, PATH: bin, FAKE_OVNFS_ROOT: dir, FAKE_GIT: Bun.which("git")!, OMP_WORKTREE_DIR: dir,
-        FAKE_OVNFS_FAIL: "1", FAKE_OMP_CLONED: cloned ? "1" : "", GIT_CONFIG_GLOBAL: "/dev/null" },
+      env: { ...env, FAKE_OVNFS_FAIL: ovnfs ? "" : "1", FAKE_OMP_CLONED: cloned ? "1" : "" },
     });
     if (p.exitCode) throw new Error(JSON.parse(p.stdout.toString()).error ?? p.stderr.toString());
     worktree = JSON.parse(p.stdout.toString()).path;
   }
   const snapshot = (repo: string) => [git(repo, "rev-parse", "HEAD"), git(repo, "status", "--porcelain=v1", "--untracked-files=all"), readFileSync(join(repo, ".git/index"))];
-  return { dir, shared, clone, get worktree() { return worktree; }, recordPath, inputsPath, declare, base, head, args, run, create, snapshot };
+  return { dir, shared, clone, get worktree() { return worktree; }, recordPath, inputsPath, declare, base, head, args, env, run, create, snapshot };
 }
 
 test("validates an ovnfs head checkout opened and removed through the worktree CLI", () => {
   const f = fixture();
-  const bin = join(f.dir, "bin"); mkdirSync(bin);
-  const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
-  for (const name of ["ovnfs", "omp"]) writeExecutable(join(bin, name), "bun", `await import(${JSON.stringify(fake)});`);
-  symlinkSync(Bun.which("git")!, join(bin, "git"));
   mkdirSync(join(f.clone, "node_modules"));
   writeFileSync(join(f.clone, "node_modules/input"), "ignored dependency");
-  const env = { ...process.env, PATH: bin, FAKE_OVNFS_ROOT: f.dir, FAKE_GIT: Bun.which("git")!, GIT_CONFIG_GLOBAL: "/dev/null" };
+  const { env } = f;
   const record = join(f.dir, "checkout.json");
   const checkoutScript = resolve(import.meta.dir, "../plugin/skills/vstack-worktree/scripts/worktree.ts");
   const before = [f.snapshot(f.shared), f.snapshot(f.clone)];
@@ -87,6 +85,31 @@ test("preflight refuses missing or same Shared checkout without mutation", () =>
     expect(r.record.patch_id).toBeNull(); expect(f.snapshot(f.clone)).toEqual(before);
     expect(existsSync(f.worktree)).toBe(false);
   }
+});
+
+test.each([true, false])("preflight refuses missing clone inputs before checkout creation, present in Shared checkout=%s", sharedHasInput => {
+  const f = fixture();
+  if (sharedHasInput) writeFileSync(join(f.shared, ".env"), "TOKEN=local");
+  f.declare([".env"]);
+  const before = [f.snapshot(f.shared), f.snapshot(f.clone)];
+  const result = f.run("preflight");
+  expect(result.code).toBe(2);
+  expect(result.record).toMatchObject({ verdict: "REFUSED", base_sha: f.base, head_sha: f.head, evidence: [], proof_steps: [] });
+  expect(result.record.patch_id).toMatch(/^[a-f0-9]{40}$/);
+  const notes = result.record.notes.join(" ");
+  expect(notes).toContain(".env");
+  expect(notes).toContain("Isolated clone");
+  if (sharedHasInput) {
+    expect(notes).toContain("did not carry");
+    expect(notes).toMatch(/restore.*stop declaring/);
+  } else {
+    expect(notes).toContain("missing from the Shared checkout");
+    expect(notes).not.toContain("did not carry");
+  }
+  expect(notes).not.toContain("worktree.clone");
+  expect(existsSync(f.recordPath)).toBe(false);
+  expect(existsSync(join(f.dir, "calls.jsonl"))).toBe(false);
+  expect([f.snapshot(f.shared), f.snapshot(f.clone)]).toEqual(before);
 });
 
 test("preflight canonicalizes aliases and refuses record collisions and invalid commits", () => {
@@ -234,17 +257,26 @@ test("clone-local exclusions cannot mask untracked ignore rules that hide carrie
   expect(git(f.worktree, "status", "--porcelain", "--untracked-files=no")).toBe("");
 });
 
-test("cleanup refuses when a declared Verify link disappears after construction", () => {
+test.each([true, false])("cleanup refuses when a declared Verify link disappears after construction, ovnfs=%s", ovnfs => {
   const f = fixture();
   writeFileSync(join(f.shared, ".git/info/exclude"), ".omp/skills/verify-app\n");
   const target = join(f.dir, "verify-app"); mkdirSync(target); writeFileSync(join(target, "SKILL.md"), "Drive");
   mkdirSync(join(f.clone, ".omp/skills"), { recursive: true }); symlinkSync(target, join(f.clone, ".omp/skills/verify-app"));
-  f.create(f.head, true, [".omp/skills/verify-app"]);
+  f.create(f.head, true, [".omp/skills/verify-app"], ovnfs);
+  expect(JSON.parse(readFileSync(f.recordPath, "utf8")).backend).toBe(ovnfs ? "ovnfs" : "omp-wt");
   rmSync(join(f.worktree, ".omp/skills/verify-app"));
   const result = f.run("clean-head");
   expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
-  expect(result.record.notes.join(" ")).toContain("worktree.clone");
-  expect(result.record.notes.join(" ")).toContain("/skill:setup-vstack");
+  const notes = result.record.notes.join(" ");
+  expect(notes).toContain(".omp/skills/verify-app");
+  expect(notes).toMatch(/missing.*head checkout/);
+  if (ovnfs) {
+    expect(notes).not.toContain("worktree.clone");
+    expect(notes).not.toContain("/skill:setup-vstack");
+  } else {
+    expect(notes).toContain("worktree.clone");
+    expect(notes).toContain("/skill:setup-vstack");
+  }
   expect(readFileSync(join(f.clone, ".omp/skills/verify-app/SKILL.md"), "utf8")).toBe("Drive");
 });
 
@@ -312,6 +344,7 @@ test("preflight refuses a declared input that overlaps committed source at the h
     expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
     expect(result.record.notes.join(" ")).toContain(`Runtime input ${JSON.stringify(inputs.at(-1))} overlaps committed source`);
   }
+  for (const path of ["node_modules", "plugin/cache"]) mkdirSync(join(f.clone, path), { recursive: true });
   for (const inputs of [["node_modules"], ["node_modules", "plugin/cache"]]) {
     f.declare(inputs);
     const allowed = f.run("preflight", args);

@@ -26,6 +26,7 @@ Read the code and docs before any question through `ask`. Find:
 
 - The app and every user-facing surface, such as web, CLI, TUI, desktop, API, mobile, or library. Name the primary surface and the rest.
 - The repo's documented build and launch commands, ports, environment, seed data, and auth.
+- For Python, the project's package manager and lockfile. Identify which settings can redirect its environment, including inherited overrides and active environments.
 - The repo's own driving harness. Use it first. Otherwise use omp `browser` for web and Electron, acting by ARIA role and name. Use bash with `pty` for CLI and TUI, and `curl` for services. Add helper scripts only for a step those tools cannot express.
 - The evidence that proves the action and resulting state, including side effects.
 - Whether isolated instances can run side by side. Refuse to double-drive a shared instance when ports, data, or profiles cannot be isolated.
@@ -45,6 +46,8 @@ Generated frontmatter has `name: verify-<app>` and a description that names the 
 Ground every section in the repo. Leave no placeholders:
 
 - Launch gives the exact command and readiness signal. For a long-lived server, require a named bash service `verify-<app>-<run-id>` with a `ready` log pattern or port check. Use the run id of this run's Scratch entry, record the resolved service name in its notes, and use it through Cleanup. Set the bash `cwd` to the checkout under test. Launch reaches a usable state from an empty data dir, including any migrations and seed data. Ready means usable, not only that a process answers. For example, a database health check can pass while its init scripts still run. A short-lived CLI or TUI builds once and uses an isolated PTY session per drive.
+- For Python, make a named Restore step first in Launch. Give one exact lockfile-preserving command from the project's dependency setup, such as `uv sync --locked` with `UV_PROJECT_ENVIRONMENT` pinned in the command to an absolute path inside the checkout under test. Pin or verify all settings that could redirect writes before running Restore. An environment path that resolves outside the checkout, including through a symlink, is unsafe. Do not declare a Python environment as a carried runtime input.
+- For Python, give the exact interpreter invocation for build, Doctor, tests, and Drive. Use the restored environment directly or pin the same destination in every launcher command. Disable implicit dependency sync in the launcher. Add a read-only prefix check using that invocation before any app check. Require the canonical `sys.prefix` to be inside the checkout by path components, even when the interpreter binary symlinks to a base interpreter elsewhere. Save the restore output and prefix as evidence. A failed restore or prefix check leaves no usable environment for verification.
 - Doctor gives one read-only instance check for process, version or build, port ownership, and auth. Run it first whenever anything looks off.
 - Drive gives real commands and stable handles, not coordinates or tab order. Use the interview's harness choice.
 - Evidence requires the real user path, not internal setters or test-only endpoints. Capture the action and resulting state, not just the final screen. Prove files, rows, or messages alongside the visible result. Use mocks only at a production boundary that isolates the external system. Observe what a dry-run skips through files, network, or git refs. Do not trust its name.
@@ -73,6 +76,8 @@ If the seed data lacks a precondition that a journey needs, the journey reports 
 ## 4. Prove the generated skill
 
 Run its instructions end to end once: launch, Doctor, drive one mapped feature, capture evidence, and clean up. Make sure that evidence still exists at its named location after cleanup. Fix failed instructions and run cleanup after every failed iteration. Do not strand processes or ports. Stop on broken app behavior instead of editing product code. An unexecuted Verify skill is not a deliverable.
+
+For Python, prove Restore in a fresh disposable checkout that has no carried environment. Exercise the package-manager override that could otherwise redirect the restore. Show that the declared interpreter reports a prefix inside that checkout and, for an editable install, imports the checkout's own source. Keep the project lockfile and any environment outside the disposable checkout unchanged.
 
 If you proved it in a stand-in for the real target, such as a container in place of a fresh VM or a local stack in place of a remote one, list every setup step that the stand-in did and the target will not. Those steps stay unverified until a run on the real target covers them.
 

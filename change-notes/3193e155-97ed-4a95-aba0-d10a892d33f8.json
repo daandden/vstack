@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Adapt vstack to ovnfs v0.9.0 through its public CLI only (#559). clean-wt keeps snapshots and reports removal failures without retrying. The Verifier distinguishes missing inputs and uses the project's locked Python restore inside the head checkout before app checks."
+  ]
+}

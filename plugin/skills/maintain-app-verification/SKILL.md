@@ -30,6 +30,8 @@ Drift is a failure in the Verify skill's instructions while its Doctor check pas
 
 A server Launch without a named bash service is Drift, even if a manual launch works and Doctor passes. A missing `ready` check, a name not unique to the run, or Cleanup that does not stop that service through `proc://<name>/kill` is also Drift. Repair Launch and Cleanup to the server contract in skill://setup-app-verification step 2, using the run id of the run's Scratch entry. Re-drive the repaired instructions live.
 
+For Python, compare Launch's named Restore and interpreter commands with the current package manager, lockfile, and environment settings. A stale command, missing pin, or external environment target is a Verify skill defect. Apply the existing Drift rule and repair the recipe to skill://setup-app-verification's Restore contract. Never run an unsafe restore to diagnose Drift. Prove a corrected Restore and prefix check before re-driving the affected features.
+
 ## 0. Locate the target
 
 Find project skills named `verify-*` whose bodies have Launch and Drive sections and a feature map. In Private mode, also look under `<vstack root>/skills/verify-*/`. Use the root and mode from the Private-mode rule, or the parent's prompt. Treat a link and its target as one candidate.
