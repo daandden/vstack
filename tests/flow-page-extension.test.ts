@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -206,9 +207,11 @@ async function until(condition: () => boolean, timeout = 10_000) {
 const returnsBefore = (pending: Promise<unknown>, ms = 500) =>
   Promise.race([pending.then(() => "returned"), Bun.sleep(ms).then(() => "held")]);
 
-function flowQuestion(ref: string) {
+function flowQuestion(ref: string, again?: string, reason?: string) {
   return {
     ref, title: `Which ${ref}?`, description: `Choose the ${ref} approach.`,
+    brief: decisionBrief(ref, { again: reason }),
+    ...(again ? { again } : {}),
     needs: [{ need: `Understand the ${ref} trade-offs.`, kind: "prose" }],
     options: ["Keep", "Change"].map(label => ({
       label, does: `${label} the ${ref} approach.`, gains: [`${label} benefits ${ref}.`], costs: [`${label} costs ${ref}.`],
@@ -219,7 +222,8 @@ function flowQuestion(ref: string) {
 async function publishQuestions(w: ReturnType<typeof world>, session: string, ...refs: string[]) {
   return w.ok(["submit", "--session", session], { version: 1, items: [{
     kind: "round",
-    questions: refs.map(flowQuestion),
+    now: "The fixture offers choices for the picker.",
+    questions: refs.map(ref => flowQuestion(ref)),
   }] });
 }
 
@@ -377,7 +381,7 @@ test("the bound Stage accepts only the latest unretired questions with no record
   await submit(
     { kind: "answer", question: first.refs.settled, response: { status: "answered", picks: ["A"] } },
     { kind: "answer", question: first.refs.timed, response: { status: "timed-out", picks: ["A"] } },
-    { kind: "round", questions: [{ ...flowQuestion("newer"), again: first.refs.old }] },
+    { kind: "round", now: "The picker still needs an answer.", questions: [flowQuestion("newer", first.refs.old, "The earlier question has no recorded answer.")] },
   );
   const h = w.host("strict");
   panelUI(h);
@@ -395,7 +399,7 @@ test("the bound Stage accepts only the latest unretired questions with no record
     '"--extra": not a published question', '"extra-two": not a published question');
   await refuse("<form><p>Pick nothing</p></form>", "the form has no controls");
   await refuse(askForm(timed).html, `"${timed}": already has a recorded answer`);
-  const reasked = await submit({ kind: "round", questions: [{ ...flowQuestion("after-timeout"), again: timed }] });
+  const reasked = await submit({ kind: "round", now: "The picker still needs an answer.", questions: [flowQuestion("after-timeout", timed, "The earlier picker timed out without an answer.")] });
   expect(await call(reasked.ask.html)).toEqual([undefined]);
   expect(await call(reasked.ask.html.replace("A. Keep", "Changed value"))).toEqual([undefined]);
 

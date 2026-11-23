@@ -18,7 +18,7 @@ For each viable alternative, explain its gains, accepted costs, and effects on o
 
 Recommend a direction with evidence and preserve important rejected alternatives. A hybrid is useful only when it resolves an actual trade-off. If constraints leave only one viable shape, show that shape and explain the constraints and its remaining costs. Do not invent a second viable design or impose an arbitrary candidate count.
 
-Publish the framing and screened comparison as Flow Results. Use a Comparison Result when alternatives survive, with shared criteria, evidence, and a recommendation. With one survivor, use the Document to explain it and the exclusions. Publish a consequential question and its necessary captured visuals together through the Flow CLI, declaring its reader needs. Use `skill://flow-page`'s "Every ask in a Flow" contract to ask and record the response. A visual only in a Result or Background does not satisfy a question's comparison need.
+Publish the framing and screened comparison as Flow Results. Use a Comparison Result when alternatives survive, with shared criteria, evidence, and a recommendation. With one survivor, use the Document to explain it and the exclusions. Publish a consequential question and its necessary captured visuals together through the Flow CLI, with a Decision brief and declared reader needs. Use `skill://flow-page`'s "Every ask in a Flow" contract to ask and record the response. A visual only in a Result or Background does not satisfy a question's comparison need.
 
 ## Preserve agreement, leave coding to implementation
 

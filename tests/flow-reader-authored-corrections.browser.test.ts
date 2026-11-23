@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -28,7 +29,7 @@ test("authored corrections show current non-consent, retained raw words, histori
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const opened = cli(["open", "--title", "Uncertain answer correction", "--skill", "research"]);
-    const first = cli(["submit"], [background("original-background"), topic("original-topic"), { kind: "assumed", ref: "original-assumption", decision: "Keep `captured evidence` for review", pick: "Keep default", why: "Not a user answer" }, { kind: "round", questions: [{ ref: "permission", title: "May work proceed?", description: "Is the shaft technical? Evidence is incomplete.", needs: [{ need: "Review uncertainty", kind: "prose" }], options: [{ label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["Premature action"] }, { label: "Wait", does: "Defers work", gains: ["Evidence first"], costs: ["Delay"] }] }] }]);
+    const first = cli(["submit"], [background("original-background"), topic("original-topic"), { kind: "assumed", ref: "original-assumption", decision: "Keep `captured evidence` for review", pick: "Keep default", why: "Not a user answer" }, { kind: "round", now: "The team has not confirmed whether the shaft is technical.", questions: [{ ref: "permission", title: "May work proceed?", brief: decisionBrief("whether work can proceed"), description: "Is the shaft technical? Evidence is incomplete.", needs: [{ need: "Review uncertainty", kind: "prose" }], options: [{ label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["Premature action"] }, { label: "Wait", does: "Defers work", gains: ["Evidence first"], costs: ["Delay"] }] }] }]);
     const q = first.refs.permission;
     const close = cli(["submit"], [{ kind: "answer", question: q, response: { status: "answered", text: "possibly a technical shaft, not sure <script>alert(1)</script> &amp;" }, reading: { outcome: "resolved", decision: "Proceed with work", basis: "Misread uncertainty", maps_to: "A" } }, { kind: "close", ref: "original-summary", decisions: [{ question: q, text: "Work is authorized" }] }, { kind: "stage", state: "finished" }]);
     cli(["open", "--flow", opened.flow, "--skill", "implement"]);

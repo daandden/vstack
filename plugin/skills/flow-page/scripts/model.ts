@@ -11,16 +11,18 @@ export const CONTRIBUTION_VERSION = 1;
 export const STAGE_STATES = ["not-started", "in-progress", "finished"] as const;
 export type StageState = (typeof STAGE_STATES)[number];
 export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened?: string; finished?: string };
-export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number };
+export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number; now?: string };
 export type VisualKind = keyof typeof VISUAL_KINDS;
 export type ReaderNeed = { need: string; kind: VisualKind };
 export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ text: string } | { html: string; css?: string; attachments?: string[] } | { attachment: string });
 export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Figure };
 export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
+type DecisionBrief = { unblocks: string; undo: string; asked_again_because?: string; no_recommendation?: string };
 export type Question = {
   id: string; stage: string; round: string; q: number; title: string; description: string; options: Option[];
   multi?: boolean;
+  brief?: DecisionBrief;
   again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string; figures?: Figure[]; needs?: ReaderNeed[];
 };
 const STATUSES = ["answered", "empty", "cancelled", "timed-out", "headless"] as const;
@@ -644,10 +646,10 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
           });
       },
       apply(o, where, ids) {
-        fields(o, where, ["kind", "questions"]);
+        fields(o, where, ["kind", "now", "questions"]);
         if (++rounds > 1) refuse(where, "a contribution asks at most one round, because one round is one ask");
         const qs = list(o, "questions", where);
-        const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time };
+        const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time, now: text(o, "now", where) };
         s.rounds.push(round);
         const parsed = validatedMap(qs, (q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j]!, stage.id, round.id, resolve, figure));
         refuseRepeatedQuestionText(parsed, where);
@@ -1494,7 +1496,7 @@ export function readerNeeds(raw: unknown, where: string): ReaderNeed[] {
 }
 
 function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, wanted: string | Wanted, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
-  const o = fields(raw, where, ["title", "description", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures", "multi"]);
+  const o = fields(raw, where, ["title", "description", "brief", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures", "multi"]);
   if (o.multi !== undefined && typeof o.multi !== "boolean") refuse(where, "multi must be true or false");
   const options = validatedMap(list(o, "options", where), (op, i) => {
     const ow = `${where}: option ${i + 1}`;
@@ -1504,14 +1506,18 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
     return { label: `${letter(i)}. ${label}`, does: text(oo, "does", ow), gains: texts(oo, "gains", ow), costs: texts(oo, "costs", ow), ...(oo.recommended !== undefined ? { recommended: text(oo, "recommended", ow) } : {}), ...(oo.preview !== undefined ? { preview: figure(oo.preview, `${id}-option-${i + 1}-preview`, `${ow}: preview`) } : {}) };
   });
   if (options.length > 26) refuse(where, "options must be 26 or fewer");
-  if (options.filter((op) => op.recommended !== undefined).length > 1) reject(where, "at most one option can be recommended");
   const pairs = (k: string, a: string, b: string) =>
     o[k] === undefined ? undefined : validatedMap(list(o, k, where), (x, j) => {
       const xw = `${where}: ${k} ${j + 1}`;
       const xo = fields(x, xw, [a, b]);
       return { [a]: text(xo, a, xw), [b]: text(xo, b, xw) };
     });
-  const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options, needs: readerNeeds(o.needs, where) };
+  const bw = `${where}: brief`;
+  const b = fields(o.brief, bw, ["unblocks", "undo"], ["asked_again_because", "no_recommendation"]);
+  const brief: DecisionBrief = { unblocks: text(b, "unblocks", bw), undo: text(b, "undo", bw) };
+  if (b.asked_again_because !== undefined) brief.asked_again_because = text(b, "asked_again_because", bw);
+  if (b.no_recommendation !== undefined) brief.no_recommendation = text(b, "no_recommendation", bw);
+  const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options, needs: readerNeeds(o.needs, where), brief };
   if (o.multi !== undefined) q.multi = o.multi === true;
   if (o.figures !== undefined) q.figures = validatedMap(list(o, "figures", where), (f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
   if (o.again !== undefined) q.again = resolve(o.again, "question", `${where}: again`);
@@ -1551,10 +1557,15 @@ function refuseRepeatedQuestionText(questions: Question[], where: string): void 
         repeated.push(`question ${earlier.question + 1} (${questions[earlier.question]!.title}) ${earlier.field} and question ${i + 1} (${q.title}) ${field}`);
     };
     check("description", "description", q.description);
+    for (const field of ["unblocks", "undo", "asked_again_because", "no_recommendation"] as const) {
+      const value = q.brief![field];
+      if (value !== undefined) check(`brief.${field}`, `brief.${field}`, value);
+    }
     for (let j = 0; j < q.needs!.length; j++) check("needs", `needs ${j + 1}`, q.needs![j]!.need);
     for (let j = 0; j < q.options.length; j++) {
       const option = q.options[j]!;
       check("does", `option ${j + 1} does`, option.does);
+      if (option.recommended !== undefined) check("recommended", `option ${j + 1} recommended`, option.recommended);
       for (const kind of ["gains", "costs"] as const)
         for (let k = 0; k < option[kind].length; k++) check(kind, `option ${j + 1} ${kind} ${k + 1}`, option[kind][k]!);
     }
@@ -2089,16 +2100,21 @@ export function snapshot(v: View) {
         } : {}),
       })),
       assumed: st.assumed.map((a) => ({ id: a.id, correction: a.correction, corrects: a.corrects, ...(a.reopened_by ? { reopened_by: a.reopened_by } : {}) })),
-      rounds: st.items.filter((i) => i.type === "round").map((i) => ({ id: i.round.id, n: i.round.n, time: i.round.time, questions: i.questions.map((q) => q.id) })),
+      rounds: st.items.filter((i) => i.type === "round").map(({ round, questions }) => ({
+        id: round.id, n: round.n, time: round.time, ...(round.now !== undefined ? { now: round.now } : {}), questions: questions.map((q) => q.id),
+      })),
       questions: st.items.flatMap((i) => (i.type === "round" ? i.questions : [])).map((q) => ({
         id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.retired ? { retired: q.retired } : {}),
         context: q.context,
+        ...(q.brief ? { brief: q.brief } : {}),
         ...(q.multi !== undefined ? { multi: q.multi } : {}),
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], result_links: q.result_links, topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
         ...(q.figures ? { figures: q.figures } : {}),
         ...(q.needs ? { needs: q.needs } : {}),
-        ...(q.options.some((o) => o.preview) ? { options: q.options.map((o) => ({ label: o.label, ...(o.preview ? { preview: o.preview } : {}) })) } : {}),
+        ...(q.options.some((o) => o.preview || o.recommended) ? { options: q.options.map(({ label, preview, recommended }) => ({
+          label, ...(preview ? { preview } : {}), ...(recommended !== undefined ? { recommended } : {}),
+        })) } : {}),
       })),
       closes: st.items.filter((i) => i.type === "close").map((i) => ({
         id: i.close.id, time: i.close.time, decisions: i.close.decisions, assumed: i.close.assumed,

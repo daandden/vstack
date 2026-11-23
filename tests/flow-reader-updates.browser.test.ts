@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -126,8 +127,10 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
   }
 }, 60_000);
 
-const question = (ref: string, title = ref) => ({
+const question = (ref: string, title = ref, again?: string) => ({
   ref, title, description: `Choose the ${title} route.`,
+  brief: decisionBrief(title, { again: again ? "The reader has not yet settled the earlier route." : undefined }),
+  ...(again ? { again } : {}),
   needs: [{ need: `Understand the ${title} consequence.`, kind: "prose" }],
   options: [
     { label: "Keep", does: `${title}: keeps the route.`, gains: [`${title}: stability`], costs: [`${title}: no change`] },
@@ -160,7 +163,7 @@ async function liveReader() {
   const submit = (stage: string, items: object[]) => cli(["submit", "--flow", opened.flow, "--stage", stage], { version: 1, items });
   const seed = submit(opened.stage, [
     documentResult("reading", 300),
-    { kind: "round", questions: [question("existing")] },
+    { kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("existing")] },
     { kind: "result", ref: "lesson", shape: "quiz", title: "Learning while questions arrive", questions: [
       { ref: "word", prompt: "Type Flow", answer: { text: ["Flow"] }, explanation: "A learning answer does not settle a real ask." },
     ] },
@@ -194,11 +197,11 @@ test("live questions select and reveal only the Focused Stage, even from another
   const { page, opened, other, seed, submit } = f;
   try {
     const before = await pagePosition(page);
-    submit(other.stage, [{ kind: "round", questions: [question("parallel", "Parallel ticket question")] }]);
+    submit(other.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("parallel", "Parallel ticket question")] }]);
     await renderedUpdate(page, other.stage, "Parallel ticket question");
     expect(await pagePosition(page)).toEqual(before);
 
-    const fresh = submit(opened.stage, [{ kind: "round", questions: [question("new", "New focused question")] }]);
+    const fresh = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("new", "New focused question")] }]);
     await renderedUpdate(page, opened.stage, "New focused question");
     await page.waitForFunction((id) => document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href") === `#${id}`, fresh.refs.new, { timeout: 5000 });
     expect(await selectedStop(page)).toBe(`#${fresh.refs.new}`);
@@ -215,7 +218,7 @@ test("live questions select and reveal only the Focused Stage, even from another
     await page.goto(`${opened.live.url}#overview`);
     await page.locator("#overview").waitFor();
     const overview = await pagePosition(page);
-    submit(opened.stage, [{ kind: "round", questions: [question("offstage", "Question while on Overview")] }]);
+    submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("offstage", "Question while on Overview")] }]);
     await renderedUpdate(page, opened.stage, "Question while on Overview");
     expect(await pagePosition(page)).toEqual(overview);
     expect(onOverview.tab).toBe(`#${opened.stage}`);
@@ -233,7 +236,7 @@ test("typing holds new questions and outside fragment navigation, then applies o
     await page.getByRole("textbox").fill("My draft");
     const before = await pagePosition(page);
     const input = page.getByRole("textbox", { includeHidden: true });
-    const fresh = submit(opened.stage, [{ kind: "round", questions: [question("held", "Held while typing")] }]).refs.held;
+    const fresh = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("held", "Held while typing")] }]).refs.held;
     await renderedUpdate(page, opened.stage, "Held while typing");
     expect(await pagePosition(page)).toEqual(before);
     expect(await input.inputValue()).toBe("My draft");
@@ -247,7 +250,7 @@ test("typing holds new questions and outside fragment navigation, then applies o
     submit(opened.stage, [{ ...documentResult("expanded-reading", 500), revises: seed.refs.reading }]);
     await renderedUpdate(page, opened.stage, "expanded-reading");
     const typing = await pagePosition(page);
-    submit(opened.stage, [{ kind: "round", questions: [question("before-fragment", "Question before outside fragment")] }]);
+    submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("before-fragment", "Question before outside fragment")] }]);
     await renderedUpdate(page, opened.stage, "Question before outside fragment");
     expect(await pagePosition(page)).toEqual(typing);
     await page.goto(`${opened.live.url}#${seed.refs.existing}`);
@@ -289,9 +292,9 @@ for (const field of ["textarea", "select", "contenteditable"]) {
       await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
       const before = await pagePosition(page);
       const input = page.locator("#draft-editor");
-      submit(opened.stage, [{ kind: "round", questions: [question("first", "First held question")] }]);
+      submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("first", "First held question")] }]);
       await renderedUpdate(page, opened.stage, "First held question");
-      const latest = submit(opened.stage, [{ kind: "round", questions: [question("latest", "Latest held question")] }]).refs.latest;
+      const latest = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("latest", "Latest held question")] }]).refs.latest;
       await renderedUpdate(page, opened.stage, "Latest held question");
       expect(await pagePosition(page)).toEqual(before);
       expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
@@ -307,7 +310,7 @@ for (const field of ["textarea", "select", "contenteditable"]) {
       const typing = await pagePosition(page);
       await page.goto(`${opened.live.url}#${parallel}`);
       expect(await pagePosition(page)).toEqual(typing);
-      const newest = submit(opened.stage, [{ kind: "round", questions: [question("newest", "New question after outside fragment")] }]).refs.newest;
+      const newest = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("newest", "New question after outside fragment")] }]).refs.newest;
       await renderedUpdate(page, opened.stage, "New question after outside fragment");
       expect(await pagePosition(page)).toEqual(typing);
       await input.blur();
@@ -332,7 +335,7 @@ test("answers, superseded asks, and retirement updates leave the reading place u
     expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
     expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
     const settled = submit(opened.stage, [
-      { kind: "round", questions: [{ ...question("superseding", "Reconsidered and settled"), again: seed.refs.existing }, question("retired", "Deferred question")] },
+      { kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("superseding", "Reconsidered and settled", seed.refs.existing), question("retired", "Deferred question")] },
       { kind: "answer", question: "superseding", response: { status: "answered", picks: ["B"] } },
       { kind: "close", decisions: [
         { question: "superseding", text: "The changed route holds." },

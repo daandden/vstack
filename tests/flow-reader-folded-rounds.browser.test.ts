@@ -3,11 +3,14 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Page } from "playwright-core";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { ENV } from "./support/fixture.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
-const question = (ref: string, title: string) => ({
+const question = (ref: string, title: string, previous?: { id: string; reason: string }) => ({
   ref, title, description: `Read the ${ref} evidence before choosing.`, needs: [{ need: `Review the ${ref} evidence`, kind: "prose" }],
+  brief: decisionBrief(ref, { again: previous?.reason }),
+  ...(previous ? { again: previous.id } : {}),
   options: [{ label: "Keep the record", does: `Preserves the ${ref} evidence.`, gains: [`Keeps ${ref} traceable`], costs: [`More ${ref} reading`] }],
 });
 const result = (ref: string, title: string) => ({ kind: "result", ref, shape: "document", title, sections: [{ heading: "Evidence", blocks: [{ prose: "Keep the source record." }] }] });
@@ -35,8 +38,8 @@ test("a Stage reads like one block per round with the intervening Result and dec
   const f = await fixture();
   try {
     const opened = f.cli(["open", "--skill", "research", "--title", "Choosing a retention route"]);
-    const first = f.cli(["submit"], [{ kind: "round", questions: [question("retention", "Retain the signed source?"), question("audit", "Keep an audit copy?")] }]);
-    const second = f.cli(["submit"], [result("report", "Evidence between the asks"), { kind: "round", questions: [question("owner", "Wait for the owner?"), { ...question("retry", "Retain the signed source this time?"), again: first.refs.retention }] }]);
+    const first = f.cli(["submit"], [{ kind: "round", now: "The signed source and its audit copy are ready for review.", questions: [question("retention", "Retain the signed source?"), question("audit", "Keep an audit copy?")] }]);
+    const second = f.cli(["submit"], [result("report", "Evidence between the asks"), { kind: "round", now: "The evidence report is available after the first round.", questions: [question("owner", "Wait for the owner?"), question("retry", "Retain the signed source this time?", { id: first.refs.retention, reason: "The first ask preceded the evidence report and has no answer." })] }]);
     const shown = f.cli(["show", "--flow", opened.flow]);
     expect(shown.reading.publications.map((p: { id: string; position: number }) => [p.id, p.position])).toEqual([
       [first.refs.retention, 1], [first.refs.audit, 2], [second.refs.report, 3], [second.refs.owner, 4], [second.refs.retry, 5],
@@ -64,7 +67,7 @@ test("folded questions show their own decision provenance and earlier attempts p
   const f = await fixture();
   try {
     const opened = f.cli(["open", "--skill", "research", "--title", "Reviewing decision history"]);
-    const q = f.cli(["submit"], [{ kind: "round", questions: [
+    const q = f.cli(["submit"], [{ kind: "round", now: "The source records and publication route are ready for review.", questions: [
       question("picked", "Keep a copy of the signed source?"),
       question("words", "Keep the audit trail?"),
       question("concern", "Publish the route now?"),
@@ -84,13 +87,13 @@ test("folded questions show their own decision provenance and earlier attempts p
       { kind: "answer", question: q.empty, response: { status: "empty" } },
       { kind: "answer", question: q.headless, response: { status: "headless", picks: ["A"] } },
     ]);
-    const first = f.cli(["submit"], [{ kind: "round", questions: [
-      { ...question("retry", "Publish the route with private fields removed?"), again: q.concern },
-      { ...question("retry-note", "Send a redacted note?"), again: q.unsettled },
+    const first = f.cli(["submit"], [{ kind: "round", now: "The review identified private fields in the original material.", questions: [
+      question("retry", "Publish the route with private fields removed?", { id: q.concern, reason: "The reader raised a concern about publishing private details." }),
+      question("retry-note", "Send a redacted note?", { id: q.unsettled, reason: "The original note did not receive an answer before redaction." }),
     ] }]).refs;
     f.cli(["submit"], [{ kind: "stage", state: "finished", retire: [q.timed, q.cancelled, q.empty, q.headless, q.retired, first.retry, first["retry-note"]].map(question => ({ question, reason: "Deferred to a later Stage." })) }]);
     const later = f.cli(["open", "--flow", opened.flow, "--parent", opened.stage, "--skill", "implement"]);
-    const latest = f.cli(["submit"], [{ kind: "round", questions: [{ ...question("latest", "Publish after the privacy review?"), again: first.retry }] }]).refs.latest;
+    const latest = f.cli(["submit"], [{ kind: "round", now: "The earlier Stage deferred publication. The privacy check is complete.", questions: [question("latest", "Publish after the privacy review?", { id: first.retry, reason: "The review was still pending when the earlier Stage finished." })] }]).refs.latest;
     const page = await f.browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(`${opened.live.url}#${opened.stage}`);
     const stage = page.getByRole("region", { name: "Research", exact: true });
@@ -144,7 +147,7 @@ test("adjacent Assumed picks share one folded row without swallowing a Result or
       assumed("archive", longTitle), assumed("verification", "Keep Đặng Thị Ngọc Hân's notes"),
       result("proved", "Evidence between the agent decisions"),
       assumed("separate", "Use a second review"),
-      { kind: "round", questions: [{ ...question("reopen", "Revisit the verification notes?"), reopens: "verification", results: ["proved"] }] },
+      { kind: "round", now: "The evidence is available to revisit the verification notes.", questions: [{ ...question("reopen", "Revisit the verification notes?"), reopens: "verification", results: ["proved"] }] },
     ]).refs;
     f.cli(["submit"], [
       { kind: "answer", question: q.reopen, response: { status: "answered", picks: ["A"] } },

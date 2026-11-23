@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -27,8 +28,8 @@ test("Today facts stay readable while their matching sources toggle by keyboard 
   const browser = await chromium.launch({ headless: true, ...(process.env.VSTACK_TEST_BROWSER_CHANNEL ? { channel: process.env.VSTACK_TEST_BROWSER_CHANNEL } : {}) });
   try {
     const opened = cli(["open", "--skill", "session", "--title", "Stored source disclosure"]);
-    const seeded = cli(["submit"], { version: 1, items: [{ kind: "round", questions: [{
-      ref: "capacity", title: "Replace blocking streams?", description: "A seventh page waits for another reader to close.",
+    const seeded = cli(["submit"], { version: 1, items: [{ kind: "round", now: "The current connection limit can be reproduced.", questions: [{
+      ref: "capacity", title: "Replace blocking streams?", brief: decisionBrief("the stream transport"), description: "A seventh page waits for another reader to close.",
       needs: [{ need: "Understand the connection limit.", kind: "prose" }],
       today: [
         { text: "Six open streams prevent the next page from loading.", source: "host.ts:94" },

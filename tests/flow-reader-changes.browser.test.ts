@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,7 +9,7 @@ import { ENV } from "./support/fixture.ts";
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 type Receipt = { flow: string; stage: string; revision: number; refs: Record<string, string>; live: { url: string } };
 const doc = (ref: string, title = ref) => ({ kind: "result", ref, shape: "document", title, sections: [{ heading: "Evidence", blocks: [{ prose: `Recorded evidence for ${title}.` }] }] });
-const question = (ref: string) => ({ ref, title: "Choose the recovery route", description: "Which route should we use?", needs: [{ need: "Understand the route", kind: "prose" }], options: [
+const question = (ref: string) => ({ ref, title: "Choose the recovery route", brief: decisionBrief("the recovery route"), description: "Which route should we use?", needs: [{ need: "Understand the route", kind: "prose" }], options: [
   { label: "Keep", does: "Keeps the route", gains: ["Stable"], costs: ["No change"] },
   { label: "Change", does: "Changes the route", gains: ["New route"], costs: ["Work"] },
 ] });
@@ -58,7 +59,7 @@ test("returning readers find new and revised blocks in place without authoring o
     const opened = f.cli(["migrate", historical]);
     const stage = f.cli(["open", "--flow", opened.flow, "--skill", "research"]);
     const submit = (items: unknown[], target = stage.stage) => f.cli(["submit", "--flow", opened.flow, "--stage", target], items);
-    const seed = submit([doc("report", "Recovery evidence"), { kind: "round", questions: [question("route")] }, doc("unchanged", "Untouched evidence")]);
+    const seed = submit([doc("report", "Recovery evidence"), { kind: "round", now: "The recovery report is ready to review.", questions: [question("route")] }, doc("unchanged", "Untouched evidence")]);
     let page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
     await index(page).getByText("First visit", { exact: false }).waitFor();

@@ -36,6 +36,8 @@ With the Map panel closed, `j` and `k`, or the down and up arrows, select readin
 
 Diagrams keep their intrinsic label size rather than shrinking to fit a narrow screen. Swipe or scroll inside a wide diagram to read the rest. For keyboard panning, Tab to the diagram and use the arrow keys; those keys do not move the page's reading stop while the diagram has focus. Tab out to resume reading navigation. Captured Mermaid source and historical Pele SVGs follow the same rule in both themes.
 
+A new question puts its **Decision brief** under the title. **Now** says where the work stands. A re-ask explains why it remains open or what changed since the earlier attempt. The recommendation gives the agent's reason, or says why the agent has none. **After you answer** tells you what the decision unblocks and how to undo it. Older questions show their recorded descriptions and choices without an invented brief. Answer in the picker, not on the page.
+
 Follow a question's Background and Topic note links for its context, and open Term notes for its local definitions. Result-entry links lead to the cited finding or evidence, including earlier revisions inside disclosures.
 
 ## Reader comments

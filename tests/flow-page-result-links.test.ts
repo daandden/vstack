@@ -32,7 +32,7 @@ type Snapshot = ReturnType<typeof snapshot>;
 test("questions cite all whole entryless Results and precise entries together using refs or stored ids", () => {
   const cli = world();
   const opened = ok<{ flow: string }>(cli(["open", "--title", "Mixed Result links", "--skill", "grill-me"]));
-  const sent = ok<Receipt>(cli(["submit"], [...linkedResults(), { kind: "round", questions: [linkedQuestion()] }]));
+  const sent = ok<Receipt>(cli(["submit"], [...linkedResults(), { kind: "round", now: "Local reconnect evidence is ready to review.", questions: [linkedQuestion()] }]));
   let shown = ok<Snapshot>(cli(["show", "--flow", opened.flow]));
   const q = shown.stages[0].questions[0];
   expect(q.results).toEqual(mixedTargets.map((ref) => sent.refs[ref]));
@@ -43,7 +43,7 @@ test("questions cite all whole entryless Results and precise entries together us
   for (const result of shown.stages[0].results) expect(result.questions).toEqual([sent.refs.decision]);
   expect(shown.stages[0].results[5].entries.map((e) => e.questions)).toEqual([[sent.refs.decision], []]);
   const stored = mixedTargets.map((ref) => sent.refs[ref]);
-  const next = ok<Receipt>(cli(["submit"], [{ kind: "round", questions: [{ ...linkedQuestion(stored), ref: "later" }] }]));
+  const next = ok<Receipt>(cli(["submit"], [{ kind: "round", now: "Local reconnect evidence is ready to review.", questions: [{ ...linkedQuestion(stored), ref: "later" }] }]));
   shown = ok<Snapshot>(cli(["show", "--flow", opened.flow]));
   expect(shown.stages[0].questions[1].results).toEqual(stored);
   expect(shown.stages[0].results[0].questions).toEqual([sent.refs.decision, next.refs.later]);
@@ -62,7 +62,7 @@ test.each(["missing-result", "cards/missing", "topic"])("unknown or wrong-kind t
   const before = ok<Snapshot>(cli(["show", "--flow", flow]));
   const refused = cli(["submit"], [
     ...linkedResults(), { kind: "topic", ref: "topic", title: "Not a Result", summary: "Wrong kind.", body: "Must not publish.", sources: ["Fixture"] },
-    { kind: "round", questions: [linkedQuestion(["document", "cards/saved", target])] },
+    { kind: "round", now: "Local reconnect evidence is ready to review.", questions: [linkedQuestion(["document", "cards/saved", target])] },
   ]);
   expect(refused.code).toBe(1);
   expect(refused.stderr).toContain("Result or Result entry");
@@ -77,7 +77,7 @@ test.each(["missing-result", "cards/missing", "topic"])("unknown or wrong-kind t
 test("previously stored entry-only links retain precise backlinks without inventing whole-Result relationships", () => {
   const cli = world();
   ok(cli(["open", "--title", "Existing entry link", "--skill", "grill-me"]));
-  const sent = ok<Receipt>(cli(["submit"], [linkedResults()[5], { kind: "round", questions: [linkedQuestion(["cards/saved"])] }]));
+  const sent = ok<Receipt>(cli(["submit"], [linkedResults()[5], { kind: "round", now: "Local reconnect evidence is ready to review.", questions: [linkedQuestion(["cards/saved"])] }]));
   const shown = ok<Snapshot>(cli(["show", "--flow", sent.flow]));
   expect(shown.stages[0].questions[0].results).toEqual([sent.refs["cards/saved"]]);
   expect(shown.stages[0].questions[0].result_links).toEqual([{ id: sent.refs["cards/saved"], kind: "entry", result: sent.refs.cards, title: "Findings", anchor: `${sent.refs.cards}-e1`, entry: "e1" }]);

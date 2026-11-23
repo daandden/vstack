@@ -3,8 +3,8 @@
   "subjects": [
     {
       "id": "stream-versus-tabs",
-      "context": "[The user wants research published after a grilling question to appear after that question, before subsequent questions. A Flow contains skill runs called Stages. Each Stage currently has its own tab. The main reading order across Stages is still undecided.]",
-      "request": "Prepare and publish the next decision question. Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+      "context": "[The user wants research published after a grilling question to appear after that question, before subsequent questions. A Flow contains skill runs called Stages. Each Stage currently has its own tab. The main reading order across Stages is still undecided. This decision unblocks the layout design. No reader code has changed yet.]",
+      "request": "Prepare and publish the next question with its Decision brief. Should creation order be the main reading order across the whole Flow or only inside each Stage?",
       "options": [
         {
           "label": "A. One chronological reading stream across the Flow",
@@ -30,8 +30,8 @@
     },
     {
       "id": "update-placement",
-      "context": "[The main Flow reading path will follow publication order across Stages. Earlier questions can receive answers after later research Results appear. A Result can also be revised later. The behavior of these updates is undecided.]",
-      "request": "Prepare and publish the next decision question. When earlier content is answered or revised, should the update create a new chronological entry?",
+      "context": "[The main Flow reading path will follow publication order across Stages. Earlier questions can receive answers after later research Results appear. A Result can also be revised later. The behavior of these updates is undecided. This decision unblocks the reader update design. The same underlying data can support either view.]",
+      "request": "Prepare and publish the next question with its Decision brief. When earlier content is answered or revised, should the update create a new chronological entry?",
       "options": [
         {
           "label": "A. Update the original block in place",
@@ -57,8 +57,8 @@
     },
     {
       "id": "terminology",
-      "context": "[An interview is underway about rebuilding the Flow reader with Nuxt. The user wrote \"vite+\" without defining the trailing plus. No tooling integration decision has been made.]",
-      "request": "Prepare and publish the next decision question. Does \"vite+\" mean the Vite+ product or ordinary Vite?",
+      "context": "[An interview is underway about rebuilding the Flow reader with Nuxt. The user wrote \"vite+\" without defining the trailing plus. No tooling integration decision has been made. Confirming the term lets the team choose an integration. No packages have changed.]",
+      "request": "Prepare and publish the next question with its Decision brief. Does \"vite+\" mean the Vite+ product or ordinary Vite?",
       "options": [
         {
           "label": "A. The Vite+ product",
@@ -84,8 +84,8 @@
     },
     {
       "id": "prototype-review",
-      "context": "[The user wants a Nuxt Flow reader with chronological reading across Stages. Typography, density, and the broader visual design have not been agreed. Implementation has not started.]",
-      "request": "Prepare and publish the next decision question. Should the broader visual design be reviewed as a prototype before implementation?",
+      "context": "[The user wants a Nuxt Flow reader with chronological reading across Stages. Typography, density, and the broader visual design have not been agreed. Implementation has not started. The next step is either a prototype for review or implementation using the agreed reading order. Neither step has started.]",
+      "request": "Prepare and publish the next question with its Decision brief. Should the broader visual design be reviewed as a prototype before implementation?",
       "options": [
         {
           "label": "A. Review a prototype first",

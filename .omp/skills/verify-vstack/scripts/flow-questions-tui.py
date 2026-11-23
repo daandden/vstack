@@ -474,12 +474,14 @@ def main():
     contribution = {"version": 1, "items": [
         {"kind": "result", "shape": "document", "ref": "fixture", "title": "Disposable picker fixture",
          "sections": [{"heading": "Context", "blocks": [{"prose": "Fixture evidence, not a real user decision."}]}]},
-        {"kind": "round", "questions": [
+        {"kind": "round", "now": "The disposable fixture is ready for the first picker.", "questions": [
             {"ref": "pick", "title": "Pick fixture paths", "description": "Full authored context retained on Flow.", "multi": True,
+             "brief": {"unblocks": "Record the selected fixture paths.", "undo": "Run the disposable fixture again.", "no_recommendation": "Selecting either path exercises the same picker behavior."},
              "needs": [{"need": "Compare fixture tradeoffs.", "kind": "prose"}],
              "options": [{"label": "Alpha", "does": "Use Alpha.", "gains": ["First fixture"], "costs": ["Fixture only"]},
                          {"label": "Beta", "does": "Use Beta.", "gains": ["Second fixture"], "costs": ["Fixture only"]}]},
             {"ref": "words", "title": "Describe the fixture concern", "description": "Preserve Other words without inventing consent.",
+             "brief": {"unblocks": "Verify how the session retains your note.", "undo": "Use a new test session to enter a different note.", "no_recommendation": "The concern is supplied by the test driver."},
              "needs": [{"need": "Explain the fixture concern.", "kind": "prose"}],
              "options": [{"label": "Proceed", "does": "Continue.", "gains": ["Progress"], "costs": ["Unresolved concern"]},
                          {"label": "Pause", "does": "Wait.", "gains": ["Review"], "costs": ["Delay"]}]}]}]}
@@ -487,6 +489,7 @@ def main():
         contribution["items"][1]["questions"] = [{
             "ref": "approval", "title": "Approve fixture inputs?",
             "description": "The complete input set is one disposable case with id fixture. This is UI proof, not tuning approval.",
+            "brief": {"unblocks": "Drive the native Ratchet approval gate.", "undo": "Recreate the disposable approval run.", "no_recommendation": "The fixture leaves the native gate unselected."},
             "needs": [{"need": "Review the complete disposable input set.", "kind": "prose"}],
             "options": [
                 {"label": "Approve", "does": "Approve the fixture inputs.", "gains": ["Exercise native approval"], "costs": ["Fixture only"]},
@@ -705,9 +708,10 @@ def main():
                 elif phase == 4 and args.case == "later-round":
                     assert len(recorded_answers(published_stage(published_state(receipt), receipt))) == 2, \
                         "First answers were not separately recorded"
-                    later = {"version": 1, "items": [{"kind": "round", "questions": [{
+                    later = {"version": 1, "items": [{"kind": "round", "now": "Both first-round answers are recorded.", "questions": [{
                         "ref": "later", "title": "Choose the later fixture path",
                         "description": "This is a new authored round, not a retry of the first picker.",
+                        "brief": {"unblocks": "Verify a new picker and panel after the first round.", "undo": "Repeat the fixture in a new session.", "no_recommendation": "Either path proves that the later picker opens."},
                         "needs": [{"need": "Compare the later fixture paths.", "kind": "prose"}],
                         "options": [
                             {"label": "Continue", "does": "Continue the fixture.", "gains": ["Exercise a later round"], "costs": ["Fixture only"]},

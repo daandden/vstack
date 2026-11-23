@@ -7,6 +7,11 @@ import { askLabel, optionLabel, questionOutcome, sourceText, type QuestionView }
 const props = defineProps<{ q: QuestionView }>();
 const f = computed(() => flow.value!);
 const st = computed(() => f.value.stage.get(props.q.stage)!);
+const now = computed(() => {
+  const item = st.value.items.find(item => item.type === "round" && item.round.id === props.q.round);
+  return item?.type === "round" ? item.round.now : undefined;
+});
+const recommended = computed(() => props.q.options.find(option => option.recommended !== undefined));
 const picks = computed(() => new Set(props.q.answer.picks ?? []));
 const ask = (id: string) => f.value.question.get(id);
 const askedIn = (id: string) => {
@@ -65,6 +70,30 @@ const lines = computed(() => {
   <div class="grid gap-2.5">
     <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
     <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
+    <section v-if="q.brief && now !== undefined" aria-label="Decision brief" class="min-w-0 wrap-anywhere">
+      <dl class="grid gap-1 [&_dd]:inline [&_dd]:ms-2 [&_dt]:inline [&_dt]:font-semibold [&_dt]:text-flow-teal">
+        <div>
+          <dt>Now</dt>
+          <dd v-html="inline(now)" />
+        </div>
+        <div v-if="q.brief.asked_again_because">
+          <dt>Asked again because</dt>
+          <dd v-html="inline(q.brief.asked_again_because)" />
+        </div>
+        <div v-if="recommended?.recommended">
+          <dt>Recommendation</dt>
+          <dd><span v-html="inline(recommended.label)" />: <span v-html="inline(recommended.recommended)" /></dd>
+        </div>
+        <div v-else-if="q.brief.no_recommendation">
+          <dt>No recommendation</dt>
+          <dd v-html="inline(q.brief.no_recommendation)" />
+        </div>
+        <div>
+          <dt>After you answer</dt>
+          <dd><span v-html="inline(q.brief.unblocks)" /> <span class="font-semibold">Undo:</span> <span v-html="inline(q.brief.undo)" /></dd>
+        </div>
+      </dl>
+    </section>
     <section aria-label="Current outcome" class="grid gap-1 text-small">
       <p :class="outcome.cls" v-html="outcome.html" />
       <p v-if="outcome.previous" :class="outcome.previous.cls" v-html="outcome.previous.html" />
@@ -132,7 +161,7 @@ const lines = computed(() => {
             <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-success before:content-['+']" v-html="inline(g)" />
             <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-error before:content-['−']" v-html="inline(c)" />
           </ul>
-          <p v-if="o.recommended" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
+          <p v-if="o.recommended && !q.brief" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
         </li>
       </ol>
       <section v-if="q.answer.correction || q.answer.corrects.length || q.answer.recorded_reading" :id="`${q.id}-reading`" class="grid gap-1.5">

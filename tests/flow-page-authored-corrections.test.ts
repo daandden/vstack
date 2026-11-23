@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,7 +16,7 @@ type Receipt = { flow: string; stage: string; refs: Record<string, string>; revi
 type Snapshot = ReturnType<typeof snapshot>;
 const note = (ref: string) => ({ kind: "topic", ref, title: ref, summary: `Summary for ${ref}`, body: `Recorded ${ref}`, sources: ["Local evidence"] });
 const background = (ref: string) => ({ kind: "background", ref, title: ref, summary: `Summary for ${ref}`, sections: [{ heading: "Evidence", body: "Original evidence" }], sources: ["Local evidence"] });
-const question = (ref: string, again?: string) => ({ ref, title: "May work proceed?", description: "The source is uncertain.", needs: [{ need: "Understand the decision", kind: "prose" }], options: [{ label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["May be premature"] }, { label: "Wait", does: "Waits for evidence", gains: ["No false permission"], costs: ["Delay"] }], ...(again ? { again } : {}) });
+const question = (ref: string, again?: string) => ({ ref, brief: decisionBrief("permission to proceed", { again: again ? "New evidence addresses the earlier concern." : undefined }), title: "May work proceed?", description: "The source is uncertain.", needs: [{ need: "Understand the decision", kind: "prose" }], options: [{ label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["May be premature"] }, { label: "Wait", does: "Waits for evidence", gains: ["No false permission"], costs: ["Delay"] }], ...(again ? { again } : {}) });
 function world() {
   const home = join(root, String(serial++));
   mkdirSync(home);
@@ -38,7 +39,7 @@ function world() {
 const resolved = { outcome: "resolved", decision: "Proceed with work", basis: "Misread uncertainty as permission", maps_to: "A" };
 const withdrawn = { outcome: "ambiguous", unresolved: "The user did not authorize work. Ask again if the decision is needed." };
 function original(w: ReturnType<typeof world>, response = { status: "answered", text: "possibly a technical shaft, not sure" }): Receipt {
-  const asked = w.ok(["submit"], [{ kind: "round", questions: [question("permission")] }]);
+  const asked = w.ok(["submit"], [{ kind: "round", now: "The evidence is ready for review before work proceeds.", questions: [question("permission")] }]);
   w.ok(["submit"], [{ kind: "answer", question: asked.refs.permission, response, ...(response.status === "answered" ? { reading: resolved } : {}) }]);
   const { ref: _, ...bg } = background("background");
   const sent = w.ok(["submit"], [bg, note("topic"), { kind: "assumed", ref: "assumption", decision: "Reversible detail", pick: "Keep default", why: "No user decision" }, { kind: "close", decisions: [{ question: asked.refs.permission, text: "Work is authorized" }] }, { kind: "stage", state: "finished" }]);
@@ -67,7 +68,7 @@ test("a later reading withdraws false authorization without changing raw answers
   expect(shown.next).toEqual([]);
   expect(shown.stages[0].closes[0].decisions[0]).toMatchObject({ answer: "resolved", current_answer: "unresolved", affected: true, current_reading: withdrawn });
   expect(shown.stages[1].readings[0]).toMatchObject({ id: sent.refs.withdrawal, corrects: [{ target: { id: `${first.refs.permission}/reading` } }] });
-  const asked = w.ok(["submit"], [{ kind: "round", questions: [question("retry", first.refs.permission)] }]);
+  const asked = w.ok(["submit"], [{ kind: "round", now: "The evidence is ready for review before work proceeds.", questions: [question("retry", first.refs.permission)] }]);
   expect(w.shown().next).toContain(asked.refs.retry);
   w.ok(["submit"], [{ kind: "answer", question: asked.refs.retry, response: { status: "answered", picks: ["B"] } }, { kind: "close", decisions: [{ question: asked.refs.retry, text: "Wait for evidence" }] }, { kind: "stage", state: "finished" }]);
   expect(w.shown().stages[1].questions[0].answer).toMatchObject({ state: "picked", picks: ["B. Wait"] });
@@ -109,7 +110,7 @@ test("Background, Topic, question context, Assumed, and close decision correctio
 
 test.each(["picked", "empty", "cancelled", "timed-out", "headless"])("a Correction cannot manufacture an answer for %s", status => {
   const w = world();
-  const asked = w.ok(["submit"], [{ kind: "round", questions: [question("permission")] }]);
+  const asked = w.ok(["submit"], [{ kind: "round", now: "The evidence is ready for review before work proceeds.", questions: [question("permission")] }]);
   const response = status === "picked" ? { status: "answered", picks: ["B"] } : { status, ...(status === "headless" ? { picks: ["A"] } : {}) };
   w.ok(["submit"], [{ kind: "answer", question: asked.refs.permission, response }, { kind: "stage", state: "finished", ...(status === "picked" ? {} : { retire: [{ question: asked.refs.permission, reason: "No answer" }] }) }]);
   w.next();

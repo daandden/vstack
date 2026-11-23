@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -132,7 +133,7 @@ test("captured figures and option previews survive source changes and serve only
   writeFileSync(join(root, "choice.png"), png);
   const sent = ok(submit(home,
     { kind: "background", title: "Context", summary: "Compare captured alternatives", sections: [{ heading: "Scope", body: "One checkout." }], sources: ["fixture"], figures: [{ attachment: "diagram" }] },
-    { kind: "round", questions: [{ ref: "choose", title: "Which layout?", description: "Compare the diagram and preview.", needs: [{ need: "Locate the checkout boundary.", kind: "context-diagram" }, { need: "See the compact option.", kind: "option-preview" }], figures: [{ attachment: "diagram", kind: "context-diagram" }], options: [{ label: "Compact", does: "Uses less space", gains: ["Space"], costs: ["Density"], preview: { attachment: "pixel", kind: "option-preview" } }] }] },
+    { kind: "round", now: "The question includes captured media for review.", questions: [{ ref: "choose", title: "Which layout?", brief: decisionBrief("Which layout"), description: "Compare the diagram and preview.", needs: [{ need: "Locate the checkout boundary.", kind: "context-diagram" }, { need: "See the compact option.", kind: "option-preview" }], figures: [{ attachment: "diagram", kind: "context-diagram" }], options: [{ label: "Compact", does: "Uses less space", gains: ["Space"], costs: ["Density"], preview: { attachment: "pixel", kind: "option-preview" } }] }] },
     { kind: "attachment", ref: "diagram", type: "svg", caption: "Green checkout layout", origin: "Captured fixture", path: "choice.svg" },
     { kind: "attachment", ref: "pixel", type: "image", caption: "Compact checkout preview", origin: "Captured fixture", path: "choice.png" },
   ));
@@ -154,14 +155,14 @@ test("captured figures and option previews survive source changes and serve only
   expect((await fetch(new URL("assets/unregistered.svg", opened.live.url))).status).toBe(404);
   const before = ok(run(home, ["show"]));
   for (const figure of [{ attachment: "missing" }, { html: "<b>raw</b>" }, { attachment: sent.refs.diagram, css: "body{}" }]) {
-    expect(submit(home, { kind: "round", questions: [{ title: "Unsafe?", description: "Must not commit.", needs: [{ need: "Locate the current boundary.", kind: "context-diagram" }], figures: [{ ...figure, kind: "context-diagram" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"] }] }] }).code).toBe(1);
+    expect(submit(home, { kind: "round", now: "The question includes captured media for review.", questions: [{ title: "Unsafe?", brief: decisionBrief("Unsafe"), description: "Must not commit.", needs: [{ need: "Locate the current boundary.", kind: "context-diagram" }], figures: [{ ...figure, kind: "context-diagram" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"] }] }] }).code).toBe(1);
     expect(ok(run(home, ["show"])).revision).toBe(before.revision);
   }
   for (const attachment of [
     { kind: "attachment", ref: "invalid", type: "file", caption: "Not a figure", origin: "Fixture", path: "choice.png" },
     { kind: "attachment", ref: "invalid", type: "image", caption: "Unavailable figure", origin: "Fixture", unavailable: "No capture exists" },
   ]) {
-    const refused = submit(home, attachment, { kind: "round", questions: [{ title: "Preview?", description: "Needs captured image bytes.", needs: [{ need: "See the proposed option.", kind: "option-preview" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid", kind: "option-preview" } }] }] });
+    const refused = submit(home, attachment, { kind: "round", now: "The question includes captured media for review.", questions: [{ title: "Preview?", brief: decisionBrief("Preview"), description: "Needs captured image bytes.", needs: [{ need: "See the proposed option.", kind: "option-preview" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid", kind: "option-preview" } }] }] });
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain("must be a captured image, SVG, or Mermaid figure");
     expect(ok(run(home, ["show"]))).toEqual(before);
@@ -175,7 +176,7 @@ test("a Mermaid diagram source is captured once, satisfies diagram needs, and is
   const source = 'flowchart TD\n  a1["Read the page"]:::actor --> a2["Answer the question"]:::ok\n  class a2 ok\n  click a1 callback\n  click a2 href "https://example.com"\n';
   writeFileSync(join(root, "reading.mmd"), source);
   const diagram = { kind: "attachment", ref: "flow", type: "mermaid", caption: "Reading then answering", origin: "Mermaid source reading.mmd", path: "reading.mmd", focus: ["a2"] };
-  const round = (figure: object) => ({ kind: "round", questions: [{ ref: "order", title: "Which order?", description: "Compare the reading order.", needs: [{ need: "Follow today's reading steps.", kind: "context-diagram" }, { need: "Compare where each option answers.", kind: "option-diagram" }], figures: [{ ...figure, kind: "context-diagram" }, { ...figure, kind: "option-diagram" }], options: [{ label: "Read first", does: "Reads before answering", gains: ["Context"], costs: ["Time"] }] }] });
+  const round = (figure: object) => ({ kind: "round", now: "The question includes captured media for review.", questions: [{ ref: "order", title: "Which order?", brief: decisionBrief("Which order"), description: "Compare the reading order.", needs: [{ need: "Follow today's reading steps.", kind: "context-diagram" }, { need: "Compare where each option answers.", kind: "option-diagram" }], figures: [{ ...figure, kind: "context-diagram" }, { ...figure, kind: "option-diagram" }], options: [{ label: "Read first", does: "Reads before answering", gains: ["Context"], costs: ["Time"] }] }] });
   const sent = ok(submit(home, diagram, round({ attachment: "flow" })));
   const shown = ok(run(home, ["show"]));
   expect(shown.attachments).toEqual([expect.objectContaining({ id: sent.refs.flow, type: "mermaid", availability: "captured", focus: ["a2"], revision: new Bun.CryptoHasher("sha256").update(source).digest("hex") })]);

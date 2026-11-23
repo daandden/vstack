@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -408,7 +409,7 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   ok(run(w, ["bind", "--flow", migrated.flow, "--stage", "impl"], { session: "continue" }));
   const updated = ok(run(w, ["submit"], { session: "continue", stdin: { version: 1, items: [
     { kind: "answer", question: "q-open", response: { status: "answered", picks: ["B"] } },
-    { kind: "round", questions: [{ ref: "next", title: "What comes next?", description: "Continue the implementation.", needs: [{ need: "Decide whether the implementation can continue.", kind: "prose" }], options: [option("Proceed"), option("Stop")] }] },
+    { kind: "round", now: "The migrated Stage is ready for its next decision.", questions: [{ ref: "next", title: "What comes next?", brief: decisionBrief("What comes next"), description: "Continue the implementation.", needs: [{ need: "Decide whether the implementation can continue.", kind: "prose" }], options: [option("Proceed"), option("Stop")] }] },
     { kind: "revise", result: "checks", add: [{ claim: "Browser checked", status: "confirmed", evidence: "browser", missing_proof: "none", consequence: "continue" }] },
   ] } }));
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
@@ -417,6 +418,12 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   const impl = snap.stages.find((s: any) => s.id === "impl");
   expect(impl.questions.map((q: any) => [q.id, q.q])).toEqual([["q-open", 1], [updated.refs.next, 2]]);
   expect(impl.questions[0].answer.picks).toEqual(["B. Second"]);
+  expect(impl.questions[0]).not.toHaveProperty("brief");
+  const historical = flowContent(w.home, w.project, migrated.flow);
+  const question = historical.questions.find(q => q.id === "q-open");
+  expect(question?.description).toBeTruthy();
+  expect(question?.options.map(option => option.label)).toEqual(["A. First", "B. Second"]);
+  expect(question).not.toHaveProperty("brief");
   expect(impl.results[0].entries.map((e: any) => e.id)).toEqual(["checks/l1", "checks/e1"]);
   expect(new Set(snap.stages.flatMap((s: any) => s.questions).map((q: any) => q.id)).size).toBe(5);
   expect(tree(folder)).toEqual(before);
@@ -506,7 +513,7 @@ test("stageless historical questions keep session-scoped Q numbers and missing f
   expect(snap.attachments[0].availability).toBe("unavailable");
   const stage = snap.stages[1].id;
   const next = ok(run(w, ["submit", "--flow", migrated.flow, "--stage", stage], { stdin: { version: 1, items: [
-    { kind: "round", questions: [{ title: "Which cap?", description: "Continue.", needs: [{ need: "Compare the available cap policies.", kind: "prose" }], options: [option("First"), option("Second")] }] },
+    { kind: "round", now: "The migrated Stage is ready for its next decision.", questions: [{ title: "Which cap?", brief: decisionBrief("Which cap"), description: "Continue.", needs: [{ need: "Compare the available cap policies.", kind: "prose" }], options: [option("First"), option("Second")] }] },
   ] } }));
   expect(["question-1", "question-2"]).not.toContain(next.ask.questions[0].id);
   expect(next.ask.questions[0].question).toStartWith("Q2.");

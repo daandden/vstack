@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +7,7 @@ import { chromium } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
-const question = (ref: string) => ({ ref, title: `Review ${ref}?`, description: `Compare the ${ref} evidence before deciding.`, needs: [{ need: `Read the ${ref} proposal`, kind: "prose" }], options: [{ label: "Keep the recorded evidence", does: `Retains the ${ref} record.`, gains: [`Traceable ${ref} decision`], costs: [`More ${ref} reading`] }] });
+const question = (ref: string, again?: string, reason?: string) => ({ ref, brief: decisionBrief(ref, { again: reason }), ...(again ? { again } : {}), title: `Review ${ref}?`, description: `Compare the ${ref} evidence before deciding.`, needs: [{ need: `Read the ${ref} proposal`, kind: "prose" }], options: [{ label: "Keep the recorded evidence", does: `Retains the ${ref} record.`, gains: [`Traceable ${ref} decision`], costs: [`More ${ref} reading`] }] });
 
 test("question outcomes keep current readings and direct evidence, choices, and latest-attempt navigation", async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-question-outcomes-")));
@@ -33,7 +34,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     const first = cli(["submit"], [
       { kind: "attachment", ref: "diagram", type: "mermaid", path: "evidence.mmd", origin: "Local fixture", caption: "Decision evidence" },
       { kind: "result", ref: "evidence", shape: "document", title: "Deployment evidence", attachments: ["diagram"], sections: [{ heading: "Assessment", blocks: [{ prose: "Permission needs an explicit decision." }] }] },
-      { kind: "round", questions: [
+      { kind: "round", now: "The decision evidence is available for review.", questions: [
         { ...question("corrected"), title: "Can the deployment proceed after the assessment of incomplete source evidence?", needs: [{ need: "Compare all recorded evidence", kind: "context-diagram" }], figures: Array.from({ length: 8 }, () => ({ attachment: "diagram", kind: "context-diagram" })) },
         question("picked"), question("written"), question("headless"), question("cancelled"), question("empty"), question("timed-out"), question("open"), question("reasked"),
       ] },
@@ -45,7 +46,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
       { kind: "answer", question: q.written, response: { status: "answered", text: "Keep the complete audit trail" }, reading: { outcome: "resolved", decision: "Retain the audit trail", basis: "The words settle retention" } },
       ...["headless", "cancelled", "empty", "timed-out"].map(status => ({ kind: "answer", question: q[status], response: { status, ...(status === "empty" ? {} : { picks: ["A"] }) } })),
     ]);
-    const reasked = cli(["submit"], [{ kind: "round", questions: [{ ...question("reasked-again"), again: q.reasked }] }]).refs["reasked-again"]!;
+    const reasked = cli(["submit"], [{ kind: "round", now: "The decision evidence is available for review.", questions: [question("reasked-again", q.reasked, "The earlier question has no answer.")] }]).refs["reasked-again"]!;
     cli(["submit"], [{ kind: "answer", question: reasked, response: { status: "answered", picks: ["A"] } }]);
     await page.goto(`${opened.live.url}#${q.corrected}`);
     const summary = (id: string) => page.locator(`#${id}`).getByRole("region", { name: "Current outcome", exact: true });
@@ -56,7 +57,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     const corrected = cli(["submit"], [
       { kind: "reading", ref: "withdrawn", question: q.corrected, reading: { outcome: "ambiguous", unresolved: "Uncertainty is not permission. Ask again before deployment." } },
       { kind: "corrects", target: `${q.corrected}/reading`, replacement: "withdrawn", reason: "The old reading invented permission." },
-      { kind: "round", questions: [{ ...question("retry"), again: q.corrected, options: [...question("retry").options, { label: "Ask before deployment", does: "Requires an explicit deployment decision.", gains: ["No inferred permission"], costs: ["Another review"] }] }] },
+      { kind: "round", now: "The decision evidence is available for review.", questions: [{ ...question("retry", q.corrected, "The correction showed the previous words did not settle the decision."), options: [...question("retry").options, { label: "Ask before deployment", does: "Requires an explicit deployment decision.", gains: ["No inferred permission"], costs: ["Another review"] }] }] },
     ]);
     await summary(q.corrected).filter({ hasText: "Unresolved after correction" }).waitFor();
     expect(await summary(q.corrected).innerText()).not.toContain("Proceed with deployment");
@@ -105,7 +106,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     expect(await page.locator("#overview-stages").innerText()).toContain("Re-asked");
     expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with deployment");
     cli(["submit"], [{ kind: "answer", question: corrected.refs.retry, response: { status: "answered", picks: ["B"] } }]);
-    const timedOutRetry = cli(["submit"], [{ kind: "round", questions: [{ ...question("timeout-retry"), again: q["timed-out"] }] }]).refs["timeout-retry"]!;
+    const timedOutRetry = cli(["submit"], [{ kind: "round", now: "The decision evidence is available for review.", questions: [question("timeout-retry", q["timed-out"], "The earlier picker timed out.")] }]).refs["timeout-retry"]!;
     cli(["submit"], [{ kind: "answer", question: timedOutRetry, response: { status: "answered", picks: ["A"] } }]);
     cli(["submit"], [{ kind: "stage", state: "finished" }]);
     await page.goto(`${opened.live.url}#${q.corrected}`);

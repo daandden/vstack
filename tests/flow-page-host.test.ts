@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -72,9 +73,9 @@ const ok = (r: Run): any => {
 };
 
 const option = (label: string, ref: string) => ({ label, does: `${ref}: ${label} does`, gains: [`${ref}: ${label} gain`], costs: [`${ref}: ${label} cost`] });
-const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First", ref), option("Second", ref)] });
+const question = (ref: string) => ({ ref, brief: decisionBrief(ref), title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First", ref), option("Second", ref)] });
 const contribution = (...items: object[]) => ({ version: 1, items });
-const round = (...questions: object[]) => ({ kind: "round", questions });
+const round = (...questions: object[]) => ({ kind: "round", now: "The options are ready for review.", questions });
 const open = (w: World, session = "s-1", title = "Checkout limits") => run(["open", "--title", title, "--skill", "grill-me"], w, { session });
 
 function hostPids(w: World): number[] {

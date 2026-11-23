@@ -26,7 +26,7 @@ If no consequential choice needs expansion, record a brief grounded no-expansion
 
 For an expanded assessment, read `skill://codebase-design` and its `VISUAL-AGREEMENT.md`. Use that reference to frame and screen the smallest useful visual alternatives. This is a conditional architecture discussion, not the fixed detailed-interface exercise in DESIGN-IT-TWICE.md. Leave that exercise and its other callers unchanged.
 
-Bring the surviving direction and consequential trade-offs to grilling's current frontier. Resolve prerequisite choices before dependent ones. Use existing Flow questions, reader needs, captured visuals, and answer-provenance rules. A recommendation does not settle a choice. Missing answers, cancellation, timeout, and headless automatic picks remain non-consent. A consequential unagreed consequence can need a question even when only one shape is viable.
+Bring the surviving direction and consequential trade-offs to grilling's current frontier. Resolve prerequisite choices before dependent ones. Use existing Flow questions, Decision briefs, reader needs, captured visuals, and answer-provenance rules. A recommendation does not settle a choice. Missing answers, cancellation, timeout, and headless automatic picks remain non-consent. A consequential unagreed consequence can need a question even when only one shape is viable.
 
 When an answer changes a constraint or invalidates a pattern assumption, re-ground the affected choice and revise its visual comparison. Preserve the earlier rationale and answer rather than silently replacing them.
 

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "New Flow questions require a Decision brief and show it under the title. The brief gives the current state of the work, the reason for a re-ask, the recommendation or why there is none, and what the answer unblocks and how to undo it. Older questions stay readable and answerable without a brief."
+  ]
+}

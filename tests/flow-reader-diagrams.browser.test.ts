@@ -1,4 +1,5 @@
 
+import { decisionBrief } from "./support/decision-brief.ts";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -186,6 +187,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
   const capturedSha = new Bun.CryptoHasher("sha256").update(captured).digest("hex");
   const figure = (ref: string, title: string) => ({
     ref: `${ref}-question`, title, description: `Look at the ${title} diagram.`,
+    brief: decisionBrief(title),
     needs: [{ need: `Follow the ${title} steps.`, kind: "context-diagram" }],
     figures: [{ attachment: ref, kind: "context-diagram" }],
     options: [{ label: "Fine", does: `Accepts the ${title} drawing`, gains: [`Clarity for ${title}`], costs: [`No revision of ${title}`] }],
@@ -195,7 +197,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     { kind: "attachment", ref: "reading", type, caption: "Reading then answering", origin: `Styled ${type} capture`, path: "reading", ...(type === "mermaid" ? { focus: ["a2"] } : {}) },
     { kind: "attachment", ref: "captured", type: "svg", caption: "Captured design review", origin: "Pele render of design-review-sequence.mmd", path: "captured.svg" },
     { kind: "attachment", ref: "styled", type: "svg", caption: "Styled historical design", origin: "Pele render of styled-mocha.mmd", path: "styled.svg" },
-    { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
+    { kind: "round", now: "The diagrams are captured and ready to read.", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
   ] });
   if (type === "mermaid") seedHistoricalMermaidCapture(submitted.flow, submitted.refs.reading, readFileSync(STYLED_SOURCE), "reading.mmd");
 
@@ -279,8 +281,9 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   const bytes = readFileSync(source);
   cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "wide", type, caption: "Wide reading diagram", origin: "Captured diagram", path: source },
-    { kind: "round", questions: [{
+    { kind: "round", now: "The diagrams are captured and ready to read.", questions: [{
       ref: "wide-reading", title: "Can you follow the full path?", description: "Read every step before answering.",
+      brief: decisionBrief("the full reading path"),
       needs: [{ need: "Follow the full reading path.", kind: "context-diagram" }],
       figures: [{ attachment: "wide", kind: "context-diagram" }],
       options: [{ label: "Continue", does: "Keeps the reading path", gains: ["Readable steps"], costs: ["None"] }],
@@ -355,8 +358,9 @@ test("every figure shows its caption as a title, a formatted description, and a 
     { kind: "attachment", ref: "flow", type: "mermaid", path: "narrow.mmd", caption: "Narrow flow", description, origin: "Mermaid source narrow.mmd" },
     { kind: "attachment", ref: "shot", type: "image", path: "caption.png", caption: "Q1 · Legacy screenshot", origin: "Recorded image fixture" },
     { kind: "background", title: "Context", summary: "Why these figures exist.", sections: [{ heading: "Today", body: "Two figures." }], sources: ["fixture"], figures: [{ attachment: "shot" }] },
-    { kind: "round", questions: [{
+    { kind: "round", now: "The diagrams are captured and ready to read.", questions: [{
       title: "Which figure reads better?", description: "Compare them.",
+      brief: decisionBrief("the diagram layout"),
       needs: [{ need: "Read the label.", kind: "source-excerpt" }, { need: "Follow the flow.", kind: "context-diagram" }, { need: "See the screenshot.", kind: "option-preview" }],
       figures: [{ text: "Narrow flow", kind: "source-excerpt" }, { attachment: "flow", kind: "context-diagram" }],
       options: [{ ...options[0], preview: { attachment: "shot", kind: "option-preview" } }],

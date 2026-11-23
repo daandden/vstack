@@ -14,9 +14,17 @@ function check(path: string) {
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "flow-eval-record-"));
   roots.push(root);
-  const submitted = { version: 1, items: [{ kind: "round", questions: [{ title: "Where does the update appear?", needs: [{ need: "Locate the later update", kind: "prose" }], options: [] }] }] };
+  const now = "A later Result is ready to publish.";
+  const question = {
+    title: "Where does the update appear?",
+    description: "Compare the publication positions.",
+    brief: { unblocks: "Implement update placement.", undo: "Restore the existing reading order.", no_recommendation: "Both placements preserve the update." },
+    needs: [{ need: "Locate the later update", kind: "prose" }],
+    options: [{ label: "Later position", does: "Adds a link to the updated record.", gains: ["Chronology"], costs: ["One more entry"] }],
+  };
+  const submitted = { version: 1, items: [{ kind: "round", now, questions: [question] }] };
   const receipt = { flow: "flow-fixture", stage: "stage-1", revision: 2, refs: { pick: "question-1" } };
-  const state = { flow: { id: "flow-fixture" }, revision: 2, questions: [{ id: "question-1", stage: "stage-1", title: "Where does the update appear?", needs: submitted.items[0].questions[0].needs, options: [] }], attachments: [] };
+  const state = { flow: { id: "flow-fixture" }, revision: 2, rounds: [{ id: "round-1", now }], questions: [{ ...question, round: "round-1", id: "question-1", stage: "stage-1", options: [{ ...question.options[0], label: "A. Later position" }] }], attachments: [] };
   const binding = { flow: "flow-fixture", stage: "stage-1", session: "01a19000-0000-7000-8000-000000000001", agent: "main", bound: "2026-10-31T00:00:00Z" };
   const files = { "submitted.json": JSON.stringify(submitted), "receipt.json": JSON.stringify(receipt), "state.json": JSON.stringify(state), "binding.json": JSON.stringify(binding), "page.webp": "captured bytes", "aria.json": "{}", "display.json": "{}" };
   const hashes: Record<string, string> = {};

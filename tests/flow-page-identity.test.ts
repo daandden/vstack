@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -68,9 +69,9 @@ const ok = (r: Run): any => {
 };
 
 const option = (label: string, ref: string) => ({ label, does: `${ref}: ${label} does`, gains: [`${ref}: ${label} gain`], costs: [`${ref}: ${label} cost`] });
-const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First", ref), option("Second", ref)] });
+const question = (ref: string) => ({ ref, brief: decisionBrief(ref), title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First", ref), option("Second", ref)] });
 const contribution = (...items: object[]) => ({ version: 1, items });
-const round = (...questions: object[]) => ({ kind: "round", questions });
+const round = (...questions: object[]) => ({ kind: "round", now: "The options are ready for review.", questions });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });
 
 function observed(home: string) {
@@ -174,7 +175,7 @@ test("mixed publications keep declared order across Stages, refusal, replay, ans
   expect(replay).toMatchObject({ repeated: true, refs: second.refs, revision: second.revision });
   send("s-a", { kind: "answer", question: first.refs.one, response: { status: "answered", text: "Keep the first publication." }, reading: { outcome: "resolved", decision: "Keep publication order.", basis: "The words name that order." } }, { kind: "revise", result: first.refs.r, base: first.revision, set: { title: "Revised research" } });
   expect(read().publications).toEqual(expected);
-  const last = send("s-a", round(question("three"), { ...question("again"), again: first.refs.one }));
+  const last = send("s-a", round(question("three"), { ...question("again"), again: first.refs.one, brief: decisionBrief("the earlier choice", { again: "Reconsider the earlier reading in light of the revised report." }) }));
   expect(last.ask.questions.map((q: any) => q.id)).toEqual([last.refs.three, last.refs.again]);
   expect(last.ask.questions.map((q: any) => q.question.split(".")[0])).toEqual(["Q3", "Q1"]);
   expect(read().publications.slice(4)).toEqual([

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -30,8 +31,10 @@ function cli(args: string[], input?: object) {
 }
 
 const submit = (flow: string, stage: string, items: object[]) => cli(["submit", "--flow", flow, "--stage", stage], { version: 1, items });
-const question = (ref: string, title: string) => ({
+const question = (ref: string, title: string, again?: string) => ({
   ref, title, description: `Choose the ${title} route.`, needs: [{ need: `Understand the ${title} consequence.`, kind: "prose" }],
+  brief: decisionBrief(title, { again: again ? "The earlier attempt did not settle this route." : undefined }),
+  ...(again ? { again } : {}),
   options: [{ label: "Keep", does: `${title}: keeps it`, gains: [`${title}: stability`], costs: [`${title}: no new behavior`] }, { label: "Change", does: `${title}: changes it`, gains: [`${title}: new behavior`], costs: [`${title}: work`] }],
 });
 const doc = (ref: string, title: string, sections = 1) => ({ kind: "result", ref, shape: "document", title, sections: Array.from({ length: sections }, (_, i) => ({ heading: `Finding ${i + 1}`, blocks: [{ prose: "One finding." }] })) });
@@ -60,12 +63,12 @@ test("Stage tabs show each Stage's own content in first-publication order under 
   const a = cli(["open", "--skill", "grill-me", "--title", "Reading by Stage"]);
   const first = submit(a.flow, a.stage, [
     { kind: "background", title: "Why tabs", summary: "Context.", sections: [{ heading: "Today", body: "One page." }], sources: ["GLOSSARY.md"] },
-    { kind: "round", questions: [question("q1", "Keep the first choice?")] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "Keep the first choice?")] },
   ]);
   submit(a.flow, a.stage, [{ kind: "answer", question: first.refs.q1, response: { status: "answered", picks: ["A"] } }]);
   const b = cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]);
   const research = submit(b.flow, b.stage, [doc("doc", "Research findings", 20)]);
-  const second = submit(a.flow, a.stage, [{ kind: "round", questions: [question("q2", "Keep the second choice?")] }]);
+  const second = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q2", "Keep the second choice?")] }]);
   const stageA = a.stage, stageB = b.stage;
   const background = (cli(["show", "--flow", a.flow]).reading.publications as { id: string; kind: string }[]).find((p) => p.kind === "background")!.id;
 
@@ -142,11 +145,11 @@ test("Jump labels identify Assumed subjects and each published attempt without m
   const first = submit(opened.flow, opened.stage, [
     ...subjects.map((decision, i) => ({ kind: "assumed", ref: `choice-${i}`, decision, pick: "Keep the existing choice", why: "The agreed behavior stays unchanged." })),
     doc("long", "Decision evidence", 30),
-    { kind: "round", questions: [question("original", "Keep the deployment route?"), question("single", "Keep the fallback?")] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("original", "Keep the deployment route?"), question("single", "Keep the fallback?")] },
   ]);
-  const second = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Keep the deployment route?"), again: first.refs.original }] }]);
-  const third = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Keep the deployment route?"), again: second.refs.retry }] }]);
-  const fourth = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Revisit the original deployment route?"), again: first.refs.original }] }]);
+  const second = submit(opened.flow, opened.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("retry", "Keep the deployment route?", first.refs.original)] }]);
+  const third = submit(opened.flow, opened.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("retry", "Keep the deployment route?", second.refs.retry)] }]);
+  const fourth = submit(opened.flow, opened.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("retry", "Revisit the original deployment route?", first.refs.original)] }]);
   const attempts: string[] = [first.refs.original, second.refs.retry, third.refs.retry, fourth.refs.retry];
   const expectedIds: string[] = [...subjects.map((_, i) => first.refs[`choice-${i}`]), first.refs.long, first.refs.original, first.refs.single, ...attempts.slice(1)];
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
@@ -245,7 +248,7 @@ test("old migrated tab fragments open their Stage's tab", async () => {
 test("n and k keep their place at the end of a Stage tab that cannot scroll its last block to the top", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Tab end"]);
   const long = doc("long", "Long findings", 12);
-  const round = submit(a.flow, a.stage, [long, { kind: "round", questions: [question("q1", "Keep the first choice?"), question("q2", "Keep the second choice?")] }]);
+  const round = submit(a.flow, a.stage, [long, { kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "Keep the first choice?"), question("q2", "Keep the second choice?")] }]);
   const { q1, q2 } = round.refs;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
@@ -271,9 +274,9 @@ test("n and k keep their place at the end of a Stage tab that cannot scroll its 
 
 test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and l", async () => {
   const a = cli(["open", "--skill", "wayfinder", "--ticket", "410", "--title", "Parallel tickets"]);
-  const first = submit(a.flow, a.stage, [{ kind: "round", questions: [question("q1", "First route?"), question("q2", "Second route?")] }]).refs;
+  const first = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "First route?"), question("q2", "Second route?")] }]).refs;
   const b = cli(["open", "--skill", "wayfinder", "--ticket", "411", "--flow", a.flow]);
-  const second = submit(b.flow, b.stage, [{ kind: "round", questions: [question("q1", "Newer first route?"), question("q2", "Newer second route?")] }]).refs;
+  const second = submit(b.flow, b.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "Newer first route?"), question("q2", "Newer second route?")] }]).refs;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
@@ -347,10 +350,10 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
 
 test("n stays put and explains when the Focused Stage has no open questions", async () => {
   const a = cli(["open", "--skill", "wayfinder", "--title", "Settled ticket"]);
-  const settled = submit(a.flow, a.stage, [doc("doc", "Settled findings"), { kind: "round", questions: [question("q", "Settled route?")] }]).refs;
+  const settled = submit(a.flow, a.stage, [doc("doc", "Settled findings"), { kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Settled route?")] }]).refs;
   submit(a.flow, a.stage, [{ kind: "answer", question: settled.q, response: { status: "answered", picks: ["A"] } }]);
   const b = cli(["open", "--skill", "wayfinder", "--flow", a.flow]);
-  submit(b.flow, b.stage, [{ kind: "round", questions: [question("q", "Other ticket route?")] }]);
+  submit(b.flow, b.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Other ticket route?")] }]);
   const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
   try {
     const page = await context.newPage();
@@ -368,20 +371,20 @@ test("n stays put and explains when the Focused Stage has no open questions", as
 
 test("Overview and Topics use Flow-wide n order while Stage tabs keep the existing eligibility rules", async () => {
   const a = cli(["open", "--skill", "wayfinder", "--title", "Eligible ticket questions"]);
-  const first = submit(a.flow, a.stage, [{ kind: "round", questions: [
+  const first = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [
     question("open", "First open route?"), question("settled", "Settled route?"), question("stale", "Earlier route?"),
   ] }]).refs;
   const again = submit(a.flow, a.stage, [
     { kind: "answer", question: first.settled, response: { status: "answered", picks: ["A"] } },
-    { kind: "round", questions: [{ ...question("again", "Revised route?"), again: first.stale }] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("again", "Revised route?", first.stale)] },
   ]).refs.again;
   const b = cli(["open", "--skill", "wayfinder", "--flow", a.flow]);
   const newest = submit(b.flow, b.stage, [
     { kind: "topic", title: "Navigation context", summary: "Parallel tickets.", body: "Each ticket has its own Stage.", sources: ["GLOSSARY.md"] },
-    { kind: "round", questions: [question("q", "Newest route?")] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Newest route?")] },
   ]).refs.q;
   const finished = cli(["open", "--skill", "research", "--flow", a.flow]);
-  const retired = submit(finished.flow, finished.stage, [{ kind: "round", questions: [question("q", "Deferred route?")] }]).refs.q;
+  const retired = submit(finished.flow, finished.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Deferred route?")] }]).refs.q;
   submit(finished.flow, finished.stage, [
     { kind: "close", decisions: [{ question: retired, text: "Deferred until another ticket." }] },
     { kind: "stage", state: "finished", retire: [{ question: retired, reason: "Deferred until another ticket." }] },
@@ -435,7 +438,7 @@ test("at 360px the tab row wraps without page overflow and fragment targets land
     last = cli(["open", "--skill", skill, "--flow", a.flow, "--parent", a.stage]);
     submit(last.flow, last.stage, [doc("doc", `${skill} findings`)]);
   }
-  const many = submit(last.flow, last.stage, [doc("long", "Long findings", 20), { kind: "round", questions: Array.from({ length: 16 }, (_, i) => question(`q${i}`, `Ship part ${i + 1}?`)) }]).refs;
+  const many = submit(last.flow, last.stage, [doc("long", "Long findings", 20), { kind: "round", now: "The routing options are ready for review.", questions: Array.from({ length: 16 }, (_, i) => question(`q${i}`, `Ship part ${i + 1}?`)) }]).refs;
   const target = many.long;
   const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
   try {
@@ -467,7 +470,7 @@ test("at 360px the tab row wraps without page overflow and fragment targets land
 
 test("Map keys select Stages without moving page tabs, arrows pan, and dismissal restores page navigation", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Map keyboard controls"]);
-  const pending = submit(a.flow, a.stage, [{ kind: "round", questions: [question("map-q", "Keep the map controls?")] }]);
+  const pending = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("map-q", "Keep the map controls?")] }]);
   const children = Array.from({ length: 24 }, () => cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]));
   const context = await browser.newContext({ viewport: { width: 320, height: 700 } });
   try {

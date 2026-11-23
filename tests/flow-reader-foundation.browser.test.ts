@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -57,7 +58,7 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     { kind: "task", ref: "build", title: "Build the reader foundation", state: "active" },
     { kind: "task", title: "Check keyboard navigation", state: "pending" },
     { kind: "end-state", requested: "commit" },
-    { kind: "round", questions: [{ ref: "choice", title: "Keep the compact reader?", description: "Read the Flow before choosing.", needs: [{ need: "Follow reading to choosing.", kind: "context-diagram" }], figures: [{ attachment: "diagram", kind: "context-diagram" }], options: [{ label: "Keep", does: "Keeps the reader compact", gains: ["Familiar reading"], costs: ["No larger spacing"] }] }] },
+    { kind: "round", now: "The compact reader is ready to compare with the proposed spacing.", questions: [{ ref: "choice", title: "Keep the compact reader?", brief: decisionBrief("the reader spacing"), description: "Read the Flow before choosing.", needs: [{ need: "Follow reading to choosing.", kind: "context-diagram" }], figures: [{ attachment: "diagram", kind: "context-diagram" }], options: [{ label: "Keep", does: "Keeps the reader compact", gains: ["Familiar reading"], costs: ["No larger spacing"] }] }] },
   ]);
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
   try {
