@@ -201,7 +201,7 @@ The omp panel above the composer that shows the live Flow page link while a ques
 _Avoid_: Flow popup, Flow card, Flow link note, Flow notification
 
 **Focused Stage**:
-The Stage whose open questions a Flow page's `n` key cycles and whose new questions the page moves to. In a browser it is the Stage tab the page shows. In Tern, the vstack-flow plugin sets it from the omp session most recently focused in the page's tab.
+The Stage the Flow page shows. Its open questions are the ones the page's `n` key cycles. In Tern, the vstack-flow plugin sets the Focused Stage from the omp session most recently focused in the page's tab.
 _Avoid_: current Stage, active Stage, followed Stage
 
 **Picker presence**:
@@ -252,12 +252,16 @@ _Avoid_: Safety (for this axis), safety review
 Shared context for a Stage's questions. It contains facts and explanations those questions build on, rather than one question's own rationale.
 _Avoid_: intro, explain block, context section
 
+**Decision brief**:
+The labelled lines under a Flow page question's title that say where the work stands, why the question is asked or asked again, the agent's recommendation or why it has none, and what the answer unblocks and how it can be undone. It is the question's own decision context, while a Background is shared by a Stage's questions.
+_Avoid_: question brief, decision context, why-now block
+
 **Topic note**:
 A shared explanation of one concept that questions in any Stage can reference. It differs from a Term note, which defines one name on one question.
 _Avoid_: explain block, glossary entry
 
 **Jump row**:
-A row of links to content in a Flow page reading view, following that view's reading order.
+A list of links to content in a Flow page reading view, following that view's reading order, that the reader opens on demand.
 _Avoid_: Q row, question nav, navigation
 
 **Term note**:

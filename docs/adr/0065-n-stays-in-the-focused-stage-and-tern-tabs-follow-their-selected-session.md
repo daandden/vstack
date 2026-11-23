@@ -1,5 +1,7 @@
 # `n` stays in the Focused Stage, and Tern tabs follow their selected session
 
+> [ADR 20261123-the-flow-page-leads-with-the-open-decision](20261123-the-flow-page-leads-with-the-open-decision.md) removes the visible Stage tabs. The Focused Stage is the Stage the page shows, and `n` behaves as below.
+
 The user chose this in the `n-follows-focused-stage-35d716` interview on 2026-11-08. It amends [ADR 0056](0056-flow-questions-show-their-link-in-a-flow-panel.md) and the newest-in-progress-Stage-first `n` order from issue #277. These are accepted design decisions, not a claim that the implementation is complete.
 
 When two Wayfinder ticket grills ran in parallel omp sessions, both Flow panels showed the same bare Flow page URL. That URL opened the newest in-progress Stage, and `n` walked one Flow-wide queue that started there. The session that opened its Stage first always landed on the other ticket's questions.
