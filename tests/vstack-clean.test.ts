@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { chmodSync, existsSync, lstatSync, lutimesSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { ENV } from "./support/fixture.ts";
+import { legacyFlowFixture } from "./support/flow-store.ts";
 import { holdSessionLease, stopSessionLeaseHolders } from "./support/session-lease-holder.ts";
 
 const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "clean.ts");
@@ -31,9 +32,9 @@ interface Listed {
   size: number;
 }
 
-function runClean(args: string[], fault?: string, path?: string) {
+function runClean(args: string[], fault?: string, path?: string, extraEnv?: Record<string, string>) {
   const preload = fault ? ["--preload", join(import.meta.dir, "support", "cleanup-fault.ts")] : [];
-  const env = fault ? { ...ENV, CLEAN_FAULT: fault, CLEAN_FAULT_PATH: path ?? "" } : ENV;
+  const env = fault ? { ...ENV, CLEAN_FAULT: fault, CLEAN_FAULT_PATH: path ?? "", ...extraEnv } : ENV;
   const r = Bun.spawnSync([process.execPath, ...preload, CLEAN, ...args], { cwd: dir, env, stdout: "pipe", stderr: "pipe" });
   const stdout = r.stdout.toString();
   return { code: r.exitCode, stdout, stderr: r.stderr.toString(), json: r.exitCode === 0 ? JSON.parse(stdout) : undefined };
@@ -214,6 +215,75 @@ test.skipIf(process.platform === "win32")("uses archive activity rather than sta
   }
 });
 
+test.skipIf(process.platform === "win32")("a live non-owner mentioning two old paths on separate lines protects both rows", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const first = file("shop/verify/old.md", "first", 30);
+    const second = file("other/verify/old.md", "second", 30);
+    archive(SESSION, "2026-10-10", "Shop diagnostics", 5, first);
+    archive(ANOTHER, "2026-10-11", "Other diagnostics", 5, second);
+    const args = ["--home", home, ...leaseArgs()];
+    expect(clean(...args).json.rows).toMatchObject([
+      { repo_key: "other", name: ANOTHER }, { repo_key: "shop", name: SESSION },
+    ]);
+    archive(WITNESS, "2026-10-12", "Live non-owner", 20, `${first}\n${second}`);
+    expect(clean(...args).json).toMatchObject({ rows: [], kept: 2, withheld: [] });
+    expect(readFileSync(first, "utf8")).toBe("first");
+    expect(readFileSync(second, "utf8")).toBe("second");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("delete protects old Scratch mentioned at the lease scan", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const old = file("shop/verify/old.md", "keep", 30);
+    const live = `${archive(WITNESS, "2026-10-10", "Live witness", 20)}.jsonl`;
+    archive(SESSION, "2026-10-11", "Owner", 5, old);
+    const args = ["--home", home, ...leaseArgs()];
+    const selection = clean(...args).json.rows[0].snapshot;
+    const result = runClean([...args, "--delete", selection], "late-lease-mention", undefined,
+      { CLEAN_LATE_ARCHIVE: live, CLEAN_LATE_PATH: old });
+
+    expect(readFileSync(live, "utf8")).toContain(old);
+    expect(result.code).toBe(0);
+    expect(result.json).toMatchObject({
+      deleted: [], partial: [], skipped: [{ reason: "A session linked by the archive holds a lease" }],
+    });
+    expect(readFileSync(old, "utf8")).toBe("keep");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("delete withholds old Scratch when a held archive changes after its read", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const old = file("shop/verify/old.md", "keep", 30);
+    marked("shop", "verify", ANOTHER);
+    const markedFile = file(`shop/verify/${ANOTHER}/report.txt`, "delete", 30);
+    const live = `${archive(WITNESS, "2026-10-10", "Live witness", 20)}.jsonl`;
+    const owner = `${archive(SESSION, "2026-10-11", "Owner", 5, old)}.jsonl`;
+    const args = ["--home", home, ...leaseArgs()];
+    const rows = clean(...args).json.rows as (Listed & { name: string })[];
+    expect(rows.map(row => row.name).sort()).toEqual([SESSION, ANOTHER]);
+    const result = runClean([...args, "--delete", ...rows.map(row => row.snapshot)], "late-archive-mention", owner,
+      { CLEAN_LATE_ARCHIVE: live, CLEAN_LATE_PATH: old });
+
+    expect(readFileSync(live, "utf8")).toContain(old);
+    expect(result.code).toBe(0);
+    expect(result.json).toMatchObject({
+      deleted: [{ name: ANOTHER }], partial: [],
+      skipped: [{ name: SESSION, reason: expect.stringContaining("Held session archive changed during the search") }],
+    });
+    expect(readFileSync(old, "utf8")).toBe("keep");
+    expect(existsSync(markedFile)).toBe(false);
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
 test.skipIf(process.platform === "win32")("keeps the title of an attributed session with a compressed archive", async () => {
   const witness = await holdSessionLease(WITNESS, { home });
   try {
@@ -223,6 +293,32 @@ test.skipIf(process.platform === "win32")("keeps the title of an attributed sess
     rmSync(`${base}.jsonl`);
     expect(clean("--home", home, ...leaseArgs()).json).toMatchObject({
       rows: [{ kind: "session", label: "Compressed diagnostics", name: SESSION, size: 3 }],
+      withheld: [],
+    });
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("labels marked-only Scratch from a compressed archive header", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    for (const id of [SESSION, ANOTHER]) {
+      marked("shop", "verify", id);
+      file(`shop/verify/${id}/report.txt`, "old", 30);
+    }
+    const compressed = archive(SESSION, "2026-10-12", "Compressed diagnostics", 25, "x".repeat(96_000));
+    writeFileSync(`${compressed}.jsonl.gz`, Bun.gzipSync(readFileSync(`${compressed}.jsonl`)));
+    rmSync(`${compressed}.jsonl`);
+    const invalid = archive(ANOTHER, "2026-10-13", "Unreadable diagnostics", 25);
+    writeFileSync(`${invalid}.jsonl.gz`, "not a gzip stream");
+    rmSync(`${invalid}.jsonl`);
+
+    expect(clean("--home", home, ...leaseArgs()).json).toMatchObject({
+      rows: [
+        { label: "Compressed diagnostics", name: SESSION },
+        { label: ANOTHER.slice(0, 8), name: ANOTHER },
+      ],
       withheld: [],
     });
   } finally {
@@ -353,6 +449,51 @@ test.skipIf(process.platform === "win32")("old Scratch withholds one row per kin
     expect(existsSync(join(root, `mixed/verify/${SESSION}/old`))).toBe(true);
   } finally {
     await stopSessionLeaseHolders([lease]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("unreadable Scratch inventory withholds only rows that depend on it", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const flow = legacyFlowFixture(home, dir);
+    flow.state.lifecycle = [{ event: "closed", time: daysAgo(40).toISOString() }];
+    writeFileSync(flow.source, JSON.stringify(flow.state));
+    const repo = basename(dirname(dirname(flow.folder)));
+    const ticket = file(`${repo}/to-tickets/record/approved.json`, "ticket", 30);
+    const inaccessible = join(root, repo, "explain");
+    for (const [project, kind] of [[repo, "explain"], [repo, "verify"], ["other", "verify"]] as const) {
+      marked(project, kind);
+      file(`${project}/${kind}/${SESSION}/report.txt`, "keep", 30);
+    }
+    const args = ["--home", home, ...leaseArgs()];
+    const initial = clean(...args).json.rows as Listed[];
+    const affected = initial.find(row => row.repo_key === repo && row.kind === "session")!;
+    const record = initial.find(row => row.kind === "to-tickets")!;
+
+    const listing = runClean(args, "inventory", inaccessible);
+    expect(listing.code).toBe(0);
+    expect(listing.json.rows).toMatchObject([
+      { kind: "flow", path: flow.folder },
+      { kind: "to-tickets", path: dirname(ticket) },
+      { kind: "session", repo_key: "other" },
+    ]);
+    expect(listing.json.withheld).toEqual([{ reason: expect.stringContaining(inaccessible), count: 2 }]);
+
+    const projectFault = runClean(args, "inventory", join(root, repo));
+    expect(projectFault.code).toBe(0);
+    expect(projectFault.json.rows).toMatchObject([{ kind: "session", repo_key: "other" }]);
+    expect(projectFault.json.withheld).toEqual([{ reason: expect.stringContaining(repo), count: 1 }]);
+
+    const deletion = runClean([...args, "--delete", affected.snapshot, record.snapshot], "inventory", inaccessible);
+    expect(deletion.code).toBe(0);
+    expect(deletion.json).toMatchObject({
+      deleted: [{ kind: "to-tickets", removed: [dirname(ticket)] }],
+      partial: [], skipped: [{ kind: "session", reason: expect.stringContaining(inaccessible) }],
+    });
+    expect(readFileSync(join(inaccessible, SESSION, "report.txt"), "utf8")).toBe("keep");
+    expect(readFileSync(join(root, repo, "verify", SESSION, "report.txt"), "utf8")).toBe("keep");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
   }
 });
 

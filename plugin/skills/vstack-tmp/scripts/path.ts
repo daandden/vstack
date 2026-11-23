@@ -1,5 +1,3 @@
-// Creates and prints the project Scratch dir, an ordinary kind's session folder, or the to-tickets kind dir.
-
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";

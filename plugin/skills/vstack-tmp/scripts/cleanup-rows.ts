@@ -4,7 +4,7 @@ import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
 import { CLOSED_RETENTION, FLOW_KIND, flowRetentionEntries, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
 import { readScratchSession, SESSION_MARK, TICKETS_KIND } from "./scratch.ts";
 import { searchSessionArchives, type ArchiveLink } from "./session-archives.ts";
-import { readSessionLeases } from "./session-leases.ts";
+import { captureSessionLeases, readSessionLeases } from "./session-leases.ts";
 
 export const DAY = 86_400_000;
 
@@ -19,12 +19,17 @@ export type Row = {
   ancestors: string[]; error?: string; flow?: FlowRetentionEntry; age: number;
 };
 
-type OrdinaryRow = Row & { linkedSessions?: Set<string> };
+type OrdinaryRow = Row & { linkedSessions?: Set<string>; hasLegacy?: boolean };
 type OrdinaryEntry = { path: string; kind: string; ancestor: string } & (
   { protection: RowStatus } | { session: string } | { directory: boolean }
 );
-type ArchiveEvidence = { paths: Map<string, boolean>; links?: Map<string, ArchiveLink>; titles?: Map<string, string>; error?: string };
-type BuiltRows = { rows: Row[]; archiveError?: string; archiveTitles?: Map<string, string> };
+type ArchiveEvidence = { paths: Map<string, boolean>; links?: Map<string, ArchiveLink>; titles?: Map<string, string>; error?: string; heldArchiveError?: string };
+type DeleteEvidence = { archives: ArchiveEvidence; leases?: ReturnType<typeof captureSessionLeases> };
+type BuiltRows = { rows: Row[]; inventoryIssues: string[]; selectionError?: string; archiveTitles?: Map<string, string> };
+type InventoryIssue = { kind?: string; reason: string };
+type ProjectInventory = {
+  repo: string; dir: string; identity?: string; kinds: Map<string, string>; entries: OrdinaryEntry[]; issues: InventoryIssue[];
+};
 
 const offered = { state: "offered" } as const;
 const kept = (reason: string): RowStatus => ({ state: "kept", reason });
@@ -33,9 +38,9 @@ const errorMessage = (error: unknown) => error instanceof Error ? error.message 
 const stat = (path: string) => lstatSync(path, { bigint: true, throwIfNoEntry: false });
 const identity = (st: BigIntStats) => `${st.dev}:${st.ino}:${st.birthtimeNs}`;
 
-function realDirs(path: string) {
-  return readdirSync(path).sort().filter(name => stat(join(path, name))?.isDirectory());
-}
+const isRecordKind = (kind: string | undefined) => kind === FLOW_KIND || kind === TICKETS_KIND;
+const inventoryIssue = (path: string, error: unknown, kind?: string): InventoryIssue =>
+  ({ kind, reason: `Cannot read Scratch inventory at ${path}: ${errorMessage(error)}` });
 
 function addMember(ctx: CleanupContext, row: Row, path: string, marked: boolean) {
   let size = 0;
@@ -89,54 +94,76 @@ export function flowStatus(entry: FlowRetentionEntry, ctx: CleanupContext): { st
   return { age, status: age > Math.max(ctx.ttl, CLOSED_RETENTION) ? offered : kept("Newer than the TTL") };
 }
 
-function projectInventory(ctx: CleanupContext, repo: string, includeOrdinary: boolean) {
+function projectInventory(ctx: CleanupContext, repo: string, recordKind?: string): ProjectInventory | undefined {
   const dir = join(ctx.root, repo);
-  const kinds = realDirs(dir);
-  const entries: OrdinaryEntry[] = [];
-  if (includeOrdinary) for (const kind of kinds) {
-    if (kind === FLOW_KIND || kind === TICKETS_KIND) continue;
+  const project: ProjectInventory = { repo, dir, kinds: new Map(), entries: [], issues: [] };
+  let names: string[];
+  try {
+    const st = stat(dir);
+    if (!st?.isDirectory()) return undefined;
+    project.identity = identity(st);
+    names = recordKind ? [recordKind] : readdirSync(dir).sort();
+  } catch (error) {
+    project.issues.push(inventoryIssue(dir, error));
+    return project;
+  }
+  for (const kind of names) {
     const kindDir = join(dir, kind);
-    const ancestor = identity(lstatSync(kindDir, { bigint: true }));
-    for (const name of readdirSync(kindDir).sort()) {
+    let children: string[], ancestor: string;
+    try {
+      const st = stat(kindDir);
+      if (!st?.isDirectory()) continue;
+      ancestor = identity(st);
+      project.kinds.set(kind, ancestor);
+      if (isRecordKind(kind)) continue;
+      children = readdirSync(kindDir).sort();
+    } catch (error) {
+      project.issues.push(inventoryIssue(kindDir, error, kind));
+      continue;
+    }
+    for (const name of children) {
       const path = join(kindDir, name);
-      let st;
-      try { st = lstatSync(path); } catch { /* Measurement reports the unreadable entry on its row. */ }
-      const protection = kind === "grilling" ? historicalProtection(path) : undefined;
-      if (protection) {
-        entries.push({ path, kind, ancestor, protection });
-        continue;
+      try {
+        const st = lstatSync(path);
+        const protection = kind === "grilling" ? historicalProtection(path) : undefined;
+        if (protection) project.entries.push({ path, kind, ancestor, protection });
+        else {
+          const session = readScratchSession(path, st);
+          project.entries.push(session ? { path, kind, ancestor, session } : { path, kind, ancestor, directory: st.isDirectory() });
+        }
+      } catch (error) {
+        project.issues.push(inventoryIssue(path, error, kind));
       }
-      let session: string | undefined;
-      try { session = readScratchSession(path, st); } catch { /* An unreadable mark cannot establish ownership. */ }
-      entries.push(session ? { path, kind, ancestor, session } : { path, kind, ancestor, directory: st?.isDirectory() ?? false });
     }
   }
-  return { repo, dir, kinds, entries };
+  return project;
 }
 
-async function readArchives(ctx: CleanupContext, projects: ReturnType<typeof projectInventory>[]): Promise<ArchiveEvidence> {
+async function readArchives(ctx: CleanupContext, projects: ProjectInventory[], isHeld?: (id: string) => boolean): Promise<ArchiveEvidence> {
   const paths = new Map<string, boolean>();
   for (const { entries } of projects) for (const entry of entries) {
     if ("directory" in entry) paths.set(entry.path, entry.directory);
   }
   if (paths.size) {
-    try { return { paths, ...await searchSessionArchives(ctx.ompHome, ctx.root, paths) }; }
+    try { return { paths, ...await searchSessionArchives(ctx.ompHome, ctx.root, paths, isHeld) }; }
     catch (error) { return { paths, error: `Session attribution is unavailable: ${errorMessage(error)}` }; }
   }
   return { paths };
 }
 
-export function readDeleteArchives(ctx: CleanupContext, keys: RowKey[]) {
+export async function readDeleteEvidence(ctx: CleanupContext, keys: RowKey[]): Promise<DeleteEvidence> {
+  const ordinary = keys.filter(key => key[1] === "session" || key[1] === "folder");
+  const leases = ordinary.length ? captureSessionLeases(ctx.witness, ctx.ompHome) : undefined;
   const projects = [];
-  for (const repo of new Set(keys.map(key => key[0]))) {
-    try {
-      if (stat(join(ctx.root, repo))?.isDirectory()) projects.push(projectInventory(ctx, repo, true));
-    } catch { /* The rebuild reports unreadable Scratch or rejects old paths the scan did not cover. */ }
+  for (const repo of new Set(ordinary.map(key => key[0]))) {
+    const project = projectInventory(ctx, repo);
+    if (project) projects.push(project);
   }
-  return readArchives(ctx, projects);
+  return { leases, archives: await readArchives(ctx, projects, leases?.isHeld) };
 }
 
-function projectRows(ctx: CleanupContext, { repo, dir, kinds, entries }: ReturnType<typeof projectInventory>, archives: ArchiveEvidence, only?: RowKey): BuiltRows & { rows: OrdinaryRow[] } {
+function projectRows(ctx: CleanupContext, rootIdentity: string, project: ProjectInventory, archives: ArchiveEvidence, only?: RowKey) {
+  const { repo, dir, kinds, entries, issues } = project;
   const rows = new Map<string, OrdinaryRow>();
   const targetKind = only?.[1], targetName = only?.[2];
   let archiveError: string | undefined;
@@ -149,29 +176,29 @@ function projectRows(ctx: CleanupContext, { repo, dir, kinds, entries }: ReturnT
     }
     return current;
   }
-  for (const kind of kinds) {
-    if (kind !== FLOW_KIND && kind !== TICKETS_KIND || targetKind && kind !== targetKind) continue;
+  for (const [kind, ancestor] of kinds) {
+    if (!isRecordKind(kind) || targetKind && kind !== targetKind) continue;
     const kindDir = join(dir, kind);
-    if (kind === FLOW_KIND) {
-      for (const flow of flowRetentionEntries(dir, targetName)) {
-        if (flow.registry) continue;
-        const current = row(FLOW_KIND, flow.entry);
-        current.flow = flow;
-        current.size = flow.size;
-        current.members = [{ path: flow.path, identity: "", size: flow.size }];
-        Object.assign(current, flowStatus(flow, ctx));
+    try {
+      if (kind === FLOW_KIND) {
+        for (const flow of flowRetentionEntries(dir, targetName)) {
+          if (flow.registry) continue;
+          const current = row(FLOW_KIND, flow.entry);
+          current.flow = flow;
+          current.size = flow.size;
+          current.members = [{ path: flow.path, identity: flow.folderIdentity, size: flow.size }];
+          Object.assign(current, flowStatus(flow, ctx));
+        }
+      } else {
+        const names = targetName ? stat(join(kindDir, targetName)) ? [targetName] : [] : readdirSync(kindDir).sort();
+        for (const name of names) {
+          const current = row(TICKETS_KIND, name);
+          current.ancestors.push(ancestor);
+          addMember(ctx, current, join(kindDir, name), false);
+        }
       }
-      continue;
-    }
-    const ancestor = identity(lstatSync(kindDir, { bigint: true }));
-    const names = targetKind === TICKETS_KIND && targetName
-      ? stat(join(kindDir, targetName)) ? [targetName] : []
-      : readdirSync(kindDir).sort();
-    for (const name of names) {
-      const path = join(kindDir, name);
-      const current = row(TICKETS_KIND, name);
-      current.ancestors.push(ancestor);
-      addMember(ctx, current, path, false);
+    } catch (error) {
+      issues.push(inventoryIssue(kindDir, error, kind));
     }
   }
   for (const entry of entries) {
@@ -195,6 +222,7 @@ function projectRows(ctx: CleanupContext, { repo, dir, kinds, entries }: ReturnT
     const rowKind = link ? "session" : "folder", rowName = link?.owner ?? kind;
     if (only && (targetKind !== rowKind || targetName !== rowName)) continue;
     const current = row(rowKind, rowName);
+    current.hasLegacy = true;
     current.ancestors.push(ancestor);
     addMember(ctx, current, path, false);
     if (link) {
@@ -203,30 +231,40 @@ function projectRows(ctx: CleanupContext, { repo, dir, kinds, entries }: ReturnT
     }
   }
   const result = [...rows.values()];
-  const parentIds = result.some(row => !row.flow && row.key[1] !== "historical")
-    ? [identity(lstatSync(ctx.root, { bigint: true })), identity(lstatSync(dir, { bigint: true }))]
-    : [];
+  function blockingInventory([, kind, name]: RowKey) {
+    return issues.find(issue => issue.kind === undefined ||
+      (kind === "session" ? !isRecordKind(issue.kind) : kind === "folder" ? name === issue.kind : kind === issue.kind))?.reason;
+  }
   for (const current of result) {
     if (current.flow || current.key[1] === "historical") continue;
-    if (archiveError && current.key[1] !== TICKETS_KIND) current.status = withheld(archiveError);
+    const issue = blockingInventory(current.key);
+    if (issue) current.status = withheld(issue);
+    else if (archiveError && current.key[1] !== TICKETS_KIND) current.status = withheld(archiveError);
+    else if (current.hasLegacy && archives.heldArchiveError) current.status = withheld(archives.heldArchiveError);
     else if (current.error) current.status = withheld(current.error);
     else if (current.newest) {
       current.age = ctx.now - Number(current.newest.stamp) / 1e6;
       if (current.age <= ctx.ttl) current.status = kept("Newer than the TTL");
     } else current.status = kept("No files to age");
-    current.ancestors.unshift(...parentIds);
+    current.ancestors.unshift(rootIdentity, project.identity!);
   }
-  return { rows: result, archiveError };
+  const selectionError = only && (blockingInventory(only) ?? archiveError);
+  return { rows: result, selectionError, inventoryIssues: issues.map(issue => issue.reason) };
 }
 
-export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey; archives: ArchiveEvidence }): Promise<BuiltRows> {
-  if (!stat(ctx.root)?.isDirectory()) return { rows: [] };
+export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey } & DeleteEvidence): Promise<BuiltRows> {
+  const rootStat = stat(ctx.root);
+  if (!rootStat?.isDirectory()) return { rows: [], inventoryIssues: [] };
   const only = selection?.key;
-  const repos = only ? (stat(join(ctx.root, only[0]))?.isDirectory() ? [only[0]] : []) : realDirs(ctx.root);
-  const includeOrdinary = only?.[1] !== FLOW_KIND && only?.[1] !== TICKETS_KIND;
-  const projects = repos.map(repo => projectInventory(ctx, repo, includeOrdinary));
+  const repos = only ? [only[0]] : readdirSync(ctx.root).sort();
+  const recordKind = isRecordKind(only?.[1]) ? only?.[1] : undefined;
+  const projects = repos.flatMap(repo => {
+    const project = projectInventory(ctx, repo, recordKind);
+    return project ? [project] : [];
+  });
   const archives = selection?.archives ?? await readArchives(ctx, projects);
-  const builds = projects.map(project => projectRows(ctx, project, archives, only));
+  const rootIdentity = identity(rootStat);
+  const builds = projects.map(project => projectRows(ctx, rootIdentity, project, archives, only));
   const rows = builds.flatMap(build => build.rows);
   const sessions = new Set<string>();
   let needsEnumeration = false;
@@ -238,7 +276,7 @@ export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey; 
     if (row.linkedSessions) for (const id of row.linkedSessions) sessions.add(id);
   }
   if (sessions.size || needsEnumeration) {
-    const leases = readSessionLeases(sessions, ctx.witness, ctx.ompHome);
+    const leases = selection?.leases?.read(sessions) ?? readSessionLeases(sessions, ctx.witness, ctx.ompHome);
     for (const row of rows) {
       if (row.status.state !== "offered") continue;
       if (row.key[1] === "folder" && !leases.unnamed.available) row.status = withheld(leases.unnamed.reason);
@@ -255,5 +293,8 @@ export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey; 
       }
     }
   }
-  return { rows, archiveError: only ? builds[0]?.archiveError : undefined, archiveTitles: archives.titles };
+  return {
+    rows, selectionError: only ? builds[0]?.selectionError : undefined, archiveTitles: archives.titles,
+    inventoryIssues: builds.flatMap(build => build.inventoryIssues),
+  };
 }

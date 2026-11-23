@@ -255,6 +255,23 @@ test("overlapping writers publish and reuse one fully marked session folder", as
   expect(readdirSync(join(scratch, "explain"))).toEqual([SESSION]);
 });
 
+test.skipIf(process.platform !== "darwin" && process.platform !== "linux")("publishing never replaces an empty unmarked folder that arrives at rename time", () => {
+  const scratch = join(dir, "competing-scratch");
+  const kind = join(scratch, "verify");
+  const destination = join(kind, SESSION);
+  const result = Bun.spawnSync([
+    process.execPath, "--preload", PAUSE_SCRATCH_MARK, PATH_SCRIPT,
+    "--scratch-dir", scratch, "--session-id", SESSION, "verify",
+  ], {
+    cwd: dir, env: { ...ENV, VSTACK_COMPETING_SCRATCH: destination }, stdout: "pipe", stderr: "pipe",
+  });
+  expect(result.exitCode).toBe(2);
+  expect(result.stderr.toString()).toContain("unmarked");
+  expect(result.stdout.toString()).toBe("");
+  expect(readdirSync(destination)).toEqual([]);
+  expect(readdirSync(kind)).toEqual([SESSION]);
+});
+
 test("to-tickets resume derives the same reserved record path in another session", () => {
   const repo = makeRepo(dir, "publication-repo");
   const isolatedHome = join(repo, "scratch-home");

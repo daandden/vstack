@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -178,6 +178,25 @@ test("an expired Flow goes with its data and captured files, and its identity re
   expect(ok(run(["show", "--flow", keep.flow], w.at)).flow.id).toBe(keep.flow);
   expect(ok(run(["open", "--title", "Retention proof", "--skill", "explain"], w.at)).flow).not.toBe(f.flow);
   ok(run(["show"], w.at, "s-keep"));
+});
+
+test("an expired Flow snapshot skips a replacement folder", () => {
+  const w = world();
+  const f = finishedFlow(w);
+  ok(run(["close", "--flow", f.flow], w.at));
+  const at = lifecycleTime(w.at, f.flow);
+  const selected = snapshotFor(clean(w.at, at, 16), f.folder);
+  renameSync(f.folder, join(w.base, "original-flow"));
+  mkdirSync(f.folder);
+  const replacement = join(f.folder, "replacement-only.txt");
+  writeFileSync(replacement, "unselected");
+
+  const result = ok(clean(w.at, at, 16, "--delete", selected));
+  expect(result).toMatchObject({
+    deleted: [], partial: [], skipped: [{ path: f.folder, reason: "Flow identity changed" }],
+  });
+  expect(readFileSync(replacement, "utf8")).toBe("unselected");
+  expect(ok(run(["show", "--flow", f.flow], w.at)).flow.id).toBe(f.flow);
 });
 
 test("the Flow registry and session bindings are never offered as Scratch entries", () => {

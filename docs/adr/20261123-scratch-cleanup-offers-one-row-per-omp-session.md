@@ -10,6 +10,8 @@ Older Scratch has no session folder. The row builder links it to the session who
 
 This amends [ADR 20261116-scratch-cleanup-moves-to-a-tern-popup](20261116-scratch-cleanup-moves-to-a-tern-popup.md), whose popup listed and deleted single entries. The Command still only opens the popup. It also amends [ADR 0007](0007-isolated-subagents-write-artifacts-through-the-vstack-root.md), where a subagent never ran the path script. That rule kept an isolated clone from resolving the wrong repo key, and the subagent mode resolves none.
 
+This also amends [ADR 0009](0009-private-verify-skill-lives-under-the-vstack-root.md). Verify evidence goes under the marked `verify/<session-id>/` folder in both modes.
+
 ## Considered options
 
 - Group the existing per-entry rows under folder headers in the popup. The list would still load every entry, and the delete could not check what a header stood for.

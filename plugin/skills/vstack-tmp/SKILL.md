@@ -13,8 +13,8 @@ Scratch holds vstack output such as explanations, proof, and eval workspaces. Or
 At the top level, run the path script with the bash tool from inside the repo the work is about. In a subagent, use the [explicit mode](#subagents) instead.
 
 ```sh
-bun "$(realpath skill://vstack-tmp/scripts/path.ts)"          # project Scratch dir
-bun "$(realpath skill://vstack-tmp/scripts/path.ts)" <kind>   # marked session folder
+bun "$(realpath skill://vstack-tmp/scripts/path.ts)"
+bun "$(realpath skill://vstack-tmp/scripts/path.ts)" <kind>
 ```
 
 The script creates the directory and prints its absolute path with a trailing slash. With no kind it prints `~/.vstack/tmp/<repo-key>/`. An ordinary kind uses `PI_SESSION_ID` and prints `<repo-key>/<kind>/<session-id>/`. The script writes the mark and checks it before reusing a session folder. If the id is missing or invalid, the script exits 2 with a fix hint and creates no directories. It refuses an existing unmarked folder and leaves its contents alone.
@@ -29,11 +29,11 @@ The script creates the directory and prints its absolute path with a trailing sl
 
 ## Clean up
 
-The popup offers one row per inactive omp session in each project. It uses the newest file across that session's Scratch and defaults to 15 days. It withholds rows when it cannot verify their ownership or lease state. While a project has unmarked Scratch, cleanup withholds that project's session rows and its unmarked folder rows. Flow and to-tickets rows use their own retention checks.
+The popup offers one row per inactive omp session in each project. It uses the newest file across that session's Scratch and defaults to 15 days. Cleanup searches omp session archives for unmarked Scratch. If that archive evidence is missing or unreadable, cleanup withholds the affected project's session rows and unmarked folder rows. It also withholds rows that lack verified lease evidence. Flow and to-tickets rows use their own retention checks. Stray files directly under the `flow` kind stay protected.
 
 For a CLI listing, run `bun "$(realpath skill://vstack-tmp/scripts/clean.ts)" --home "$HOME"`. Supply `--witness <session-id>` and, if different from `--home`, `--omp-home <dir>` to verify leases against a running omp session. Without verified lease evidence the script withholds dependent rows. Listing makes no changes to Scratch.
 
-After confirmation, pass the selected rows' `snapshot` strings to `--delete` with the same home and age. The script rebuilds each row before its first removal and reports deleted, skipped, and partly deleted rows separately. After an interruption, list again and get a new confirmation.
+After the user confirms, pass the selected rows' `snapshot` strings to `--delete` with the same home and age. The script rebuilds each row before its first removal and reports deleted, skipped, and partly deleted rows separately. After an interruption, list again and get fresh confirmation from the user through the popup or through `ask`. In a Flow, follow `skill://flow-page`'s "Every ask in a Flow" contract. An agent never confirms on its own.
 
 ## Subagents
 

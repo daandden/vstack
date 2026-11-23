@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { removeEntry } from "../../flow-page/scripts/files.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
 import { compactFlowDatabase, deleteFlowEntry } from "../../flow-page/scripts/store.ts";
-import { buildRows, DAY, flowStatus, readDeleteArchives, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
+import { buildRows, DAY, flowStatus, readDeleteEvidence, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
 import { isScratchSessionId, scratchRoot, TICKETS_KIND } from "./scratch.ts";
 import { sessionTitles } from "./session-archives.ts";
 
@@ -68,11 +68,11 @@ function parseSnapshot(raw: string): Snapshot {
       if (segment(repo) && segment(name) && (kind === "flow" || kind === TICKETS_KIND || kind === "folder" || kind === "session" && isScratchSessionId(name)) &&
           snap.slice(2).every(value => typeof value === "string" && hash.test(value))) return snap as Snapshot;
     }
-  } catch { /* Report bad input below without starting a delete. */ }
+  } catch {}
   usage("--delete needs the unchanged snapshot from a listing, not an entry path");
 }
 function flowIdentity(flow: NonNullable<Row["flow"]>) {
-  return digest(flow.retention && flow.retention !== "unreadable" ? flow.retention.flow : null);
+  return digest([flow.folderIdentity, flow.retention !== "unreadable" ? flow.retention.flow : null]);
 }
 function membersHash(row: Row) {
   return row.flow ? flowIdentity(row.flow)
@@ -94,9 +94,9 @@ function display([repo_key, kind, name]: RowKey, titles: Map<string, string>, ro
 const print = (v: unknown) => new Promise<void>((done, fail) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`, (e) => (e ? fail(e) : done())));
 
 if (!values.delete) {
-  const { rows: inventory, archiveTitles } = await buildRows(ctx);
+  const { rows: inventory, inventoryIssues, archiveTitles } = await buildRows(ctx);
   const ready = inventory.filter(row => row.status.state === "offered");
-  const titles = archiveTitles ?? sessionTitles(ctx.ompHome, new Set(ready.filter(row => row.key[1] === "session").map(row => row.key[2])));
+  const titles = archiveTitles ?? await sessionTitles(ctx.ompHome, new Set(ready.filter(row => row.key[1] === "session").map(row => row.key[2])));
   const rows = ready.map(row => {
     const [_, kind, name] = row.key;
     const closed = row.flow?.retention;
@@ -107,6 +107,7 @@ if (!values.delete) {
     };
   });
   const reasons = new Map<string, number>();
+  for (const reason of inventoryIssues) reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
   let kept = 0;
   for (const { status } of inventory) {
     if (status.state === "kept") kept++;
@@ -119,8 +120,8 @@ if (!values.delete) {
 if (positionals.length === 0) usage("--delete needs at least one row snapshot");
 const targets = [...new Set(positionals)].map(parseSnapshot);
 const selected = targets.filter(snap => snap[2] === request).map(snap => snap[1]);
-const archives = await readDeleteArchives(ctx, selected);
-const titles = archives.titles ?? sessionTitles(ctx.ompHome, new Set(selected.filter(key => key[1] === "session").map(key => key[2])));
+const evidence = await readDeleteEvidence(ctx, selected);
+const titles = evidence.archives.titles ?? await sessionTitles(ctx.ompHome, new Set(selected.filter(key => key[1] === "session").map(key => key[2])));
 type Completed = ReturnType<typeof display> & { removed: string[]; freed: number };
 type Failure = { path: string; reason: string };
 const deleted: Completed[] = [];
@@ -135,20 +136,20 @@ for (const [_, key, scope, members, newest] of targets) {
     continue;
   }
   let row: Row | undefined;
-  let archiveError: string | undefined;
+  let selectionError: string | undefined;
   try {
     checkAncestors(root);
-    const rebuilt = await buildRows(ctx, { key, archives });
+    const rebuilt = await buildRows(ctx, { key, ...evidence });
     [row] = rebuilt.rows;
-    archiveError = rebuilt.archiveError;
+    selectionError = rebuilt.selectionError;
   } catch (error) {
     skipped.push({ ...display(key, titles), reason: (error as Error).message });
     continue;
   }
   const shown = display(key, titles, row);
-  const reason = !row ? (key[1] === "session" || key[1] === "folder" ? archiveError : undefined) ?? "Row is missing"
+  const reason = !row ? selectionError ?? "Row is missing"
     : row.status.state !== "offered" ? row.status.reason
-    : membersHash(row) !== members ? "Row members changed or were replaced"
+    : membersHash(row) !== members ? row.flow ? "Flow identity changed" : "Row members changed or were replaced"
     : !row.flow && newestHash(row) !== newest ? "Newest file or its time changed"
     : undefined;
   if (!row || reason) {

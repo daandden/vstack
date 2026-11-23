@@ -1,4 +1,4 @@
-import { constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, type Stats } from "node:fs";
+import { constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, type BigIntStats } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -264,9 +264,9 @@ export class FlowStore {
       } catch (error) { report(`binding ${basename(path)}`, path, error); }
     }
   }
-  retention(path: string, st: Stats): FlowRetentionEntry {
+  retention(path: string, st: BigIntStats): FlowRetentionEntry {
     const entry = basename(path);
-    if (entry.startsWith(".")) return { path, entry, registry: true, size: 0, retention: "unreadable" };
+    if (entry.startsWith(".")) return { path, entry, registry: true, folderIdentity: "", size: 0, retention: "unreadable" };
     const row = this.db.select({ id: flows.id, closed: flows.closed }).from(flows).where(eq(flows.folder, entry)).get();
     return retentionEntry(path, st, row);
   }
@@ -276,7 +276,7 @@ export class FlowStore {
     let deletedId: string | undefined;
     try {
       reason = this.migrating(() => {
-        const reason = recheck(this.retention(path, lstatSync(path)));
+        const reason = recheck(this.retention(path, lstatSync(path, { bigint: true })));
         if (reason) return reason;
         const row = this.db.select({ id: flows.id }).from(flows).where(eq(flows.folder, basename(path))).get();
         deletedId = row?.id;
@@ -315,11 +315,11 @@ export function hostedStore(home: string, key: string): FlowStore | undefined {
   return realpathSync(dir).startsWith(realpathSync(scratchRoot(home)) + sep) ? new FlowStore(dir, true) : undefined;
 }
 
-export type FlowRetentionEntry = { path: string; entry: string; registry: boolean; size: number; retention: Retention };
+export type FlowRetentionEntry = { path: string; entry: string; registry: boolean; folderIdentity: string; size: number; retention: Retention };
 type IndexedRetention = { id: string; closed: string | null };
 
-function retentionEntry(path: string, st: Stats, row?: IndexedRetention, allowLegacy = false): FlowRetentionEntry {
-  const base = { path, entry: basename(path), registry: false, size: 0 };
+function retentionEntry(path: string, st: BigIntStats, row?: IndexedRetention, allowLegacy = false): FlowRetentionEntry {
+  const base = { path, entry: basename(path), registry: false, folderIdentity: `${st.dev}:${st.ino}:${st.birthtimeNs}`, size: 0 };
   if (!st.isDirectory()) return { ...base, retention: "unreadable" };
   try {
     let retention: Retention = "unreadable";
@@ -394,12 +394,19 @@ export function flowRetentionEntries(projectScratch: string, only?: string): Flo
   const dir = join(projectScratch, FLOW_KIND);
   const names = (only === undefined ? readdirSync(dir).sort() : [only]).filter(name => !name.startsWith("."));
   if (!names.length) return [];
-  let indexed: Map<string, IndexedRetention> | undefined;
-  try { indexed = indexedRetention(projectScratch); } catch { /* Preserve Flows if the lifecycle cannot be established. */ }
+  function readIndex(): Map<string, IndexedRetention> | undefined {
+    try { return indexedRetention(projectScratch); }
+    catch { return undefined; }
+  }
+  const indexed = readIndex();
   return names.flatMap(name => {
     const path = join(dir, name);
-    const st = lstatSync(path, { throwIfNoEntry: false });
-    return st ? [retentionEntry(path, st, indexed?.get(name), indexed !== undefined)] : [];
+    try {
+      const st = lstatSync(path, { bigint: true, throwIfNoEntry: false });
+      return st ? [retentionEntry(path, st, indexed?.get(name), indexed !== undefined)] : [];
+    } catch {
+      return [{ path, entry: name, registry: false, folderIdentity: "", size: 0, retention: "unreadable" }];
+    }
   });
 }
 export async function deleteFlowEntry(path: string, recheck: (entry: FlowRetentionEntry) => string | undefined): Promise<string | undefined> {

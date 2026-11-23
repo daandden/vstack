@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { chmodSync, closeSync, lstatSync, openSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, unlinkSync, writeFileSync, type Stats } from "node:fs";
+import { chmodSync, closeSync, lstatSync, openSync, readdirSync, renameSync, rmSync, rmdirSync, statSync, unlinkSync, writeFileSync, type BigIntStats, type Stats } from "node:fs";
 import { constants } from "node:os";
 import { dlopen, read } from "bun:ffi";
 import { join } from "node:path";
@@ -34,16 +34,16 @@ export function walkFiles(dir: string, visit: (path: string, full: string) => vo
 }
 
 /** Measures an entry without following links. Unreadable children fail the measurement. */
-export function measureEntry(path: string, st: Stats): { newest: number; size: number } {
-  let newest = st.mtimeMs, size = 0;
-  function walk(path: string, st: Stats) {
+export function measureEntry(path: string, st: Stats | BigIntStats): { newest: number; size: number } {
+  let newest = Number(st.mtimeMs), size = 0;
+  function walk(path: string, st: Stats | BigIntStats) {
     if (st.isDirectory()) {
       for (const name of readdirSync(path)) {
         const child = join(path, name);
         walk(child, lstatSync(child));
       }
-    } else size += st.size;
-    newest = Math.max(newest, st.mtimeMs);
+    } else size += Number(st.size);
+    newest = Math.max(newest, Number(st.mtimeMs));
   }
   walk(path, st);
   return { newest, size };

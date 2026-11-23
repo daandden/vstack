@@ -1,9 +1,8 @@
-// Ordinary writes use <home>/.vstack/tmp/<repo-key>/<kind>/<session-id>/.
-
 import { createHash } from "node:crypto";
-import { closeSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
+import { dlopen } from "bun:ffi";
 
 /** The key for Scratch made outside any git repo. */
 export const GLOBAL_KEY = "_global";
@@ -27,6 +26,30 @@ export function readScratchSession(path: string, entry = lstatSync(path, { throw
   if (stat?.isFile() && stat.size === id.length + 1 && readFileSync(mark, "utf8") === `${id}\n`) return id;
 }
 
+function publishScratchSession(source: string, target: string): boolean {
+  if (process.platform === "darwin") {
+    const RENAME_EXCL = 4;
+    const lib = dlopen("/usr/lib/libSystem.dylib", { renamex_np: { args: ["ptr", "ptr", "u32"], returns: "i32" } });
+    try {
+      return lib.symbols.renamex_np(Buffer.from(`${source}\0`), Buffer.from(`${target}\0`), RENAME_EXCL) === 0;
+    } finally { lib.close(); }
+  }
+  if (process.platform === "linux") {
+    const AT_FDCWD = -100, RENAME_NOREPLACE = 1;
+    const lib = dlopen("libc.so.6", { renameat2: { args: ["i32", "ptr", "i32", "ptr", "u32"], returns: "i32" } });
+    try {
+      return lib.symbols.renameat2(AT_FDCWD, Buffer.from(`${source}\0`), AT_FDCWD, Buffer.from(`${target}\0`), RENAME_NOREPLACE) === 0;
+    } finally { lib.close(); }
+  }
+  if (process.platform === "win32") {
+    const lib = dlopen("kernel32.dll", { MoveFileW: { args: ["ptr", "ptr"], returns: "i32" } });
+    try {
+      return lib.symbols.MoveFileW(Buffer.from(`${source}\0`, "utf16le"), Buffer.from(`${target}\0`, "utf16le")) !== 0;
+    } finally { lib.close(); }
+  }
+  throw new Error(`Cannot publish a Scratch session folder without atomic no-replace rename on ${process.platform}`);
+}
+
 /** Return the session folder, or undefined when an existing entry has no valid mark. */
 export function createScratchSession(scratchDir: string, kind: string, id: string): string | undefined {
   if (!KIND.test(kind) || !isScratchSessionId(id)) throw new Error("Invalid Scratch kind or session id");
@@ -39,20 +62,11 @@ export function createScratchSession(scratchDir: string, kind: string, id: strin
   let published = false;
   try {
     writeFileSync(join(pending, SESSION_MARK), `${id}\n`, { flag: "wx" });
-    // On POSIX, rename can replace an empty directory. Leave old entries in place.
-    const appeared = lstatSync(dir, { throwIfNoEntry: false });
-    if (appeared) return readScratchSession(dir, appeared) === id ? dir : undefined;
-    try {
-      renameSync(pending, dir);
-      published = true;
-      return dir;
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (code !== "EEXIST" && code !== "ENOTEMPTY" && code !== "EPERM") throw error;
-      const winner = lstatSync(dir, { throwIfNoEntry: false });
-      if (!winner) throw error;
-      return readScratchSession(dir, winner) === id ? dir : undefined;
-    }
+    published = publishScratchSession(pending, dir);
+    if (published) return dir;
+    const winner = lstatSync(dir, { throwIfNoEntry: false });
+    if (!winner) throw new Error(`Could not publish Scratch session folder without replacing an existing entry: ${dir}`);
+    return readScratchSession(dir, winner) === id ? dir : undefined;
   } finally {
     if (!published) rmSync(pending, { recursive: true, force: true });
   }
