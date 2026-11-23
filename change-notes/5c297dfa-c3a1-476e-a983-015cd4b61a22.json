@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "/vstack-clean groups Scratch by omp session and project, explains withheld rows, and checks each selected row again before deletion. Listing no longer writes to Flow storage."
+  ]
+}

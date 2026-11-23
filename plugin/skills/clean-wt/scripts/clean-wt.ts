@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
 import { checkoutEntry, checkoutLocations, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
-import { readSessionLeases, sessionLeaseName, sessionOwnersDir } from "./session-leases.ts";
+import { readSessionLeases, sessionLeaseName, sessionOwnersDir } from "../../vstack-tmp/scripts/session-leases.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);

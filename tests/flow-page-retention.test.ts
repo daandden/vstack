@@ -45,7 +45,12 @@ const ok = (r: Run): any => {
   expect(r.code).toBe(0);
   return r.json;
 };
-const listed = (r: Run): string[] => ok(r).entries.map((e: { path: string }) => e.path);
+const listed = (r: Run): string[] => ok(r).rows.map((row: { path: string }) => row.path);
+const snapshotFor = (r: Run, path: string): string => {
+  const snapshot = ok(r).rows.find((row: { path: string }) => row.path === path)?.snapshot;
+  expect(snapshot).toEqual(expect.any(String));
+  return snapshot;
+};
 
 const contribution = (...items: object[]) => ({ version: 1, items });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });
@@ -67,9 +72,6 @@ test("an open Flow is never listed or deleted, however old its files are", () =>
   expect(ok(run(["show", "--flow", f.flow], w.at)).open).toBe(true);
 
   for (const age of ["90d", "1d", "1h"]) expect(listed(clean(w.at, opened, 500, "--older-than", age))).not.toContain(f.folder);
-  const del = ok(clean(w.at, opened, 500, "--older-than", "1d", "--delete", f.folder));
-  expect(del.deleted).toEqual([]);
-  expect(del.skipped.map((s: { path: string }) => s.path)).toEqual([f.folder]);
   expect(existsSync(f.folder)).toBe(true);
   expect(ok(run(["show", "--flow", f.flow], w.at)).flow.id).toBe(f.flow);
 });
@@ -84,14 +86,13 @@ test("a closed Flow becomes eligible 15 days after its close, whatever its file 
 
   touchStoredFiles(f.folder, at - 1000 * DAY);
   expect(listed(clean(w.at, at, 14))).not.toContain(f.folder);
-  expect(ok(clean(w.at, at, 14, "--delete", f.folder)).deleted).toEqual([]);
+  expect(listed(clean(w.at, at, 16, "--older-than", "30d"))).not.toContain(f.folder);
 
   for (const read of [["show", "--flow", f.flow], ["find", `slug:${ok(run(["show", "--flow", f.flow], w.at)).flow.slug}`]]) ok(run(read, w.at));
   expect(lifecycleTime(w.at, f.flow)).toBe(at);
   touchStoredFiles(f.folder, at + 15 * DAY);
   const due = ok(clean(w.at, at, 16));
-  expect(due.entries.map((e: { path: string }) => e.path)).toContain(f.folder);
-  expect(due.entries.find((e: { path: string }) => e.path === f.folder).age_days).toBe(16);
+  expect(due.rows.find((row: { path: string }) => row.path === f.folder).age_days).toBe(16);
   expect(listed(clean(w.at, at, 10, "--older-than", "1d"))).not.toContain(f.folder);
 });
 
@@ -120,6 +121,7 @@ test("reopening adds a Stage, keeps the history, and protects the Flow again unt
   const f = finishedFlow(w);
   ok(run(["close", "--flow", f.flow], w.at));
   const closedAt = lifecycleTime(w.at, f.flow);
+  const selected = snapshotFor(clean(w.at, closedAt, 16), f.folder);
 
   const re = ok(run(["reopen", "--flow", f.flow, "--skill", "grill-me", "--parent", f.stage], w.at, "s-2"));
   expect(re.bound).toBe(true);
@@ -131,7 +133,9 @@ test("reopening adds a Stage, keeps the history, and protects the Flow again unt
   expect(s.stages[1].parent).toBe(f.stage);
 
   expect(listed(clean(w.at, closedAt, 400))).not.toContain(f.folder);
-  expect(ok(clean(w.at, closedAt, 400, "--delete", f.folder)).deleted).toEqual([]);
+  const result = ok(clean(w.at, closedAt, 400, "--delete", selected));
+  expect(result.deleted).toEqual([]);
+  expect(result.skipped).toMatchObject([{ path: f.folder, reason: "Open Flow" }]);
   ok(run(["submit"], w.at, "s-2", contribution(FINISH)));
   ok(run(["close"], w.at, "s-2"));
   expect(listed(clean(w.at, lifecycleTime(w.at, f.flow), 14))).not.toContain(f.folder);
@@ -153,10 +157,11 @@ test("an expired Flow goes with its data and captured files, and its identity re
   const keep = finishedFlow(w, "s-keep");
   ok(run(["close", "--flow", f.flow], w.at));
   const at = lifecycleTime(w.at, f.flow);
-  touchStoredFiles(f.folder, at + 15 * DAY);
+  const selected = snapshotFor(clean(w.at, at, 16), f.folder);
+  touchStoredFiles(f.folder, at + 17 * DAY);
 
-  const del = ok(clean(w.at, at, 16, "--delete", f.folder));
-  expect(del.deleted).toEqual([f.folder]);
+  const del = ok(clean(w.at, at, 16, "--delete", selected));
+  expect(del.deleted).toMatchObject([{ path: f.folder, removed: [f.folder] }]);
   expect(existsSync(f.folder)).toBe(false);
   expect(existsSync(late)).toBe(false);
 
@@ -181,25 +186,26 @@ test("the Flow registry and session bindings are never offered as Scratch entrie
   const flowsDir = dirname(f.folder);
   touchStoredFiles(flowsDir, Date.now() - 1000 * DAY);
   const r = ok(clean(w.at, Date.now(), 0, "--older-than", "1d"));
-  expect(r.entries.filter((e: { kind: string }) => e.kind === "flow")).toEqual([]);
+  expect(r.rows.filter((row: { kind: string }) => row.kind === "flow")).toEqual([]);
   const meta = flowMetadataPaths(w.at.home, f.flow);
   expect(meta.length).toBeGreaterThan(0);
-  const del = clean(w.at, Date.now(), 0, "--older-than", "1d", "--delete", ...meta);
-  expect(del.code).toBe(2);
   for (const p of meta) expect(existsSync(p)).toBe(true);
   expect(ok(run(["show"], w.at, "s-1")).flow.id).toBe(f.flow);
 });
 
 test("other Scratch keeps its newest-file retention, measured from --now", () => {
   const w = world();
-  const entry = join(w.home, ".vstack", "tmp", "shop-aaaaaa", "explain", "page.html");
+  const entry = join(w.home, ".vstack", "tmp", "shop-aaaaaa", "to-tickets", "record");
   mkdirSync(dirname(entry), { recursive: true });
   writeFileSync(entry, "x");
   const now = Date.now();
   utimesSync(entry, new Date(now - 10 * DAY), new Date(now - 10 * DAY));
   expect(listed(clean(w.at, now, 0, "--older-than", "14d"))).not.toContain(entry);
   expect(listed(clean(w.at, now, 5, "--older-than", "14d"))).toContain(entry);
-  expect(ok(clean(w.at, now, 0, "--older-than", "14d", "--delete", entry)).deleted).toEqual([]);
-  expect(ok(clean(w.at, now, 5, "--older-than", "14d", "--delete", entry)).deleted).toEqual([entry]);
+  const selected = snapshotFor(clean(w.at, now, 5, "--older-than", "14d"), entry);
+  expect(ok(clean(w.at, now, 0, "--older-than", "14d", "--delete", selected)).skipped)
+    .toMatchObject([{ path: entry, reason: "Newer than the TTL" }]);
+  expect(ok(clean(w.at, now, 5, "--older-than", "14d", "--delete", selected)).deleted)
+    .toMatchObject([{ path: entry, removed: [entry] }]);
   expect(existsSync(entry)).toBe(false);
 });

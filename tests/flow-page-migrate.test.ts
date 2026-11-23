@@ -110,10 +110,10 @@ test("automatic cleanup protects an open historical structured Flow regardless o
   utimesSync(join(folder, "figures"), old, old);
   utimesSync(folder, old, old);
   const before = tree(folder);
-  const result = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z", "--delete", folder], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
+  const result = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z"], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
   expect(result.stderr.toString()).toBe("");
   expect(result.exitCode).toBe(0);
-  expect(JSON.parse(result.stdout.toString()).deleted).toEqual([]);
+  expect(JSON.parse(result.stdout.toString())).toMatchObject({ rows: [], kept: 1, withheld: [] });
   expect(tree(folder)).toEqual(before);
   expect(ok(run(w, ["find", "spec:41"])).migration_required).toBe(true);
 });
@@ -144,10 +144,16 @@ test("an expired migrated Flow cannot be resurrected by its retained historical 
   const migrated = ok(run(w, ["migrate", source]));
   const folder = storedFolder(w.home, migrated.flow);
   const beforeSource = tree(source);
-  const clean = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z", "--delete", folder], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
+  const args = [process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z"];
+  const opts = { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" } as const;
+  const list = Bun.spawnSync(args, opts);
+  expect(list.exitCode).toBe(0);
+  const row = JSON.parse(list.stdout.toString()).rows.find((row: { path: string }) => row.path === folder);
+  expect(row?.snapshot).toEqual(expect.any(String));
+  const clean = Bun.spawnSync([...args, "--delete", row.snapshot], opts);
   expect(clean.stderr.toString()).toBe("");
   expect(clean.exitCode).toBe(0);
-  expect(JSON.parse(clean.stdout.toString()).deleted).toEqual([join(w.scratch, "flow", migrated.flow)]);
+  expect(JSON.parse(clean.stdout.toString()).deleted).toMatchObject([{ removed: [folder] }]);
   expect(existsSync(folder)).toBe(false);
   const before = tree(source);
   for (const args of [["find", "spec:41"], ["migrate", source], ["show", "--flow", migrated.flow]]) {

@@ -33,20 +33,19 @@ export function walkFiles(dir: string, visit: (path: string, full: string) => vo
   walk("");
 }
 
-/** Measures an entry without following symbolic links. */
+/** Measures an entry without following links. Unreadable children fail the measurement. */
 export function measureEntry(path: string, st: Stats): { newest: number; size: number } {
-  let newest = st.mtimeMs;
-  let size = st.isDirectory() ? 0 : st.size;
-  if (st.isDirectory()) {
-    for (const name of readdirSync(path)) {
-      const child = join(path, name);
-      let cst: Stats;
-      try { cst = lstatSync(child); } catch { continue; }
-      const sub = measureEntry(child, cst);
-      newest = Math.max(newest, sub.newest);
-      size += sub.size;
-    }
+  let newest = st.mtimeMs, size = 0;
+  function walk(path: string, st: Stats) {
+    if (st.isDirectory()) {
+      for (const name of readdirSync(path)) {
+        const child = join(path, name);
+        walk(child, lstatSync(child));
+      }
+    } else size += st.size;
+    newest = Math.max(newest, st.mtimeMs);
   }
+  walk(path, st);
   return { newest, size };
 }
 

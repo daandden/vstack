@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { writeExecutable } from "./support/executable.ts";
 import { holdSessionLease, stopSessionLeaseHolders } from "./support/session-lease-holder.ts";
 
-const MODULE = join(import.meta.dir, "../plugin/skills/clean-wt/scripts/session-leases.ts");
+const MODULE = join(import.meta.dir, "../plugin/skills/vstack-tmp/scripts/session-leases.ts");
 const WITNESS = "fixture-witness";
 const HELD = "held/session";
 const FREE = "free-session";

@@ -30,6 +30,11 @@ function execute(w: World, command: string[], input?: unknown) {
 }
 const cli = (w: World, args: string[], input?: unknown) => execute(w, [script, ...args, "--home", w.home, "--session", "compaction-fixture", "--agent", "fixture"], input);
 const clean = (w: World, args: string[] = []) => execute(w, [cleanup, "--home", w.home, "--now", new Date(Date.now() + 20 * DAY).toISOString(), ...args]);
+const snapshots = (listing: ReturnType<typeof clean>, paths: string[]): string[] => paths.map(path => {
+  const row = listing.rows.find((row: { path: string }) => row.path === path);
+  expect(row?.snapshot).toEqual(expect.any(String));
+  return row.snapshot;
+});
 const document = (title: string, prose: string) => ({ version: 1, items: [{ kind: "result", shape: "document", title, sections: [{ heading: "Content", blocks: [{ prose }] }] }] });
 function open(w: World, title: string, prose: string, closed = false) {
   const flow = cli(w, ["open", "--title", title, "--skill", "explain"]);
@@ -50,8 +55,10 @@ test("confirmed Flow deletion shrinks the database and preserves remaining Flows
   try {
     reader.exec("PRAGMA wal_checkpoint(TRUNCATE)");
     const bytes = statSync(w.database).size;
-    expect(clean(w).entries.map((entry: { path: string }) => entry.path).sort()).toEqual(expired.map(flow => flow.folder).sort());
-    expect(clean(w, ["--delete", ...expired.map(flow => flow.folder)])).toEqual({ root: join(w.home, ".vstack/tmp"), deleted: expired.map(flow => flow.folder), skipped: [], pruned: [] });
+    const listing = clean(w);
+    expect(listing.rows.map((row: { path: string }) => row.path).sort()).toEqual(expired.map(flow => flow.folder).sort());
+    const result = clean(w, ["--delete", ...snapshots(listing, expired.map(flow => flow.folder))]);
+    expect(result).toMatchObject({ deleted: expired.map(flow => ({ removed: [flow.folder] })), skipped: [], partial: [], pruned: [], maintenance_errors: [] });
     expect(statSync(w.database).size).toBeLessThan(bytes);
     expect(cli(w, ["show", "--flow", keep.flow])).toEqual(before);
     for (const flow of expired) expect(existsSync(flow.folder)).toBe(false);
@@ -62,15 +69,17 @@ test("fully imported projects with no Flow deletion leave the database bytes unc
   const w = world();
   const keep = open(w, "Open Flow", "Never compact a project that deletes no Flows.");
   const before = readFileSync(w.database);
-  const missing = join(w.scratch, "flow", "missing-flow");
-  const other = join(w.scratch, "explain", "old.txt");
-  mkdirSync(join(w.scratch, "explain"));
+  const other = join(w.scratch, "to-tickets", "old-record");
+  mkdirSync(join(w.scratch, "to-tickets"));
   writeFileSync(other, "Other Scratch");
   utimesSync(other, new Date(0), new Date(0));
-  expect(clean(w).entries.map((entry: { path: string }) => entry.path)).toEqual([other]);
+  const listing = clean(w);
+  expect(listing.rows.map((row: { path: string }) => row.path)).toEqual([other]);
+  expect(listing.kept).toBe(1);
+  expect(existsSync(keep.folder)).toBe(true);
   expect(readFileSync(w.database)).toEqual(before);
-  expect(clean(w, ["--delete", keep.folder, missing, other])).toEqual({
-    root: join(w.home, ".vstack/tmp"), deleted: [other], skipped: [{ path: keep.folder, reason: "open Flow" }, { path: missing, reason: "missing" }], pruned: [join(w.scratch, "explain")],
+  expect(clean(w, ["--delete", ...snapshots(listing, [other])])).toMatchObject({
+    deleted: [{ removed: [other] }], skipped: [], partial: [], pruned: [join(w.scratch, "to-tickets")], maintenance_errors: [],
   });
   expect(readFileSync(w.database)).toEqual(before);
 });
@@ -87,7 +96,7 @@ test("a submit waits for an overlapping compaction and commits exactly once", as
   const preload = join(import.meta.dir, "support/flow-compaction-preload.ts");
   const compacting = join(w.base, "compacting"), writing = join(w.base, "writing"), release = join(w.base, "release");
   const env = { ...w.env, FLOW_COMPACTION_LIBRARY: library };
-  const cleaner = Bun.spawn([process.execPath, "--preload", preload, cleanup, "--home", w.home, "--now", new Date(Date.now() + 20 * DAY).toISOString(), "--delete", expired.folder], {
+  const cleaner = Bun.spawn([process.execPath, "--preload", preload, cleanup, "--home", w.home, "--now", new Date(Date.now() + 20 * DAY).toISOString(), "--delete", ...snapshots(clean(w), [expired.folder])], {
     cwd: w.cwd, env: { ...env, FLOW_COMPACTION_ENTERED: compacting, FLOW_COMPACTION_RELEASE: release }, stdout: "pipe", stderr: "pipe",
   });
   const startWriter = () => Bun.spawn([process.execPath, "--preload", preload, script, "submit", "--home", w.home, "--session", "compaction-fixture", "--agent", "fixture"], {
@@ -112,7 +121,7 @@ test("a submit waits for an overlapping compaction and commits exactly once", as
     ]);
     expect(cleanError).toBe("");
     expect(cleanCode).toBe(0);
-    expect(JSON.parse(cleanOutput).deleted).toEqual([expired.folder]);
+    expect(JSON.parse(cleanOutput).deleted).toMatchObject([{ removed: [expired.folder] }]);
     expect(writeError).toBe("");
     expect(writeCode).toBe(0);
     expect(JSON.parse(writeOutput)).toMatchObject({ flow: keep.flow, stage: keep.stage, revision: before.revision + 1 });

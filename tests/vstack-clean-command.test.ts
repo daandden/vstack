@@ -12,7 +12,8 @@ const READY = {
     { id: "vstack-clean", status: "ready", window: true, blocks: [{ id: "popup" }] },
   ],
 };
-const trigger = (pane: string, age: string) => `${HOME}/.vstack/clean-popup/${pane}/${age}`;
+const WITNESS = "019abcde-1234-7abc-8def-000000000001";
+const trigger = (pane: string, age: string) => `${HOME}/.vstack/clean-popup/${pane}/${age}/${WITNESS}`;
 const handled = (path: string): Exec => ({ stdout: "", stderr: `tern open: ${path} cannot open in a file block\n`, code: 1, killed: false });
 const ok = (value: unknown): Exec => ({ stdout: JSON.stringify(value), stderr: "", code: 0, killed: false });
 
@@ -29,19 +30,21 @@ afterEach(() => {
   }
 });
 
-function host(options: { plugins?: Exec; open?: (path: string) => Exec; hasUI?: boolean } = {}) {
+function host(options: { plugins?: Exec; open?: (path: string) => Exec; blocks?: unknown[]; hasUI?: boolean } = {}) {
   return fakeHost({
     hasUI: options.hasUI ?? true,
+    sessionId: WITNESS,
     exec: async (_command, args) => {
       if (args[0] === "plugin") return options.plugins ?? ok(READY);
       if (args[0] === "open") return (options.open ?? handled)(args[1]!);
+      if (args[0] === "ls") return ok({ sessions: [{ tabs: [{ blocks: options.blocks ?? [] }] }] });
       throw new Error(`unexpected Tern call ${args.join(" ")}`);
     },
   });
 }
 const notes = (h: ReturnType<typeof host>) => h.uiCalls.filter(call => call.method === "notify").map(call => ({ text: call.args[0] as string, level: call.args[1] }));
 
-test("inside Tern with the plugin ready, the Command opens the popup over its pane with the 15-day default and nothing else", async () => {
+test("the Command opens the popup with its pane, age, omp home, and session witness, then returns", async () => {
   const h = host();
   await h.callCommand("vstack-clean");
   expect(h.execCalls).toEqual([
@@ -57,6 +60,17 @@ test("an age argument travels to the popup", async () => {
   const h = host();
   await h.callCommand("vstack-clean", " 30d ");
   expect(h.execCalls.at(-1)).toEqual({ command: TERN, args: ["open", trigger("7", "30d")] });
+});
+
+test("a successful Tern open is accepted only when the window contains this popup and its arguments", async () => {
+  const h = host({
+    open: () => ok(null),
+    blocks: [{ program: "vstack-clean.popup", args: [HOME, "15d", WITNESS] }],
+  });
+  await h.callCommand("vstack-clean");
+  expect(h.execCalls.at(-1)?.args).toEqual(["ls", "--json"]);
+  expect(h.sent).toEqual([]);
+  expect(notes(h)).toEqual([]);
 });
 
 test("a TERN_EXE that no longer exists falls back to tern on PATH", async () => {

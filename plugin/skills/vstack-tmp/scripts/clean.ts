@@ -1,33 +1,17 @@
-// Lists and deletes expired Scratch entries under <home>/.vstack/tmp/<repo-key>/<kind>/<entry>.
-//
-//   bun clean.ts --home <dir> [--older-than <age>] [--now <time>]                     list (dry run)
-//   bun clean.ts --home <dir> [--older-than <age>] [--now <time>] --delete <path>...  delete those entries
-//
-// <age> is <n>d, <n>h, <n>w, or a bare <n> for days (default 15d). An entry's age comes from the newest mtime of the entry and
-// everything inside it. Symlinks are never followed: a link counts by its own mtime and is deleted as a link.
-// A Flow in the `flow` kind is the exception: its age comes from its lifecycle, never from file times or page reads. An
-// open Flow is never listed or deleted, and a closed one is listed once it has been closed longer than <age> and at least
-// 15 days. The kind's dot entries, the Flow id registry and the session bindings, are never entries; deleting a Flow
-// deletes its bindings and keeps its id registered, so the id reports the loss instead of starting again empty.
-// <time> is an ISO date and time to measure ages from (default: now).
-// The listing prints JSON {root, older_than, entries: [{path, repo_key, kind, entry, newest_mtime, age_days, size, closed?}], kept}.
-// A delete re-checks each entry, deletes the ones still older than <age>, removes kind and key dirs it leaves
-// empty, and prints JSON {root, deleted, skipped: [{path, reason}], pruned}. Exit 2 on a usage error, and on a
-// delete path that is not an entry under the root, before anything is deleted.
-
-import { lstatSync, readFileSync, readdirSync, rmdirSync, type Stats } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { createHash } from "node:crypto";
+import { lstatSync, readdirSync, rmdirSync } from "node:fs";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
-import { CLOSED_RETENTION, compactFlowDatabase, deleteFlowEntry, FLOW_KIND, flowRetentionEntries, flowRetentionEntry, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
-import { measureEntry, removeEntry } from "../../flow-page/scripts/files.ts";
-import { readScratchSession, scratchRoot, TICKETS_KIND } from "./scratch.ts";
-import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
+import { removeEntry } from "../../flow-page/scripts/files.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
+import { compactFlowDatabase, deleteFlowEntry } from "../../flow-page/scripts/store.ts";
+import { buildRows, DAY, flowStatus, sessionTitles, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
+import { isScratchSessionId, scratchRoot, TICKETS_KIND } from "./scratch.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 
 function usage(message: string): never {
-  process.stderr.write(`clean.ts: ${message}\nusage: bun clean.ts --home <dir> [--older-than <n>|<n>d|<n>h|<n>w] [--now <time>] [--delete <path>...]\n`);
+  process.stderr.write(`clean.ts: ${message}\nusage: bun clean.ts --home <dir> [--omp-home <dir>] [--witness <session-id>] [--older-than <age>] [--now <time>] [--delete <snapshot>...]\n`);
   process.exit(2);
 }
 
@@ -35,7 +19,7 @@ let parsed;
 try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
-    options: { home: { type: "string" }, "older-than": { type: "string" }, now: { type: "string" }, delete: { type: "boolean" } },
+    options: { home: { type: "string" }, "omp-home": { type: "string" }, witness: { type: "string" }, "older-than": { type: "string" }, now: { type: "string" }, delete: { type: "boolean" } },
     allowPositionals: true,
   });
 } catch (e) {
@@ -49,148 +33,171 @@ const m = /^(\d+)([hdw]?)$/.exec(olderThan);
 if (!m) usage(`--older-than must look like 90d, 90, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];
 const home = resolve(values.home);
-await prepareStorage(home);
 const root = scratchRoot(home);
 const now = values.now === undefined ? Date.now() : Date.parse(values.now);
 if (Number.isNaN(now)) usage(`--now must be an ISO date and time, got ${JSON.stringify(values.now)}`);
 
-const lstat = (p: string): Stats | undefined => {
-  try {
-    return lstatSync(p);
-  } catch {
-    return undefined;
-  }
+const ctx: CleanupContext = {
+  ompHome: resolve(values["omp-home"] ?? home), witness: values.witness ?? process.env.PI_SESSION_ID,
+  root, now, ttl,
 };
-const realDirs = (p: string) => readdirSync(p).filter((n) => lstat(join(p, n))?.isDirectory());
 
-// Validate every component walked below --home before listing or deleting through it.
-let ancestor = home;
-for (const part of relative(home, root).split(sep)) {
-  ancestor = join(ancestor, part);
-  const st = lstat(ancestor);
-  if (st && !st.isDirectory()) usage(`${ancestor} is not a directory`);
-}
-
-type RetentionDecision =
-  | { registry: true }
-  | { registry?: false; due: false; reason: string }
-  | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
-
-function retentionDecision(kind: string, entry: string, path: string, st: Stats, stored?: FlowRetentionEntry): RetentionDecision {
-  if (kind !== TICKETS_KIND && readScratchSession(path, st)) {
-    return { due: false, reason: "marked session folder requires session-aware cleanup" };
+function checkAncestors(dir: string) {
+  let ancestor = home;
+  for (const part of relative(home, dir).split(sep)) {
+    ancestor = join(ancestor, part);
+    const st = lstatSync(ancestor, { throwIfNoEntry: false });
+    if (st && !st.isDirectory()) throw new Error(`${ancestor} is not a directory`);
   }
-  const flowEntry = kind === FLOW_KIND ? stored ?? flowRetentionEntry(path) : undefined;
-  if (flowEntry?.registry) return { registry: true };
-  const { newest, size } = flowEntry ?? measureEntry(path, st);
-  if (kind === "grilling" && st.isDirectory() && lstat(join(path, "page.jsonl"))?.isFile()) {
-    try {
-      const history = parseHistorical(readFileSync(join(path, "page.jsonl"), "utf8"));
-      if (history.flow?.state !== "closed") return { due: false, age: now - newest, newest, size, reason: "open historical Flow" };
-    } catch {
-      return { due: false, age: now - newest, newest, size, reason: "historical Flow state unreadable" };
+}
+try { checkAncestors(root); } catch (error) { usage((error as Error).message); }
+
+type Snapshot = [version: 1, key: RowKey, request: string, members: string, newest: string];
+const digest = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("base64url");
+const request = digest([home, ctx.ompHome, olderThan]);
+const hash = /^[A-Za-z0-9_-]{43}$/;
+function segment(value: unknown): value is string {
+  return typeof value === "string" && value !== "" && value !== "." && value !== ".." && !/[\/\\\0]/.test(value);
+}
+function parseSnapshot(raw: string): Snapshot {
+  try {
+    const snap = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (Array.isArray(snap) && snap.length === 5 && snap[0] === 1 && Array.isArray(snap[1]) && snap[1].length === 3) {
+      const [repo, kind, name] = snap[1];
+      if (segment(repo) && segment(name) && (kind === "flow" || kind === TICKETS_KIND || kind === "folder" || kind === "session" && isScratchSessionId(name)) &&
+          snap.slice(2).every(value => typeof value === "string" && hash.test(value))) return snap as Snapshot;
     }
-  }
-  const flow = flowEntry?.retention;
-  if (flow === "unreadable") return { due: false, age: now - newest, newest, size, reason: "Flow state unreadable" };
-  if (flow && flow.closed === undefined) return { due: false, age: now - newest, newest, size, flow: flow.flow, reason: "open Flow" };
-  if (flow) {
-    const age = now - Date.parse(flow.closed!);
-    return { due: age > Math.max(ttl, CLOSED_RETENTION), age, newest, size, flow: flow.flow, closed: flow.closed, reason: "newer than the TTL" };
-  }
-  return { due: now - newest > ttl, age: now - newest, newest, size, reason: "newer than the TTL" };
+  } catch { /* Report bad input below without starting a delete. */ }
+  usage("--delete needs the unchanged snapshot from a listing, not an entry path");
 }
-
-function entriesOf(projectScratch: string, kind: string): { path: string; entry: string; stored?: FlowRetentionEntry }[] {
-  if (kind === FLOW_KIND) return flowRetentionEntries(projectScratch).map(stored => ({ path: stored.path, entry: stored.entry, stored }));
-  const dir = join(projectScratch, kind);
-  return readdirSync(dir).sort().map(entry => ({ path: join(dir, entry), entry }));
+function flowIdentity(flow: NonNullable<Row["flow"]>) {
+  return digest(flow.retention && flow.retention !== "unreadable" ? flow.retention.flow : null);
+}
+function membersHash(row: Row) {
+  return row.flow ? flowIdentity(row.flow)
+    : digest([row.ancestors, row.members.map(({ path, identity }) => [relative(root, path), identity])]);
+}
+function newestHash(row: Row) {
+  return digest(row.newest ? [row.newest.path, row.newest.stamp.toString(), row.newest.identity] : null);
+}
+function snapshot(row: Row) {
+  const value: Snapshot = [1, row.key, request, membersHash(row), newestHash(row)];
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+function display([repo_key, kind, name]: RowKey, titles: Map<string, string>, row?: Row) {
+  return { repo_key, kind, name, label: kind === "session" ? titles.get(name) ?? name.slice(0, 8) : name,
+    ...(kind === "flow" || kind === TICKETS_KIND ? { path: row?.members[0]?.path } : {}) };
 }
 
 // Resolves once stdout has taken every byte, so a following process.exit cannot cut a piped listing at the pipe buffer.
 const print = (v: unknown) => new Promise<void>((done, fail) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`, (e) => (e ? fail(e) : done())));
 
 if (!values.delete) {
-  const entries = [];
+  const inventory = buildRows(ctx);
+  const ready = inventory.filter(row => row.status.state === "offered");
+  const titles = sessionTitles(ctx.ompHome, new Set(ready.filter(row => row.key[1] === "session").map(row => row.key[2])));
+  const rows = ready.map(row => {
+    const [_, kind, name] = row.key;
+    const closed = row.flow?.retention;
+    return {
+      ...display(row.key, titles, row), ...(kind === "session" ? { session_id: name } : {}),
+      ...(typeof closed === "object" && closed.closed ? { closed: closed.closed } : {}),
+      age_days: Math.floor(row.age / DAY), age_seconds: Math.floor(row.age / 1000), size: row.size, snapshot: snapshot(row),
+    };
+  });
+  const reasons = new Map<string, number>();
   let kept = 0;
-  if (lstat(root)?.isDirectory()) {
-    for (const repoKey of realDirs(root).sort()) {
-      for (const kind of realDirs(join(root, repoKey)).sort()) {
-        for (const { entry, path, stored } of entriesOf(join(root, repoKey), kind)) {
-          const st = lstat(path);
-          if (!st) continue;
-          const v = retentionDecision(kind, entry, path, st, stored);
-          if (v.registry) continue;
-          if (!v.due) {
-            kept++;
-            continue;
-          }
-          const age_days = Math.floor(v.age / UNITS.d);
-          entries.push({ path, repo_key: repoKey, kind, entry, newest_mtime: new Date(v.newest).toISOString(), age_days, size: v.size, ...(v.closed ? { closed: v.closed } : {}) });
-        }
-      }
-    }
+  for (const { status } of inventory) {
+    if (status.state === "kept") kept++;
+    else if (status.state === "withheld") reasons.set(status.reason, (reasons.get(status.reason) ?? 0) + 1);
   }
-  await print({ root, older_than: olderThan, entries, kept });
+  await print({ root, older_than: olderThan, rows, kept, withheld: [...reasons].map(([reason, count]) => ({ reason, count })) });
   process.exit(0);
 }
 
-// Delete: every path has to name an entry at depth 3 under the root before anything is touched.
-if (positionals.length === 0) usage("--delete needs at least one entry path");
-const targets = positionals.map((p) => {
-  const abs = resolve(p);
-  const rel = relative(root, abs);
-  const parts = rel.split(sep);
-  if (!isAbsolute(p) || isAbsolute(rel) || parts.length !== 3 || parts.some((s) => s === "" || s === "." || s === "..")) {
-    usage(`${p} is not an entry under ${root} (<repo-key>/<kind>/<entry>)`);
-  }
-  // The key and kind dirs have to be real directories, so a linked key dir never leads the delete elsewhere.
-  for (const dir of [join(root, parts[0]), join(root, parts[0], parts[1])]) {
-    const st = lstat(dir);
-    if (st && !st.isDirectory()) usage(`${dir} is not a directory`);
-  }
-  return { path: abs, kind: parts[1], entry: parts[2] };
-});
-
-const deleted: string[] = [];
-const skipped: { path: string; reason: string }[] = [];
+if (positionals.length === 0) usage("--delete needs at least one row snapshot");
+const targets = [...new Set(positionals)].map(parseSnapshot);
+const titles = sessionTitles(ctx.ompHome, new Set(targets.filter(snap => snap[2] === request && snap[1][1] === "session").map(snap => snap[1][2])));
+type Completed = ReturnType<typeof display> & { removed: string[]; freed: number };
+type Failure = { path: string; reason: string };
+const deleted: Completed[] = [];
+const skipped: (ReturnType<typeof display> & { reason: string })[] = [];
+const partial: (Completed & { failed_entries: Failure[] })[] = [];
 const pruned: string[] = [];
 const compact = new Set<string>();
-for (const { path, kind, entry } of targets) {
-  const st = lstat(path);
-  if (!st) {
-    skipped.push({ path, reason: "missing" });
+let storagePrepared = false;
+for (const [_, key, scope, members, newest] of targets) {
+  if (scope !== request) {
+    skipped.push({ ...display(key, titles), reason: "Snapshot home or age does not match" });
     continue;
   }
-  const v = retentionDecision(kind, entry, path, st);
-  if (v.registry) {
-    skipped.push({ path, reason: "Flow registry" });
+  let row: Row | undefined;
+  try {
+    checkAncestors(root);
+    [row] = buildRows(ctx, key);
+  } catch (error) {
+    skipped.push({ ...display(key, titles), reason: (error as Error).message });
     continue;
   }
-  if (!v.due) {
-    skipped.push({ path, reason: v.reason });
+  const shown = display(key, titles, row);
+  const reason = !row ? "Row is missing"
+    : row.status.state !== "offered" ? row.status.reason
+    : membersHash(row) !== members ? "Row members changed or were replaced"
+    : !row.flow && newestHash(row) !== newest ? "Newest file or its time changed"
+    : undefined;
+  if (!row || reason) {
+    skipped.push({ ...shown, reason: reason ?? "Row is missing" });
     continue;
   }
-  if (kind === FLOW_KIND) {
-    const reason = await deleteFlowEntry(path, stored => {
-      const again = retentionDecision(kind, entry, path, lstatSync(path), stored);
-      return again.registry ? "Flow registry" : again.due ? undefined : again.reason;
-    });
-    if (reason) {
-      skipped.push({ path, reason });
+
+  const removed: string[] = [];
+  const failed_entries: Failure[] = [];
+  let freed = 0;
+  for (const member of row.members) {
+    const parent = dirname(member.path);
+    try {
+      checkAncestors(parent);
+      if (row.flow) {
+        if (!storagePrepared) { await prepareStorage(home); storagePrepared = true; }
+        checkAncestors(parent);
+        const refusal = await deleteFlowEntry(member.path, entry => {
+          if (flowIdentity(entry) !== members) return "Flow identity changed";
+          const { status } = flowStatus(entry, ctx);
+          if (status.state !== "offered") return status.reason;
+        });
+        if (refusal) {
+          skipped.push({ ...shown, reason: refusal });
+          break;
+        }
+        if (row.flow.retention) compact.add(join(root, key[0]));
+      } else {
+        removeEntry(member.path);
+      }
+      removed.push(member.path);
+      freed += member.size;
+    } catch (error) {
+      failed_entries.push({ path: member.path, reason: (error as Error).message });
       continue;
     }
-    if (v.flow) compact.add(join(path, "..", ".."));
-  } else {
-    removeEntry(path);
+    for (const dir of [parent, dirname(parent)]) {
+      try {
+        checkAncestors(dir);
+        if (readdirSync(dir).length) break;
+        rmdirSync(dir);
+        pruned.push(dir);
+      } catch (error) {
+        failed_entries.push({ path: dir, reason: (error as Error).message });
+        break;
+      }
+    }
   }
-  deleted.push(path);
-  const kindDir = join(path, "..");
-  for (const dir of [kindDir, join(kindDir, "..")]) {
-    if (readdirSync(dir).length > 0) break;
-    rmdirSync(dir);
-    pruned.push(dir);
-  }
+  const completed = { ...shown, removed, freed };
+  if (failed_entries.length) partial.push({ ...completed, failed_entries });
+  else if (removed.length) deleted.push(completed);
 }
-for (const projectScratch of compact) compactFlowDatabase(projectScratch);
-await print({ root, deleted, skipped, pruned });
+const maintenance_errors: Failure[] = [];
+for (const projectScratch of compact) {
+  try { compactFlowDatabase(projectScratch); }
+  catch (error) { maintenance_errors.push({ path: projectScratch, reason: (error as Error).message }); }
+}
+await print({ root, deleted, skipped, partial, pruned, maintenance_errors });
