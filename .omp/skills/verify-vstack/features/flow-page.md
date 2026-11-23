@@ -238,6 +238,26 @@ The helper loads the checkout's plugin and copies the candidate Flow runtime int
 
 Inspect `guard-refusal.json`, `observed-native-submit.json`, `persisted-state.json`, and the lease targets. For Tern inspect `native-pane-identities.json`, the `follow-*.blocks.json` snapshots, `click-destination.blocks.json`, and the lossless WebP captures. Require no surviving process or listener in `summary.json`.
 
+#### Stock native Eval and Ratchet dialogs
+
+Use the same binary pins and disposable launcher as the stock baseline. Run `eval`, `eval-read-error`, and `ratchet` in distinct new run directories. These cases require `--tern` and refuse `--omp-tools`. Run the Python helper through eval:
+
+```python
+import subprocess
+import sys
+
+subprocess.run([
+	sys.executable, f"{skill_dir}/scripts/flow-questions-tui.py",
+	"--checkout", checkout, "--run", run_dir, "--case", case, "--tern",
+], check=True)
+```
+
+- Step `flow-page-questions-eval`: `eval` first calls Eval's `tool.ask` with a renamed control. Require the refusal in `eval-guard-refusal.json` and no form, panel, or presence in `eval-refusal.*.json`. Pass the unchanged receipt through Eval next. Require one native form and a Flow panel link ending in the first question's id. Inspect `eval.card.json`, `eval.links.json`, `eval.presence.json`, and `eval-panel.webp`. Submit Alpha and require the native result inside the Eval output. The `after-eval.*.json` files must show the form, panel, and presence cleared.
+- Step `flow-page-questions-eval-recovery`: `eval-read-error` verifies the unchanged receipt against both live content and the real `ask-status` before faulting only `ask-status`. Require the same captured read error beside both the direct `ask` and Eval `tool.ask` forms. Inspect `checked-receipt-ask-status.json`, `ask-status-failures.txt`, the `direct` and `eval` active snapshots and screenshots, and the `after-direct` and `after-eval` form, panel, and presence snapshots. This case proves the diagnostic for a checked receipt, not permission to ask unknown HTML.
+- Step `flow-page-questions-ratchet`: `ratchet` publishes the complete inputs table and linked question. Verify the live Result and question before calling `r.init()` and `r.approve()` through Eval. Require one native approval gate and the bound Stage link in `ratchet.links.json`. The explicit fixture action returns `{"approved":true}` and clears the gate, panel, and presence. The next call returns `{"approved":true,"already":true}` in `ratchet-outcomes.json` with no gate, panel, or presence in `ratchet-reuse.*.json`. `ask-calls.json` is empty.
+
+Each case retains the CLI and Tern commands, provider requests, tool results, screen captures, and Flow export. Require `cleanup.ok: true`, no remaining process, and `cleanup.port_listening: false` in `summary.json`. Scripted approvals prove transport, not human consent.
+
 #### Legacy Verify cases
 
 Use `scripts/flow-questions-tui.py --tern`, not RPC `drive.ts`, for visible native proof. It starts a real interactive omp process in its own headless Tern renderer and stubs only the model provider. Both plugins load normally. The ordinary `ask` integration and Ratchet's host dialog stay unchanged. Its Tern control endpoint and config directory are independent of the user's working window.
@@ -273,9 +293,7 @@ Run each additional case in a fresh run directory with the same command, changin
 - Step `flow-page-questions-cancel`: `cancel` presses Escape on the picker. The aborted ordinary ask records no consent, and `after-cancel.panel.json` shows no panel.
 - Step `flow-page-questions-retry`: `retry` cancels the picker, then sends native F5. A fresh panel appears beside the retried picker, and the eventual answers retain the original ids with only one publication.
 - Step `flow-page-questions-offline`: `offline` stops only the proof host and occupies its port with a listener owned by the helper. The panel displays the actual `bound.live.error` beside the picker, which can be cancelled. Neither delivery nor cancellation records an answer. No host recovery runs during the handoff.
-- Step `flow-page-questions-eval-recovery`: Run `--case eval --tern`. The fixture makes only `ask-status` fail in the isolated session. Submit the same receipt form directly, then through eval's `tool.ask`. Require the same read error beside each open picker and neither the picker nor the panel after each submit. Inspect `direct-panel` and `eval-panel` trees and WebP screenshots, both `after-*-submit` tree and panel snapshots, and `ask-status-failures.txt`. This case proves the error path, not a clickable link.
 - Step `flow-page-questions-abort`: `abort` sends Ctrl+C while the picker and panel are open. Require `after-abort.panel.json` with no panel, `after-abort.tree.json` with no picker, and no Flow answer.
-- Step `flow-page-questions-ratchet`: `ratchet` enables the actual Ratchet prelude in this disposable profile. It publishes the complete fixture question, calls `r.init()` and `r.approve()`, and drives the real native host gate with the panel beside it. `ratchet-outcomes.json` must show a fresh explicit approval followed by `already: true` on reuse, without another gate or ordinary `ask`.
 
 Step `flow-page-questions-later-round`: Run `--case later-round` for a later authored round distinct from retry. The helper records the first round's answers, publishes a new complete round under the same child's binding, then uses that round's `ask.html` unchanged. Require another panel beside the later picker, a new question id, separate answer recording, and both retained rounds. Inspect `later-publication.json`, `later-panel.panel.json`, `later-panel.tree.json`, `later-panel.webp`, `later-tool-result.json`, and `later-answers-receipt.json`. The extension tests also cover lookup races, repeated call ids, mode and binding isolation, host-off states, wrapper order, session switching, and turn ends.
 
@@ -284,7 +302,7 @@ Step `flow-page-questions-evidence`: Require these evidence files under `flow-qu
 - `identity.json`, `launch.json`, `runtime-inventory.json`, `commands.json`, `child-session-id.txt`, and `binding.json` pin the binaries, plugin paths, actual child identity, and the CLI `bound` receipt.
 - `publication.json`, `live-identity.json`, `live-page.html`, and `live-content.json` establish committed content identity. `offline-bound.json` retains the real unavailable-host diagnosis.
 - For `--case tui`, `guard-refusal.json`, `guard-refusal.tree.json`, and `guard-refusal.panel.json` record the refusal and the native UI before the valid form runs.
-- `panel.panel.json`, `panel.tree.json`, `panel.state.json`, and the lossless WebP shots prove native presentation. Click cases also record the target and destination. In `--case eval`, the `direct-panel` and `eval-panel` snapshots replace `panel` snapshots, with no click. The `after-<step>.panel.json` files prove removal. `inputs.json` shows that no key dismissed anything before the picker.
+- `panel.panel.json`, `panel.tree.json`, `panel.state.json`, and the lossless WebP shots prove native presentation. Click cases also record the target and destination. The `after-<step>.panel.json` files prove removal. `inputs.json` shows that no key dismissed anything before the picker.
 - `terminal.bin` and `terminal.txt` hold native tree snapshots with `--tern`, not raw terminal bytes. Without `--tern`, they retain PTY bytes and stripped text only. Preserve those limits.
 - `sessions/*.jsonl`, `model-requests.jsonl`, `ask-calls.json`, and `tool-results.json` retain the real calls and outcomes. The helper requires the panel role and its URL to be absent from both persisted entries and model requests. Hidden authoring identity and historical-card filtering keep their existing rules.
 - `committed-before-answers.json`, `normalized-answers.json` when applicable, `persisted-state.json`, and the CLI `show` and `bound` snapshots in `export/` distinguish authoring from delivery. In `offline`, compare `committed-before-answers.json` with `cancelled-state.json` and `persisted-state.json`. All three must show the published revision and both questions open. In `cancel`, use `cancelled-state.json` in place of `committed-before-answers.json`. In `abort`, use `persisted-state.json`; neither case resumes the model. `flow-messages.json` must remain empty, with no result-only completion link.

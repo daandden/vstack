@@ -377,7 +377,8 @@ def main():
     parser.add_argument("--omp-tools", help="omp-tools plugin for legacy Verify cases only")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
     parser.add_argument("--case", choices=["native", "native-offline", "tui", "timeout", "cancel", "retry",
-                        "offline", "abort", "ratchet", "cancelled", "empty", "later-round", "eval"], default="native")
+                        "offline", "abort", "ratchet", "cancelled", "empty", "later-round", "eval", "eval-read-error"],
+                        default="native")
     parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
     parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
     parser.add_argument("--config", help="Actual-model isolation overlay")
@@ -385,9 +386,10 @@ def main():
     parser.add_argument("--deadline-seconds", type=int, default=1800)
     args = parser.parse_args()
     native = args.case in ("native", "native-offline")
-    if native and args.omp_tools:
-        parser.error("native baseline uses stock omp ask; omit --omp-tools")
-    if not native and not args.omp_tools:
+    specialized = args.case in ("eval", "eval-read-error", "ratchet")
+    if (native or specialized) and args.omp_tools:
+        parser.error("native cases use stock omp ask; omit --omp-tools")
+    if not (native or specialized or args.omp_tools):
         parser.error("legacy Verify cases still require --omp-tools")
     if args.prompt:
         if not args.config or args.case not in ("cancelled", "timeout", "empty"):
@@ -395,8 +397,8 @@ def main():
         return actual_model(args)
     if args.case in ("cancelled", "empty"):
         parser.error("--case cancelled|empty requires an actual-model --prompt and --config")
-    if args.case == "eval" and not args.tern:
-        parser.error("--case eval requires --tern for native panel and picker snapshots")
+    if specialized and not args.tern:
+        parser.error(f"--case {args.case} requires --tern for native panel and dialog snapshots")
     checkout, run = (Path(p).resolve() for p in (args.checkout, args.run))
     tools = Path(args.omp_tools).resolve() if args.omp_tools else None
     plugins = [(checkout / "plugin", "vstack")]
@@ -418,12 +420,15 @@ def run_case(args, checkout, run, tools, native, stack):
     out.mkdir(parents=True, exist_ok=False)
     data = run / "data"
     data.mkdir(exist_ok=False)
-    owned_window = native and args.tern
+    eval_case = args.case in ("eval", "eval-read-error")
+    read_fault = args.case == "eval-read-error"
+    stock = native or eval_case or args.case == "ratchet"
+    owned_window = stock and args.tern
     temp = "/tmp" if owned_window else tempfile.gettempdir()
     temp = Path(temp).resolve()
     if temp.is_relative_to(Path.home().resolve()):
         raise RuntimeError("OS temp directory is inside the real home; use TMPDIR outside it")
-    if native:
+    if stock:
         outside = Path(tempfile.mkdtemp(prefix="vstack-verify-", dir=temp))
     else:
         while True:
@@ -445,7 +450,7 @@ def run_case(args, checkout, run, tools, native, stack):
         port = free.getsockname()[1]
         env["VSTACK_FLOW_PORT"] = str(port)
     versions = {}
-    if native:
+    if stock:
         pins = {"omp": "omp/19.1.1", **({"tern": "tern 0.9.30"} if args.tern else {})}
         for binary, pin in pins.items():
             versions[binary] = subprocess.check_output([binary, "--version"], env=env, text=True, timeout=10).strip()
@@ -476,7 +481,12 @@ def run_case(args, checkout, run, tools, native, stack):
         # The helper creates HOME when starting its isolated window.
         stack.callback(stop_window)
         native_tern("start")
-        native_tern("clear")
+        try:
+            native_tern("clear")
+        except RuntimeError:
+            native_tern("ctl", "tree", ".mdl, .tn-signin-card")
+            native_tern("ctl", "system")
+            raise
         native_tern("doctor")
         path = os.pathsep.join([str(Path(shutil.which("bun")).resolve().parent),
                                 str(Path(shutil.which("tern")).resolve().parent), "/usr/bin", "/bin", "/usr/sbin", "/sbin"])
@@ -485,18 +495,21 @@ def run_case(args, checkout, run, tools, native, stack):
     cli = checkout / "plugin/skills/flow-page/scripts/flow-page.ts"
     read_error = "fixture: ask-status could not read the bound Flow"
     failures_path = out / "ask-status-failures.txt"
-    if args.case == "eval":
+    fault_marker = outside / "fail-ask-status"
+    if read_fault:
         bun = Path(shutil.which("bun")).resolve()
         bin_dir = outside / "bin"
         bin_dir.mkdir()
         shim = bin_dir / "bun"
         shim.write_text("#!/bin/sh\n"
-                        'case "$1:$2" in\n'
-                        "  */flow-page/scripts/flow-page.ts:ask-status)\n"
-                        f"    printf '%s\\n' {shlex.quote(read_error)} >&2\n"
-                        f"    printf '%s\\n' \"$*\" >> {shlex.quote(str(failures_path))}\n"
-                        "    exit 1;;\n"
-                        "esac\n"
+                       f'if [ -f {shlex.quote(str(fault_marker))} ]; then\n'
+                        '  case "$1:$2" in\n'
+                        "    */flow-page/scripts/flow-page.ts:ask-status)\n"
+                        f"      printf '%s\\n' {shlex.quote(read_error)} >&2\n"
+                        f"      printf '%s\\n' \"$*\" >> {shlex.quote(str(failures_path))}\n"
+                        "      exit 1;;\n"
+                        "  esac\n"
+                        "fi\n"
                         f'exec {shlex.quote(str(bun))} "$@"\n')
         shim.chmod(0o755)
         env["PATH"] = str(bin_dir) + os.pathsep + env["PATH"]
@@ -562,21 +575,26 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         first["title"] = "Which fixture path should the form record?"
         second["title"] = "Which optional control should remain unpicked?"
         second["description"] = "Leave this question open in the baseline."
+    if eval_case:
+        del contribution["items"][1]["questions"][0]["multi"]
     if args.case == "ratchet":
+        ratchet_input = {"id": "fixture", "input": "Say Alpha", "expected": "Alpha", "tag": "smoke"}
+        contribution["items"][0] = {
+            "kind": "result", "shape": "table", "ref": "fixture", "title": "Ratchet fixture inputs",
+            "columns": ["Case", "Complete input", "Expected answer", "Tag", "Provenance"],
+            "rows": [{"ref": "input", "cells": [*ratchet_input.values(), "Fixed local transport fixture"]}],
+        }
         contribution["items"][1]["questions"] = [{
             "ref": "approval", "title": "Approve fixture inputs?",
             "description": "The complete input set is one disposable case with id fixture. This is UI proof, not tuning approval.",
             "needs": [{"need": "Review the complete disposable input set.", "kind": "prose"}],
+            "results": ["fixture/input"],
             "options": [
                 {"label": "Approve", "does": "Approve the fixture inputs.", "gains": ["Exercise native approval"], "costs": ["Fixture only"]},
                 {"label": "Revise", "does": "Return feedback without approval.", "gains": ["Keep feedback"], "costs": ["No approval"]},
                 {"label": "Abort", "does": "Stop the disposable run.", "gains": ["No approval"], "costs": ["No continuation"]},
             ],
         }]
-    if args.case == "eval":
-        question = contribution["items"][1]["questions"][0]
-        del question["multi"]
-        contribution["items"][1]["questions"] = [question]
     save(out / "contribution.json", contribution)
     session_dir = out / "sessions"
     session_dir.mkdir()
@@ -586,12 +604,13 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 if entry.get("type") == "message"]
 
     def asks():
-        names = {"ratchet": {"eval"}, "eval": {"ask", "eval"}}.get(args.case, {"ask"})
+        names = {"eval", "ask"} if eval_case or args.case == "ratchet" else {"ask"}
         return [m for m in messages() if m.get("role") == "toolResult" and m.get("toolName") in names]
 
     q = shlex.quote
     identity = '--session "$PI_SESSION_ID" --agent main'
-    open_command = (f'bun {q(str(cli))} open --skill implement --title "Disposable Flow questions proof" '
+    skill = "tune-llm-flow" if args.case == "ratchet" else "implement"
+    open_command = (f'bun {q(str(cli))} open --skill {skill} --title "Disposable Flow questions proof" '
                     f'--home "$HOME" {identity} > {q(str(out / "open.json"))} && '
                     f'printf "%s" "$PI_SESSION_ID" > {q(str(out / "child-session-id.txt"))}')
     publish_command = (f'bun {q(str(cli))} submit {q(str(out / "contribution.json"))} '
@@ -629,9 +648,12 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         assert [question["id"] for question in content["questions"]] == [
             question["id"] for question in receipt["ask"]["questions"]], content
         authored = json.dumps(content)
-        required_context = ["Disposable picker fixture", "Fixture evidence, not a real user decision."]
-        if args.case != "ratchet":
-            required_context += ["Full authored context retained on Flow.", "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]
+        if args.case == "ratchet":
+            required_context = ["Ratchet fixture inputs", "Say Alpha", "Fixed local transport fixture",
+                                "The complete input set is one disposable case with id fixture."]
+        else:
+            required_context = ["Disposable picker fixture", "Fixture evidence, not a real user decision.",
+                                "Full authored context retained on Flow.", "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]
         for context in required_context:
             assert context in authored, context
         save(out / "live-identity.json", {"url": url, "status": status, "content_url": content_url,
@@ -658,16 +680,49 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             assert not recorded_answers(published_stage(committed, receipt)), committed
             save(out / "committed-before-answers.json", committed)
         if args.case == "ratchet":
-            (project / "cases.jsonl").write_text('{"id":"fixture"}\n')
+            (project / "cases.jsonl").write_text(json.dumps(ratchet_input) + "\n")
             (project / "harness.ts").write_text("\n")
             (project / "prompt.md").write_text("Disposable approval proof prompt.\n")
-            approval = f'await r.approve("inputs", question={receipt["ask"]["questions"][0]["question"]!r}, preview="Review this question on the Flow page.")'
-            code = ('import json\nr = ratchet("panel-fixture")\n'
-                    'await r.init(cases=["cases.jsonl"], harness=["harness.ts"], change=["prompt.md"])\n'
-                    f'print("FIRST_APPROVAL", json.dumps({approval}))\n'
-                    f'print("REUSED_APPROVAL", json.dumps({approval}))')
-            return {"tool": "eval", "args": {"language": "py", "code": code, "timeout": 120}}
+            return ratchet_approval("FIRST_APPROVAL", initialize=True)
+        if args.case == "eval":
+            return eval_ask(renamed_ask(receipt))
+        if read_fault:
+            assert control_names(receipt["ask"]["html"]) == [q["id"] for q in receipt["ask"]["questions"]]
+            current = flow_read("ask-status", *control_names(receipt["ask"]["html"]))
+            assert current["binding"]["flow"] == receipt["flow"] and current["binding"]["stage"] == receipt["stage"]
+            assert current["refusals"] == [], current
+            save(out / "checked-receipt-ask-status.json", current)
+            fault_marker.touch()
         return {"tool": "ask", "args": fixture_ask(receipt)}
+
+    def eval_ask(arguments):
+        code = 'const result = await tool.ask(' + json.dumps(arguments) + '); print(result.text);'
+        return {"tool": "eval", "args": {"language": "js", "code": code}}
+
+    def ratchet_approval(label, initialize=False):
+        question = receipt["ask"]["questions"][0]["question"]
+        numbered = question.partition(".")[0]
+        code = 'import json\nr = ratchet("panel-fixture")\n'
+        if initialize:
+            code += 'await r.init(cases=["cases.jsonl"], harness=["harness.ts"], change=["prompt.md"])\n'
+        code += (f'approval = await r.approve("inputs", question={question!r}, preview="Review {numbered} on the Flow page.")\n'
+                 f'print("{label}", json.dumps(approval))')
+        return {"tool": "eval", "args": {"language": "py", "code": code, "timeout": 60}}
+
+    def ratchet_outcome(label, outcome):
+        assert outcome["toolName"] == "eval" and not outcome.get("isError"), outcome
+        text = "\n".join(part.get("text", "") for part in outcome["content"])
+        return next(json.loads(line[len(label) + 1:]) for line in text.splitlines() if line.startswith(label + " "))
+
+    def eval_answers(outcome):
+        assert outcome["toolName"] == "eval" and not outcome.get("isError"), outcome
+        text = "\n".join(part.get("text", "") for part in outcome["content"])
+        answer = text.partition("User answers:\n")[2]
+        assert answer, outcome
+        return json.JSONDecoder().raw_decode(answer)[0]
+
+    def alpha():
+        return {receipt["refs"]["pick"]: "A. Alpha"}
     done = threading.Event()
     refusal_observed = threading.Event()
     direct_close_observed = threading.Event()
@@ -732,14 +787,21 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                     if args.case == "tui" or native:
                         reply = {"tool": "ask", "args": renamed_ask(receipt)}
                         phase = "guard"
+                    elif args.case == "eval":
+                        phase = "eval-guard"
                 elif phase == "guard":
                     if not refusal_observed.wait(timeout=45):
                         raise RuntimeError("Native controller did not release the valid ask after checking the guard")
                     reply = {"tool": "ask", "args": fixture_ask(receipt)}
                     phase = 3
+                elif phase == "eval-guard":
+                    if not refusal_observed.wait(timeout=30):
+                        raise RuntimeError("Native controller did not observe the Eval guard refusal")
+                    reply = eval_ask(fixture_ask(receipt))
+                    phase = 3
                 elif phase == 3:
                     result = asks()
-                    assert result, "No ordinary ask tool result"
+                    assert result, "No dialog tool result"
                     raw = result[-1].get("details", {})
                     committed = published_state(receipt)
                     save(out / "committed-before-answers.json", committed)
@@ -761,24 +823,23 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                             f' > {q(str(out / "answers-receipt.json"))}'}}
                         phase = 4
                     elif args.case == "ratchet":
-                        save(out / "ratchet-results.json", result)
-                        assert not result[-1].get("isError"), result[-1]
-                        output = "\n".join(part.get("text", "") for part in result[-1]["content"])
-                        outcomes = {line.split(" ", 1)[0]: json.loads(line.split(" ", 1)[1])
-                                    for line in output.splitlines() if line.startswith(("FIRST_APPROVAL ", "REUSED_APPROVAL "))}
-                        assert outcomes["FIRST_APPROVAL"] == {"approved": True}, outcomes
-                        assert outcomes["REUSED_APPROVAL"] == {"approved": True, "already": True}, outcomes
-                        save(out / "ratchet-outcomes.json", outcomes)
+                        first = ratchet_outcome("FIRST_APPROVAL", result[-1])
+                        assert len(result) == 1 and first == {"approved": True}, result
+                        save(out / "ratchet-first-outcome.json", first)
+                        if not direct_close_observed.wait(timeout=20):
+                            raise RuntimeError("Native controller did not observe the Ratchet gate close")
+                        reply = ratchet_approval("REUSED_APPROVAL")
+                        phase = 4
+                    elif args.case == "eval":
+                        assert len(result) == 2 and eval_answers(result[-1]) == alpha(), result
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
-                    elif args.case == "eval":
-                        assert result[-1]["toolName"] == "ask" and not result[-1].get("isError"), result
-                        assert html_answers(result[-1]) == {receipt["refs"]["pick"]: "A. Alpha"}, result[-1]
-                        if not direct_close_observed.wait(timeout=30):
-                            raise RuntimeError("Native controller did not observe the direct recovery picker close")
-                        code = ('const result = await tool.ask(' + json.dumps(fixture_ask(receipt)) + '); '
-                                'print(result.text);')
-                        reply = {"tool": "eval", "args": {"language": "js", "code": code}}
+                    elif read_fault:
+                        assert len(result) == 1 and result[-1]["toolName"] == "ask" and not result[-1].get("isError"), result
+                        assert html_answers(result[-1]) == alpha(), result[-1]
+                        if not direct_close_observed.wait(timeout=20):
+                            raise RuntimeError("Native controller did not observe the direct native form close")
+                        reply = eval_ask(fixture_ask(receipt))
                         phase = 4
                     elif args.case in ("tui", "retry", "later-round"):
                         assert not result[-1].get("isError"), result[-1]
@@ -809,13 +870,20 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                         assert raw.get("timedOut") is True, raw
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
-                elif phase == 4 and args.case == "eval":
+                elif phase == 4 and read_fault:
                     result = asks()
-                    assert len(result) == 2 and result[-1]["toolName"] == "eval" and not result[-1].get("isError"), result
-                    text = "\n".join(part.get("text", "") for part in result[-1]["content"])
-                    answer = text.partition("User answers:\n")[2]
-                    assert answer and json.JSONDecoder().raw_decode(answer)[0] == {
-                        receipt["refs"]["pick"]: "A. Alpha"}, result[-1]
+                    assert len(result) == 2 and eval_answers(result[-1]) == alpha(), result
+                    reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
+                    done.set()
+                elif phase == 4 and args.case == "ratchet":
+                    result = asks()
+                    assert len(result) == 2, result
+                    reused = ratchet_outcome("REUSED_APPROVAL", result[-1])
+                    assert reused == {"approved": True, "already": True}, reused
+                    save(out / "ratchet-outcomes.json", {
+                        "FIRST_APPROVAL": json.loads((out / "ratchet-first-outcome.json").read_text()),
+                        "REUSED_APPROVAL": reused,
+                    })
                     reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                     done.set()
                 elif phase == 4 and args.case == "later-round":
@@ -911,7 +979,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         config += "ratchet:\n  enabled: true\n"
     (home / ".omp/agent/config.yml").write_text(config)
     argv = ["omp", "--no-title", "--model", "stub/stub-model", "--session-dir", str(session_dir)]
-    if native:
+    if stock:
         argv[0] = str(Path(shutil.which("omp")).resolve())
         argv += ["--cwd", str(project), "--approval-mode", "yolo", "--no-rules", "--no-context-files",
                  "--no-skills", "--no-extensions", "-e", str(checkout / "plugin")]
@@ -1078,11 +1146,8 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             wait_for_text("n add note", after=after)
         if args.case == "offline":
             expected = json.loads((out / "offline-bound.json").read_text())["live"]["error"]
-        elif args.case == "eval":
-            expected = read_error
         else:
-            fragment = current["stage"] if args.case == "ratchet" else current["ask"]["questions"][0]["id"]
-            expected = current["live"]["url"] + "#" + fragment
+            expected = current["live"]["url"] + "#" + current["ask"]["questions"][0]["id"]
         wait_for_text(expected, after=after)
         if args.tern:
             # Judge one snapshot taken while panel and picker show together: a timeout case can close both
@@ -1279,6 +1344,89 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             time.sleep(1)
             following[2]("follow-after-close", current[0]["id"])
 
+    def no_native_dialog(label):
+        card, panel = ctl("tree", FORM), ctl("tree", PANEL)
+        assert not card["nodes"] and not panel["nodes"], (label, card, panel)
+        save(out / f"{label}.card.json", card)
+        save(out / f"{label}.panel.json", panel)
+
+    def live_presence():
+        with urlopen(receipt["live"]["url"] + "presence", timeout=5) as response:
+            return json.load(response)["presences"]
+
+    def drive_specialized_dialog(route, before_results):
+        ratchet = route == "ratchet"
+        wait_native(f"{route} published and checked receipt", lambda: receipt and (out / "live-identity.json").exists(), 20)
+        questions = receipt["ask"]["questions"]
+        ids = [] if ratchet else [question["id"] for question in questions]
+        stage_url = receipt["live"]["url"] + "#" + receipt["stage"]
+        link = stage_url if ratchet else receipt["live"]["url"] + "#" + ids[0]
+        expected = f"Flow question lookup failed: {read_error}" if read_fault else link
+        card = wait_native(f"{route} native card", lambda: ctl("tree", FORM)["nodes"], 18)
+        save(out / f"{route}.card.json", card)
+        assert all(question["question"] in json.dumps(card) for question in questions), card
+        if ratchet:
+            assert all(text in json.dumps(card) for text in ("Approve", "Revise", "Abort", "on the Flow page.")), card
+        panel = wait_native(f"{route} panel", lambda: (row := ctl("tree", PANEL))["nodes"] and row)
+        save(out / f"{route}.panel.json", panel)
+        assert expected in json.dumps(panel), panel
+        links = ctl("tree", PANEL + " a")
+        save(out / f"{route}.links.json", links)
+        assert [node["text"] for node in links["nodes"] if node["tag"] == "a"] == ([] if read_fault else [link]), links
+        save(out / f"{route}.tree.json", ctl("tree"))
+        save(out / f"{route}.state.json", ctl("state"))
+        tern_shot(route + "-panel")
+        active = wait_native(f"{route} advisory presence", live_presence)
+        save(out / f"{route}.presence.json", active)
+        assert len(active) == 1 and active[0]["stage"] == receipt["stage"] and active[0]["questions"] == ids, active
+        assert active[0]["session"] == (out / "child-session-id.txt").read_text(), active
+        assert len(asks()) == before_results and ctl("tree", FORM)["nodes"], "Dialog settled before explicit input"
+        if ratchet:
+            send("explicitly choose Approve in the Ratchet gate", b"\r")
+        else:
+            send(f"select Alpha in {route}", b"\r")
+            submit = next(node for node in ctl("tree", FORM + " .sf-btn-label")["nodes"] if node["text"] == "Submit")
+            native_click(f"explicitly submit {route}", submit)
+        wait_native(f"{route} form and panel closed", lambda: not panel_nodes() and not ctl("tree", FORM)["nodes"])
+        no_native_dialog(f"after-{route}")
+        save(out / f"after-{route}.tree.json", ctl("tree"))
+        settled = wait_native(f"{route} presence cleared", lambda: (row := native_target())["picker"] is None and row)
+        assert settled["target"] == stage_url and not live_presence(), settled
+        save(out / f"after-{route}.target.json", settled)
+        save(out / f"after-{route}.presence.json", live_presence())
+
+    def drive_eval_guard():
+        deadline = time.monotonic() + 20
+        while True:
+            no_native_dialog("eval-refusal")
+            if result := asks():
+                break
+            if handler_errors:
+                raise RuntimeError(handler_errors[0])
+            assert time.monotonic() < deadline, "Eval returned no guard refusal"
+            time.sleep(0.15)
+        assert len(result) == 1 and result[0]["toolName"] == "eval", result
+        refusal = "\n".join(part.get("text", "") for part in result[0]["content"])
+        save(out / "eval-guard-refusal.json", result[0])
+        assert all(text in refusal for text in ("renamed-control", "not a published question", "ask.html")), refusal
+        target = native_target()
+        assert target["picker"] is None and not live_presence(), target
+        save(out / "eval-refusal.target.json", target)
+        refusal_observed.set()
+
+    def observe_ratchet_reuse():
+        deadline = time.monotonic() + 15
+        while True:
+            no_native_dialog("ratchet-reuse")
+            assert not live_presence(), "Reused approval opened Picker presence"
+            if len(asks()) == 2:
+                break
+            if handler_errors:
+                raise RuntimeError(handler_errors[0])
+            assert time.monotonic() < deadline, "Ratchet returned no reused approval"
+            time.sleep(0.15)
+        save(out / "ratchet-reuse.target.json", native_target())
+
     try:
         launch_native()
         peer = launch_follow_peer() if owned_window and args.case == "native" else None
@@ -1310,11 +1458,24 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             refusal_observed.set()
         if native:
             drive_native(following)
+        elif args.case == "eval":
+            drive_eval_guard()
+            drive_specialized_dialog("eval", 1)
+        elif read_fault:
+            drive_specialized_dialog("direct", 0)
+            direct_failures = len(failures_path.read_text().splitlines())
+            assert direct_failures > 0, "No failed ask-status call during the direct form"
+            direct_close_observed.set()
+            drive_specialized_dialog("eval", 1)
+        elif args.case == "ratchet":
+            drive_specialized_dialog("ratchet", 0)
+            direct_close_observed.set()
+            observe_ratchet_reuse()
         else:
-            panel_url = panel_with_picker("direct-panel" if args.case == "eval" else "panel")
+            panel_url = panel_with_picker("panel")
             if args.case != "timeout":
                 assert len(asks()) == (1 if args.case == "tui" else 0), "Picker returned before it was shown"
-        if args.tern and not native and args.case not in ("offline", "timeout", "eval"):
+        if args.tern and not stock and args.case not in ("offline", "timeout"):
             before_click = ctl("state")
             save(out / "before-click.state.json", before_click)
             omp_pane = before_click["focused"]["id"]
@@ -1355,10 +1516,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 save(out / "after-abort.tree.json", after_abort)
                 assert "Add note" not in json.dumps(after_abort), "Turn cancellation left the picker open"
             done.set()
-        if args.case == "ratchet":
-            send("pick native Ratchet approval", b"\r")
-            time.sleep(0.2)
-            send("submit native Ratchet approval", b"\r")
         if args.case in ("cancel", "retry", "offline"):
             send("Escape cancels the actual ordinary ask picker", b"\x1b")
             deadline = time.monotonic() + 20
@@ -1377,21 +1534,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 before_retry = len(captured)
                 send("F5 native retry of the aborted turn", b"\x1b[15~")
                 panel_with_picker("retry-panel", after=before_retry)
-        if args.case == "eval":
-            for route in ("direct", "eval"):
-                if route == "eval":
-                    panel_with_picker("eval-panel", after=before_eval)
-                    assert len(asks()) == 1, "Eval picker returned before it was shown"
-                send(f"select Alpha and submit {route} recovery picker", b"\r")
-                panel_gone(f"{route}-submit")
-                tree = ctl("tree")
-                save(out / f"after-{route}-submit.tree.json", tree)
-                assert "Add note" not in json.dumps(tree), f"{route} recovery picker remained open"
-                if route == "direct":
-                    direct_failures = len(failures_path.read_text().splitlines())
-                    assert direct_failures > 0, "No failed ask-status call during the direct picker"
-                    before_eval = len(captured)
-                    direct_close_observed.set()
         if args.case in ("tui", "retry", "later-round"):
             send("open Alpha option note", b"n")
             wait_for_text("Note for")
@@ -1443,10 +1585,10 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 if ("Submit note" if args.tern else "n add submit note") in plain(captured[before_later_pick:]):
                     send("submit later round picker", b"\r")
                     break
-        deadline = time.monotonic() + (15 if native else 90)
+        deadline = time.monotonic() + (15 if stock else 90)
         while not done.is_set() and time.monotonic() < deadline:
             read_output(0.1)
-            if (native or args.case == "eval") and handler_errors:
+            if stock and handler_errors:
                 raise RuntimeError(handler_errors[0])
             if child is not None and child.poll() is not None:
                 raise RuntimeError("omp exited before fixture completion")
@@ -1473,7 +1615,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
         if args.case != "abort":
-            assert len(result) == (2 if native or args.case in ("tui", "retry", "later-round", "eval") else 1), result
+            assert len(result) == (2 if stock or args.case in ("tui", "retry", "later-round") else 1), result
         opened = json.loads((out / "open.json").read_text())
         state = published_state(opened)
         stage = published_stage(state, opened)
@@ -1524,7 +1666,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 assert result[0]["details"].get("timedOut") is True, result
             elif args.case == "ratchet":
                 assert "FIRST_APPROVAL" in json.dumps(result)
-            elif args.case == "eval":
+            elif read_fault:
                 failures = failures_path.read_text().splitlines()
                 assert len(failures) > direct_failures and all("ask-status --session " in call for call in failures), failures
             elif args.case != "abort":
@@ -1533,6 +1675,13 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                  for c in m.get("content", []) if isinstance(c, dict) and c.get("type") == "toolCall"]
         ask_calls = [c for c in calls if c.get("name") == "ask"]
         save(out / "ask-calls.json", ask_calls)
+        if args.case == "ratchet" or args.case == "eval":
+            assert not ask_calls, "A separate ordinary ask ran"
+        if eval_case:
+            eval_calls = [c["arguments"] for c in calls if c.get("name") == "eval"]
+            forms = [fixture_ask(receipt)] if read_fault else [renamed_ask(receipt), fixture_ask(receipt)]
+            assert eval_calls == [eval_ask(form)["args"] for form in forms], eval_calls
+            save(out / "eval-calls.json", eval_calls)
         calls_by_id = {c["id"]: c for c in ask_calls}
         for index, outcome in enumerate(r for r in result if r["toolName"] == "ask"):
             original = calls_by_id[outcome["toolCallId"]]
@@ -1553,7 +1702,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         export_flow(state, bound)
         assertions = ["fresh inventory omits flow_ask", "live content matches the committed question identities",
                       "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
-        if args.case != "ratchet":
+        if args.case != "ratchet" and args.case != "eval":
             assertions.append("ordinary ask sends the receipt's ask.html unchanged")
         if args.case == "tui" or native:
             assertions.append("the renamed control is refused without opening the picker or Flow panel")
@@ -1570,9 +1719,15 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             assertions.append("Ctrl+C closes the picker and removes the Flow panel")
         elif args.case == "offline":
             assertions.append("actual host error appears in the Flow panel beside the picker and cancellation grants no consent")
+        elif read_fault:
+            assertions.append("the unchanged receipt passed the live and ask-status checks before fault injection")
+            assertions.append("direct and Eval native forms show the actual read error and each clears its panel and presence")
         elif args.case == "eval":
-            assertions.append("the same failed ask-status error appears beside both the direct and eval recovery pickers")
-            assertions.append("each recovery picker and its panel close before the next action")
+            assertions.append("Eval refuses the renamed control without a dialog, panel, or presence")
+            assertions.append("Eval opens the unchanged receipt with a first-question link and clears panel and presence at settlement")
+        elif args.case == "ratchet":
+            assertions.append("the fresh approval shows the native gate and Stage link, then clears its panel and presence")
+            assertions.append("reused approval opens neither a gate nor a Flow panel, and no ordinary ask runs")
         else:
             assertions.append("Flow panel URL is on screen while the picker is open, with no dismissal step")
             if args.tern and args.case != "timeout":
@@ -1587,8 +1742,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             assertions.append("a new authored round gets a fresh Flow panel and separate answer while preserving earlier history")
         if args.case == "timeout":
             assertions.append("configured timeout remains non-consent")
-        if args.case == "ratchet":
-            assertions.append("native Ratchet approval is reused without a second gate")
         assert "click_error" not in summary, summary.get("click_error")
         summary.update(ok=True, flow=opened["flow"],
                        session_id=session_id, stub_requests=len(requests), live=receipt["live"], assertions=assertions,
@@ -1664,7 +1817,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         if owned_window:
             cleanup_step("stop owned Tern daemon", stop_window)
         cleanup_step("verify Flow shutdown", lambda: verify_host_stopped(home, port, cleanup))
-        if native and not cleanup["errors"]:
+        if stock and not cleanup["errors"]:
             cleanup_step("remove disposable HOME and fixture data", lambda: (shutil.rmtree(outside), shutil.rmtree(data)))
         cleanup["ok"] = not cleanup["errors"]
         if not cleanup["ok"]:
