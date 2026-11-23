@@ -24,7 +24,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import urlopen
 
-from flow_native_answers import NativeAnswers, initial_questions
+from flow_native_answers import NativeAnswers, click_point, initial_questions
 from flow_native_outcomes import CASES as OUTCOME_CASES, CONTINUE, REQUIRED, STEER, NativeOutcomes, non_consent
 
 PANEL = '[data-role="vstack.flow-panel"]'
@@ -170,7 +170,6 @@ def recorded_answers(stage):
 
 
 def actual_model(args, stack):
-    """Observe a fresh Session-model UI; controller policy is never scenario input."""
     import hashlib
 
     checkout, run = (Path(p).resolve() for p in (args.checkout, args.run))
@@ -245,7 +244,6 @@ def actual_model(args, stack):
         tern("start")
         tern("doctor")
         pane = json.loads(tern("ctl", "state"))["focused"]["id"]
-        # Keep real HOME for the Session credentials, not for the isolated Tern window.
         executable = str(Path(shutil.which("omp")).resolve())
         command = ["env", f"HOME={env['HOME']}", f"PI_CONFIG_FILES={config}",
                    f"VSTACK_FLOW_PORT={env['VSTACK_FLOW_PORT']}", executable, *argv[1:]]
@@ -521,7 +519,6 @@ def run_case(args, checkout, run, native, stack):
                         shutil.copy2(source, out / name)
                 native_tern("stop")
 
-        # The helper creates HOME when starting its isolated window.
         stack.callback(stop_window)
         native_tern("start")
         try:
@@ -1080,8 +1077,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
             (out / "terminal.txt").write_text(plain(captured))
 
     def native_click(label, node, *modifiers):
-        x, y, width, height = node["rect"]
-        point = [str(x + min(8, width / 2)), str(y + min(8, height / 2))]
+        point = click_point(node["rect"])
         inputs.append({"at_seconds": time.monotonic() - started, "label": label,
                        "click": point, "modifiers": modifiers, "output_byte_offset": len(captured)})
         save(out / "inputs.json", inputs)
@@ -1169,7 +1165,6 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                    for session in inspection["sessions"] for tab in session["tabs"]), inspection
         save(out / "native-pane-identities.json", {"inspection": inspection, "session_headers": headers})
 
-        # Focus switches have occurred with no page open. Only the fixture explicitly opens these pages.
         focus(a)
         no_pages = browser("blocks")["blocks"]
         save(out / "follow-no-page.json", no_pages)
@@ -1237,8 +1232,7 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
                 browser("release", block=page)
                 check("follow-before-link-click", "overview")
                 link = next(node for node in ctl("tree", PANEL + " a")["nodes"] if node.get("text") == panel_link)
-                x, y, width, height = link["rect"]
-                save(out / "click-target.json", ctl("pick", str(x + min(8, width / 2)), str(y + min(8, height / 2))))
+                save(out / "click-target.json", ctl("pick", *click_point(link["rect"])))
                 native_click("click exact Flow panel link", link, "cmd")
                 check("click-destination", current[0]["id"])
                 assert ctl("state")["focused"]["id"] == page, "Link did not focus the same-tab page"

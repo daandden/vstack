@@ -195,9 +195,9 @@ function holdLookups(h: ReturnType<typeof fakeHost>) {
   };
 }
 
-async function until(condition: () => boolean, timeout = 10_000) {
+async function until(condition: () => boolean | Promise<boolean>, timeout = 10_000) {
   const end = Date.now() + timeout;
-  while (!condition()) {
+  while (!(await condition())) {
     if (Date.now() > end) throw new Error("Timed out waiting for the Flow panel");
     await Bun.sleep(20);
   }
@@ -242,6 +242,124 @@ function nativeForms(h: ReturnType<typeof fakeHost>) {
     return { call, settled, fail: reject, close: (value?: unknown) => { resolve(value); return settled; } };
   };
 }
+
+test("overlapping native asks keep the Flow link and presence on the form omp presents", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Overlapping asks", "--skill", "implement", "--session", "overlap"]);
+  const receipt = await publishQuestions(w, "overlap", "first", "second");
+  const h = w.host("overlap");
+  const ui = panelUI(h);
+  let presented: string | undefined;
+  let tail = Promise.resolve();
+  const forms = new Map<string, ReturnType<typeof Promise.withResolvers<void>>>();
+  h.ctx.ui.formDialog = (html: string) => {
+    const form = Promise.withResolvers<void>();
+    forms.set(html, form);
+    return tail = tail.then(() => {
+      presented = html;
+      return form.promise;
+    });
+  };
+  await h.emit("session_start");
+  const lookups = holdLookups(h);
+  const start = async (ref: string) => {
+    const input = askForm(receipt.refs[ref]);
+    const call = { toolName: "ask", toolCallId: ref };
+    expect(await h.emit("tool_call", { ...call, input })).toEqual([undefined]);
+    await h.emit("tool_execution_start", { ...call, args: input });
+    const settled = h.ctx.ui.formDialog(input.html);
+    return { ...input, settled };
+  };
+  const first = await start("first");
+  const firstUrl = `${opened.live.url}#${receipt.refs.first}`;
+  const secondUrl = `${opened.live.url}#${receipt.refs.second}`;
+  const target = () => w.ok(["target", "--session", "overlap"]);
+  let second: Awaited<ReturnType<typeof start>> | undefined;
+  try {
+    await until(() => lookups.held() === 1);
+    lookups.release(0);
+    await until(() => ui.panel()?.includes(firstUrl) ?? false);
+    await until(async () => (await target()).target === firstUrl);
+    second = await start("second");
+    expect(lookups.held()).toBe(1);
+    expect(presented).toBe(first.html);
+    expect(await target()).toMatchObject({ target: firstUrl, picker: expect.any(String) });
+    expect(ui.panel()).toContain(firstUrl);
+    forms.get(first.html)!.resolve();
+    await first.settled;
+    expect(presented).toBe(second.html);
+    await until(() => lookups.held() === 2);
+    lookups.release(1);
+    await until(() => ui.panel()?.includes(secondUrl) ?? false);
+    await until(async () => (await target()).target === secondUrl);
+  } finally {
+    for (const form of forms.values()) form.resolve();
+    await Promise.all([first.settled, second?.settled]);
+    lookups.release();
+  }
+  expect(ui.panel()).toBeUndefined();
+  await until(async () => (await target()).picker === null);
+});
+
+test.each(["cancelled", "failed"])("a queued form takes over after a %s Ratchet dialog", async outcome => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Ratchet then ask", "--skill", "tune-llm-flow", "--session", "ratchet-overlap"]);
+  const receipt = await publishQuestions(w, "ratchet-overlap", "next");
+  const h = w.host("ratchet-overlap");
+  const ui = panelUI(h);
+  const approval = Promise.withResolvers<undefined>();
+  const form = Promise.withResolvers<undefined>();
+  let formPresented = false;
+  h.ctx.ui.askDialog = () => approval.promise;
+  h.ctx.ui.formDialog = async () => {
+    await approval.promise.catch(() => {});
+    formPresented = true;
+    return form.promise;
+  };
+  await h.emit("session_start");
+  const lookups = holdLookups(h);
+  const approvalResult = h.ctx.ui.askDialog([{ id: "approval", question: "Approve?", options: [{ label: "Approve" }] }]);
+  void approvalResult.catch(() => {});
+  const stageUrl = `${opened.live.url}#${opened.stage}`;
+  const questionUrl = `${opened.live.url}#${receipt.refs.next}`;
+  const target = () => w.ok(["target", "--session", "ratchet-overlap"]);
+  let formResult: Promise<unknown> | undefined;
+  try {
+    await until(() => lookups.held() === 1);
+    lookups.release(0);
+    await until(() => ui.panel()?.includes(stageUrl) ?? false);
+    await until(async () => (await target()).picker !== null);
+    const before = await target();
+    expect(before.target).toBe(stageUrl);
+    const call = { toolName: "ask", toolCallId: "queued", input: { html: receipt.ask.html } };
+    expect(await h.emit("tool_call", call)).toEqual([undefined]);
+    await h.emit("tool_execution_start", { ...call, args: call.input });
+    formResult = h.ctx.ui.formDialog(call.input.html);
+    expect(formPresented).toBe(false);
+    expect(ui.panel()).toContain(stageUrl);
+    expect(await target()).toMatchObject({ target: stageUrl, picker: before.picker });
+    expect(lookups.held()).toBe(1);
+    if (outcome === "failed") {
+      approval.reject(new Error("Ratchet dialog failed"));
+      await expect(approvalResult).rejects.toThrow("Ratchet dialog failed");
+    } else {
+      approval.resolve(undefined);
+      expect(await approvalResult).toBeUndefined();
+    }
+    await until(() => formPresented && lookups.held() === 2);
+    lookups.release(1);
+    await until(() => ui.panel()?.includes(questionUrl) ?? false);
+    await until(async () => (await target()).target === questionUrl);
+    expect((await target()).picker).not.toBe(before.picker);
+  } finally {
+    approval.resolve(undefined);
+    form.resolve(undefined);
+    await Promise.allSettled([approvalResult, formResult]);
+    lookups.release();
+  }
+  expect(ui.panel()).toBeUndefined();
+  await until(async () => (await target()).picker === null);
+});
 
 test("a renamed Flow control is refused before omp's synthetic start can show a panel or presence", async () => {
   const w = setup();
@@ -319,6 +437,29 @@ test("a nameless hidden input is refused beside a visible askable question", asy
       block: true, reason: expect.stringContaining("unnamed input: hidden controls are not permitted"),
     }]);
   }
+});
+
+test.each([
+  ["hidden", "<input type=hidden>", "hidden controls are not permitted"],
+  ["duplicate", '<input type=text name="QUESTION">', "more than one field uses this name"],
+  ["empty", "", "the form has no controls"],
+])("a Flow read fault does not admit a %s form", async (kind, extra, reason) => {
+  const w = setup(true);
+  await w.ok(["open", "--title", "Malformed form", "--skill", "implement", "--session", "fault"]);
+  const receipt = await publishQuestions(w, "fault", "first");
+  const h = w.host("fault");
+  const exec = h.pi.exec;
+  h.pi.exec = async (...args: any[]) => args[1][1] === "ask-status"
+    ? { code: 1, stdout: "", stderr: "fixture read failed", killed: false }
+    : exec(...args);
+  const ui = panelUI(h);
+  await h.emit("session_start");
+  const html = kind === "empty" ? "<form></form>" :
+    receipt.ask.html.replace("</form>", `${extra.replace("QUESTION", receipt.refs.first)}</form>`);
+  expect(await h.emit("tool_call", { toolName: "ask", toolCallId: kind, input: { html } })).toEqual([{
+    block: true, reason: expect.stringContaining(reason),
+  }]);
+  expect(ui.widgets).toEqual([]);
 });
 
 test("a read fault on a current receipt shows the read error for the native form's lifetime", async () => {
@@ -593,7 +734,6 @@ test("an ordinary native form owns the Flow panel and presence before tool compl
   const call = { toolName: "ask", toolCallId: "native-form" };
   const args = { html: receipt.ask.html };
 
-  // A history re-answer presents a form without a new agent tool call.
   const history = h.ctx.ui.formDialog(args.html);
   expect(await target()).toMatchObject({ target: stageUrl, picker: null });
   expect(ui.panel()).toBeUndefined();

@@ -1,8 +1,7 @@
-"""Native interruption, non-consent, and recovery checks at the public Flow seams."""
 import json
 from urllib.request import urlopen
 
-from flow_native_answers import answer_responses, question
+from flow_native_answers import answer_responses, decode_user_answers, question, submitted_values
 
 
 REQUIRED = {"html": '<form><fieldset><legend>Required fixture field</legend>'
@@ -21,7 +20,6 @@ def result_text(raw):
 
 
 def non_consent(raw, *, submitted_empty=False, headless=False):
-    """Return an existing Flow status and observed data, or no answer status at all."""
     text = result_text(raw)
     if raw and raw.get("isError"):
         return ("cancelled", {}) if text == CANCELLED else (None, {})
@@ -33,8 +31,7 @@ def non_consent(raw, *, submitted_empty=False, headless=False):
     if headless:
         return "headless", raw["values"]
     if submitted_empty:
-        assert text.startswith("User answers:\n"), raw
-        assert json.JSONDecoder().raw_decode(text[len("User answers:\n"):])[0] == {}, raw
+        assert decode_user_answers(raw) == {}, raw
         return "empty", {}
     return None, {}
 
@@ -137,7 +134,7 @@ class NativeOutcomes:
         ident = receipt["ask"]["questions"][0]["id"]
         expected = {ident: {"status": "answered", "picks": [picked]}}
         assert answer_responses(receipt, raw, True) == expected, raw
-        assert json.JSONDecoder().raw_decode(result_text(raw).split("\n", 1)[1])[0] == {ident: expected_value}, raw
+        assert submitted_values(raw, True) == {ident: expected_value}, raw
         recorded = self.submit("later-answer", [{"kind": "answer", "question": ident, "response": expected[ident]}])
         stage = self.observe("later-answer", {**receipt, "revision": recorded["revision"]})
         final = next(q for q in stage["questions"] if q["id"] == ident)
@@ -208,11 +205,12 @@ class NativeOutcomes:
             ui.action("Submit")
             final = ui.result(2)
             ui.settled("retry-settled", repeat)
-            self.answer(repeat, final, "B", "B. Beta")
             evidence = self.submit("failed-delivery-evidence", [self.evidence(
                 "Earlier native attempt failed", "The first turn stopped before any response was recorded. The next call reused the receipt.", raw)])
-            self.observe("failed-delivery-evidence", {**receipt, "revision": evidence["revision"]}, first,
-                         evidence=(evidence["refs"]["raw-outcome"], raw))
+            before_answer = self.observe("failed-delivery-evidence", {**receipt, "revision": evidence["revision"]}, first,
+                                         evidence=(evidence["refs"]["raw-outcome"], raw))
+            assert all(q["open"] and "response" not in q["answer"] for q in before_answer["questions"]), before_answer
+            self.answer(repeat, final, "B", "B. Beta")
             return ["failed delivery retained; unchanged receipt retried once with one published round"]
         if self.case == "interrupted":
             assert raw.get("isError") and status is None and result_text(raw).startswith(INTERRUPTED), raw

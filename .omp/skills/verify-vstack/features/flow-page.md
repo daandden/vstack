@@ -222,13 +222,7 @@ The stub proves delivery and presentation mechanics, not whether a model follows
 
 #### Stock native ask baseline
 
-Use `scripts/flow-questions-tui.py` with `--case native`. Pin `omp` to 19.1.1 and `tern` to 0.9.32 on `PATH`. Run once with `--tern` and once without it, each in a new run directory:
-
-```sh
-	python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
-		--run "$VERIFY_RUN_DIR" --case native --tern
-	jq '{ok,assertions,error,cleanup}' "$VERIFY_RUN_DIR/flow-questions-native/summary.json"
-```
+Pin `omp` to 19.1.1 and `tern` to 0.9.32 on `PATH`. Run `case = "native"` with the [shared Eval launcher](#launch-native-ask-through-eval). Run it once with `tern = True` and once with `tern = False`, each in a new run directory. Inspect `flow-questions-native/summary.json` for assertions and cleanup.
 
 The helper loads the checkout's plugin and copies the candidate Flow runtime into a new HOME outside the real home. The provider listens only on localhost. The Tern case starts its own window and daemon through `tern-verify`. Omit `--omp-tools` and keep the legacy cases below separate.
 
@@ -246,9 +240,9 @@ Use a fresh `VERIFY_RUN_DIR` with the same pinned binaries and isolated Tern pre
 - Step `flow-page-native-option-note`: Use the isolated Tern controller's clipboard command to paste a fixture PNG into the selected Alpha option's Note. Save the Note and submit the form. The model stub accepts images. Compare the returned Note text and image blocks to the linked Document and the bytes the live Flow serves. Inspect `native-note-editor.webp`, `returned-native-note.*`, and `native-note-attachment.json`. A Submit note, an unpicked-option note, and an input file on disk cannot satisfy this step.
 - Step `flow-page-native-history-reanswer`: After CLI recording, open `/tree`, navigate to the earlier ask result, and submit Beta in the reopened native form. Require the new Beta result in the native session and compare `native-history-show.json` and `native-history-content.json` to the pre-re-answer records. Earlier picks, Other words, readings, Note text, and served attachment bytes remain unchanged. Inspect the selector, active-form, and settled WebP captures. The controlled actions prove transport and preservation, not human consent.
 
-#### Stock native Eval and Ratchet dialogs
+#### Launch native ask through Eval
 
-Use the same binary pins and disposable launcher as the stock baseline. Run `eval`, `eval-read-error`, and `ratchet` in distinct new run directories. These cases require `--tern` and refuse `--omp-tools`. Run the Python helper through eval:
+Set `skill_dir`, `checkout`, and `run_dir` to the absolute Verify skill, checkout, and new run directory paths. Set `case` to the recipe's case name and `tern` to whether it needs the isolated Tern renderer. Run the controller through Python Eval:
 
 ```python
 import subprocess
@@ -256,9 +250,13 @@ import sys
 
 subprocess.run([
 	sys.executable, f"{skill_dir}/scripts/flow-questions-tui.py",
-	"--checkout", checkout, "--run", run_dir, "--case", case, "--tern",
+	"--checkout", checkout, "--run", run_dir, "--case", case, *(["--tern"] if tern else []),
 ], check=True)
 ```
+
+#### Stock native Eval and Ratchet dialogs
+
+Use the same binary pins and shared launcher as the stock baseline. Run `eval`, `eval-read-error`, and `ratchet` in distinct new run directories. Set `tern = True` in all three cases. Do not link omp-tools.
 
 - Step `flow-page-questions-eval`: `eval` first calls Eval's `tool.ask` with a renamed control. Require the refusal in `eval-guard-refusal.json` and no form, panel, or presence in `eval-refusal.*.json`. Pass the unchanged receipt through Eval next. Require one native form and a Flow panel link ending in the first question's id. Inspect `eval.card.json`, `eval.links.json`, `eval.presence.json`, and `eval-panel.webp`. Submit Alpha and require the native result inside the Eval output. The `after-eval.*.json` files must show the form, panel, and presence cleared.
 - Step `flow-page-questions-eval-recovery`: `eval-read-error` verifies the unchanged receipt against both live content and the real `ask-status` before faulting only `ask-status`. Require the same captured read error beside both the direct `ask` and Eval `tool.ask` forms. Inspect `checked-receipt-ask-status.json`, `ask-status-failures.txt`, the `direct` and `eval` active snapshots and screenshots, and the `after-direct` and `after-eval` form, panel, and presence snapshots. This case proves the diagnostic for a checked receipt, not permission to ask unknown HTML.
@@ -277,7 +275,7 @@ Use the stock native launcher above. Run each case in a new evidence directory. 
 - Step `flow-page-questions-cancel`: Use `cancel --tern`. Click the native **Cancel** button. Require the actual cancellation result, a closed form and panel, and an open Flow question with status `cancelled`. An Escape at the composer can abort the turn but cannot prove the Cancel button.
 - Step `flow-page-questions-empty`: Use `empty`. Activate native **Submit** with no value set. Require the actual submitted empty data and a separate Flow answer with status `empty`. The question stays open.
 - Step `flow-page-questions-interrupted`: Use `interrupted`. Change the draft to Beta. Focus the composer and send a plain message without clicking **Submit**. Require the interruption result with Beta as draft data. Compare `interrupted-show.json` with `interrupted-content.json`. Both retain the raw evidence and the blocker separately from the open question and have no answer for it. The Stage remains in progress.
-- Step `flow-page-questions-retry`: Use `retry`. Abort the first turn from the composer while the form waits. Before recording any answer, submit the unchanged contribution again. Require `repeated: true` in `contribution-receipt.json`, the same revision and form, and one round. Verify `lost-delivery-{show,content}.json` and `repeated-{show,content}.json`. A new native `ask` opens that form without a restored draft. Submit Beta and record it separately. Require the original failure in `failed-delivery-evidence-{show,content}.json`.
+- Step `flow-page-questions-retry`: Use `retry`. Abort the first turn from the composer while the form waits. Before committing answer or failure evidence, submit the unchanged contribution again and recover its receipt. Require `repeated: true` in `contribution-receipt.json`, the same revision and form, and one round. Verify `lost-delivery-{show,content}.json` and `repeated-{show,content}.json`. A new native `ask` opens that form without a restored draft. After the form settles, require the original failure in `failed-delivery-evidence-{show,content}.json`. Record the retry's Beta submission separately.
 - Step `flow-page-questions-offline`: Use `offline`, the stock `native-offline` journey. Require the actual `bound.live.error` beside the usable native form and separate recording of the explicit fixture pick.
 - Step `flow-page-questions-abort`: Use `abort`. Focus the composer and interrupt the turn while the form waits. Require `settled.card.json` and `settled.panel.json` to show no form and no panel in Tern. Require no Picker presence, the actual tool error, and an in-progress Stage with no answer in `aborted-{show,content}.json`.
 - Step `flow-page-questions-later-round`: Use `later-round --tern`. Click native **Cancel** and record that non-consent. Publish a new round with `again`. In `later-publication-{show,content}.json`, require the same Stage and Q number, a new question id, links between attempts, and the retained cancellation. Check that the second native call uses the new receipt unchanged. Submit Continue and check `later-tool-result.json` and `later-answer-{show,content}.json` for the separately recorded answer and unchanged earlier response.

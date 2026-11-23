@@ -1,4 +1,3 @@
-"""The native answer-recording journey, driven by flow-questions-tui.py."""
 import base64
 import hashlib
 import json
@@ -30,10 +29,8 @@ def response(picks, text=None):
             **({"text": text} if text is not None else {})}
 
 
-def submitted_values(result, submitted):
-    if not submitted or not result or result.get("isError") or (result.get("details") or {}).get("timedOut"):
-        return None
-    blocks = result.get("content") or []
+def decode_user_answers(result):
+    blocks = (result or {}).get("content") or []
     header = "User answers:\n"
     text = blocks[0].get("text", "") if blocks else ""
     if not text.startswith(header):
@@ -43,6 +40,17 @@ def submitted_values(result, submitted):
     except ValueError:
         return None
     return values if isinstance(values, dict) else None
+
+
+def submitted_values(result, submitted):
+    if not submitted or not result or result.get("isError") or (result.get("details") or {}).get("timedOut"):
+        return None
+    return decode_user_answers(result)
+
+
+def click_point(rect):
+    x, y, width, height = rect
+    return str(x + min(8, width / 2)), str(y + min(8, height / 2))
 
 
 def answer_responses(receipt, result, submitted, *, other=None):
@@ -55,11 +63,11 @@ def answer_responses(receipt, result, submitted, *, other=None):
         values = data.get(ident, [])
         values = [values] if isinstance(values, str) else list(values) if isinstance(values, list) else []
         picks, words = [], []
-        explicit = (other or {}).get(ident)
-        if explicit:
-            # A marked Other occurrence is distinct from a selected occurrence of the same value.
-            if explicit in values:
-                values.pop(len(values) - 1 - values[::-1].index(explicit))
+        explicit_other = (other or {}).get(ident)
+        if explicit_other:
+            last_other_index = next((i for i in reversed(range(len(values))) if values[i] == explicit_other), None)
+            if last_other_index is not None:
+                del values[last_other_index]
         options = {option["label"]: chr(ord("A") + i) for i, option in enumerate(question["options"])}
         for value in values:
             if not isinstance(value, str):
@@ -69,8 +77,8 @@ def answer_responses(receipt, result, submitted, *, other=None):
                     picks.append(options[value])
             elif value.strip():
                 words.append(value)
-        if explicit:
-            words.append(explicit)
+        if explicit_other:
+            words.append(explicit_other)
         if picks or words:
             responses[ident] = response(picks, "\n".join(words) if words else None)
     return responses
@@ -255,16 +263,31 @@ class NativeAnswers:
             shot(name)
 
         def pick(text):
-            option = lambda: visible(".sf-item-label", text)
-            wait(text, option)
-            # Opening or expanding the card animates the list's position.
-            time.sleep(0.25)
-            click(text, wait(text, option))
+            previous_rect = None
 
-        def expand(title):
-            row = wait(title, lambda: next((node for node in nodes(form + " .sf-act")
-                                           if title in node.get("text", "")), None))
-            click(title, row)
+            def stable_hittable_option():
+                nonlocal previous_rect
+                node = visible(form + " .sf-item-label", text)
+                if not node or node["rect"][3] <= 0:
+                    previous_rect = None
+                    return None
+                rect = node["rect"]
+                unchanged = rect == previous_rect
+                previous_rect = rect
+                if not unchanged:
+                    return None
+                hit = ctl("pick", *click_point(rect))
+                if hit.get("rect") == rect and "sf-item-label" in hit.get("path", "").split(">")[-1].split("."):
+                    return node
+                return None
+
+            click(text, wait(f"stable, hittable option {text}", stable_hittable_option))
+
+        def expand(title, first_option):
+            node = wait(title, lambda: visible(form + " .sf-item-label", first_option) or next(
+                (row for row in nodes(form + " .sf-act") if title in row.get("text", "")), None))
+            if node.get("text") != first_option:
+                click(title, node)
 
         def other(words, *, advance=True):
             pick("Other…")
@@ -292,12 +315,11 @@ class NativeAnswers:
         shot("native-note-editor")
         action("Save")
         ctl("clipboard", "clear")
-        expand("Which two scopes should the form record?")
+        expand("Which two scopes should the form record?", "A. Local")
         pick("A. Local")
         pick("B. Shared")
         other(MIXED_WORDS)
-        if not visible(".sf-item-label", "A. Proceed"):
-            expand("Which approach addresses the concern?")
+        expand("Which approach addresses the concern?", "A. Proceed")
         other(CONCERN_WORDS)
         submit(0)
         wait("second native form", lambda: self.second and visible(".sf-text", self.second["ask"]["questions"][0]["question"]))
