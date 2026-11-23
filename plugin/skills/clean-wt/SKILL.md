@@ -12,9 +12,20 @@ Typing `/skill:clean-wt` authorizes machine-wide removal of unused clean omp che
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before inventory. The page records approval. It never replaces the deletion guards.
 
-Save each inventory, removal, and verification command's exit code, stdout, and stderr in a `clean-wt` entry under the supplied Scratch dir. Preserve the raw JSON and failure diagnostics. Before every exit, publish a table Result with every checkout's outcome, ownership or uncertainty reason, investigated classification, and evidence. Include skipped investigations and failures explicitly. Attach the raw diagnostics as captured evidence. Use a Document Result for errors with no checkout row.
+Before inventory, create a `clean-wt` Scratch entry and start `summary-records.json` as described in [Summary records](references/summary-records.md). Keep raw command results, investigator reports, approval mappings, and checkout accounting there. Publish no evidence attachments or process Topic notes.
 
-Step 5's grouped summary is this Stage's Result, not a second report page. Summarize the published outcome in chat.
+Validate and submit the renderer's contribution, not an agent-written report. Do this before finishing the Stage. When publication is unavailable, retain the contribution in Scratch and report the failure.
+
+### Record cleanup progress
+
+At Stage entry, before inventory, submit one `task` with `ref: "cleanup"`, `title: "Clean up unused checkouts"`, and `state: "active"`. Save its ID from the receipt's `refs.cleanup`. For a standalone cleanup Flow, include `{ "kind": "end-state", "requested": "none" }` in that contribution. Cleanup delivers no commit or PR. In a nested Stage, leave the caller's End state unchanged.
+
+Before finishing the Stage on any exit, update the same task by ID. Follow `skill://flow-page`'s "Record progress" contract:
+
+- If cleanup and verification finish without failure or an unverified outcome, set `state: "done"` and give one plain outcome sentence in `evidence`. A run that verifies there was nothing to remove can finish as `done`.
+- If cleanup fails or stops before it can finish, set `state: "skipped"` and give a plain `reason`, such as "Cleanup stopped before verification finished." Use `skipped` as well if verification leaves an outcome unknown.
+
+Keep diagnostics in Scratch. If work pauses at a recoverable blocker, record the blocker and leave the task active. When the blocker clears, resolve it and resume the same task.
 
 ## Script contract
 
@@ -28,6 +39,8 @@ Run the script with this omp session's bash tool, which sets `PI_SESSION_ID`:
 	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" inventory --progress --target <path> --source-facts <source-facts.json>
 	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" remove --progress [--approve <path>]... <path>=<fingerprint>...
 	bun "$(realpath skill://clean-wt/scripts/approval.ts)" <investigated-evidence.json>
+	bun "$(realpath skill://clean-wt/scripts/summary.ts)" <summary-records.json> [--revises <result-id>]
+	bun "$(realpath skill://clean-wt/scripts/summary.ts)" link-round <approval-plan.json> <question-ref> <result-id>
 ```
 
 Use `--progress` on runtime inventory and removal commands. It writes JSONL progress to stderr while stdout remains the inventory or removal JSON. Save both streams separately. Evidence stages name native listings, session headers, live ownership, and blockers. Checkout stages name the path and ownership, contents, history, or integration work. Content progress reports actual file opens and bytes read, with a heartbeat each 64 MiB. Protected records report their owner or missing evidence instead of starting content inspection. Read the latest stage and blocker rather than treating a silent content scan as a stalled process. Without `--progress`, the runtime keeps its existing stderr behavior.
@@ -68,7 +81,7 @@ Mounted metadata can outlast a successful native removal. Once the native listin
 
 ## 1. Inventory and protect owners
 
-Run `inventory` under the Script contract's deadline rule. On an actual nonzero exit, stop and report stderr. Show the base and every evidence gap. Keep owned, uncertain, and excluded records with their reasons, including native entries outside supported cleanup scope. Keep unknown Git states until they can be repaired and inspected. Keep unique-history checkouts and name the refs that must be preserved outside them before a later cleanup.
+Run `inventory` under the Script contract's deadline rule. Record its exit and output in Scratch. On an actual nonzero exit, stop and report stderr. Keep owned, uncertain, and excluded records. Keep unknown Git states until they can be repaired and inspected. Keep unique-history checkouts and record the refs that must be preserved outside them before a later cleanup.
 
 Separate the remaining records into automatic candidates and unresolved work. Every inventory record must have a group before removal.
 
@@ -76,7 +89,7 @@ Separate the remaining records into automatic candidates and unresolved work. Ev
 
 Run `remove` without `--approve` for every initial `automatic` candidate, using its path and fingerprint. Complete these clean removals before preparing remote facts or comparing dirty checkouts.
 
-Report removals, skips, and failures immediately. Keep newly owned or uncertain targets. A changed target needs a fresh inventory and investigation, not a substituted fingerprint under an old selection. With no candidates, continue without a removal command.
+Record each removal command's outcome and publish or revise the summary. If there were no candidates, publish the first summary anyway. A changed target needs a fresh inventory and investigation, not a substituted fingerprint under an old selection.
 
 ## 3. Compare remaining inactive work
 
@@ -90,9 +103,11 @@ Investigate one inactive checkout read-only. Inputs are its discovery record and
 
 A host deadline that ends the command with no process exit code is not a nonzero script exit. On an actual nonzero exit, stop and return stderr. If a deadline interrupts the command, keep its command, stdout, stderr, and deadline message, then rerun it once with a longer or disabled deadline. If that retry is interrupted or exits nonzero, return that failure. Write no Scratch. Return every interrupted attempt's diagnostics.
 
-Retain the targeted inventory's raw JSON and investigated fingerprint unchanged. If ownership or safety guards now protect the checkout, return that outcome. Otherwise compare its remaining contents with the verified default commit. Return the checkout and source repo, the raw targeted record, original fingerprint, compared files and commits, and missing evidence.
+Retain the targeted inventory's raw JSON and investigated fingerprint unchanged. If ownership or safety guards now protect the checkout, return that outcome. Otherwise compare its remaining contents with the verified default commit. Return the checkout, the established source repository name as `repository`, the raw targeted record, original fingerprint, compared files and commits, and missing evidence.
 
-For eligible unresolved work, also return `contents` as a nonempty list of `{category, detail}` records with concrete remaining paths and work. Categories are `source`, `configuration`, `scratch`, `design`, `generated-metadata`, and `other`. Keep generated metadata separate from source, configuration, Scratch, and design artifacts. Return `integration` with exactly one nonempty `evidence` or `gap` string, a `classification`, a concrete `risk`, and `recommendation: {action: "keep" | "remove", reason}`. State the evidence and its limits rather than treating a missing comparison as integration. Classifications are unique unfinished work, integrated draft, design or prototype artifacts, generated or IDE metadata, and unresolved.
+For eligible unresolved work, also return `verdict` as one nonempty line of plain text. Say what remains in the checkout in words the user can scan in a picker. Give the keep or remove recommendation separately.
+
+Return `contents` as a nonempty list of `{category, detail}` records with concrete remaining paths and work. Categories are `source`, `configuration`, `scratch`, `design`, `generated-metadata`, and `other`. Keep generated metadata separate from source, configuration, Scratch, and design artifacts. Return `integration` with exactly one nonempty `evidence` or `gap` string, a `classification`, a concrete `risk`, and `recommendation: {action: "keep" | "remove", reason}`. State the evidence and its limits rather than treating a missing comparison as integration. Classifications are unique unfinished work, integrated draft, design or prototype artifacts, generated or IDE metadata, and unresolved.
 
 A filename or a session's claim that work shipped is only a lead. Another checkout's similar-looking work does not prove integration.
 
@@ -110,26 +125,30 @@ Spawn one `vstack-scout` via `task` (`agent: "vstack-scout"`): the investigation
 
 Investigators use the Session model unless the user configures `task.agentModelOverrides.vstack-scout: "@smol"` in omp settings. This is an opt-in override, not a model requirement.
 
-Save every investigator's raw targeted inventory, fingerprint, and returned diagnostics, including interrupted attempts, in this run's `clean-wt` Scratch entry.
+Save every investigator's raw targeted inventory, fingerprint, and returned diagnostics in Scratch, including interrupted attempts. Update the investigation records with completed, failed, and unrun work.
 
-With no checkouts, skip investigation and approval. Run `remove` without `--approve` for every newly `automatic` target, using its targeted fingerprint. Report these integrated removals before the approval step. An investigator's judgment alone does not bypass the script's guards. Keep other cases unresolved for step 4.
+With no checkouts, skip investigation and approval. Run `remove` without `--approve` for every newly `automatic` target, using its targeted fingerprint. Record each command's outcome and revise the summary before the approval step. An investigator's judgment alone does not bypass the script's guards. Keep other cases unresolved for step 4.
 
 ## 4. Ask once per bounded batch
 
 Report protected owners, uncertain records, excluded entries, and unique-history blockers separately. Offer only investigated records with `verdict: "unused"`, `state: "dirty"`, `automatic: false`, no owners or protection reasons, no unique history, and a valid inspected fingerprint.
 
-Save `{version: 1, targets: [...]}` as `investigated-evidence.json` in this run's `clean-wt` Scratch entry. Each target contains `checkout`, the unchanged authoritative targeted inventory record, plus the investigator's `contents`, `integration`, `classification`, `risk`, and `recommendation` fields from step 3. Run `approval.ts` with that file and save stdout as `approval-plan.json`. A rejected plan grants no permission. Repair missing investigation evidence, not the inventory's eligibility fields or fingerprint.
+Save `{version: 1, targets: [...]}` as `investigated-evidence.json` in this run's `clean-wt` Scratch entry. Each target contains `checkout`, the unchanged authoritative targeted inventory record, plus `repository`, `verdict`, `contents`, `integration`, `classification`, `risk`, and `recommendation` from step 3. Run `approval.ts` with that file and save stdout as `approval-plan.json`. A rejected plan grants no permission. Treat an invalid or absent repository or one-line verdict as missing investigation evidence. Repair the investigation evidence, not the inventory's eligibility fields or fingerprint.
 
-The planner emits `rounds`. Each round has a complete Flow `contribution`, a `question_ref`, and a `mapping` with each option's `letter`, `label`, `path`, and original `fingerprint`. The first contribution puts the table Result before its question. That table shows every target's remaining contents, integration evidence or gap, classification, risk, and keep/remove recommendation. Each question also includes the evidence beside its options.
+The planner emits `rounds`. Each round has a Flow `contribution` with one self-contained question, a `question_ref`, and a `mapping`. Each mapping entry holds the option's `letter`, `label`, full `path`, original `fingerprint`, and `recommendation` (`keep` or `remove`). The label shows the short path, repository, verdict, and recommendation. Process the remove-recommended batches first, then the keep-recommended batches. Keep the structured investigation evidence in Scratch.
 
-With no rounds, skip `ask`. Otherwise process the rounds in order. Save each complete `contribution` to its own file. Run the current Flow CLI's `validate <file>` for this Stage and correct any diagnostics. Then submit the unchanged contribution and use the receipt's `ask.html` unchanged under `skill://flow-page`'s "Every ask in a Flow" contract, including its current-content check. Each round contains one multi-select question with at most 26 targets and no preselected or `recommended` options. Recommendations remain human-visible evidence, never picker defaults.
+Save the valid plan in the summary records. If there are no rounds, skip `ask`. Otherwise publish the `picking` summary before the first round, and process rounds in order. For each round, use `summary.ts link-round` with the saved plan, `question_ref`, and the summary's Result id. Save the complete output contribution. Validate it for this Stage and correct any diagnostics. Then submit the unchanged contribution, record the offered round in Scratch, and use the receipt's `ask.html` unchanged under `skill://flow-page`'s "Every ask in a Flow" contract, including its current-content check. Nothing is preselected or marked `recommended`.
 
 Record each observed response as a separate Flow `answer`, preserving cancellation, timeout, empty selection, unavailable questioning, and the user's words. Find the question id in `receipt.refs[round.question_ref]` and match it to the control name in the answer JSON. Use `ask.questions` to map exact picked labels to letters, then use the round's `mapping` to find each selected target. Only explicit user picks authorize their mapped target and original fingerprint. Unselected targets stay. Automatic selections from a timeout or headless route, requests to show recommendations, and words without an explicit target pick authorize no removal. Do not re-ask a deletion question after non-consent. A later disjoint batch offers only its own previously unasked targets.
 
+Record the picked paths in the offered round's Scratch record, then revise the summary. Record an empty path list for a finished round that gave no permission. The Flow answer record remains separate from this list.
+
 Run `remove` with `--approve <path>` only for explicitly selected unresolved checkouts. Pass only each selected target and its original mapped fingerprint as `<path>=<fingerprint>`. Never substitute a refreshed fingerprint under an earlier selection. The runtime's fresh ownership, identity, contents, integration, history, and snapshot guards still apply. Report each skip or failure.
+
+After each removal command reports, record its outcome and revise the summary before continuing to another batch or to verification.
 
 ## 5. Verify and summarize
 
-Run `inventory` again under the Script contract's deadline rule. Check that removed checkouts are absent from the inventory and disk, including the ovnfs listing for ovnfs removals. For removed linked worktrees, check that Git no longer registers their paths and that their branches remain. Check that every kept checkout remains. If evidence is missing or a checkout changed ownership, report that outcome rather than claiming verification.
+Run `inventory` again under the Script contract's deadline rule. Save its output and the independent observations described in [Summary records](references/summary-records.md). Check that removed checkouts are absent from inventory and disk, including the ovnfs listing for ovnfs removals. For removed linked worktrees, check that Git no longer registers their paths and that any named branches remain. Check that kept checkouts remain. If evidence is missing or ownership changed, record what you observed without claiming it verifies the outcome.
 
-Report removed checkouts, protected owners by owner type, uncertain checkouts with their missing evidence, kept work with its classification and reason, and failures. Account for every original inventory record and attach the verification diagnostics.
+Set the summary records to `finished` and publish the final revision. On an early exit, record the stop step and publish the same way, with only the evidence you have. Summarize the outcome in chat and name the run's Scratch folder once.
