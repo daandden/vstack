@@ -4,7 +4,7 @@ The user chose this in the `flow-popup-composer-cba8be` interview on 2026-11-06.
 
 While a native question dialog is open in a Flow, vstack shows a panel titled `Flow page` above the composer. Its body is the clickable live Flow page URL, or the actual host error when the Local Flow host is unavailable. Stock omp `ask` presents its receipt form through `ui.formDialog`. That dialog owns the panel's lifetime, not `tool_execution_start` or the tool's later answer processing. Ratchet keeps `ui.askDialog` and uses the same panel for its native approval dialog. The panel goes away on settlement, abort, or session switch. Only an interactive omp screen shows it. The panel text never enters the agent's context, later requests, compaction, or branch summaries.
 
-The extension tracks `ui.formDialog` and `ui.askDialog` in one first-in, first-out order. Only the first unsettled dialog can show the Flow panel or write Picker presence. omp still queues and presents the dialogs. A native approval, select, confirm, or input outside those wrappers can still leave the panel pointing at a queued form because omp 19.1.1 exposes no presentation signal. See [daandden/oh-my-pi#1](https://github.com/daandden/oh-my-pi/issues/1).
+The extension tracks `ui.formDialog` and `ui.askDialog` in one first-in, first-out order. Only the first unsettled dialog can show the Flow panel or write Picker presence. omp still queues and presents the dialogs. A native approval, select, confirm, or input outside those wrappers can still leave the panel pointing at a queued form because omp 19.1.1 exposes no presentation signal.
 
 Proof for this change is a real omp session. In that session, the panel shows a clickable URL above an open picker and goes away when the picker closes.
 

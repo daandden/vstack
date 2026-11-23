@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Remove a dead upstream issue link from the Flow page skill and its ADR."
+  ]
+}
