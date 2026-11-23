@@ -5,7 +5,7 @@ import { mapOpen, mapTab, shortcutEligible } from "~/composables/navigation";
 
 const { flow } = useReaderState();
 
-const mapControl = "map-control u-min-h-11 u-rounded-md u-bg-flow-base u-gap-1 u-px-2 u-py-1 u-text-xs u-font-medium u-text-flow-text aria-selected:u-text-flow-blue";
+const mapControl = "map-control min-h-11 rounded-md bg-flow-base gap-1 px-2 py-1 text-xs font-medium text-flow-text aria-selected:text-flow-blue";
 const f = computed(() => flow.value!);
 const roots = computed(() => f.value.stages.filter((st) => !st.parent));
 const tabs = computed(() => [
@@ -81,7 +81,7 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="map-panel m-auto [inline-size:min(48rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-default bg-muted p-0 text-default open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)] [&_[data-map-item]:focus-visible]:outline-2 [&_[data-map-item]:focus-visible]:outline-info [&_[data-map-item]:focus-visible]:-outline-offset-2" aria-labelledby="map-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (mapOpen = false)">
+  <dialog ref="dialog" class="map-panel m-auto [inline-size:min(48rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-flow-border bg-flow-muted p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)] [&_[data-map-item]:focus-visible]:outline-2 [&_[data-map-item]:focus-visible]:outline-flow-blue [&_[data-map-item]:focus-visible]:-outline-offset-2" aria-labelledby="map-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (mapOpen = false)">
     <header class="flex flex-none items-center justify-between gap-3 border-be border-flow-line px-4 py-2">
       <h2 id="map-title">Map</h2>
       <Button variant="bare" :class="mapControl" @click="mapOpen = false">Close</Button>

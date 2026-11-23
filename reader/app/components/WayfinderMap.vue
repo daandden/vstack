@@ -56,18 +56,18 @@ watchEffect((cleanup) => {
 <template>
   <p v-if="!tickets.length" class="wayfinder-empty quiet p-4">No tickets charted yet.</p>
   <div v-else ref="graph" class="wayfinder-graph relative [inline-size:max-content] min-w-full p-4">
-    <svg class="wayfinder-links pointer-events-none absolute inset-0 [inline-size:100%] [block-size:100%] overflow-visible text-muted [&>path]:fill-none [&>path]:stroke-current [&>path]:[stroke-width:1.5] [&_marker_path]:fill-current" role="img" aria-label="Blocking links point from a blocker to the ticket it blocks">
+    <svg class="wayfinder-links pointer-events-none absolute inset-0 [inline-size:100%] [block-size:100%] overflow-visible text-flow-subtext [&>path]:fill-none [&>path]:stroke-current [&>path]:[stroke-width:1.5] [&_marker_path]:fill-current" role="img" aria-label="Blocking links point from a blocker to the ticket it blocks">
       <defs><marker id="wayfinder-arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" /></marker></defs>
       <path v-for="edge in edges" :key="`${edge.blocker}:${edge.ticket}`" :data-blocker="edge.blocker" :data-ticket="edge.ticket" :d="edge.path" marker-end="url(#wayfinder-arrow)" />
     </svg>
     <ol class="wayfinder-nodes relative m-0 grid list-none items-start gap-x-16 gap-y-8 p-0" :style="{ gridTemplateColumns: `repeat(${columnCount}, 18rem)` }" aria-label="Wayfinder tickets">
-      <li v-for="node in layout" :key="node.ticket.id" class="min-w-0 wrap-anywhere rounded-md border border-default bg-default p-3" :data-ticket-node="node.ticket.id" :data-state="node.ticket.state" :style="{ gridColumn: node.column, gridRow: node.row }">
-        <a v-if="/^https?:\/\//i.test(node.ticket.url)" class="block min-h-11 py-1.5 text-info active:bg-accented hover:bg-accented" data-map-item :href="node.ticket.url" target="_blank" rel="noopener noreferrer" dir="auto">{{ node.ticket.title }}</a>
+      <li v-for="node in layout" :key="node.ticket.id" class="min-w-0 wrap-anywhere rounded-md border border-flow-border bg-flow-base p-3" :data-ticket-node="node.ticket.id" :data-state="node.ticket.state" :style="{ gridColumn: node.column, gridRow: node.row }">
+        <a v-if="/^https?:\/\//i.test(node.ticket.url)" class="block min-h-11 py-1.5 text-flow-blue active:bg-flow-accented @hover:bg-flow-accented" data-map-item :href="node.ticket.url" target="_blank" rel="noopener noreferrer" dir="auto">{{ node.ticket.title }}</a>
         <div v-else data-map-item tabindex="0" dir="auto">
           {{ node.ticket.title }}
           <p class="quiet">{{ node.ticket.url }}</p>
         </div>
-        <p class="wayfinder-state font-semibold" :class="{ resolved: 'text-success', frontier: 'text-info', blocked: 'text-error', claimed: 'text-flow-yellow', 'out-of-scope': 'text-default' }[node.ticket.state]" data-map-state>{{ labels[node.ticket.state] }}</p>
+        <p class="wayfinder-state font-semibold" :class="{ resolved: 'text-flow-green', frontier: 'text-flow-blue', blocked: 'text-flow-red', claimed: 'text-flow-yellow', 'out-of-scope': 'text-flow-text' }[node.ticket.state]" data-map-state>{{ labels[node.ticket.state] }}</p>
         <p v-if="node.blockers.length" class="quiet" dir="auto">Blocked by {{ node.blockers.join(", ") }}</p>
       </li>
     </ol>

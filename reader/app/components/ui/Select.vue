@@ -22,11 +22,11 @@ const label = computed(() => items.find((item) => item.value === value.value)?.l
     <SelectTrigger
       v-bind="$attrs"
       data-slot="select-trigger"
-      class="reader-select u-inline-flex u-max-w-full u-min-h-8 u-items-center u-justify-between u-gap-2 u-rounded-md u-border u-border-flow-border u-bg-transparent u-px-2 u-py-1 u-text-start u-outline-none disabled:u-cursor-not-allowed disabled:u-opacity-75 focus-visible:u-border-flow-blue data-[state=open]:u-border-flow-blue"
+      class="reader-select inline-flex max-w-full min-h-8 items-center justify-between gap-2 rounded-md border border-flow-border bg-transparent px-2 py-1 text-start outline-none disabled:cursor-not-allowed disabled:opacity-75 focus-visible:border-flow-blue data-[state=open]:border-flow-blue"
     >
-      <SelectValue data-slot="select-value" class="u-min-w-0 u-[overflow-wrap:anywhere]">{{ label }}</SelectValue>
+      <SelectValue data-slot="select-value" class="min-w-0 [overflow-wrap:anywhere]">{{ label }}</SelectValue>
       <SelectIcon as-child>
-        <span class="i-lucide-chevron-down u-shrink-0 u-text-flow-dimmed" aria-hidden="true" />
+        <span class="i-lucide-chevron-down shrink-0 text-flow-dimmed" aria-hidden="true" />
       </SelectIcon>
     </SelectTrigger>
     <SelectPortal>
@@ -35,27 +35,27 @@ const label = computed(() => items.find((item) => item.value === value.value)?.l
         align="start"
         :side-offset="4"
         data-slot="select-content"
-        class="u-z-50 u-flex u-max-h-[min(15rem,var(--reka-select-content-available-height))] u-min-w-[var(--reka-select-trigger-width)] u-max-w-[var(--reka-select-content-available-width)] u-flex-col u-overflow-hidden u-rounded-md u-border u-border-flow-border u-bg-[var(--base)]"
+        class="z-50 flex max-h-[min(15rem,var(--reka-select-content-available-height))] min-w-[var(--reka-select-trigger-width)] max-w-[var(--reka-select-content-available-width)] flex-col overflow-hidden rounded-md border border-flow-border bg-[var(--base)]"
       >
-        <SelectScrollUpButton class="u-flex u-justify-center u-py-1">
+        <SelectScrollUpButton class="flex justify-center py-1">
           <span class="i-lucide-chevron-up" aria-hidden="true" />
         </SelectScrollUpButton>
-        <SelectViewport class="u-min-h-0 u-flex-1 u-p-1">
+        <SelectViewport class="min-h-0 flex-1 p-1">
           <SelectItem
             v-for="item in items"
             :key="item.value"
             :value="item.value"
             :disabled="item.disabled"
             data-slot="select-item"
-            class="u-flex u-min-h-7 u-items-center u-justify-between u-gap-2 u-rounded u-px-2 u-select-none u-outline-none data-[highlighted]:u-bg-[var(--mantle)] data-[disabled]:u-opacity-75"
+            class="flex min-h-7 items-center justify-between gap-2 rounded px-2 select-none outline-none data-[highlighted]:bg-[var(--mantle)] data-[disabled]:opacity-75"
           >
-            <SelectItemText class="u-min-w-0 u-[overflow-wrap:anywhere]">{{ item.label }}</SelectItemText>
+            <SelectItemText class="min-w-0 [overflow-wrap:anywhere]">{{ item.label }}</SelectItemText>
             <SelectItemIndicator as-child>
-              <span class="i-lucide-check u-shrink-0 u-text-flow-blue" aria-hidden="true" />
+              <span class="i-lucide-check shrink-0 text-flow-blue" aria-hidden="true" />
             </SelectItemIndicator>
           </SelectItem>
         </SelectViewport>
-        <SelectScrollDownButton class="u-flex u-justify-center u-py-1">
+        <SelectScrollDownButton class="flex justify-center py-1">
           <span class="i-lucide-chevron-down" aria-hidden="true" />
         </SelectScrollDownButton>
       </SelectContent>

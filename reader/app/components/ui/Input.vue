@@ -6,7 +6,7 @@ const value = defineModel<string | number>();
   <input
     v-model="value"
     data-slot="input"
-    class="reader-input u-min-h-8 u-w-full u-min-w-0 u-rounded-md u-border u-border-flow-border u-bg-transparent u-px-2 u-py-1 u-outline-none placeholder:u-text-flow-dimmed disabled:u-cursor-not-allowed disabled:u-opacity-75 focus:u-border-flow-blue"
+    class="reader-input min-h-8 w-full min-w-0 rounded-md border border-flow-border bg-transparent px-2 py-1 outline-none placeholder:text-flow-dimmed disabled:cursor-not-allowed disabled:opacity-75 focus:border-flow-blue"
   >
 </template>
 

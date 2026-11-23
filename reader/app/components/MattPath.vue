@@ -4,8 +4,8 @@ const { flow } = useReaderState();
 </script>
 
 <template>
-  <section v-if="flow?.path" class="matt-path grid gap-2.5 [padding-block:var(--path-padding)] [padding-inline:var(--path-padding)] border-bs-3 border-bs-info border-be [border-block-end-color:color-mix(in_oklch,var(--blue)_35%,var(--line))] [background:color-mix(in_oklch,var(--blue)_7%,var(--base))]" aria-labelledby="matt-path-title">
-    <h2 id="matt-path-title" class="text-info">Matt flow path</h2>
+  <section v-if="flow?.path" class="matt-path grid gap-2.5 [padding-block:var(--path-padding)] [padding-inline:var(--path-padding)] border-bs-3 [border-block-start-color:var(--blue)] border-be [border-block-end-color:color-mix(in_oklch,var(--blue)_35%,var(--line))] [background:color-mix(in_oklch,var(--blue)_7%,var(--base))]" aria-labelledby="matt-path-title">
+    <h2 id="matt-path-title" class="text-flow-blue">Matt flow path</h2>
     <ol class="grid gap-2.5 ps-6 list-decimal marker:text-flow-state marker:font-[650]">
       <MattPathStep :step="flow.path.grill" />
       <MattPathStep :step="flow.path.spec" />

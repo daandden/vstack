@@ -9,7 +9,7 @@ const label = (id: string) => f.value.stage.get(id)?.label ?? id;
 
 <template>
   <ol v-if="f.stages.length" id="overview-stages" class="stages grid gap-3 ps-0 list-none" data-stop aria-label="Stages">
-    <li v-for="st in f.stages" :id="`overview-${st.id}`" :key="st.id" class="stage grid gap-1 [padding-block-end:0.5rem] border-be border-muted" :data-state="st.state">
+    <li v-for="st in f.stages" :id="`overview-${st.id}`" :key="st.id" class="stage grid gap-1 [padding-block-end:0.5rem] border-be border-flow-line" :data-state="st.state">
       <h3><a :href="`#${st.id}`">{{ st.label }}</a> <span class="quiet"><span class="font-semibold text-flow-state">{{ STATE_LABELS[st.state] }}</span> · {{ st.open_questions }} open · {{ st.skill }}</span></h3>
       <p v-if="st.parent" class="quiet">Parent <a :href="`#${st.parent}`">{{ label(st.parent) }}</a></p>
       <p v-if="st.children.length" class="quiet">Continued in <template v-for="(id, i) in st.children" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">{{ label(id) }}</a></template></p>

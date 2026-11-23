@@ -94,6 +94,28 @@ test("all Results retain compact themed rendering, learning progress and isolate
     await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Try prototype" }).click();
     expect(await page.frameLocator(`#${seeded.refs.artifact} iframe`).getByRole("button", { name: "Prototype works" }).isVisible()).toBe(true);
     const quiz = page.locator(`#${seeded.refs.quiz}`);
+    for (const [colorScheme, correct, incorrect] of [
+      ["light", "oklch(0.625 0.177 140.4)", "oklch(0.692 0.204 42.4)"],
+      ["dark", "oklch(0.858 0.109 142.7)", "oklch(0.824 0.101 52.6)"],
+    ] as const) {
+      const themed = await browser.newContext({ colorScheme });
+      try {
+        await themed.route("**/learning", (route) => route.request().method() === "POST" ? route.abort() : route.continue());
+        const quizPage = await themed.newPage();
+        await quizPage.goto(`${seeded.live.url}#${seeded.refs.quiz}`);
+        await quizPage.waitForFunction(theme => document.documentElement.dataset.theme === theme, colorScheme);
+        const question = quizPage.getByRole("radio", { name: "A real ask" }).locator("xpath=ancestor::form");
+        for (const [option, feedback, color] of [
+          ["A quiz click", /^Not yet\./, incorrect],
+          ["A real ask", /^Correct\./, correct],
+        ] as const) {
+          await question.getByRole("radio", { name: option }).check();
+          await question.getByRole("button", { name: "Check answer" }).click();
+          expect(await question.getByRole("status").filter({ hasText: feedback }).evaluate(el => getComputedStyle(el).color)).toBe(color);
+        }
+        expect(await quizPage.getByRole("status").filter({ hasText: "Lesson in progress." }).evaluate(el => getComputedStyle(el).color)).toBe(correct);
+      } finally { await themed.close(); }
+    }
     await page.route("**/learning", (route) => route.request().method() === "POST" ? route.abort() : route.continue());
     const choice = quiz.locator('form[data-question="authority"]');
     const numeric = quiz.locator('form[data-question="sum"]');

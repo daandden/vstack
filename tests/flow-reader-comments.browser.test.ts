@@ -137,6 +137,23 @@ test("readers select typed-table text and manage revision-bound comments across 
     const otherPage = await other.newPage();
     await otherPage.goto(`${sent.live.url}#${sent.stage}`);
     await otherPage.getByText("Confirm the host restart.", { exact: true }).waitFor();
+    expect(await otherPage.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
+    const touchComments = otherPage.getByRole("region", { name: "Reader comments on Restart evidence" });
+    const touchSize = async (button: Locator) => {
+      const box = await button.boundingBox();
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+    };
+    const addComment = touchComments.getByRole("button", { name: "Add Reader comment" });
+    await touchSize(addComment);
+    await touchSize(otherPage.getByRole("button", { name: "Sort by Check", exact: true }));
+    await touchSize(touchComments.getByRole("button", { name: "Edit comment" }).first());
+    await touchSize(touchComments.getByRole("button", { name: "Remove comment" }).first());
+    await addComment.tap();
+    await touchSize(touchComments.getByRole("button", { name: "Save comment" }));
+    const cancelComment = touchComments.getByRole("button", { name: "Cancel" });
+    await touchSize(cancelComment);
+    await cancelComment.tap();
     expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await otherPage.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     for (const fontFamily of ["", "monospace"]) {

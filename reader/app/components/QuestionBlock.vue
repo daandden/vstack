@@ -88,7 +88,7 @@ const lines = computed(() => {
     </section>
     <section :id="`${q.id}-evidence`" aria-label="Question evidence" class="grid gap-2.5">
       <div class="grid gap-1.5" v-html="prose(q.description)" />
-      <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted [&_a]:no-underline">
+      <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext [&_a]:no-underline">
         <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
         <a v-for="t in topics" :key="t.id" :href="`#${t.id}`">Topic: <span v-html="inline(t.title)" /></a>
         <a v-for="link in q.result_links" :key="link.id" :href="`#${link.anchor}`">
@@ -107,18 +107,18 @@ const lines = computed(() => {
       </details>
       <details v-if="q.needs?.length" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
         <summary>Reader needs ({{ q.needs.length }})</summary>
-        <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
-          <li v-for="(n, i) in q.needs" :key="i"><span v-html="inline(n.need)" /> <span class="text-small text-muted">{{ VISUAL_KINDS[n.kind] }}</span></li>
+        <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed">
+          <li v-for="(n, i) in q.needs" :key="i"><span v-html="inline(n.need)" /> <span class="text-small text-flow-subtext">{{ VISUAL_KINDS[n.kind] }}</span></li>
         </ul>
       </details>
       <div v-if="q.today?.length" class="grid gap-1.5">
         <p class="font-semibold text-[var(--pink)]">Today</p>
-        <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+        <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed">
           <li v-for="(fact, i) in q.today" :key="i"><span v-html="inline(fact.text)" /></li>
         </ul>
         <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
           <summary>Sources ({{ q.today.length }})</summary>
-          <ol class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+          <ol class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed">
             <li v-for="(fact, i) in q.today" :key="i" v-html="inline(sourceText(f, fact.source))" />
           </ol>
         </details>
@@ -132,7 +132,7 @@ const lines = computed(() => {
     <div class="grid gap-4 pbs-1.5">
       <ol :id="`${q.id}-choices`" aria-label="Choices" class="options grid list-none gap-4 ps-0">
         <li v-for="o in q.options" :key="o.label" class="option group/option grid gap-1" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
-          <h3 class="font-semibold text-info group-data-picked/option:font-bold group-data-picked/option:text-flow-yellow">
+          <h3 class="font-semibold text-flow-blue group-data-[picked]/option:font-bold group-data-[picked]/option:text-flow-yellow">
             <span v-html="inline(o.label)" />
             <span v-if="o.recommended" class="ms-2 font-bold text-flow-yellow" aria-hidden="true">*</span><span v-if="o.recommended" class="sr-only"> (recommended)</span>
             <span v-if="picks.has(o.label)" class="sr-only"> (your answer)</span>
@@ -140,10 +140,10 @@ const lines = computed(() => {
           <FigureList v-if="o.preview" :figures="[o.preview]" />
           <p v-html="inline(o.does)" />
           <ul class="grid list-none ps-0">
-            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-success before:content-['+']" v-html="inline(g)" />
-            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-error before:content-['−']" v-html="inline(c)" />
+            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-green before:content-['+']" v-html="inline(g)" />
+            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-red before:content-['−']" v-html="inline(c)" />
           </ul>
-          <p v-if="o.recommended" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
+          <p v-if="o.recommended" class="text-small text-flow-subtext">Recommended: <span v-html="inline(o.recommended)" /></p>
         </li>
       </ol>
       <section v-if="q.answer.correction || q.answer.corrects.length || q.answer.recorded_reading" :id="`${q.id}-reading`" class="grid gap-1.5">

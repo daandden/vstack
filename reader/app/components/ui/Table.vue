@@ -3,8 +3,8 @@ defineOptions({ inheritAttrs: false });
 </script>
 
 <template>
-  <div data-slot="table-container" class="u-relative u-w-full u-overflow-auto">
-    <table v-bind="$attrs" data-slot="table" class="u-w-full u-caption-bottom u-text-sm">
+  <div data-slot="table-container" class="relative w-full overflow-auto">
+    <table v-bind="$attrs" data-slot="table" class="w-full caption-bottom text-sm">
       <slot />
     </table>
   </div>

@@ -20,7 +20,7 @@ const themes = [
   <header class="masthead grid gap-1.5 [padding-block:0.75rem_0.5rem]">
     <p v-if="f.flow.crumb" class="quiet" v-html="inline(f.flow.crumb)" />
     <h1 v-html="inline(f.flow.title)" />
-    <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted">
+    <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext">
       <span v-if="last" class="font-semibold text-flow-state" :data-state="last.event">
         {{ last.event === "closed" ? "Closed" : "Reopened" }} <time :datetime="last.time">{{ formatTime(last.time) }}</time>
       </span>
@@ -30,7 +30,7 @@ const themes = [
       <span>Revision {{ f.revision }}</span>
     </p>
     <div class="theme flex flex-wrap gap-1 justify-self-start" role="group" aria-label="Color theme">
-      <Button v-for="t in themes" :key="t.value" variant="bare" :aria-pressed="colorMode.preference === t.value" class="theme-button u-rounded-[0.25rem] u-border u-border-flow-border u-bg-flow-accented u-py-0.5 u-px-2 u-text-[length:var(--fs-small)] u-text-[color:var(--subtext1)] u-font-semibold u-cursor-pointer u-touch-manipulation motion-safe:u-transition-[color,background-color] motion-safe:u-duration-[130ms] motion-safe:u-ease-out" @click="colorMode.preference = t.value">{{ t.label }}</Button>
+      <Button v-for="t in themes" :key="t.value" variant="bare" :aria-pressed="colorMode.preference === t.value" class="theme-button rounded-[0.25rem] border border-flow-border bg-flow-accented py-0.5 px-2 text-[length:var(--fs-small)] text-[color:var(--subtext1)] font-semibold cursor-pointer touch-manipulation motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out" @click="colorMode.preference = t.value">{{ t.label }}</Button>
     </div>
     <CopyFeedback />
   </header>

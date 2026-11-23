@@ -143,5 +143,14 @@ test("readers compare known Document and typed edits without losing snapshots or
     expect(openSnapshot.border).not.toBe(idleSnapshot.border);
     expect(openSnapshot.shadow).toBe("none");
     expect(openSnapshot.outline).toBe("none");
+    const touch = await browser.newContext({ hasTouch: true });
+    try {
+      const touchPage = await touch.newPage();
+      await touchPage.goto(`${opened.live.url}#${first.refs.table}-changes-${first.revision}`);
+      const snapshot = touchPage.getByRole("combobox", { name: "Earlier snapshot", exact: true });
+      await snapshot.waitFor();
+      expect(await touchPage.evaluate(() => matchMedia("(pointer: coarse)").matches)).toBe(true);
+      expect((await snapshot.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+    } finally { await touch.close(); }
   } finally { await context.close(); await browser.close(); cli(["host", "stop"]); rmSync(root, { recursive: true, force: true }); }
 }, 120_000);

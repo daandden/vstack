@@ -6,7 +6,7 @@ const value = defineModel<string>();
   <textarea
     v-model="value"
     data-slot="textarea"
-    class="reader-textarea u-w-full u-min-w-0 u-rounded-md u-border u-border-flow-dimmed u-bg-[var(--base)] u-px-2 u-py-1 u-outline-none placeholder:u-text-flow-dimmed disabled:u-opacity-75 focus:u-border-flow-blue"
+    class="reader-textarea w-full min-w-0 rounded-md border border-flow-dimmed bg-[var(--base)] px-2 py-1 outline-none placeholder:text-flow-dimmed disabled:opacity-75 focus:border-flow-blue"
   />
 </template>
 

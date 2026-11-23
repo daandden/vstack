@@ -23,12 +23,12 @@ const publications = computed(() => f.value.reading.publications.filter((b) => b
       </p>
     </header>
     <p v-if="stage.open_questions === 0" class="quiet" role="status">This Stage has no open questions.</p>
-    <section v-if="historical.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-default" :aria-labelledby="`${stage.id}-historical`">
+    <section v-if="historical.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-flow-border" :aria-labelledby="`${stage.id}-historical`">
       <h3 :id="`${stage.id}-historical`" class="eyebrow">Historical content in retained order</h3>
       <p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p>
       <ReadingEntry v-for="b in historical" :key="b.id" :block="b" />
     </section>
-    <section v-if="historical.length && publications.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-default" :aria-labelledby="`${stage.id}-publication`">
+    <section v-if="historical.length && publications.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-flow-border" :aria-labelledby="`${stage.id}-publication`">
       <h3 :id="`${stage.id}-publication`" class="eyebrow">First-publication order starts here</h3>
       <p class="quiet">Positions below record each block's first publication to the Flow. Answers and revisions update their block in place.</p>
     </section>

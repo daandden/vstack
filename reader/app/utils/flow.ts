@@ -34,7 +34,7 @@ type QuestionOutcome = { cls: string; html: string };
 export function questionOutcome(q: QuestionView): QuestionOutcome & { previous?: QuestionOutcome } {
   if (q.asked_again_by.length) {
     return {
-      cls: "text-muted",
+      cls: "text-flow-subtext",
       html: "Re-asked",
       previous: q.answer.state === "open" ? undefined : answerOutcome(q),
     };
@@ -47,7 +47,7 @@ function answerOutcome(q: QuestionView): QuestionOutcome {
   if (a.picks) return { cls: "text-flow-yellow", html: `Your pick: ${inline(a.picks.join(", "))}` };
   if (a.legacy?.other !== undefined) return { cls: "text-flow-yellow", html: `Recorded answer: ${inline(a.legacy.other)}` };
   if (a.state === "resolved" && a.reading?.outcome === "resolved") return { cls: "text-flow-teal", html: `${inline(a.reading.decision)} <span class="quiet">(read from your words)</span>` };
-  if (a.correction && a.state === "unresolved") return { cls: "text-muted", html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline(a.reading.unresolved)}` : ""}` };
+  if (a.correction && a.state === "unresolved") return { cls: "text-flow-subtext", html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline(a.reading.unresolved)}` : ""}` };
   if (a.state === "unresolved") {
     const status = a.response?.status;
     const nonConsent = status === "headless" ? "Headless, not your answer"
@@ -55,10 +55,10 @@ function answerOutcome(q: QuestionView): QuestionOutcome {
       : status === "timed-out" ? "Timed out, not your answer"
       : status === "empty" ? "Empty response, not your answer"
       : a.reading && a.reading.outcome !== "resolved" ? `Unresolved: ${inline(a.reading.unresolved)}` : q.asked_again_by.length ? "No decision recorded at this attempt" : "Not answered";
-    return { cls: "text-muted", html: `${q.retired ? "Retired: " : ""}${nonConsent}` };
+    return { cls: "text-flow-subtext", html: `${q.retired ? "Retired: " : ""}${nonConsent}` };
   }
-  if (q.retired) return { cls: "text-muted", html: "Retired" };
-  return { cls: "text-muted", html: "Open" };
+  if (q.retired) return { cls: "text-flow-subtext", html: "Retired" };
+  return { cls: "text-flow-subtext", html: "Open" };
 }
 
 /** A question's Q number, with its attempt when its Stage asked that Q number more than once: "Q1 (attempt 2)". */

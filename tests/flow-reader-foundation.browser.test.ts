@@ -117,9 +117,37 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     expect(outside).toEqual([]);
     const tokens = await page.locator("html").evaluate((el) => {
       const style = getComputedStyle(el);
-      return Object.fromEntries(["--ui-bg", "--ui-text", "--ui-primary"].map((key) => [key, style.getPropertyValue(key).trim()]));
+      return Object.fromEntries(["--base", "--text", "--mauve"].map((key) => [key, style.getPropertyValue(key).trim()]));
     });
     if (proof) writeFileSync(join(proof, "runtime.json"), JSON.stringify({ policy, outside, errors, tokens, colors }, null, 2));
     for (const token of Object.values(tokens)) expect(token).not.toBe("");
   } finally { await context.close(); }
 }, 120_000);
+
+test("the masthead follows the system on first load and preserves an explicit theme on reload", async () => {
+  const opened = cli(["open", "--skill", "implement", "--title", "Reader theme preference"]);
+  for (const [colorScheme, initialColor, picked, pickedColor] of [
+    ["light", "#eff1f5", "dark", "#1e1e2e"],
+    ["dark", "#1e1e2e", "light", "#eff1f5"],
+  ] as const) {
+    const context = await browser.newContext({ colorScheme });
+    try {
+      const page = await context.newPage();
+      await page.goto(opened.live.url);
+      const system = page.getByRole("button", { name: "System", exact: true });
+      const theme = page.getByRole("button", { name: new RegExp(`^${picked}$`, "i") });
+      await system.waitFor();
+      expect(await system.getAttribute("aria-pressed")).toBe("true");
+      expect(await page.locator("html").getAttribute("data-theme")).toBe(colorScheme);
+      expect(await bodyColor(page)).toBe(initialColor);
+      await theme.click();
+      expect(await bodyColor(page)).toBe(pickedColor);
+      expect(await page.evaluate(() => localStorage.getItem("flow-reader:theme"))).toBe(picked);
+      await page.reload();
+      await theme.waitFor();
+      expect(await theme.getAttribute("aria-pressed")).toBe("true");
+      expect(await page.locator("html").getAttribute("data-theme")).toBe(picked);
+      expect(await bodyColor(page)).toBe(pickedColor);
+    } finally { await context.close(); }
+  }
+});

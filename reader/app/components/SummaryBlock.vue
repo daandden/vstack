@@ -12,7 +12,7 @@ const assumed = computed(() => props.stage.assumed.filter((a) => props.close.ass
 <template>
   <section :id="close.id" class="summary-block grid gap-2.5" :aria-labelledby="`${close.id}-title`" data-stop>
     <h2 :id="`${close.id}-title`">Summary <time v-if="close.time" :datetime="close.time">{{ formatTime(close.time) }}</time></h2>
-    <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+    <ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed">
       <li v-for="d in close.decisions" :id="`${close.id}-${d.question}`" :key="d.question">
         <CorrectionNotice :notice="d" />
         <p><a :href="`#${d.question}`">Q{{ ask(d.question)?.q }}</a> <span class="quiet">({{ PROVENANCE[d.answer] }}{{ d.affected ? ", historical summary affected by Correction" : "" }})</span>: <span v-html="inline(d.text)" /></p>

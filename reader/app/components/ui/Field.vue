@@ -20,13 +20,13 @@ const control = computed(() => ({
 </script>
 
 <template>
-  <div role="group" data-slot="field" class="u-grid u-min-w-0 u-gap-1">
-    <div class="u-min-w-0" :class="horizontal ? 'u-flex u-flex-wrap u-items-center u-gap-2' : 'u-grid u-gap-1'">
-      <label v-if="label" :for="id">{{ label }}<span v-if="required" class="u-text-flow-red" aria-hidden="true">*</span></label>
+  <div role="group" data-slot="field" class="grid min-w-0 gap-1">
+    <div class="min-w-0" :class="horizontal ? 'flex flex-wrap items-center gap-2' : 'grid gap-1'">
+      <label v-if="label" :for="id">{{ label }}<span v-if="required" class="text-flow-red" aria-hidden="true">*</span></label>
       <slot :control="control" />
     </div>
-    <p v-if="description" :id="`${id}-description`" class="u-text-flow-subtext">{{ description }}</p>
-    <div v-if="messages.length" class="u-flex u-flex-wrap u-items-baseline u-justify-between u-gap-2 u-text-flow-red">
+    <p v-if="description" :id="`${id}-description`" class="text-flow-subtext">{{ description }}</p>
+    <div v-if="messages.length" class="flex flex-wrap items-baseline justify-between gap-2 text-flow-red">
       <div :id="`${id}-error`" data-slot="field-error" role="alert">
         <p v-for="message in messages" :key="message">{{ message }}</p>
       </div>

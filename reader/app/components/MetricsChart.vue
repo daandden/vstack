@@ -25,17 +25,17 @@ const table = useVueTable({
 </script>
 
 <template>
-  <div class="u-grid u-min-w-0 u-gap-2.5">
-    <ul class="u-flex u-flex-wrap u-gap-x-4 u-gap-y-1 u-text-[length:var(--fs-small)]" aria-label="Chart series">
-      <li v-for="v in series" :key="v.series" class="u-inline-flex u-min-w-0 u-items-baseline u-gap-1.5 u-[overflow-wrap:anywhere]">
+  <div class="grid min-w-0 gap-2.5">
+    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[length:var(--fs-small)]" aria-label="Chart series">
+      <li v-for="v in series" :key="v.series" class="inline-flex min-w-0 items-baseline gap-1.5 [overflow-wrap:anywhere]">
         <span aria-hidden="true" :style="{ color: v.color }">{{ v.baseline ? '◇' : '●' }}</span><span>{{ v.name }}</span>
       </li>
     </ul>
-    <div class="u-grid u-min-w-0 u-grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] u-items-start u-gap-3">
+    <div class="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] items-start gap-3">
       <div class="metrics-plot">
         <MetricsPlot :measurement="measurement" :series="series" />
       </div>
-      <Table class="u-border-collapse u-tabular-nums">
+      <Table class="border-collapse tabular-nums">
         <caption data-slot="table-caption" class="chart-data-caption">{{ measurement.name }} chart data</caption>
         <thead data-slot="table-header">
           <tr v-for="group in table.getHeaderGroups()" :key="group.id" data-slot="table-row">

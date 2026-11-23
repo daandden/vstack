@@ -96,10 +96,10 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
 </script>
 
 <template>
-  <div class="u-grid u-min-w-0 u-gap-2">
-    <div class="table-filters u-flex u-flex-wrap u-items-end u-gap-2">
-      <div class="u-grid u-justify-items-start u-gap-1 u-text-sm">
-        <label :for="`${r.anchor}-search`" class="u-font-medium">Filter rows</label>
+  <div class="grid min-w-0 gap-2">
+    <div class="table-filters flex flex-wrap items-end gap-2">
+      <div class="grid justify-items-start gap-1 text-sm">
+        <label :for="`${r.anchor}-search`" class="font-medium">Filter rows</label>
         <Input
           :id="`${r.anchor}-search`"
           :model-value="search"
@@ -109,8 +109,8 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
           @update:model-value="search = String($event ?? '')"
         />
       </div>
-      <div v-for="c in statuses" :key="c.id" class="u-grid u-justify-items-start u-gap-1 u-text-sm">
-        <label :for="`${r.anchor}-${c.id}`" class="u-font-medium">{{ c.label }}</label>
+      <div v-for="c in statuses" :key="c.id" class="grid justify-items-start gap-1 text-sm">
+        <label :for="`${r.anchor}-${c.id}`" class="font-medium">{{ c.label }}</label>
         <Select
           :id="`${r.anchor}-${c.id}`"
           :aria-label="c.label"
@@ -121,9 +121,9 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
         />
       </div>
     </div>
-    <p role="status" aria-live="polite" aria-atomic="true" class="u-text-[length:var(--fs-small)] u-text-flow-subtext u-tabular-nums">{{ count }} of {{ r.entries.length }} rows</p>
-    <Table class="u-border-collapse u-tabular-nums">
-      <caption data-slot="table-caption" class="u-sr-only">{{ r.title }}</caption>
+    <p role="status" aria-live="polite" aria-atomic="true" class="text-[length:var(--fs-small)] text-flow-subtext tabular-nums">{{ count }} of {{ r.entries.length }} rows</p>
+    <Table class="border-collapse tabular-nums">
+      <caption data-slot="table-caption" class="sr-only">{{ r.title }}</caption>
       <thead data-slot="table-header" class="result-head">
         <tr v-for="group in table.getHeaderGroups()" :key="group.id" data-slot="table-row">
           <th
@@ -132,7 +132,7 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
             data-slot="table-head"
             scope="col"
             :aria-sort="column.getCanSort() ? sortState(column) : undefined"
-            class="result-cell u-text-start u-text-flow-subtext"
+            class="result-cell text-start text-flow-subtext"
           >
             <Button v-if="column.getCanSort()" variant="ghost" class="sort-button" :aria-label="`Sort by ${column.columnDef.header}`" @click="column.toggleSorting()">
               <span v-html="inline(String(column.columnDef.header))" />
@@ -148,7 +148,7 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
             <template v-if="cell.column.id === 'questions'">
               <template v-for="(id, j) in row.original.questions" :key="id">{{ j ? '; ' : '' }}<a :href="`#${id}`">{{ askName(id) }}</a>: <span v-html="inline(ask(id)?.title ?? '')" /></template>
             </template>
-            <div v-else-if="i === 0" :id="row.id" class="u-min-h-[1lh]">
+            <div v-else-if="i === 0" :id="row.id" class="min-h-[1lh]">
               <CorrectionNotice :notice="row.original" />
               <span v-html="inline(cell.getValue<string>() ?? '')" />
             </div>
@@ -156,7 +156,7 @@ useEventListener(defaultDocument, "flow-reveal", (event: Event) => {
           </td>
         </tr>
         <tr v-if="!rows.length" data-slot="table-row">
-          <td :colspan="columns.length" data-slot="table-cell" class="u-py-6 u-text-center u-text-flow-subtext">No matching rows.</td>
+          <td :colspan="columns.length" data-slot="table-cell" class="py-6 text-center text-flow-subtext">No matching rows.</td>
         </tr>
       </tbody>
     </Table>

@@ -1,20 +1,7 @@
-@theme inline {
-  --font-sans: "IosevkaTerm Nerd Font Mono", "Iosevka Term", "JetBrains Mono", ui-monospace, monospace;
-  --font-mono: var(--font-sans);
-  --font-heading: "IosevkaTermSlab Nerd Font Mono", "Iosevka Term Slab", "JetBrains Mono", ui-monospace, monospace;
-  --text-body: var(--fs-body);
-  --text-small: var(--fs-small);
-  --text-title: var(--fs-title);
-  --color-flow-mauve: var(--mauve);
-  --color-flow-lavender: var(--lavender);
-  --color-flow-yellow: var(--yellow);
-  --color-flow-teal: var(--teal);
-  --color-flow-line: var(--line);
-  --color-flow-state: var(--state, var(--subtext0));
-}
-
 :root {
   color-scheme: light dark;
+  --reader-font-sans: "IosevkaTerm Nerd Font Mono", "Iosevka Term", "JetBrains Mono", ui-monospace, monospace;
+  --reader-font-heading: "IosevkaTermSlab Nerd Font Mono", "Iosevka Term Slab", "JetBrains Mono", ui-monospace, monospace;
   --base: light-dark(oklch(95.8% 0.006 264.5), oklch(24.3% 0.030 283.9));
   --mantle: light-dark(oklch(93.3% 0.009 264.5), oklch(21.6% 0.025 284.1));
   --surface0: light-dark(oklch(85.7% 0.014 268.5), oklch(32.4% 0.032 282.0));
@@ -47,32 +34,6 @@
   overflow-wrap: break-word;
   font-synthesis: none;
   -webkit-text-size-adjust: 100%;
-}
-
-:root, :root.dark {
-  --ui-primary: var(--mauve);
-  --ui-secondary: var(--lavender);
-  --ui-success: var(--green);
-  --ui-info: var(--blue);
-  --ui-warning: var(--peach);
-  --ui-error: var(--red);
-  --ui-text: var(--text);
-  --ui-text-highlighted: var(--text);
-  --ui-text-toned: var(--subtext1);
-  --ui-text-muted: var(--subtext0);
-  --ui-text-dimmed: var(--overlay0);
-  --ui-text-inverted: var(--base);
-  --ui-bg: var(--base);
-  --ui-bg-muted: var(--mantle);
-  --ui-bg-elevated: var(--mantle);
-  --ui-bg-accented: var(--surface0);
-  --ui-bg-inverted: var(--text);
-  --ui-border: var(--surface1);
-  --ui-border-muted: var(--line);
-  --ui-border-accented: var(--overlay0);
-  --ui-border-inverted: var(--text);
-  --ui-radius: 0.25rem;
-  --ui-container: var(--content);
 }
 
 :root.light { color-scheme: light; }
