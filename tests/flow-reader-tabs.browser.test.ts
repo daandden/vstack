@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
 import { ENV, git } from "./support/fixture.ts";
+import { useWideReaderFont, waitForReaderLayout } from "./support/reader-layout.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const SETUP = "./node_modules/.bin/playwright-core install --only-shell chromium (CI: the \"Install Chromium\" step in .github/workflows/check-register.yml)";
@@ -120,18 +121,20 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     await page.goto(`${opened.live.url}#${open.retry}`);
     await page.locator(`#${open.retry}`).waitFor();
     const bar = page.getByRole("navigation", { name: "Flow navigation", exact: true });
-    expect(await bar.evaluate(el => el.getBoundingClientRect().height)).toBe(44);
+    await waitForReaderLayout(page);
     const overview = bar.getByRole("link", { name: title, exact: true });
     const current = bar.getByRole("link", { name: /How should the rollout handle an unavailable zone\?.*Concern/ });
-    const stages = bar.getByRole("button", { name: "Stages", exact: true });
-    const jump = bar.getByRole("button", { name: "Jump", exact: true });
+    const stages = bar.getByRole("button", { name: /^Stages\b/ });
+    const jump = bar.getByRole("button", { name: /^Jump\b/ });
     expect(await overview.getAttribute("href")).toBe("#overview");
     expect(await bar.getByText("regional-service-catalogue", { exact: true }).isVisible()).toBe(true);
     expect(await bar.getByText(work, { exact: true }).isVisible()).toBe(true);
     expect(await current.getAttribute("aria-current")).toBe("location");
     expect(await current.innerText()).toContain("!");
     expect(await page.getByText("In your picker", { exact: false }).count()).toBe(0);
-    const overflow = bar.getByRole("button", { name: /^\+\d+ open$/ });
+    const stageName = bar.getByText(work, { exact: true });
+    const queueCount = bar.getByRole("button", { name: /\+\d+ open$/ });
+    const waitingCount = bar.getByRole("button", { name: /\+\d+ waiting Stages?$/ });
     const assertFits = async (target: typeof stages) => {
       const box = await target.boundingBox();
       expect(box).not.toBeNull();
@@ -140,14 +143,29 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
       expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
       expect(box!.y + box!.height).toBeLessThanOrEqual(44);
     };
-    for (const target of [overview, current, stages, jump, overflow]) await assertFits(target);
-    const queueLinks = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
-      links.filter(link => ids.includes(link.getAttribute("href")!.slice(1))).length, Object.values(open) as string[]);
-    expect(queueLinks + Number((await overflow.innerText()).match(/\d+/)![0])).toBe(21);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    const assertBarFits = async () => {
+      expect(await bar.evaluate(el => el.getBoundingClientRect().height)).toBe(44);
+      for (const target of [overview, current, stages, jump]) await assertFits(target);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    };
+    const assertCount = async (target: typeof queueCount, ids: string[], total: number) => {
+      expect(await target.count(), await bar.ariaSnapshot()).toBe(1);
+      await assertFits(target);
+      const count = (await target.innerText()).match(/\+(\d+)/)?.[1];
+      expect(count).toBeDefined();
+      expect((await target.ariaSnapshot()).match(/\+(\d+)/)?.[1]).toBe(count);
+      const shown = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
+        links.filter(link => ids.includes(link.getAttribute("href")!.slice(1))).length, ids);
+      expect(shown + Number(count)).toBe(total);
+      return count;
+    };
+    const queueIds = Object.values(open) as string[];
+    const waitingIds = other.slice(0, 4).map(st => st.stage as string);
+    await assertBarFits();
+    await assertCount(queueCount, queueIds, 21);
     await page.emulateMedia({ colorScheme: "dark" });
     await capture(page, "bar-800-dark");
-    await overflow.click();
+    await queueCount.click();
     const queuePanel = page.getByRole("dialog", { name: "Jump", exact: true });
     await queuePanel.waitFor();
     expect(await queuePanel.getByRole("link").count()).toBe(21);
@@ -155,26 +173,21 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     await page.keyboard.press("Escape");
     await queuePanel.waitFor({ state: "hidden" });
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-    for (const target of [overview, current, stages, jump]) await assertFits(target);
-    expect(await bar.evaluate(el => el.getBoundingClientRect().height)).toBe(44);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    await waitForReaderLayout(page);
+    await assertBarFits();
     await capture(page, "bar-800-text-growth");
     await page.evaluate(() => { document.documentElement.style.removeProperty("font-size"); });
     await page.setViewportSize({ width: 320, height: 768 });
-    for (const name of [overview, bar.getByText(work, { exact: true })]) {
-      expect((await name.boundingBox())?.width).toBeGreaterThanOrEqual(72);
-    }
-    const queueCount = overflow.or(jump.filter({ hasText: "+20" }));
-    const waitingCount = bar.getByRole("button", { name: "+4 waiting Stages", exact: true }).or(stages.filter({ hasText: "+4" }));
-    for (const target of [overview, current, stages, jump, queueCount, waitingCount]) {
-      await target.waitFor({ timeout: 3000 });
-      await assertFits(target);
-    }
-    expect(await queueCount.innerText()).toContain("+20");
-    expect(await waitingCount.innerText()).toContain("+4");
-    expect(await jump.getAttribute("aria-description")).toBe("+20 open");
-    expect(await stages.getAttribute("aria-description")).toBe("+4 waiting Stages");
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    const assertIdentity = async () => {
+      for (const name of [overview, stageName]) {
+        expect((await name.boundingBox())?.width).toBeGreaterThanOrEqual(72);
+      }
+    };
+    await waitForReaderLayout(page);
+    await assertBarFits();
+    await assertIdentity();
+    expect(await assertCount(queueCount, queueIds, 21)).toBe("20");
+    expect(await assertCount(waitingCount, waitingIds, 4)).toBe("4");
     await queueCount.click();
     await queuePanel.waitFor();
     expect(await queuePanel.getByRole("link").count()).toBe(21);
@@ -190,7 +203,30 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     await map.waitFor({ state: "hidden" });
     await page.emulateMedia({ colorScheme: "light" });
     await capture(page, "bar-320-light");
+
+    const wideFont = await useWideReaderFont(page);
+    for (const width of [800, 360, 320]) {
+      await page.setViewportSize({ width, height: 768 });
+      await waitForReaderLayout(page);
+      await assertBarFits();
+      await assertIdentity();
+      await assertCount(queueCount, queueIds, 21);
+      await assertCount(waitingCount, waitingIds, 4);
+      await queueCount.click();
+      await queuePanel.waitFor();
+      expect(await queuePanel.getByRole("link").count()).toBe(21);
+      await page.keyboard.press("Escape");
+      await queuePanel.waitFor({ state: "hidden" });
+      await waitingCount.click();
+      await mapStages.waitFor();
+      expect(await mapStages.getByRole("region", { name: "Waiting for an answer" }).getByRole("link").count()).toBe(5);
+      await page.keyboard.press("Escape");
+      await map.waitFor({ state: "hidden" });
+    }
+    await wideFont.evaluate(el => { el.parentNode?.removeChild(el); });
+
     await page.setViewportSize({ width: 2560, height: 1000 });
+    await waitForReaderLayout(page);
     await bar.getByRole("button", { name: "+1 waiting Stage", exact: true }).waitFor();
     const shownWaiting = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
       links.filter(link => ids.includes(link.getAttribute("href")!.slice(1))).map(link => link.textContent), other.map(st => st.stage));

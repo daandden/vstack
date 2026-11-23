@@ -23,7 +23,7 @@ const slotSizes = computed(() => ({
   "--open-slot": `${String(queue.value.length).length + 6}ch`,
   "--queue-count-slot": `${String(queue.value.length).length + 1}ch`,
   "--other-slot": `${String(other.value.length).length + 1}ch`,
-  "--current-slot": selected.value ? "var(--queue-slot) + var(--chip-pad)" : "0px",
+  "--current-slot": selected.value ? "var(--queue-chip-width)" : "0px",
 }));
 const chipClass = "inline-flex min-h-control shrink-0 touch-manipulation cursor-pointer items-center justify-center gap-1 rounded-sm border border-flow-line text-flow-toned no-underline outline-offset-[-2px] @hover:text-flow-lavender active:text-flow-lavender";
 
@@ -70,6 +70,8 @@ const hiddenQueue = computed(() => queue.value.length - visibleQueue.value.lengt
 const hiddenStages = computed(() => other.value.length - packed.value.stages);
 const waitingLabel = computed(() => `+${hiddenStages.value} waiting ${hiddenStages.value === 1 ? "Stage" : "Stages"}`);
 const queueLabel = computed(() => `+${hiddenQueue.value} open`);
+const inlineWaiting = computed(() => hiddenStages.value > 0 && !packed.value.waitingCount);
+const inlineQueue = computed(() => hiddenQueue.value > 0 && !packed.value.openCount);
 
 function openMap() {
   mapTab.value = "stages";
@@ -88,29 +90,31 @@ function openMap() {
         <a v-for="{ q, concern } in visibleQueue" :key="q.id" :href="`#${q.id}`" class="queue-chip aria-[current=location]:border-flow-blue aria-[current=location]:bg-flow-accented"
           :class="[chipClass, concern ? 'text-flow-peach!' : current === q.id ? 'text-flow-blue!' : '']"
           :aria-current="current === q.id ? 'location' : undefined" :aria-label="`Q${q.q}. ${q.title}${concern ? ' · Concern recorded' : ''}`"
-          :title="`${q.title}${concern ? ' · Concern recorded' : ''}`">Q{{ q.q }}<span v-if="concern" class="font-extrabold" aria-hidden="true">!</span></a>
-        <Button v-if="packed.openCount" variant="bare" class="open-count" :class="chipClass" aria-haspopup="dialog" @click="jumpOpen = true">{{ queueLabel }}</Button>
+          :title="`${q.title}${concern ? ' · Concern recorded' : ''}`"><span class="truncate">Q{{ q.q }}</span><span v-if="concern" class="shrink-0 font-extrabold" aria-hidden="true">!</span></a>
+        <Button v-if="packed.openCount" variant="bare" class="open-count" :class="chipClass" aria-haspopup="dialog" @click="jumpOpen = true"><span class="truncate">{{ queueLabel }}</span></Button>
         <a v-for="st in other.slice(0, packed.stages)" :key="st.id" :href="`#${st.id}`" class="waiting-chip" :class="chipClass"
           :title="`${stageWorkName(f, st)} · ${st.open_questions} open`" :aria-label="`${stageWorkName(f, st)} · ${st.open_questions} open`">
           <span class="truncate" dir="auto">{{ stageWorkName(f, st) }}</span><span class="shrink-0 text-flow-peach">{{ st.open_questions }}</span>
         </a>
         <Button v-if="packed.waitingCount" variant="bare" class="waiting-count" :class="chipClass" aria-haspopup="dialog"
-          :aria-label="waitingLabel" :title="waitingLabel" @click="openMap">+{{ hiddenStages }}</Button>
+          :aria-label="waitingLabel" :title="waitingLabel" @click="openMap"><span class="truncate">+{{ hiddenStages }}</span></Button>
       </div>
 
-      <Button id="flow-stages" class="action shrink-0 text-small leading-none [--count-slot:var(--other-slot)]" aria-label="Stages"
-        :aria-description="hiddenStages ? waitingLabel : undefined" :title="hiddenStages ? `Stages (m) · ${waitingLabel}` : 'Stages (m)'"
+      <Button id="flow-stages" class="action shrink-0 text-small leading-none [--count-slot:var(--other-slot)]"
+        :aria-label="inlineWaiting ? `Stages · ${waitingLabel}` : 'Stages'"
+        :aria-description="hiddenStages && !inlineWaiting ? waitingLabel : undefined" :title="hiddenStages ? `Stages (m) · ${waitingLabel}` : 'Stages (m)'"
         aria-haspopup="dialog" aria-keyshortcuts="m" @click="openMap">
-        <span class="action-label" aria-hidden="true">Stages</span>
+        <span class="action-label truncate" aria-hidden="true">Stages</span>
         <span class="i-lucide-list-tree action-icon size-[1.25em]" aria-hidden="true" />
-        <span class="action-hint" aria-hidden="true"><template v-if="hiddenStages && !packed.waitingCount">+{{ hiddenStages }}</template><kbd v-else>m</kbd></span>
+        <span class="action-hint" aria-hidden="true"><span v-if="inlineWaiting" class="max-w-full truncate">+{{ hiddenStages }}</span><kbd v-else>m</kbd></span>
       </Button>
-      <Button id="flow-jump" class="action shrink-0 text-small leading-none [--count-slot:var(--queue-count-slot)]" aria-label="Jump"
-        :aria-description="hiddenQueue ? queueLabel : undefined" :title="hiddenQueue ? `Jump (g) · ${queueLabel}` : 'Jump (g)'"
+      <Button id="flow-jump" class="action shrink-0 text-small leading-none [--count-slot:var(--queue-count-slot)]"
+        :aria-label="inlineQueue ? `Jump · ${queueLabel}` : 'Jump'"
+        :aria-description="hiddenQueue && !inlineQueue ? queueLabel : undefined" :title="hiddenQueue ? `Jump (g) · ${queueLabel}` : 'Jump (g)'"
         aria-haspopup="dialog" aria-keyshortcuts="g" @click="jumpOpen = true">
-        <span class="action-label" aria-hidden="true">Jump</span>
+        <span class="action-label truncate" aria-hidden="true">Jump</span>
         <span class="i-lucide-list-end action-icon size-[1.25em]" aria-hidden="true" />
-        <span class="action-hint" aria-hidden="true"><template v-if="hiddenQueue && !packed.openCount">+{{ hiddenQueue }}</template><kbd v-else>g</kbd></span>
+        <span class="action-hint" aria-hidden="true"><span v-if="inlineQueue" class="max-w-full truncate">+{{ hiddenQueue }}</span><kbd v-else>g</kbd></span>
       </Button>
 
       <div ref="ruler" class="ruler" aria-hidden="true"><span class="queue-chip" /><span class="open-count" /><span class="waiting-chip" /><span class="waiting-count" /><span class="gap-size" /></div>
@@ -127,12 +131,17 @@ function openMap() {
   --gap: var(--spacing-1);
   --identity-pad: calc(1.5 * var(--spacing-1));
   --chip-pad: calc(2 * (var(--spacing-1) + 1px));
+  --identity-min: min(72px, 24cqi);
+  --row-pad: clamp(var(--identity-pad), 1.5cqi, calc(5 * var(--spacing-1)));
+  /* Leave room for both names and all five gaps before sizing the current chip and two actions. */
+  --control-max: max(var(--spacing-control), (100cqi - 2 * (var(--identity-min) + var(--row-pad)) - 5 * var(--gap)) / 3);
+  --queue-chip-width: min(var(--queue-slot) + var(--chip-pad), var(--control-max));
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--gap);
   block-size: 100%;
-  padding-inline: clamp(var(--identity-pad), 1.5cqi, calc(5 * var(--spacing-1)));
+  padding-inline: var(--row-pad);
   white-space: nowrap;
   font-size: var(--text-small);
 }
@@ -144,7 +153,7 @@ function openMap() {
 .flow-title { max-inline-size: min(27cqi, 32ch); }
 .stage-title { max-inline-size: min(24cqi, 28ch); }
 .flow-title, .stage-title {
-  min-inline-size: min(72px, 24cqi);
+  min-inline-size: var(--identity-min);
   border-inline-start: 1px solid var(--color-line);
   padding-inline-start: var(--identity-pad);
 }
@@ -153,10 +162,12 @@ function openMap() {
   display: flex;
   align-items: center;
   gap: var(--gap);
-  min-inline-size: calc(var(--current-slot));
+  min-inline-size: var(--current-slot);
+  /* A resize can narrow the slot before its previous chips have been repacked. */
+  overflow: clip;
 }
 :is(.queue-chip, .waiting-chip, .open-count, .waiting-count) { padding-inline: var(--spacing-1); }
-.queue-chip { inline-size: calc(var(--queue-slot) + var(--chip-pad)); gap: 0; }
+.queue-chip { inline-size: var(--queue-chip-width); gap: 0; }
 .waiting-chip { inline-size: calc(15ch + var(--chip-pad)); justify-content: space-between; }
 .open-count { inline-size: calc(var(--open-slot) + var(--chip-pad)); }
 .waiting-count { inline-size: calc(var(--other-slot) + var(--chip-pad)); }
@@ -169,21 +180,23 @@ function openMap() {
 }
 .ruler > * { flex: none; }
 .gap-size { inline-size: var(--gap); }
+.action { max-inline-size: var(--control-max); }
 .action-hint {
   display: grid;
   place-items: center;
-  min-inline-size: max(2ch, var(--count-slot));
+  min-inline-size: min(max(2ch, var(--count-slot)), 100%);
   font-variant-numeric: tabular-nums;
 }
 .action-icon { display: none; }
 @container (width < 520px) {
   .action {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     place-content: center;
     place-items: center;
     gap: 0;
     padding-inline: var(--spacing-1);
-    min-inline-size: max(var(--spacing-control), calc(var(--count-slot) + var(--chip-pad)));
+    min-inline-size: min(max(var(--spacing-control), var(--count-slot) + var(--chip-pad)), var(--control-max));
   }
   .action-label, .action-hint:has(kbd) { display: none; }
   .action-icon { display: block; }

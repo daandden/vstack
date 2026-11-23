@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import { useWideReaderFont, waitForReaderLayout } from "./support/reader-layout.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const question = (ref: string, again?: string, reason?: string) => ({ ref, brief: decisionBrief(ref, { again: reason }), ...(again ? { again } : {}), title: `Review ${ref}?`, description: `Compare the ${ref} evidence before deciding.`, needs: [{ need: `Read the ${ref} proposal`, kind: "prose" }], options: [{ label: "Keep the recorded evidence", does: `Retains the ${ref} record.`, gains: [`Traceable ${ref} decision`], costs: [`More ${ref} reading`] }] });
@@ -180,12 +181,15 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     const continuationLink = summary(reasked).getByRole("link", { name: "Latest attempt: Q1 in Code review", exact: true });
     await continuationLink.click();
     expect(new URL(page.url()).hash).toBe(`#${continuation}`);
+    const overflow = () => document.documentElement.scrollWidth - document.documentElement.clientWidth;
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
-      for (const width of [320, 1280, 2560]) {
+      for (const width of [320, 360, 1280, 2560]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto(`${opened.live.url}#${q.corrected}`);
-        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+        await article.waitFor();
+        await waitForReaderLayout(page);
+        expect(await page.evaluate(overflow)).toBeLessThanOrEqual(0);
         await page.goto(`${opened.live.url}#${q.corrected}-choices`);
         await article.getByRole("list", { name: "Choices" }).waitFor();
         expect(new URL(page.url()).hash).toBe(`#${q.corrected}-choices`);
@@ -200,7 +204,27 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     }
     await page.setViewportSize({ width: 320, height: 900 });
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    await waitForReaderLayout(page);
+    expect(await page.evaluate(overflow)).toBeLessThanOrEqual(0);
+
+    await page.evaluate(() => { document.documentElement.style.removeProperty("font-size"); });
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(`${opened.live.url}#${q.corrected}`);
+    await article.waitFor();
+    await useWideReaderFont(page);
+    await waitForReaderLayout(page);
+    await bar.getByRole("link", { name: "Code review · 1 open", exact: true }).waitFor();
+    // A visible wide-layout chip must not widen the page before the resize observer can repack it.
+    const resizing = await page.evaluateHandle(() => ({
+      overflow: new Promise<number>(resolve => addEventListener("resize", () => {
+        resolve(document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      }, { once: true })),
+    }));
+    await page.setViewportSize({ width: 320, height: 900 });
+    expect(await resizing.evaluate(result => result.overflow)).toBeLessThanOrEqual(0);
+    await resizing.dispose();
+    await waitForReaderLayout(page);
+    expect(await page.evaluate(overflow)).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
   } finally {
     await browser.close();
