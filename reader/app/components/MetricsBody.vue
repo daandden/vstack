@@ -42,7 +42,10 @@ const change = (v: ValueView, unit: string) => {
               </template>
               <template v-else>
                 <td class="value">
-                  <span v-if="v.value !== undefined" class="inline-flex items-center gap-2"><span class="min-w-[7ch] text-end">{{ v.value }} {{ me.unit }}</span><UProgress v-if="me.chart && typeof me.chart === 'object'" color="info" :model-value="v.value" :max="me.chart.max" aria-hidden="true" class="w-24" :ui="{ base: 'h-2 rounded bg-accented', indicator: 'rounded transition-none' }" /></span><span v-else class="text-small text-muted">No scalar reported</span>
+                  <span v-if="v.value !== undefined" class="u-inline-flex u-items-center u-gap-2">
+                    <span class="u-min-w-[7ch] u-text-end">{{ v.value }} {{ me.unit }}</span>
+                    <progress v-if="me.chart && typeof me.chart === 'object'" class="scalar-bar" :value="v.value" :max="me.chart.max" aria-hidden="true" />
+                  </span><span v-else class="text-small text-muted">No scalar reported</span>
                 </td>
                 <td><template v-if="v.samples !== undefined">{{ Array.isArray(v.samples) ? v.samples.length : v.samples }}</template><span v-else class="font-semibold text-dimmed">Not reported</span></td>
                 <td v-html="uncertainty(v)" />
@@ -55,3 +58,30 @@ const change = (v: ValueView, unit: string) => {
     </section>
   </div>
 </template>
+
+<style scoped>
+.scalar-bar {
+  appearance: none;
+  inline-size: 6rem;
+  block-size: 0.5rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.25rem;
+  background: var(--surface0);
+  accent-color: var(--blue);
+}
+
+.scalar-bar::-webkit-progress-bar {
+  background: transparent;
+}
+
+.scalar-bar::-webkit-progress-value {
+  border-radius: inherit;
+  background: var(--blue);
+}
+
+.scalar-bar::-moz-progress-bar {
+  border-radius: inherit;
+  background: var(--blue);
+}
+</style>
