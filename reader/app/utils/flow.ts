@@ -32,6 +32,19 @@ export function flowOf(content: Content): Flow {
   };
 }
 
+export function questionHasConcern(flow: Flow, q: QuestionView): boolean {
+  return q.answer.reading?.outcome === "concern" || (!!q.again && flow.question.get(q.again)?.answer.reading?.outcome === "concern");
+}
+
+export function stageWorkName(flow: Flow, stage: StageView): string {
+  if (!stage.ticket || !flow.wayfinder) return stage.label;
+  const id = stage.ticket.replace(/^#/, "");
+  const match = (t: { id: string }) => t.id.replace(/^#/, "") === id;
+  return flow.wayfinder.tickets.find(match)?.title
+    ?? flow.wayfinder.history.findLast(map => map.tickets.some(match))?.tickets.find(match)?.title
+    ?? stage.label;
+}
+
 export const optionLabel = (q: QuestionView, letter: string) => q.options[letter.charCodeAt(0) - 65]?.label ?? letter;
 
 export function sourceText(flow: Flow, id: string): string {

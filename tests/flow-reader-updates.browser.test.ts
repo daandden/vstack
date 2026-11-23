@@ -68,10 +68,9 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
       + parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) + 6,
     ));
     await selected.setViewportSize({ width: 1280, height: endViewport });
-    const selectedLink = selected.getByRole("link", { includeHidden: true }).and(selected.locator(`[href="#${seed.refs.selected}"]`));
     await selected.evaluate((id) => { location.hash = id; }, seed.refs.selected);
     await selected.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    expect(await selectedLink.getAttribute("aria-current")).toBe("location");
+    expect(await indexedStop(selected)).toBe(`#${seed.refs.selected}`);
     const position = await selected.locator(`#${seed.refs.selected}`).evaluate((el) => el.getBoundingClientRect().top);
     const address = selected.url();
     const focus = await selected.evaluate(() => document.activeElement?.id);
@@ -105,7 +104,7 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
     await selected.waitForFunction((previous) => scrollY > previous, scroll);
     expect(selected.url()).toBe(address);
     expect(await selected.evaluate(() => document.activeElement?.id)).toBe(focus);
-    expect(await selectedLink.getAttribute("aria-current")).toBe("location");
+    expect(await indexedStop(selected)).toBe(`#${seed.refs.selected}`);
     expect(Math.abs(await selected.locator(`#${seed.refs.selected}`).evaluate((el) => el.getBoundingClientRect().top) - position)).toBeLessThan(2);
     expect((await (await fetch(new URL("versions", opened.live.url))).json() as any).revision).toBe(updated.revision);
     expect(methods.length).toBeGreaterThan(0);
@@ -184,12 +183,19 @@ async function liveReader() {
   };
 }
 
-const selectedStop = (page: Page) => page.locator(".bar .jump-row a[aria-current]").getAttribute("href");
+const selectedStop = (page: Page) => page.evaluate(() => `#${document.activeElement?.id ?? ""}`);
 const pagePosition = (page: Page) => page.evaluate(() => ({
-  tab: document.querySelector(".bar .tabs a[aria-current]")?.getAttribute("href"),
-  stop: document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href"),
+  tab: `#${document.querySelector("main > [data-tab]:not([hidden])")?.id}`,
   scroll: scrollY,
 }));
+async function indexedStop(page: Page) {
+  await page.keyboard.press("g");
+  const jump = page.getByRole("dialog", { name: "Jump", exact: true });
+  const target = await jump.locator('a[aria-current="location"]').getAttribute("href");
+  await page.keyboard.press("Escape");
+  await jump.waitFor({ state: "hidden" });
+  return target;
+}
 const renderedUpdate = (page: Page, stage: string, title: string) => page.locator(`[data-tab="${stage}"]`).getByRole("heading", { name: title, includeHidden: true }).waitFor({ state: "attached" });
 
 test("live questions select and reveal only the Focused Stage, even from another reading block", async () => {
@@ -203,7 +209,7 @@ test("live questions select and reveal only the Focused Stage, even from another
 
     const fresh = submit(opened.stage, [{ kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("new", "New focused question")] }]);
     await renderedUpdate(page, opened.stage, "New focused question");
-    await page.waitForFunction((id) => document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href") === `#${id}`, fresh.refs.new, { timeout: 5000 });
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).locator(`a[href="#${fresh.refs.new}"][aria-current="location"]`).waitFor({ timeout: 5000 });
     expect(await selectedStop(page)).toBe(`#${fresh.refs.new}`);
     expect(await page.evaluate((id) => {
       const box = document.getElementById(id)!.getBoundingClientRect();
@@ -300,7 +306,8 @@ for (const field of ["textarea", "select", "contenteditable"]) {
       expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
       const realInput = page.getByRole("textbox").filter({ visible: true }).last();
       await realInput.focus();
-      expect<string | null | undefined>(await selectedStop(page)).toBe(before.stop);
+      expect(await pagePosition(page)).toEqual(before);
+      expect(await realInput.evaluate(el => el === document.activeElement)).toBe(true);
       await realInput.blur();
       await page.waitForFunction((id) => location.hash === `#${id}`, latest);
       expect(await selectedStop(page)).toBe(`#${latest}`);
@@ -328,11 +335,14 @@ test("answers, superseded asks, and retirement updates leave the reading place u
   const { page, opened, seed, submit } = f;
   try {
     const before = await pagePosition(page);
+    const stop = await indexedStop(page);
+    expect(stop).toBe(`#${seed.refs.reading}`);
     const readingTop = () => page.locator(`#${seed.refs.reading}`).evaluate((el) => el.getBoundingClientRect().top);
     const top = await readingTop();
     submit(opened.stage, [{ kind: "answer", question: seed.refs.existing, response: { status: "answered", picks: ["A"] } }]);
     await page.locator(`#${seed.refs.existing}[data-state="picked"]`).waitFor();
-    expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
+    expect((await pagePosition(page)).tab).toBe(before.tab);
+    expect(await indexedStop(page)).toBe(stop);
     expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
     const settled = submit(opened.stage, [
       { kind: "round", now: "The reader shows the latest available route evidence.", questions: [question("superseding", "Reconsidered and settled", seed.refs.existing), question("retired", "Deferred question")] },
@@ -346,7 +356,8 @@ test("answers, superseded asks, and retirement updates leave the reading place u
     await page.locator(`#${settled.refs.retired}[data-retired]`).waitFor();
     const retryLink = page.locator(`#${seed.refs.existing}`).getByRole("link", { name: /Latest attempt/ });
     expect(await retryLink.getAttribute("href")).toBe(`#${settled.refs.superseding}`);
-    expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
+    expect((await pagePosition(page)).tab).toBe(before.tab);
+    expect(await indexedStop(page)).toBe(stop);
     expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
   } finally {
     await f.close();

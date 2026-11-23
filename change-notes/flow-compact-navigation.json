@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The Flow page keeps project, Flow, and Stage identity in one 44 px bar. Stages (m) lists all Stages, and Jump (g) indexes the current Stage without taking a permanent row."
+  ]
+}

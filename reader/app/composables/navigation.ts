@@ -3,7 +3,8 @@ import { savedState } from "~/composables/reload";
 
 export const current = ref<string>();
 export const mapOpen = ref(false);
-export const mapTab = ref("path");
+export const mapTab = ref("stages");
+export const jumpOpen = ref(false);
 export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
@@ -40,13 +41,7 @@ function focusOn(el: HTMLElement) {
   el.focus({ preventScroll: true });
 }
 
-export function measureHeader() {
-  const bar = document.querySelector<HTMLElement>(".bar");
-  if (bar) document.documentElement.style.setProperty("--bar", `${bar.offsetHeight}px`);
-}
-
 function place(el: HTMLElement) {
-  measureHeader();
   el.scrollIntoView({ block: "start", behavior: "instant" });
   keepSelectionAtCurrentScroll();
 }
@@ -155,13 +150,15 @@ export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
   }
   keepSelectionAtCurrentScroll();
 }
+
+const readingDetails = () => document.querySelectorAll<HTMLDetailsElement>("details:not([data-reading-fold], [data-navigation-fold])");
 export function captureReadingPlace() {
   const anchor = readingAnchor();
   const focused = document.activeElement;
   return {
     hash: location.hash, tab: tab.value, current: current.value, y: scrollY,
     anchor: anchor?.el.id, top: anchor?.top,
-    details: [...document.querySelectorAll<HTMLDetailsElement>("details:not([data-reading-fold])")].flatMap((el, i) => el.open ? [i] : []),
+    details: [...readingDetails()].flatMap((el, i) => el.open ? [i] : []),
     folds: [...document.querySelectorAll("details[data-reading-fold][open]")].map(el => el.id),
     focus: focused instanceof HTMLElement ? focused.id : "",
     selection: focused instanceof HTMLTextAreaElement ? [focused.selectionStart, focused.selectionEnd] : undefined,
@@ -177,7 +174,7 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
   await nextTick();
   if (saved.details) {
     const details = saved.details;
-    document.querySelectorAll<HTMLDetailsElement>("details:not([data-reading-fold])").forEach((el, i) => { el.open = details.includes(i); });
+    readingDetails().forEach((el, i) => { el.open = details.includes(i); });
   }
   if (saved.folds) {
     for (const id of saved.folds) {
@@ -187,7 +184,6 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
   } else if (saved.anchor) resolve(saved.anchor);
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
-  measureHeader();
   if (saved.focus !== undefined) {
     const field = document.getElementById(saved.focus);
     field?.focus({ preventScroll: true });
@@ -249,18 +245,26 @@ export function onHashChange() {
     restoreTypingPositionAfterFragmentNavigation();
     return;
   }
+  mapOpen.value = false;
+  jumpOpen.value = false;
   void goTo(id, true);
 }
 
 export function onKey(e: KeyboardEvent) {
   const { flow } = useReaderState();
   if (!shortcutEligible(e)) return;
-  if (e.key === "m") {
+  if (e.key === "m" && !jumpOpen.value) {
     e.preventDefault();
+    if (!mapOpen.value) mapTab.value = "stages";
     mapOpen.value = !mapOpen.value;
     return;
   }
-  if (mapOpen.value) return;
+  if (e.key === "g" && !mapOpen.value) {
+    e.preventDefault();
+    jumpOpen.value = !jumpOpen.value;
+    return;
+  }
+  if (mapOpen.value || jumpOpen.value) return;
   if (e.key === "n") {
     const focusedStage = flow.value?.stage.has(tab.value) ? tab.value : undefined;
     const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id))
@@ -290,6 +294,7 @@ export function onClick(e: MouseEvent) {
   const id = decodeURIComponent(a.getAttribute("href")!.slice(1));
   e.preventDefault();
   if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
-  void goTo(id, true);
   mapOpen.value = false;
+  jumpOpen.value = false;
+  void goTo(id, true);
 }

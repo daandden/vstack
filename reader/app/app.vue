@@ -45,7 +45,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
     </p>
     <p v-else-if="!flow" class="notice" role="status">Loading the Flow from the Local Flow host…</p>
     <template v-else>
-      <TabBar />
+      <FlowBar />
       <FlowMasthead />
       <p v-if="connection === 'reconnecting'" class="notice" role="status">
         The Local Flow host stopped answering. This page keeps what it showed and reconnects when the host is back.
@@ -58,7 +58,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
           <ProgressPanel />
           <ChangedSinceVisit />
           <StageOverview />
-          <p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next tab, <kbd>n</kbd> next open question, <kbd>m</kbd> Map.</p>
+          <p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next view, <kbd>n</kbd> next open question, <kbd>m</kbd> Stages, <kbd>g</kbd> Jump.</p>
         </section>
         <StagePanel v-for="st in flow.stages" :key="st.id" :stage="st" />
         <section v-if="flow.topics.length" id="topics" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="topics" :hidden="tab !== 'topics'" aria-labelledby="topics-title">
@@ -74,6 +74,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
         </section>
       </main>
       <MapPanel />
+      <JumpPanel />
     </template>
   </div>
   </UApp>

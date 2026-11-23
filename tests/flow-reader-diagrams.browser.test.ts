@@ -111,9 +111,7 @@ test("stored flowcharts redraw with export step routes, boxed edge labels, and t
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(opened.live.url);
-    await page.reload();
-    await page.locator(`nav[aria-label="Flow tabs"] a[href="#${opened.stage}"]`).click();
+    await page.goto(`${opened.live.url}#${opened.stage}`);
     for (const [theme, background] of [["Light", [239, 241, 245]], ["Dark", [30, 30, 46]]] satisfies [string, [number, number, number]][]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const name of Object.keys(sources)) {

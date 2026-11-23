@@ -1,0 +1,1 @@
+import{P as e}from"./D8erDxGK.js";function t(t=e()){let n=t;n&&!n.sp&&(n.sp=[])}export{t};

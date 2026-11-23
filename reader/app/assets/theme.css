@@ -42,7 +42,8 @@
   --entry-space: clamp(1.25rem, 1rem + 1vw, 2rem);
   --path-padding: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
   scrollbar-gutter: stable;
-  scroll-padding-block-start: calc(var(--bar, 0px) + 0.75rem);
+  --bar: 44px;
+  scroll-padding-block-start: calc(var(--bar) + 0.75rem);
   text-wrap: pretty;
   overflow-wrap: break-word;
   font-synthesis: none;

@@ -90,11 +90,13 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
       expect(await colorOf(page, ".theme button:first-child", "color")).toBe(label === "Light" ? "#5c5f77" : "#bac2de");
       colors[label!] = await drawing!.evaluate((el) => getComputedStyle(el.querySelector("text")!).fill);
       await capture(page, `${label!.toLowerCase()}-stage`);
-      await page.getByRole("navigation", { name: "Flow tabs", exact: true }).getByRole("link", { name: "Overview", exact: true }).click();
+      await page.getByRole("navigation", { name: "Flow navigation", exact: true }).locator('a[href="#overview"]').click();
       await page.locator("#observations").waitFor();
       expect(await page.locator("#progress").innerText()).toContain("1 active");
       await capture(page, `${label!.toLowerCase()}-overview`);
-      await page.getByRole("navigation", { name: "Flow tabs", exact: true }).getByRole("link", { name: "Implement", exact: true }).click();
+      await page.getByRole("button", { name: "Stages", exact: true }).click();
+      await page.getByRole("tabpanel", { name: "Stages", exact: true }).getByRole("link", { name: "Implement", exact: true }).click();
+      await page.getByRole("img", { name: "Read then choose" }).waitFor();
     }
     expect(colors.Light).not.toBe(colors.Dark);
     expect(await drawing!.evaluate((el) => el.isConnected)).toBe(true);
