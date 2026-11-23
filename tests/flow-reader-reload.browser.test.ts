@@ -103,6 +103,18 @@ test("served generation swaps refresh unchanged content and reload readers witho
     await summary.focus();
     await attempts.keyboard.press("Enter");
     expect(await summary.evaluate(el => (el.parentElement as HTMLDetailsElement).open)).toBe(true);
+    const closedEvidence = await browser.newPage();
+    await closedEvidence.goto(`${url}#${retry}-evidence`);
+    const evidenceSummary = closedEvidence.locator(`#${retry}-evidence`);
+    await evidenceSummary.locator("..").and(closedEvidence.locator("details[open]")).waitFor();
+    await evidenceSummary.click();
+    expect(await evidenceSummary.evaluate(el => (el.parentElement as HTMLDetailsElement).open)).toBe(false);
+    const closedChoices = await browser.newPage();
+    await closedChoices.goto(`${url}#${seed.refs.prior}-choices`);
+    const choices = closedChoices.locator(`#${seed.refs.prior}-choices`);
+    await choices.waitFor();
+    await closedChoices.getByText("Collapse question", { exact: true }).click();
+    await choices.waitFor({ state: "hidden" });
     await page.goto(`${url}#${seed.refs.evidence}`);
     const region = page.getByRole("region", { name: "Reader comments on Restart evidence" }).first();
     await region.getByRole("button", { name: "Add Reader comment" }).click();
@@ -137,31 +149,56 @@ test("served generation swaps refresh unchanged content and reload readers witho
     expect(contentLoads).toBeGreaterThan(loads);
     expect(navigations).toBe(1);
     expect(await region.getByRole("textbox", { name: "Comment" }).inputValue()).toBe(draft);
-    const legacy = await browser.newPage();
     const legacyText = "Keep the comment on the earlier revision.";
-    // The pre-cutover reader stored Earlier revisions as ordinal 4.
-    await legacy.addInitScript(({ report, stage, text }) => {
-      sessionStorage.setItem(`flow-reader:reload:${location.pathname}`, JSON.stringify({
-        place: {
-          hash: `#${report}`, tab: stage, current: report, y: 0, anchor: report,
-          details: [0, 4], folds: [], focus: "v-6", selection: [9, 16],
-        },
-        [`comment:${report}-r1`]: { target: "", draft: text, editing: "", passage: "", revision: 1, edit: null },
-      }));
-    }, { report: seed.refs.evidence, stage: opened.stage, text: legacyText });
-    await legacy.goto(`${url}#${seed.refs.evidence}`);
-    const legacyEditor = legacy.locator(`#${seed.refs.evidence}-r1`).getByRole("textbox", { name: "Comment", includeHidden: true });
-    await legacy.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
-    const legacyRestored = {
-      visible: await legacyEditor.isVisible(),
-      draft: await legacyEditor.inputValue(),
-      focusAndSelection: await legacyEditor.evaluate((el: HTMLTextAreaElement) =>
-        [document.activeElement === el, el.selectionStart, el.selectionEnd]),
-      compareOpen: await legacy.getByText("Compare revisions", { exact: true }).evaluate(el => (el.parentElement as HTMLDetailsElement).open),
-      unrelatedOpen: await legacy.locator(`#${retry}`).getByText("Sources and context", { exact: true })
-        .evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+    const legacyComment = async (focus: string) => {
+      const legacy = await browser.newPage();
+      const report = seed.refs.evidence;
+      // The pre-cutover reader stored Earlier revisions as ordinal 4.
+      await legacy.addInitScript(({ report, stage, text, focus }) => {
+        sessionStorage.setItem(`flow-reader:reload:${location.pathname}`, JSON.stringify({
+          place: {
+            hash: `#${report}`, tab: stage, current: report, y: 0, anchor: report,
+            details: [0, 4], folds: [], focus, selection: [9, 16],
+          },
+          [`comment:${report}-r1`]: { target: "", draft: text, editing: "", passage: "", revision: 1, edit: null },
+        }));
+      }, { report, stage: opened.stage, text: legacyText, focus });
+      await legacy.goto(`${url}#${report}`);
+      const editor = legacy.locator(`#${report}-r1`).getByRole("textbox", { name: "Comment", includeHidden: true });
+      await legacy.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
+      const restored = {
+        visible: await editor.isVisible(),
+        draft: await editor.inputValue(),
+        focusAndSelection: await editor.evaluate((el: HTMLTextAreaElement) =>
+          [document.activeElement === el, el.selectionStart, el.selectionEnd]),
+        compareOpen: await legacy.getByText("Compare revisions", { exact: true }).evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+        unrelatedOpen: await legacy.locator(`#${retry}-evidence`).evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+      };
+      await legacy.close();
+      return restored;
     };
-    await legacy.close();
+    const identifiedDraft = await legacyComment(`${seed.refs.evidence}-r1-comment`);
+    const generatedFocus = await legacyComment("v-6");
+
+    const linkedQuestion = seed.refs.prior;
+    const legacyQuestion = async (anchor: string) => {
+      const legacy = await browser.newPage();
+      await legacy.addInitScript(({ anchor, stage, current }) => {
+        sessionStorage.setItem(`flow-reader:reload:${location.pathname}`, JSON.stringify({
+          place: { hash: `#${anchor}`, tab: stage, current, y: 0, anchor, details: [0], folds: [] },
+        }));
+      }, { anchor, stage: opened.stage, current: linkedQuestion });
+      await legacy.goto(`${url}#${anchor}`);
+      await legacy.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
+      const restored = [
+        await legacy.locator(`#${linkedQuestion}-choices`).isVisible(),
+        await legacy.locator(`#${linkedQuestion}-evidence`).evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+      ];
+      await legacy.close();
+      return restored;
+    };
+    const legacyChoices = await legacyQuestion(linkedQuestion);
+    const legacyEvidence = await legacyQuestion(`${linkedQuestion}-evidence`);
     await attempts.evaluate(() => document.fonts.ready.then(() => undefined));
     const attemptPosition = await attempts.evaluate(() => ({ hash: location.hash, y: scrollY }));
     const stable = await versions();
@@ -176,14 +213,26 @@ test("served generation swaps refresh unchanged content and reload readers witho
       const loaded = document.querySelector<HTMLMetaElement>('meta[name="flow-reader-generation"]')?.content;
       return loaded && loaded !== old;
     };
-    await Promise.all([page, bare, attempts].map(tab => tab.waitForFunction(generationChanged, before.readerGeneration, { timeout: 20_000 })));
-    await attempts.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
+    await Promise.all([page, bare, attempts, closedEvidence, closedChoices].map(async tab => {
+      await tab.waitForFunction(generationChanged, before.readerGeneration, { timeout: 20_000 });
+      await tab.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
+    }));
     expect({
-      legacy: legacyRestored,
+      identifiedDraft,
+      generatedFocus: { ...generatedFocus, focusAndSelection: generatedFocus.focusAndSelection[0] },
+      legacyChoices,
+      legacyEvidence,
       attempt: await summary.evaluate(el => [(el.parentElement as HTMLDetailsElement).open, document.activeElement === el]),
+      closedEvidence: await evidenceSummary.evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+      closedChoices: !(await choices.isVisible()),
     }).toEqual({
-      legacy: { visible: true, draft: legacyText, focusAndSelection: [true, 9, 16], compareOpen: false, unrelatedOpen: false },
+      identifiedDraft: { visible: true, draft: legacyText, focusAndSelection: [true, 9, 16], compareOpen: false, unrelatedOpen: false },
+      generatedFocus: { visible: false, draft: legacyText, focusAndSelection: false, compareOpen: false, unrelatedOpen: false },
+      legacyChoices: [true, false],
+      legacyEvidence: [true, true],
       attempt: [true, true],
+      closedEvidence: false,
+      closedChoices: true,
     });
     expect(await attempts.evaluate(() => location.hash)).toBe(attemptPosition.hash);
     expect(Math.abs(await attempts.evaluate(() => scrollY) - attemptPosition.y)).toBeLessThan(4);

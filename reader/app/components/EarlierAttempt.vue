@@ -9,7 +9,7 @@ const reading = computed(() => answer.value.reading);
 
 <template>
   <details class="disclosure wrap-anywhere">
-    <summary>Earlier attempt</summary>
+    <summary class="min-h-control content-center">Earlier attempt</summary>
     <a :href="`#${question.id}`">{{ label }}, asked earlier</a>
     <CorrectionNotice :notice="answer" />
     <p>{{ foldedQuestionOutcome(question) }}</p>

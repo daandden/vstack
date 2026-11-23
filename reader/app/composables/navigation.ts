@@ -186,14 +186,6 @@ function findFocus(key: string) {
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-function findLegacyFocus(id: string, hasSelection: boolean) {
-  if (!generatedId.test(id)) return document.getElementById(id);
-  // Generated IDs changed with the form controls. Only one restored draft can identify the editor.
-  if (!hasSelection) return;
-  const editors = document.querySelectorAll<HTMLTextAreaElement>("textarea[data-reload-focus]");
-  return editors.length === 1 ? editors[0] : undefined;
-}
-
 function revealAncestors(el: HTMLElement | null | undefined) {
   for (let fold = el && hidingDisclosure(el); fold; fold = hidingDisclosure(fold)) fold.open = true;
 }
@@ -235,16 +227,16 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
     document.dispatchEvent(new CustomEvent("flow-reveal", { detail: id }));
     await nextTick();
   }
-  const anchor = findTarget(id);
-  revealAncestors(anchor);
-  const field = saved.focusKey ? findFocus(saved.focusKey) : saved.focus ? findLegacyFocus(saved.focus, !!saved.selection) : null;
-  revealAncestors(field);
+  const anchor = saved.openDetails ? findTarget(id) : resolve(id);
+  const field = saved.focusKey ? findFocus(saved.focusKey)
+    : saved.focus && !generatedId.test(saved.focus) ? document.getElementById(saved.focus) : null;
+  if (!saved.openDetails) revealAncestors(field);
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
   field?.focus({ preventScroll: true });
   if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
   scrollTo({ top: saved.y, behavior: "instant" });
-  if (anchor && saved.top !== undefined) restoreReadingAnchor({ el: anchor, top: saved.top });
+  if (anchor && saved.top !== undefined && !hidingDisclosure(anchor)) restoreReadingAnchor({ el: anchor, top: saved.top });
   keepSelectionAtCurrentScroll();
   return true;
 }

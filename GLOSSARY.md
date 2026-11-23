@@ -213,7 +213,7 @@ The Local Flow host's short-lived record that one omp session has a question pic
 _Avoid_: open ask, asking state, active ask
 
 **Map panel**:
-The Flow page dialog that the `m` key opens. It shows the Matt flow path when present, the graph of Stage relationships, and the Wayfinder ticket graph when present.
+The Flow page dialog that the `m` key opens. It lists Stages waiting for an answer first, then in-progress Stages without open questions, then finished Stages grouped by ticket. Its other tabs show the Matt flow path and the Wayfinder ticket graph when present.
 _Avoid_: Stage tree, Stages popup, path banner
 
 **Local Flow host**:

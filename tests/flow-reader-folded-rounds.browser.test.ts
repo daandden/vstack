@@ -206,7 +206,9 @@ test("adjacent Assumed picks share one folded row without swallowing a Result or
     await choices.waitFor();
     expect(await choices.getAttribute("id")).toBe(`${q.reopen}-choices`);
     expect(new URL(deepLink.url()).hash).toBe(`#${q.reopen}-choices`);
-    expect(await choices.evaluate(el => el.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(-1);
+    const bar = deepLink.getByRole("navigation", { name: "Flow navigation", exact: true });
+    expect(await bar.evaluate((el, id) =>
+      document.getElementById(id)!.getBoundingClientRect().top - el.getBoundingClientRect().bottom, `${q.reopen}-choices`)).toBeGreaterThanOrEqual(-1);
     await deepLink.reload();
     await choices.waitFor();
     expect(new URL(deepLink.url()).hash).toBe(`#${q.reopen}-choices`);
@@ -267,6 +269,7 @@ test("a migrated Stage keeps retained order, one boundary notice, and old round 
     await page.goto(`${migrated.live.url}#q-legacy-q`);
     await question.getByRole("list", { name: "Choices" }).waitFor();
     expect(new URL(page.url()).hash).toBe("#q-legacy-q");
+    expect(await question.getByRole("region", { name: "Current outcome" }).innerText()).toBe("Recorded answer: Keep the archive under its old name.");
     expect(await question.getByText("The original evidence is in the archive.").isVisible()).toBe(true);
     expect(await question.getByText("Keep the archive under its old name.", { exact: true }).isVisible()).toBe(true);
     await capture(page, "stage-historical");

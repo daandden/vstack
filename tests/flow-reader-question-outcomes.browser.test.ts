@@ -47,7 +47,8 @@ test("question outcomes keep current readings and direct evidence, choices, and 
       ...["headless", "cancelled", "empty", "timed-out"].map(status => ({ kind: "answer", question: q[status], response: { status, ...(status === "empty" ? {} : { picks: ["A"] }) } })),
     ]);
     const reasked = cli(["submit"], [{ kind: "round", now: "The decision evidence is available for review.", questions: [question("reasked-again", q.reasked, "The earlier question has no answer.")] }]).refs["reasked-again"]!;
-    cli(["submit"], [{ kind: "answer", question: reasked, response: { status: "answered", picks: ["A"] } }]);
+    const branch = cli(["submit"], [{ kind: "round", now: "The latest evidence calls for another look.", questions: [question("reasked-branch", q.reasked, "New evidence applies to the original question.")] }]).refs["reasked-branch"]!;
+    cli(["submit"], [{ kind: "answer", question: branch, response: { status: "answered", picks: ["A"] } }]);
     await page.goto(`${opened.live.url}#${q.corrected}`);
     const summary = (id: string) => page.locator(`#${id}`).getByRole("region", { name: "Current outcome", exact: true });
     await summary(q.corrected).waitFor({ timeout: 5000 });
@@ -77,8 +78,13 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     expect(await evidence.innerText()).toBe("Sources and context");
     expect(await evidence.evaluate(el => (el.parentElement as HTMLDetailsElement).open)).toBe(true);
     expect(await additionalFigures.count()).toBe(7);
+    const controlHeight = (el: Element) => el.getBoundingClientRect().height;
+    const evidenceHeight = await evidence.evaluate(controlHeight);
+    const sourceHeight = await evidence.locator("..").locator("summary").filter({ hasText: /^Source$/ }).first().evaluate(controlHeight);
+    const bar = page.getByRole("navigation", { name: "Flow navigation", exact: true });
+    const overviewHeight = await bar.getByRole("link", { name: "Question outcome navigation", exact: true }).evaluate(controlHeight);
     const top = await page.locator(`#${q.corrected}-evidence`).evaluate(el => el.getBoundingClientRect().top);
-    expect(top).toBeGreaterThanOrEqual(await page.locator(".bar").evaluate(el => el.getBoundingClientRect().bottom) - 1);
+    expect(top).toBeGreaterThanOrEqual(await bar.evaluate(el => el.getBoundingClientRect().bottom) - 1);
     await page.reload();
     expect(new URL(page.url()).hash).toBe(`#${q.corrected}-evidence`);
     await additionalFigures.first().waitFor();
@@ -87,7 +93,20 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     expect(new URL(page.url()).hash).toBe(`#${corrected.refs.retry}`);
     expect(await summary(corrected.refs.retry).innerText()).toContain("Open");
     const retry = page.locator(`#${corrected.refs.retry}`);
-    await retry.locator("summary").filter({ hasText: /^Earlier attempt$/ }).click();
+    const earlierRow = retry.locator("summary").filter({ hasText: /^Earlier attempt$/ });
+    const earlierHeight = await earlierRow.evaluate(controlHeight);
+    const headingSize = await retry.getByRole("heading", { level: 2 }).evaluate(el => {
+      const normal = getComputedStyle(el).fontSize;
+      el.style.setProperty("--text-question-title", "21px");
+      const withOverride = getComputedStyle(el).fontSize;
+      el.style.removeProperty("--text-question-title");
+      return [normal, withOverride];
+    });
+    expect({
+      compactTargets: [overviewHeight, evidenceHeight, earlierHeight, sourceHeight].map(height => height >= 28),
+      headingSize,
+    }).toEqual({ compactTargets: [true, true, true, true], headingSize: ["17px", "21px"] });
+    await earlierRow.click();
     expect(await retry.getByRole("complementary", { name: "Correction notice" }).innerText()).toContain("The old reading invented permission.");
     expect(await retry.getByText("Agent reading", { exact: true }).isVisible()).toBe(true);
     expect(await retry.getByText("Uncertainty is not permission. Ask again before deployment.", { exact: true }).isVisible()).toBe(true);
@@ -107,12 +126,18 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     await earlier.waitFor();
     expect(await earlier.innerText()).toContain("Re-asked");
     expect(await earlier.innerText()).not.toContain("Open");
-    expect(await earlier.getByRole("link", { name: "Latest attempt: Q9 (attempt 2)", exact: true }).isVisible()).toBe(true);
+    expect(await earlier.getByRole("link", { name: "Latest attempt: Q9 (attempt 3)", exact: true }).getAttribute("href")).toBe(`#${branch}`);
     expect(await earlier.innerText()).toContain("Your pick: A. Keep the recorded evidence");
     expect(await page.locator(`#${q.reasked} .answer`).innerText()).toContain("Re-asked");
     expect(await page.locator(`#${q.reasked} .answer`).innerText()).not.toContain("Not answered");
     const shown = cli(["show", "--flow", opened.flow]) as unknown as { stages: { questions: { id: string; open: boolean }[] }[] };
     expect(shown.stages[0]!.questions.find(x => x.id === q.reasked)?.open).toBe(false);
+    const branchLink = page.locator(`#${reasked} > details > summary`)
+      .getByRole("link", { name: "Latest attempt: Q9 (attempt 3)", exact: true });
+    expect(await branchLink.count()).toBe(1);
+    await branchLink.click();
+    expect(new URL(page.url()).hash).toBe(`#${branch}`);
+    await summary(branch).getByText("Your pick: A. Keep the recorded evidence", { exact: true }).waitFor();
     await page.goto(`${opened.live.url}#overview`);
     await page.getByRole("region", { name: "Overview", exact: true })
       .locator(":scope > details > summary").filter({ hasText: /^All Stages$/ }).click();
@@ -147,6 +172,14 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     expect(await timedOutOutcome.innerText()).toContain("Your pick: A. Keep the recorded evidence");
     expect(await timedOutOutcome.getByRole("link", { name: "Latest attempt: Q2 in Implement", exact: true }).getAttribute("href")).toBe(`#${timedOutRetry}`);
     expect(await page.locator(`#${q["timed-out"]}`).innerText()).not.toMatch(/\bOpen\b|Not answered|Still to ask/);
+    cli(["open", "--flow", opened.flow, "--skill", "code-review", "--parent", opened.stage]);
+    const continuation = cli(["submit"], [{ kind: "round", now: "The review will check the question again.", questions: [
+      question("continuation", branch, "The latest attempt needs a review in the next Stage."),
+    ] }]).refs.continuation!;
+    await page.goto(`${opened.live.url}#${reasked}`);
+    const continuationLink = summary(reasked).getByRole("link", { name: "Latest attempt: Q1 in Code review", exact: true });
+    await continuationLink.click();
+    expect(new URL(page.url()).hash).toBe(`#${continuation}`);
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280, 2560]) {

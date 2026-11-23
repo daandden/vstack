@@ -164,15 +164,23 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     for (const name of [overview, bar.getByText(work, { exact: true })]) {
       expect((await name.boundingBox())?.width).toBeGreaterThanOrEqual(72);
     }
-    for (const target of [overview, current, stages, jump]) await assertFits(target);
-    await bar.getByRole("button", { name: /^\+\d+ waiting Stages?$/ }).waitFor({ state: "hidden" });
+    const queueCount = overflow.or(jump.filter({ hasText: "+20" }));
+    const waitingCount = bar.getByRole("button", { name: "+4 waiting Stages", exact: true }).or(stages.filter({ hasText: "+4" }));
+    for (const target of [overview, current, stages, jump, queueCount, waitingCount]) {
+      await target.waitFor({ timeout: 3000 });
+      await assertFits(target);
+    }
+    expect(await queueCount.innerText()).toContain("+20");
+    expect(await waitingCount.innerText()).toContain("+4");
+    expect(await jump.getAttribute("aria-description")).toBe("+20 open");
+    expect(await stages.getAttribute("aria-description")).toBe("+4 waiting Stages");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
-    await jump.click();
+    await queueCount.click();
     await queuePanel.waitFor();
     expect(await queuePanel.getByRole("link").count()).toBe(21);
     await page.keyboard.press("Escape");
     await queuePanel.waitFor({ state: "hidden" });
-    await stages.click();
+    await waitingCount.click();
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     const mapStages = map.getByRole("tabpanel", { name: "Stages", exact: true });
     await mapStages.waitFor();
@@ -311,7 +319,8 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     await page.getByRole("region", { name: "Read-only observations", exact: true }).waitFor();
     expect(await hash(page)).toBe("observations");
 
-    const clearance = () => page.evaluate((id) => document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom, research.refs.doc);
+    const clearance = () => barOf(page).evaluate((bar, id) =>
+      document.getElementById(id)!.getBoundingClientRect().top - bar.getBoundingClientRect().bottom, research.refs.doc);
     await page.goto(`${a.live.url}#${research.refs.doc}`);
     await page.locator(`#${research.refs.doc}`).waitFor();
     expect(await selected(page)).toBe(stageB);
@@ -433,7 +442,7 @@ test("a fresh bare link opens the Flow's current decision queue before choosing 
   const next = submit(opened.flow, opened.stage, [{ kind: "round", now: "Replica lag crossed the failover threshold.", questions: [
     question("retry", "Change the failover threshold?", first.prior),
     question("reply", "Keep the replica alert?"),
-    question("fresh", "Add the follow-up report for AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion?"),
+    question("fresh", "Add the [follow-up report](https://example.com/report) for `AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion`?"),
   ] }]).refs;
   submit(opened.flow, opened.stage, [{ kind: "answer", question: next.reply, response: { status: "answered", text: "Who receives the alert?" }, reading: { outcome: "question", unresolved: "Name the on-call team." } }]);
   const research = cli(["open", "--flow", opened.flow, "--skill", "research", "--parent", opened.stage]);
@@ -459,6 +468,10 @@ test("a fresh bare link opens the Flow's current decision queue before choosing 
     expect(await retry!.getByText("Concern", { exact: true }).isVisible()).toBe(true);
     expect(await reply!.getByText("Question, not settled", { exact: true }).isVisible()).toBe(true);
     expect(await fresh!.getByText("Open", { exact: true }).isVisible()).toBe(true);
+    const report = fresh!.getByRole("link", { name: "Add the follow-up report for AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion?", exact: true });
+    expect(await report.count()).toBe(1);
+    expect(await report.getAttribute("href")).toBe(`#${next.fresh}`);
+    expect(await report.locator("code").textContent()).toBe("AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion");
     const time = retry!.locator("time[datetime]");
     expect(await time.innerText()).toMatch(/just now|\bago$/);
     expect(Date.parse((await time.getAttribute("datetime"))!)).toBeGreaterThan(0);
@@ -739,12 +752,13 @@ test("at 360px the bar stays one row without page overflow and fragments clear i
     const page = await context.newPage();
     await page.goto(`${a.live.url}#${target}`);
     await page.locator(`#${target}`).waitFor();
-    const geometry = await page.evaluate((id) => {
-      const row = document.querySelector(".bar")!.getBoundingClientRect();
+    const bar = barOf(page);
+    const geometry = await bar.evaluate((el, id) => {
+      const row = el.getBoundingClientRect();
       return {
         height: row.height,
         overflow: document.documentElement.scrollWidth - innerWidth,
-        below: document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom,
+        below: document.getElementById(id)!.getBoundingClientRect().top - row.bottom,
       };
     }, target);
     expect(geometry.height).toBe(44);
@@ -755,7 +769,8 @@ test("at 360px the bar stays one row without page overflow and fragments clear i
     await page.locator("#overview").waitFor();
     await page.evaluate((id) => { location.hash = `#${id}`; }, target);
     await Bun.sleep(200);
-    expect(await page.evaluate((id) => document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom, target)).toBeGreaterThanOrEqual(0);
+    expect(await bar.evaluate((el, id) =>
+      document.getElementById(id)!.getBoundingClientRect().top - el.getBoundingClientRect().bottom, target)).toBeGreaterThanOrEqual(0);
   } finally {
     await context.close();
   }

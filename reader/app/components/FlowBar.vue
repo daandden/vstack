@@ -21,6 +21,7 @@ const other = computed(() => f.value.stages.filter(st => st.id !== tab.value && 
 const slotSizes = computed(() => ({
   "--queue-slot": `${String(queue.value.at(-1)?.q.q ?? 1).length + 2}ch`,
   "--open-slot": `${String(queue.value.length).length + 6}ch`,
+  "--queue-count-slot": `${String(queue.value.length).length + 1}ch`,
   "--other-slot": `${String(other.value.length).length + 1}ch`,
   "--current-slot": selected.value ? "var(--queue-slot) + var(--chip-pad)" : "0px",
 }));
@@ -67,6 +68,8 @@ const visibleQueue = computed(() => {
 });
 const hiddenQueue = computed(() => queue.value.length - visibleQueue.value.length);
 const hiddenStages = computed(() => other.value.length - packed.value.stages);
+const waitingLabel = computed(() => `+${hiddenStages.value} waiting ${hiddenStages.value === 1 ? "Stage" : "Stages"}`);
+const queueLabel = computed(() => `+${hiddenQueue.value} open`);
 
 function openMap() {
   mapTab.value = "stages";
@@ -78,7 +81,7 @@ function openMap() {
   <nav class="bar sticky inset-bs-0 z-1 [grid-column:1/-1]! border-be border-flow-line bg-flow-base" aria-label="Flow navigation">
     <div class="bar-row" :style="slotSizes">
       <span class="identity project text-flow-subtext" :title="f.project" dir="auto">{{ f.project }}</span>
-      <a href="#overview" class="identity flow-title text-flow-text font-bold" :title="f.flow.title" :aria-current="tab === 'overview' ? 'page' : undefined" dir="auto">{{ f.flow.title }}</a>
+      <a href="#overview" class="identity flow-title min-h-control content-center text-flow-text font-bold" :title="f.flow.title" :aria-current="tab === 'overview' ? 'page' : undefined" dir="auto">{{ f.flow.title }}</a>
       <span class="identity stage-title text-flow-blue font-semibold" :title="stageName" :data-state="stage?.state" dir="auto">{{ stageName }}</span>
 
       <div ref="slots" class="slots">
@@ -86,23 +89,28 @@ function openMap() {
           :class="[chipClass, concern ? 'text-flow-peach!' : current === q.id ? 'text-flow-blue!' : '']"
           :aria-current="current === q.id ? 'location' : undefined" :aria-label="`Q${q.q}. ${q.title}${concern ? ' · Concern recorded' : ''}`"
           :title="`${q.title}${concern ? ' · Concern recorded' : ''}`">Q{{ q.q }}<span v-if="concern" class="font-extrabold" aria-hidden="true">!</span></a>
-        <Button v-if="packed.openCount" variant="bare" class="open-count" :class="chipClass" aria-haspopup="dialog" @click="jumpOpen = true">+{{ hiddenQueue }} open</Button>
+        <Button v-if="packed.openCount" variant="bare" class="open-count" :class="chipClass" aria-haspopup="dialog" @click="jumpOpen = true">{{ queueLabel }}</Button>
         <a v-for="st in other.slice(0, packed.stages)" :key="st.id" :href="`#${st.id}`" class="waiting-chip" :class="chipClass"
           :title="`${stageWorkName(f, st)} · ${st.open_questions} open`" :aria-label="`${stageWorkName(f, st)} · ${st.open_questions} open`">
           <span class="truncate" dir="auto">{{ stageWorkName(f, st) }}</span><span class="shrink-0 text-flow-peach">{{ st.open_questions }}</span>
         </a>
         <Button v-if="packed.waitingCount" variant="bare" class="waiting-count" :class="chipClass" aria-haspopup="dialog"
-          :aria-label="`+${hiddenStages} waiting ${hiddenStages === 1 ? 'Stage' : 'Stages'}`"
-          :title="`+${hiddenStages} waiting ${hiddenStages === 1 ? 'Stage' : 'Stages'}`" @click="openMap">+{{ hiddenStages }}</Button>
+          :aria-label="waitingLabel" :title="waitingLabel" @click="openMap">+{{ hiddenStages }}</Button>
       </div>
 
-      <Button id="flow-stages" class="shrink-0 text-small leading-none" aria-label="Stages" title="Stages (m)" aria-haspopup="dialog" aria-keyshortcuts="m" @click="openMap">
-        <span class="action-label">Stages <kbd>m</kbd></span>
+      <Button id="flow-stages" class="action shrink-0 text-small leading-none [--count-slot:var(--other-slot)]" aria-label="Stages"
+        :aria-description="hiddenStages ? waitingLabel : undefined" :title="hiddenStages ? `Stages (m) · ${waitingLabel}` : 'Stages (m)'"
+        aria-haspopup="dialog" aria-keyshortcuts="m" @click="openMap">
+        <span class="action-label" aria-hidden="true">Stages</span>
         <span class="i-lucide-list-tree action-icon size-[1.25em]" aria-hidden="true" />
+        <span class="action-hint" aria-hidden="true"><template v-if="hiddenStages && !packed.waitingCount">+{{ hiddenStages }}</template><kbd v-else>m</kbd></span>
       </Button>
-      <Button id="flow-jump" class="shrink-0 text-small leading-none" aria-label="Jump" title="Jump (g)" aria-haspopup="dialog" aria-keyshortcuts="g" @click="jumpOpen = true">
-        <span class="action-label">Jump <kbd>g</kbd></span>
+      <Button id="flow-jump" class="action shrink-0 text-small leading-none [--count-slot:var(--queue-count-slot)]" aria-label="Jump"
+        :aria-description="hiddenQueue ? queueLabel : undefined" :title="hiddenQueue ? `Jump (g) · ${queueLabel}` : 'Jump (g)'"
+        aria-haspopup="dialog" aria-keyshortcuts="g" @click="jumpOpen = true">
+        <span class="action-label" aria-hidden="true">Jump</span>
         <span class="i-lucide-list-end action-icon size-[1.25em]" aria-hidden="true" />
+        <span class="action-hint" aria-hidden="true"><template v-if="hiddenQueue && !packed.openCount">+{{ hiddenQueue }}</template><kbd v-else>g</kbd></span>
       </Button>
 
       <div ref="ruler" class="ruler" aria-hidden="true"><span class="queue-chip" /><span class="open-count" /><span class="waiting-chip" /><span class="waiting-count" /><span class="gap-size" /></div>
@@ -116,14 +124,15 @@ function openMap() {
   container-type: inline-size;
 }
 .bar-row {
-  --gap: 4px;
-  --chip-pad: 10px;
+  --gap: var(--spacing-1);
+  --identity-pad: calc(1.5 * var(--spacing-1));
+  --chip-pad: calc(2 * (var(--spacing-1) + 1px));
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--gap);
   block-size: 100%;
-  padding-inline: clamp(6px, 1.5cqi, 20px);
+  padding-inline: clamp(var(--identity-pad), 1.5cqi, calc(5 * var(--spacing-1)));
   white-space: nowrap;
   font-size: var(--text-small);
 }
@@ -137,7 +146,7 @@ function openMap() {
 .flow-title, .stage-title {
   min-inline-size: min(72px, 24cqi);
   border-inline-start: 1px solid var(--color-line);
-  padding-inline-start: 6px;
+  padding-inline-start: var(--identity-pad);
 }
 .slots {
   flex: 1 0 0;
@@ -160,9 +169,23 @@ function openMap() {
 }
 .ruler > * { flex: none; }
 .gap-size { inline-size: var(--gap); }
+.action-hint {
+  display: grid;
+  place-items: center;
+  min-inline-size: max(2ch, var(--count-slot));
+  font-variant-numeric: tabular-nums;
+}
 .action-icon { display: none; }
 @container (width < 520px) {
-  .action-label { display: none; }
+  .action {
+    display: grid;
+    place-content: center;
+    place-items: center;
+    gap: 0;
+    padding-inline: var(--spacing-1);
+    min-inline-size: max(var(--spacing-control), calc(var(--count-slot) + var(--chip-pad)));
+  }
+  .action-label, .action-hint:has(kbd) { display: none; }
   .action-icon { display: block; }
 }
 </style>

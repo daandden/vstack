@@ -104,7 +104,7 @@ const lines = computed(() => {
   <div class="question-body grid gap-2.5 wrap-anywhere">
     <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
     <header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h2 class="wrap-anywhere text-[1.0625rem] text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
+      <h2 class="wrap-anywhere text-[length:var(--text-question-title)] text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
       <section aria-label="Current outcome" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small wrap-anywhere">
         <p class="w-fit rounded border border-flow-line bg-flow-muted px-2" :class="outcome.cls" v-html="outcome.html" />
         <p v-if="outcome.previous" :class="outcome.previous.cls" v-html="outcome.previous.html" />
@@ -190,7 +190,7 @@ const lines = computed(() => {
       </div>
     </div>
     <details :id="`${q.id}-sources-context`" class="disclosure">
-      <summary :id="`${q.id}-evidence`">Sources and context</summary>
+      <summary :id="`${q.id}-evidence`" class="min-h-control content-center">Sources and context</summary>
       <p v-if="st.background || topics.length || q.result_links.length" class="meta">
         <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
         <a v-for="t in topics" :key="t.id" :href="`#${t.id}`">Topic: <span v-html="inline(t.title)" /></a>

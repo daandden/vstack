@@ -381,7 +381,7 @@ test("figures retain caption, formatted description and Source when a question s
     { type: "stage", id: "grill", skill: "grill-me", state: "in-progress", order: 1 },
     { type: "round", id: "r1", stage: "grill", time: "2026-10-28T20:09:59+07:00", session: 1, round: 1 },
     { type: "question", id: "historical-caption", round: "r1", q: 7, title: "Historical pretitle", description: "Keep the exact pretitle.",
-      options: [{ ...options[0], label: "A. Inspect" }], visual: { html: `<p>${pretitle}</p><img src="caption.png" alt="${pretitle}">` } },
+      options: [{ ...options[0], label: "A. Inspect", preview: { html: '<img alt="Unrecorded example">' } }], visual: { html: `<p>${pretitle}</p><img src="caption.png" alt="${pretitle}">` } },
   ].map((row) => JSON.stringify(row)).join("\n") + "\n");
   const migrated = cli(["migrate", historical]);
 
@@ -453,24 +453,31 @@ test("figures retain caption, formatted description and Source when a question s
     expect(response!.status()).toBe(200);
     expect((await response!.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")).toContain("Historical example");
     const old = page.locator("#historical-caption");
-    await old.locator("img").evaluate((img: HTMLImageElement) => img.decode());
-    expect(await old.locator(".figure-title").innerText()).toBe("Historical example");
+    const historicalImage = old.getByRole("img", { name: pretitle, exact: true });
+    await historicalImage.evaluate((img: HTMLImageElement) => img.decode());
+    expect(await old.getByText("Historical example", { exact: true }).count()).toBe(1);
     expect((await old.innerText()).split("Historical example").length - 1).toBe(1);
     expect(await old.innerText()).not.toContain("Q7 ·");
-    expect(await old.evaluate((el) => getComputedStyle(el.querySelector(".figure-title")!.closest("[id]")!).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
-    const historicalImage = old.getByRole("img", { name: pretitle, exact: true });
+    expect(await old.getByText("Historical example", { exact: true }).evaluate((el) => getComputedStyle(el.closest("[id]")!).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
     await historicalImage.click();
     const largerImage = page.getByRole("dialog", { name: "Historical figure", exact: true });
     expect(await largerImage.getByRole("img", { name: pretitle, exact: true }).evaluate((img: HTMLImageElement) => img.decode().then(() => img.naturalWidth))).toBeGreaterThan(0);
     await page.keyboard.press("Escape");
     await largerImage.waitFor({ state: "hidden" });
     expect(await old.getByRole("button", { name: "Enlarge figure: Historical figure" }).evaluate(el => document.activeElement === el)).toBe(true);
-    await old.locator("summary").filter({ hasText: /^Sources and context$/ }).click();
-    const sourceRow = old.getByText("Source", { exact: true });
+    const sources = old.locator("summary").filter({ hasText: /^Sources and context$/ });
+    await sources.click();
+    const sourceRow = sources.locator("..").getByText("Source", { exact: true });
     expect(await sourceRow.innerText()).toBe("Source");
     await sourceRow.click();
     const source = await sourceRow.locator("..").innerText();
     for (const field of ["Image", "Captured", "Revision", "Origin: Grilling page"]) expect(source).toContain(field);
+    const unknownRow = old.getByRole("list", { name: "Choices" }).getByText("Source", { exact: true });
+    await unknownRow.click();
+    expect(await unknownRow.locator("..").innerText()).toContain("Origin: unknown");
+    expect(await unknownRow.locator("..").innerText()).toContain("Unrecorded example identity, theme, or viewport: unknown.");
+    expect(await sourceRow.locator("..").locator("time").getAttribute("datetime")).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(await sourceRow.locator("..").getByText("Revision").locator("code").innerText()).toMatch(/^[a-f0-9]{12}$/);
   } finally {
     await context.close();
   }

@@ -16,16 +16,25 @@ export type Flow = Content & {
 export function flowOf(content: Content): Flow {
   const aliases = new Map<string, string>(Object.entries(content.migrated?.anchors ?? {}).filter(([old, target]) => old !== target));
   for (const st of content.stages) aliases.set(`tab-${st.id}`, st.id);
+  const question = new Map(content.questions.map((q) => [q.id, q]));
+  const byStage = new Map<string, Map<number, number>>();
   const latest = new Map<string, number>();
+  // Later questions come first so a cross-Stage continuation is indexed before its earlier attempts.
   for (let i = content.questions.length - 1; i >= 0; i--) {
-    const { id, again } = content.questions[i]!;
-    if (!again) continue;
-    const descendant = latest.get(id) ?? i;
-    if (descendant > (latest.get(again) ?? -1)) latest.set(again, descendant);
+    const { id, again, stage, q } = content.questions[i]!;
+    let numbers = byStage.get(stage);
+    if (!numbers) byStage.set(stage, numbers = new Map());
+    const sameStage = numbers.get(q) ?? i;
+    if (sameStage === i) numbers.set(q, i);
+    const descendant = latest.get(content.questions[sameStage]!.id) ?? sameStage;
+    if (descendant > i) latest.set(id, descendant);
+    if (again && question.get(again)?.stage !== stage && descendant > (latest.get(again) ?? -1)) {
+      latest.set(again, descendant);
+    }
   }
   return {
     ...content,
-    question: new Map(content.questions.map((q) => [q.id, q])),
+    question,
     latestAttempt: new Map([...latest].map(([id, index]) => [id, content.questions[index]!])),
     stage: new Map(content.stages.map((st) => [st.id, st])),
     aliases,
@@ -71,13 +80,20 @@ const NON_CONSENT = {
   empty: "Empty response, not your answer",
 };
 
+function creditedAnswer(a: QuestionView["answer"]) {
+  if (a.picks) return { kind: "pick", text: a.picks.join(", ") } as const;
+  if (a.legacy?.other !== undefined) return { kind: "legacy", text: a.legacy.other } as const;
+  if (a.reading?.outcome === "resolved") return { kind: "reading", text: a.reading.decision } as const;
+}
+
 export function foldedQuestionOutcome(q: QuestionView): string {
   const { answer: a } = q;
   const status = a.response?.status;
   const reading = a.reading;
-  const outcome = a.picks ? `Your pick: ${a.picks.join(", ")}`
-    : a.legacy?.other !== undefined ? `Recorded answer: ${a.legacy.other}`
-    : reading?.outcome === "resolved" ? `Agent read your words: ${reading.decision}`
+  const credited = creditedAnswer(a);
+  const outcome = credited?.kind === "pick" ? `Your pick: ${credited.text}`
+    : credited?.kind === "legacy" ? `Recorded answer: ${credited.text}`
+    : credited?.kind === "reading" ? `Agent read your words: ${credited.text}`
     : status && status !== "answered" ? NON_CONSENT[status]
     : reading?.outcome === "concern" ? "Concern"
     : reading?.outcome === "question" ? "Question, not settled"
@@ -89,9 +105,10 @@ export function foldedQuestionOutcome(q: QuestionView): string {
 
 function answerOutcome(q: QuestionView): QuestionOutcome {
   const a = q.answer;
-  if (a.picks) return { cls: "text-flow-yellow", html: `Your pick: ${inline(a.picks.join(", "))}` };
-  if (a.legacy?.other !== undefined) return { cls: "text-flow-yellow", html: `Recorded answer: ${inline(a.legacy.other)}` };
-  if (a.state === "resolved" && a.reading?.outcome === "resolved") return { cls: "text-flow-teal", html: `${inline(a.reading.decision)} <span class="quiet">(read from your words)</span>` };
+  const credited = creditedAnswer(a);
+  if (credited?.kind === "pick") return { cls: "text-flow-yellow", html: `Your pick: ${inline(credited.text)}` };
+  if (credited?.kind === "legacy") return { cls: "text-flow-yellow", html: `Recorded answer: ${inline(credited.text)}` };
+  if (credited?.kind === "reading" && a.state === "resolved") return { cls: "text-flow-teal", html: `${inline(credited.text)} <span class="quiet">(read from your words)</span>` };
   if (a.correction && a.state === "unresolved") return { cls: "text-flow-subtext", html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline(a.reading.unresolved)}` : ""}` };
   if (a.state === "unresolved") {
     const status = a.response?.status;

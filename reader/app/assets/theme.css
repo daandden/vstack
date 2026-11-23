@@ -20,6 +20,7 @@
   --color-pink: light-dark(oklch(72.6% 0.174 338.4), oklch(87.0% 0.075 336.3));
   --color-line: color-mix(in oklch, var(--color-surface1) 60%, transparent);
   --text-title: 15px;
+  --text-question-title: 1.0625rem;
   --text-body: 13px;
   --text-small: 12px;
   --font-weight-semibold: 600;
