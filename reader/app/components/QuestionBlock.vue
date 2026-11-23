@@ -176,7 +176,7 @@ const lines = computed(() => {
     <div v-if="lines.length || q.answer.correction || q.answer.corrects.length || q.answer.recorded_reading" class="grid gap-4 pbs-1.5">
       <section v-if="q.answer.correction || q.answer.corrects.length || q.answer.recorded_reading" :id="`${q.id}-reading`" class="grid gap-1.5">
         <CorrectionNotice :notice="q.answer" />
-        <details v-if="q.answer.recorded_reading">
+        <details v-if="q.answer.recorded_reading" :id="`${q.id}-recorded-reading`">
           <summary>Original agent reading, no longer current</summary>
           <template v-if="q.answer.recorded_reading.outcome === 'resolved'">
             <p v-html="inline(q.answer.recorded_reading.decision)" />
@@ -189,7 +189,7 @@ const lines = computed(() => {
         <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
       </div>
     </div>
-    <details class="disclosure">
+    <details :id="`${q.id}-sources-context`" class="disclosure">
       <summary :id="`${q.id}-evidence`">Sources and context</summary>
       <p v-if="st.background || topics.length || q.result_links.length" class="meta">
         <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
@@ -217,6 +217,6 @@ const lines = computed(() => {
       <FigureList :figures="visuals.additional" />
       <p v-if="!hasSources" class="quiet">No sources or additional context were recorded.</p>
     </details>
-    <EarlierAttempt v-if="earlier" :question="earlier" :label="`Q${earlier.q}${askedIn(earlier.id)}`" />
+    <EarlierAttempt v-if="earlier" :id="`${q.id}-earlier-attempt`" :question="earlier" :label="`Q${earlier.q}${askedIn(earlier.id)}`" />
   </div>
 </template>

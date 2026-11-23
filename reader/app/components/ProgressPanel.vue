@@ -53,7 +53,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
           <template v-else-if="!p.reached">Not reached</template>
           <template v-else>
             {{ END_LABELS[p.reached.value] }} <span class="quiet">{{ formatTime(p.reached.time) }}, <a :href="`#${p.reached.stage}`">{{ stageLabel(p.reached.stage) }}</a></span>
-            <details v-if="p.reached.evidence.length" class="disclosure"><summary>Evidence</summary><ul class="bullets"><li v-for="(e, i) in p.reached.evidence" :key="i" v-html="inline(e)" /></ul></details>
+            <details v-if="p.reached.evidence.length" id="progress-reached-evidence" class="disclosure"><summary>Evidence</summary><ul class="bullets"><li v-for="(e, i) in p.reached.evidence" :key="i" v-html="inline(e)" /></ul></details>
           </template>
         </dd>
       </div>
@@ -75,7 +75,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
             <li v-for="x in p.checks" :id="x.id" :key="x.id">
               <span v-html="inline(x.name)" /> <span class="tag" :data-check="x.outcome">{{ CHECK_LABELS[x.outcome] }}</span>
               <span class="quiet">reported {{ formatTime(x.reported.time) }}, <a :href="`#${x.reported.stage}`">{{ stageLabel(x.reported.stage) }}</a></span>
-              <details v-if="x.evidence.length" class="disclosure"><summary>Evidence</summary><ul class="bullets"><li v-for="(e, i) in x.evidence" :key="i" v-html="inline(e)" /></ul></details>
+              <details v-if="x.evidence.length" :id="`${x.id}-evidence`" class="disclosure"><summary>Evidence</summary><ul class="bullets"><li v-for="(e, i) in x.evidence" :key="i" v-html="inline(e)" /></ul></details>
             </li>
           </ul>
         </dd>
@@ -98,7 +98,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
         <span v-if="t.blocked_by.length" class="blocked text-error text-small font-semibold">Blocked: <template v-for="(id, i) in t.blocked_by" :key="id">{{ i ? "; " : "" }}<a :href="`#${id}`">{{ blockerText(id) }}</a></template></span>
         <span class="quiet">{{ formatTime(t.updates.at(-1)!.time) }}, <a :href="`#${t.updates.at(-1)!.stage}`">{{ stageLabel(t.updates.at(-1)!.stage) }}</a></span>
         <p v-if="t.reason" class="reason basis-full" v-html="inline(t.reason)" />
-        <details v-if="t.evidence.length" class="disclosure basis-full"><summary>Evidence</summary><ul class="bullets"><li v-for="(e, i) in t.evidence" :key="i" v-html="inline(e)" /></ul></details>
+        <details v-if="t.evidence.length" :id="`${t.id}-evidence`" class="disclosure basis-full"><summary>Evidence</summary><ul class="bullets"><li v-for="(e, i) in t.evidence" :key="i" v-html="inline(e)" /></ul></details>
         <ul v-if="resolvedFor(t.id).length" class="bullets resolved basis-full">
           <li v-for="b in resolvedFor(t.id)" :key="b.id"><span class="label">Blocker resolved</span> <span v-html="inline(b.resolved!.text)" /> <span class="quiet">Was: <span v-html="inline(b.text)" /></span></li>
         </ul>

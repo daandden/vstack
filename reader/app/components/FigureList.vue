@@ -13,8 +13,9 @@ const withImages = (html: string) => /<img\b/i.test(html);
 const hydrated = shallowRef(false);
 onMounted(() => { hydrated.value = true; });
 
-function source(doc: Document, a: Attachment | undefined): HTMLDetailsElement {
+function source(doc: Document, a: Attachment | undefined, key: string): HTMLDetailsElement {
   const details = doc.createElement("details");
+  details.dataset.reloadKey = key;
   details.className = "source text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body";
   const add = (tag: string, text: string, className?: string) => {
     const el = doc.createElement(tag);
@@ -42,9 +43,10 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
   const doc = new DOMParser().parseFromString(fig.html, "text/html");
   const sources = part === "source" ? doc.createElement("div") : undefined;
   for (const img of doc.querySelectorAll("img")) {
+    const key = JSON.stringify([fig.id, img.getAttribute("src"), img.getAttribute("alt")]);
     const a = f.value.attachments.find((a) => a.file && img.getAttribute("src")?.split("#")[0] === `assets/${a.file}`);
     if (sources) {
-      sources.append(source(doc, a));
+      sources.append(source(doc, a, key));
       continue;
     }
     const title = withoutQuestionNumber(a?.caption || img.getAttribute("alt") || "Example identity unknown");
@@ -56,7 +58,7 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
     heading.className = "figure-title font-heading text-body leading-[1.35] font-[650] text-default text-balance";
     heading.textContent = title;
     label.append(heading);
-    if (part === "complete") label.append(source(doc, a));
+    if (part === "complete") label.append(source(doc, a, key));
     media.before(label);
   }
   return sources?.innerHTML ?? `${stylesheet}${doc.body.innerHTML}`;
@@ -66,13 +68,13 @@ const historical = (fig: { id: string; html: string; css?: string }) => {
 <template>
   <template v-for="fig in figures ?? []" :key="fig.id">
     <template v-if="part === 'source'">
-      <FigureSource v-if="'attachment' in fig && attachment(fig.attachment)" :a="attachment(fig.attachment)!" />
+      <FigureSource v-if="'attachment' in fig && attachment(fig.attachment)" :id="`${fig.id}-source`" :a="attachment(fig.attachment)!" />
       <div v-else-if="'html' in fig && withImages(fig.html)" class="grid gap-1.5" v-html="historical(fig)" />
     </template>
     <div v-else-if="'text' in fig" :id="displayId(fig.id)" class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 overflow-x-auto rounded-md bg-elevated px-3 py-2.5" :tabindex="part === 'complete' ? undefined : 0" @keydown="part !== 'complete' && $event.stopPropagation()"><pre>{{ fig.text }}</pre></div>
     <div v-else-if="'html' in fig" :id="displayId(fig.id)" class="grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5 [&_img]:rounded [&_img]:bg-accented [&_video]:rounded [&_video]:bg-accented" :class="withImages(fig.html) ? 'figure' : 'visual relative overflow-x-auto rounded-md bg-elevated px-3 py-2.5'" v-html="historical(fig)" />
     <figure v-else :id="displayId(fig.id)" class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">
-      <FigureCaption v-if="attachment(fig.attachment)" :a="attachment(fig.attachment)!" :hide-source="part !== 'complete'" />
+      <FigureCaption v-if="attachment(fig.attachment)" :a="attachment(fig.attachment)!" :anchor="displayId(fig.id)" :hide-source="part !== 'complete'" />
       <DiagramFigure v-if="attachment(fig.attachment)?.availability === 'captured' && attachment(fig.attachment)!.type !== 'image'" :a="attachment(fig.attachment)!" />
       <img v-else-if="attachment(fig.attachment)?.availability === 'captured'" class="rounded bg-accented" :src="`assets/${attachment(fig.attachment)!.file}`" :alt="attachment(fig.attachment)!.caption">
       <p v-else class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-error">Figure unavailable</span> <span v-html="inline(attachment(fig.attachment)?.reason ?? 'The attachment is missing.')" /></p>

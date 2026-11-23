@@ -87,7 +87,7 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     const footer = page.getByRole("contentinfo");
     expect(await footer.getByText(`Revision ${submitted.revision}`, { exact: true }).isVisible()).toBe(true);
     await footer.getByRole("group", { name: "Color theme" }).waitFor();
-    expect(await page.locator(".masthead").innerText()).toBe("Reader foundation");
+    expect(await page.getByRole("heading", { level: 1, name: "Reader foundation", exact: true }).innerText()).toBe("Reader foundation");
     await capture(page, "overview-closed-and-footer");
     await disclosures.filter({ hasText: /^Progress$/ }).click();
     await overview.getByRole("region", { name: "Authored progress", exact: true }).getByText("1 active", { exact: false }).waitFor();

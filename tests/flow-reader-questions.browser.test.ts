@@ -217,6 +217,7 @@ test("question context, choices, answers and figures keep their compact themed l
     expect(desktopFigure.y).toBeLessThan(desktopChoice.y + desktopChoice.height);
     expect(desktopFigure.height).toBeLessThanOrEqual(256);
     await capture("inline-reask-1280");
+    const opener = await enlarge.elementHandle();
     await figure.click();
     await overlay.waitFor();
     const enlarged = overlay.getByRole("img", { name: "Reading path", exact: true });
@@ -226,7 +227,19 @@ test("question context, choices, answers and figures keep their compact themed l
     expect(await overlay.getByText("Read context before answering.").isVisible()).toBe(true);
     await capture("enlarged-after-pointer-1280");
     if (proof) await page.screenshot({ path: join(proof, "enlarged-after-pointer-1280-viewport.png") });
-    await overlay.getByRole("button", { name: "Close figure", exact: true }).click();
+    const closeFigure = overlay.getByRole("button", { name: "Close figure", exact: true });
+    const immediateReopen = await closeFigure.evaluate(async (close, trigger) => {
+      const dialog = close.closest("dialog")!;
+      const closed = new Promise<void>(done => dialog.addEventListener("close", () => done(), { once: true }));
+      (close as HTMLButtonElement).click();
+      const focusReturned = document.activeElement === trigger;
+      // Activate the opener before the browser dispatches the previous close event.
+      (trigger as HTMLButtonElement).click();
+      await closed;
+      return { focusReturned, open: dialog.open, focusInside: dialog.contains(document.activeElement) };
+    }, opener);
+    expect(immediateReopen).toEqual({ focusReturned: true, open: true, focusInside: true });
+    await closeFigure.click();
     await overlay.waitFor({ state: "hidden" });
     expect(await enlarge.evaluate(el => document.activeElement === el)).toBe(true);
     await capture("focus-return-after-click-1280");

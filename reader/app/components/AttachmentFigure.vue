@@ -34,7 +34,7 @@ onMounted(() => {
 <template>
   <ArtifactView v-if="a.type === 'artifact'" :a="a" :runtime="f.runtimes[a.id]" :anchor="anchor" />
   <figure v-else :id="anchor" class="figure attachment grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5" :data-type="a.type" :data-availability="a.availability">
-    <FigureCaption :a="a" />
+    <FigureCaption :a="a" :anchor="anchor" />
     <p v-if="a.availability === 'unavailable'" class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-error">Not captured</span> <span v-html="inline(a.reason ?? '')" /></p>
     <div v-else-if="a.availability === 'external'" class="grid gap-1.5">
       <p class="font-semibold text-muted">How to run it</p>

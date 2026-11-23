@@ -14,7 +14,7 @@ defineProps<{ bg: NonNullable<StageView["background"]> }>();
       <h3 v-html="inline(sec.heading)" />
       <div class="grid gap-1.5" v-html="prose(sec.body)" />
     </section>
-    <details v-if="bg.sourceTexts.length" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
+    <details v-if="bg.sourceTexts.length" :id="`${bg.id}-sources`" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
       <summary>Sources ({{ bg.sourceTexts.length }})</summary>
       <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><li v-for="(x, i) in bg.sourceTexts" :key="i" v-html="inline(x)" /></ul>
     </details>

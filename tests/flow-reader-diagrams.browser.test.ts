@@ -416,16 +416,17 @@ test("figures retain caption, formatted description and Source when a question s
       const deciding = await figure.getAttribute("id") === `${sent.refs.decision}-figure-2`;
       const origin = (await title.innerText()) === "Narrow flow" ? "Mermaid source narrow.mmd" : "Recorded image fixture";
       const sourceOwner = deciding ? contextRow.locator("..") : figure;
-      const source = sourceOwner.locator("details.source");
-      expect(await source.locator("summary").textContent()).toBe("Source");
+      const sourceRow = sourceOwner.getByText("Source", { exact: true });
+      const source = sourceRow.locator("..");
+      expect(await sourceRow.textContent()).toBe("Source");
       expect(await source.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
       expect(await sourceOwner.getByText(origin).isVisible()).toBe(false);
       if (deciding) {
-        expect(await figure.locator("details.source").count()).toBe(0);
+        expect(await figure.getByText("Source", { exact: true }).count()).toBe(0);
         expect(await source.isVisible()).toBe(false);
         await contextRow.click();
       }
-      await source.locator("summary").click();
+      await sourceRow.click();
       expect(await sourceOwner.getByText(origin).isVisible()).toBe(true);
 
       if ((await title.innerText()) !== "Narrow flow") continue;
@@ -465,9 +466,10 @@ test("figures retain caption, formatted description and Source when a question s
     await largerImage.waitFor({ state: "hidden" });
     expect(await old.getByRole("button", { name: "Enlarge figure: Historical figure" }).evaluate(el => document.activeElement === el)).toBe(true);
     await old.locator("summary").filter({ hasText: /^Sources and context$/ }).click();
-    expect(await old.locator("details.source summary").innerText()).toBe("Source");
-    await old.locator("details.source summary").click();
-    const source = await old.locator("details.source").innerText();
+    const sourceRow = old.getByText("Source", { exact: true });
+    expect(await sourceRow.innerText()).toBe("Source");
+    await sourceRow.click();
+    const source = await sourceRow.locator("..").innerText();
     for (const field of ["Image", "Captured", "Revision", "Origin: Grilling page"]) expect(source).toContain(field);
   } finally {
     await context.close();

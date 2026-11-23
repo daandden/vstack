@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { mapOpen, mapTab, shortcutEligible } from "~/composables/navigation";
+import { mapOpen, mapTab, nextReadingIndex, shortcutEligible } from "~/composables/navigation";
 import { useReaderState } from "~/composables/reader";
 import { useReadingDialog, focusReadingItem as focusItem } from "~/composables/reading-dialog";
 
@@ -37,7 +37,7 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault();
     const list = items();
     const at = list.indexOf(target?.closest<HTMLElement>("[data-map-item]")!);
-    const next = at < 0 ? (e.key === "j" ? 0 : list.length - 1) : Math.min(Math.max(at + (e.key === "j" ? 1 : -1), 0), list.length - 1);
+    const next = nextReadingIndex(at, list.length, e.key === "j" ? 1 : -1);
     focusItem(list[next]);
   } else if (e.key === "Enter" && target?.matches("[data-map-item]:not(a, summary)")) {
     e.preventDefault();

@@ -44,6 +44,7 @@ test("authored corrections show current non-consent, retained raw words, histori
     page.on("pageerror", error => errors.push(error.message));
     const response = await page.goto(`${opened.live.url}#overview`);
     expect(response!.status(), await response!.text()).toBe(200);
+    await page.getByRole("region", { name: "Overview", exact: true }).getByText("All Stages", { exact: true }).click();
     await page.locator("#overview-stages").waitFor();
     expect(await page.locator("#overview-stages").innerText()).toContain("Unresolved after correction");
     expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with work");

@@ -88,7 +88,7 @@ function rule(t: Transition): string {
       <UButton type="button" class="rounded border border-default bg-transparent px-2.5 py-1 text-[length:var(--fs-body)] font-semibold text-toned ring-0 hover:text-secondary active:bg-[var(--surface1)] active:text-secondary" data-reset @click="reset">Reset</UButton>
     </div>
     <p class="text-small text-muted">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
-    <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
+    <details :id="`${id}-instructions`" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
       <summary>How it works</summary>
       <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-toned [&_dd]:ms-0">
         <template v-for="a in demo.actions" :key="a.name">

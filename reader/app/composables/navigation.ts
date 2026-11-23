@@ -16,7 +16,7 @@ export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-sto
 const tabs = () => [...document.querySelectorAll<HTMLElement>("[data-tab]")].map((el) => el.dataset.tab!);
 export const tabOf = (el: Element) => el.closest<HTMLElement>("[data-tab]")?.dataset.tab;
 
-export function resolve(id: string): HTMLElement | null {
+function findTarget(id: string): HTMLElement | null {
   const { flow } = useReaderState();
   if (!id) return null;
   let el = document.getElementById(id);
@@ -25,6 +25,11 @@ export function resolve(id: string): HTMLElement | null {
     seen.add(alias);
     el = document.getElementById(alias);
   }
+  return el;
+}
+
+export function resolve(id: string): HTMLElement | null {
+  const el = findTarget(id);
   const fold = el?.dataset.foldTarget ? document.getElementById(el.dataset.foldTarget) : el;
   if (fold instanceof HTMLDetailsElement && fold.hasAttribute("data-reading-fold")) fold.open = true;
   for (let parent = el?.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement) parent.open = true;
@@ -84,10 +89,15 @@ async function select(el: HTMLElement | undefined) {
   focusOn(el);
 }
 
-function step(list: HTMLElement[], by: number) {
+export function nextReadingIndex(at: number, length: number, by: -1 | 1): number {
+  if (!length) return -1;
+  return at < 0 ? (by > 0 ? 0 : length - 1) : Math.min(Math.max(at + by, 0), length - 1);
+}
+
+function step(list: HTMLElement[], by: -1 | 1) {
   const exact = list.findIndex((el) => el.id === current.value);
   const at = exact >= 0 ? exact : list.findIndex((el) => el.contains(document.getElementById(current.value ?? "")));
-  void select(list[at < 0 ? (by > 0 ? 0 : list.length - 1) : Math.min(Math.max(at + by, 0), list.length - 1)]);
+  void select(list[nextReadingIndex(at, list.length, by)]);
 }
 
 function switchTab(by: number) {
@@ -152,46 +162,79 @@ export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
   keepSelectionAtCurrentScroll();
 }
 
-const readingDetails = () => document.querySelectorAll<HTMLDetailsElement>("details:not([data-reading-fold], [data-navigation-fold])");
+const readingDetail = "details:is([id], [data-reload-key]):not([data-navigation-fold])";
+const readingDetails = () => document.querySelectorAll<HTMLDetailsElement>(readingDetail);
+const detailKey = (el: HTMLDetailsElement) => el.id || JSON.stringify([el.parentElement?.closest("[id]")?.id, el.dataset.reloadKey]);
+const generatedId = /^v-\d/;
+
+function focusKey(el: Element): string | undefined {
+  if (!(el instanceof HTMLElement)) return;
+  if (el.dataset.reloadFocus) return `control:${el.dataset.reloadFocus}`;
+  if (el.id && !generatedId.test(el.id)) return `id:${el.id}`;
+  if (el.matches("summary") && el.parentElement instanceof HTMLDetailsElement && el.parentElement.matches(readingDetail)) {
+    return `summary:${detailKey(el.parentElement)}`;
+  }
+  if (el instanceof HTMLAnchorElement && el.hasAttribute("href")) {
+    const scope = el.closest("[id], details[data-reload-key]");
+    return `link:${JSON.stringify([scope instanceof HTMLDetailsElement ? detailKey(scope) : scope?.id, el.getAttribute("href")])}`;
+  }
+}
+
+function findFocus(key: string) {
+  if (key.startsWith("id:")) return document.getElementById(key.slice(3));
+  const matches = [...document.querySelectorAll<HTMLElement>("summary, [data-reload-focus], a[href]")].filter(el => focusKey(el) === key);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function revealAncestors(el: HTMLElement | null | undefined) {
+  for (let fold = el && hidingDisclosure(el); fold; fold = hidingDisclosure(fold)) fold.open = true;
+}
+
 export function captureReadingPlace() {
   const anchor = readingAnchor();
   const focused = document.activeElement;
   return {
     hash: location.hash, tab: tab.value, current: current.value, y: scrollY,
     anchor: anchor?.el.id, top: anchor?.top,
-    details: [...readingDetails()].flatMap((el, i) => el.open ? [i] : []),
-    folds: [...document.querySelectorAll("details[data-reading-fold][open]")].map(el => el.id),
-    focus: focused instanceof HTMLElement ? focused.id : "",
+    openDetails: [...readingDetails()].filter(el => el.open).map(detailKey),
+    focusKey: focused ? focusKey(focused) : undefined,
     selection: focused instanceof HTMLTextAreaElement ? [focused.selectionStart, focused.selectionEnd] : undefined,
   };
 }
 
 export async function restoreReadingPlace(value: unknown): Promise<boolean> {
-  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", details: "list", folds: "list", focus: "string", selection: "number pair", anchor: "string", top: "number" });
+  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", openDetails: "list", folds: "list", focusKey: "string", focus: "string", selection: "number pair", anchor: "string", top: "number" });
   if (!saved || saved.hash !== location.hash) return false;
   if (!tabs().includes(saved.tab)) return false;
   tab.value = saved.tab;
   if (saved.current !== undefined) current.value = saved.current;
   await nextTick();
-  if (saved.details) {
-    const details = saved.details;
-    readingDetails().forEach((el, i) => { el.open = details.includes(i); });
-  }
-  if (saved.folds) {
-    for (const id of saved.folds) {
+  if (saved.openDetails) {
+    const open = new Set(saved.openDetails);
+    for (const el of readingDetails()) {
+      if (el.open !== open.has(detailKey(el))) el.open = !el.open;
+    }
+  } else {
+    // Before this format, `details` held ordinals in a layout that no longer exists.
+    // Restore only the old ID-based folds, anchor, and focus.
+    for (const id of saved.folds ?? []) {
       const el = typeof id === "string" && document.getElementById(id);
       if (el instanceof HTMLDetailsElement && el.hasAttribute("data-reading-fold")) el.open = true;
     }
-  } else if (saved.anchor) resolve(saved.anchor);
-  const anchor = saved.anchor ? document.getElementById(saved.anchor) : null;
-  for (let fold = anchor && hidingDisclosure(anchor); fold; fold = hidingDisclosure(fold)) fold.open = true;
+  }
+  const id = saved.anchor || (saved.hash.length > 1 ? decodeURIComponent(saved.hash.slice(1)) : "");
+  if (id) {
+    document.dispatchEvent(new CustomEvent("flow-reveal", { detail: id }));
+    await nextTick();
+  }
+  const anchor = findTarget(id);
+  revealAncestors(anchor);
+  const field = saved.focusKey ? findFocus(saved.focusKey) : saved.focus ? document.getElementById(saved.focus) : null;
+  revealAncestors(field);
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
-  if (saved.focus !== undefined) {
-    const field = document.getElementById(saved.focus);
-    field?.focus({ preventScroll: true });
-    if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
-  }
+  field?.focus({ preventScroll: true });
+  if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
   scrollTo({ top: saved.y, behavior: "instant" });
   if (anchor && saved.top !== undefined) restoreReadingAnchor({ el: anchor, top: saved.top });
   keepSelectionAtCurrentScroll();

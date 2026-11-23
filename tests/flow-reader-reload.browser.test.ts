@@ -58,12 +58,20 @@ test("served generation swaps refresh unchanged content and reload readers witho
       { kind: "result", shape: "document", title: "Long reading context", sections: [{ heading: "Evidence", blocks: [{ prose: "Keep reading the captured evidence. ".repeat(1000) }] }] },
       { kind: "round", now: "The saved draft is ready for review.", questions: [{
         title: "Retain the draft after replacement?",
+        ref: "prior",
         description: "Compare the retained draft with the original.",
         brief: decisionBrief("the draft"),
         needs: [{ need: "Know which draft the reader retains.", kind: "prose" }],
         options: [{ label: "Retain", does: "Keeps the unsent text.", gains: ["Continuity"], costs: ["Local browser state"] }],
       }] },
     ] });
+    const retry = cli(["submit"], { version: 1, items: [{ kind: "round", now: "The draft still needs a decision.", questions: [{
+      ref: "retry", again: seed.refs.prior, title: "Keep the original draft?",
+      brief: decisionBrief("the original draft", { again: "The first attempt went unanswered." }),
+      description: "Choose which draft to keep.",
+      needs: [{ need: "Know which draft each choice keeps.", kind: "prose" }],
+      options: [{ label: "Retain", does: "Keeps the original draft.", gains: ["Continuity"], costs: ["No change"] }],
+    }] }] }).refs.retry!;
     expect(opened.live).toMatchObject({ state: "serving" });
     const url = opened.live.url;
     if (!url) throw new Error("serving receipt lacks live.url");
@@ -82,13 +90,19 @@ test("served generation swaps refresh unchanged content and reload readers witho
     const bare = await browser.newPage({ viewport: { width: 360, height: 500 } });
     await bare.goto(url);
     const overview = bare.getByRole("region", { name: "Overview", exact: true });
-    await overview.getByRole("link", { name: "Retain the draft after replacement?" }).waitFor();
+    await overview.getByRole("link", { name: "Keep the original draft?" }).waitFor();
     const progress = bare.getByRole("region", { name: "Authored progress", exact: true });
     const progressRow = overview.locator(":scope > details > summary").filter({ hasText: /^Progress$/ });
     await progressRow.focus();
     await bare.keyboard.press("Enter");
     await progress.waitFor();
     expect(new URL(bare.url()).hash).toBe("");
+    const attempts = await browser.newPage();
+    await attempts.goto(`${url}#${retry}`);
+    const summary = attempts.locator(`#${retry}`).getByText("Earlier attempt", { exact: true });
+    await summary.focus();
+    await attempts.keyboard.press("Enter");
+    expect(await summary.evaluate(el => (el.parentElement as HTMLDetailsElement).open)).toBe(true);
     await page.goto(`${url}#${seed.refs.evidence}`);
     const region = page.getByRole("region", { name: "Reader comments on Restart evidence" }).first();
     await region.getByRole("button", { name: "Add Reader comment" }).click();
@@ -123,6 +137,33 @@ test("served generation swaps refresh unchanged content and reload readers witho
     expect(contentLoads).toBeGreaterThan(loads);
     expect(navigations).toBe(1);
     expect(await region.getByRole("textbox", { name: "Comment" }).inputValue()).toBe(draft);
+    const legacy = await browser.newPage();
+    const legacyText = "Keep the comment on the earlier revision.";
+    // The pre-cutover reader stored Earlier revisions as ordinal 4.
+    await legacy.addInitScript(({ report, stage, text }) => {
+      sessionStorage.setItem(`flow-reader:reload:${location.pathname}`, JSON.stringify({
+        place: {
+          hash: `#${report}`, tab: stage, current: report, y: 0, anchor: report,
+          details: [0, 4], folds: [], focus: "v-6", selection: [9, 16],
+        },
+        [`comment:${report}-r1`]: { target: "", draft: text, editing: "", passage: "", revision: 1, edit: null },
+      }));
+    }, { report: seed.refs.evidence, stage: opened.stage, text: legacyText });
+    await legacy.goto(`${url}#${seed.refs.evidence}`);
+    const legacyEditor = legacy.locator(`#${seed.refs.evidence}-r1`).getByRole("textbox", { name: "Comment", includeHidden: true });
+    await legacy.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
+    const legacyRestored = {
+      visible: await legacyEditor.isVisible(),
+      draft: await legacyEditor.inputValue(),
+      focusAndSelection: await legacyEditor.evaluate((el: HTMLTextAreaElement) =>
+        [document.activeElement === el, el.selectionStart, el.selectionEnd]),
+      compareOpen: await legacy.getByText("Compare revisions", { exact: true }).evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+      unrelatedOpen: await legacy.locator(`#${retry}`).getByText("Sources and context", { exact: true })
+        .evaluate(el => (el.parentElement as HTMLDetailsElement).open),
+    };
+    await legacy.close();
+    await attempts.evaluate(() => document.fonts.ready.then(() => undefined));
+    const attemptPosition = await attempts.evaluate(() => ({ hash: location.hash, y: scrollY }));
     const stable = await versions();
     const reader = join(skills, "flow-page/reader/index.html"), good = readFileSync(reader, "utf8");
     writeFileSync(reader, good + "\n<!-- incomplete update -->\n");
@@ -135,7 +176,17 @@ test("served generation swaps refresh unchanged content and reload readers witho
       const loaded = document.querySelector<HTMLMetaElement>('meta[name="flow-reader-generation"]')?.content;
       return loaded && loaded !== old;
     };
-    await Promise.all([page, bare].map(tab => tab.waitForFunction(generationChanged, before.readerGeneration, { timeout: 20_000 })));
+    await Promise.all([page, bare, attempts].map(tab => tab.waitForFunction(generationChanged, before.readerGeneration, { timeout: 20_000 })));
+    await attempts.waitForFunction(() => sessionStorage.getItem(`flow-reader:reload:${location.pathname}`) === null);
+    expect({
+      legacy: legacyRestored,
+      attempt: await summary.evaluate(el => [(el.parentElement as HTMLDetailsElement).open, document.activeElement === el]),
+    }).toEqual({
+      legacy: { visible: true, draft: legacyText, focusAndSelection: [true, 9, 16], compareOpen: false, unrelatedOpen: false },
+      attempt: [true, true],
+    });
+    expect(await attempts.evaluate(() => location.hash)).toBe(attemptPosition.hash);
+    expect(Math.abs(await attempts.evaluate(() => scrollY) - attemptPosition.y)).toBeLessThan(4);
     await progress.waitFor();
     expect(new URL(bare.url()).hash).toBe("");
     expect(await bare.getByRole("region", { name: "Open decisions", exact: true }).isVisible()).toBe(true);
@@ -155,6 +206,7 @@ test("served generation swaps refresh unchanged content and reload readers witho
     expect(await historical.getByRole("textbox", { name: "Comment" }).inputValue()).toBe("Keep this historical passage attached to revision one.");
     expect(await historical.locator("form blockquote").textContent()).toBe("Host restart");
     expect(await whole.getByRole("textbox", { name: "Comment" }).inputValue()).toBe("Whole block draft, still unsent.");
+    expect(await whole.getByRole("textbox", { name: "Comment" }).evaluate(el => document.activeElement === el)).toBe(true);
     expect(await whole.getByRole("combobox", { name: "Comment target" }).textContent()).toContain("Whole Result block");
     expect(await page.evaluate(() => location.hash)).toBe(position.hash);
     expect(Math.abs(await page.evaluate(() => scrollY) - position.y)).toBeLessThan(4);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { current, jumpOpen, shortcutEligible, tab } from "~/composables/navigation";
+import { current, jumpOpen, nextReadingIndex, shortcutEligible, tab } from "~/composables/navigation";
 import { useReadingDialog, focusReadingItem } from "~/composables/reading-dialog";
 import { useReaderState } from "~/composables/reader";
 import { blockLabel, foldedQuestionOutcome, questionHasConcern, stageWorkName } from "~/utils/flow";
@@ -55,7 +55,7 @@ function onKey(e: KeyboardEvent) {
   e.preventDefault();
   const items = links();
   const i = items.indexOf(e.target as HTMLAnchorElement);
-  const next = i < 0 ? (e.key === "j" ? 0 : items.length - 1) : Math.min(Math.max(i + (e.key === "j" ? 1 : -1), 0), items.length - 1);
+  const next = nextReadingIndex(i, items.length, e.key === "j" ? 1 : -1);
   focusReadingItem(items[next]);
 }
 </script>

@@ -119,8 +119,8 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
   try {
     await page.goto(`${opened.live.url}#${open.retry}`);
     await page.locator(`#${open.retry}`).waitFor();
-    expect(await page.locator(".bar").evaluate(el => el.getBoundingClientRect().height)).toBe(44);
     const bar = page.getByRole("navigation", { name: "Flow navigation", exact: true });
+    expect(await bar.evaluate(el => el.getBoundingClientRect().height)).toBe(44);
     const overview = bar.getByRole("link", { name: title, exact: true });
     const current = bar.getByRole("link", { name: /How should the rollout handle an unavailable zone\?.*Concern/ });
     const stages = bar.getByRole("button", { name: "Stages", exact: true });
@@ -155,17 +155,24 @@ test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async 
     await page.keyboard.press("Escape");
     await queuePanel.waitFor({ state: "hidden" });
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-    for (const target of [overview, current, stages, jump, overflow]) await assertFits(target);
+    for (const target of [overview, current, stages, jump]) await assertFits(target);
     expect(await bar.evaluate(el => el.getBoundingClientRect().height)).toBe(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
     await capture(page, "bar-800-text-growth");
     await page.evaluate(() => { document.documentElement.style.removeProperty("font-size"); });
     await page.setViewportSize({ width: 320, height: 768 });
-    for (const target of [overview, current, stages, jump, overflow]) await assertFits(target);
+    for (const name of [overview, bar.getByText(work, { exact: true })]) {
+      expect((await name.boundingBox())?.width).toBeGreaterThanOrEqual(72);
+    }
+    for (const target of [overview, current, stages, jump]) await assertFits(target);
+    await bar.getByRole("button", { name: /^\+\d+ waiting Stages?$/ }).waitFor({ state: "hidden" });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
-    const more = bar.getByRole("button", { name: /^\+\d+ waiting Stages?$/ });
-    await assertFits(more);
-    await more.click();
+    await jump.click();
+    await queuePanel.waitFor();
+    expect(await queuePanel.getByRole("link").count()).toBe(21);
+    await page.keyboard.press("Escape");
+    await queuePanel.waitFor({ state: "hidden" });
+    await stages.click();
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     const mapStages = map.getByRole("tabpanel", { name: "Stages", exact: true });
     await mapStages.waitFor();
@@ -195,8 +202,13 @@ test("Map opens on Stages, pins waiting work, and folds finished Stages by ticke
   const opened = cli(["open", "--skill", "grill-me", "--title", "Separate finished rollout work"]);
   const start = (ticket?: string) => cli(["open", "--skill", "research", "--flow", opened.flow, ...(ticket ? ["--ticket", ticket] : [])]);
   const closed = start("501");
-  const closedAgain = start("501");
+  const closedAgain = cli(["open", "--skill", "implement", "--flow", opened.flow, "--ticket", "501"]);
   const ticketless = start();
+  const ticketTitle = "Verify rollout readiness";
+  submit(opened.flow, opened.stage, [{
+    kind: "wayfinder",
+    tickets: [{ id: "501", title: ticketTitle, url: "https://tracker.example.test/issues/501", state: "resolved", blockers: [] }],
+  }]);
   for (const s of [closed, closedAgain, ticketless]) submit(s.flow, s.stage, [{ kind: "stage", state: "finished" }]);
   const waiting = start("502");
   submit(waiting.flow, waiting.stage, [{ kind: "round", now: "The pilot route is ready to review.", questions: [question("ask", "Keep the pilot route?")] }]);
@@ -215,6 +227,12 @@ test("Map opens on Stages, pins waiting work, and folds finished Stages by ticke
     await pane.getByText("#501 · 2 Stages", { exact: true }).click();
     await pane.getByText("Ticketless · 1 Stage", { exact: true }).click();
     expect(await targets()).toEqual([waiting.stage, opened.stage, closed.stage, closedAgain.stage, ticketless.stage].map(id => `#${id}`));
+    const recorded = cli(["show", "--flow", opened.flow]).stages as { id: string; label: string }[];
+    for (const { stage } of [closed, closedAgain]) {
+      const label = recorded.find(item => item.id === stage)!.label;
+      const row = pane.getByRole("link", { name: `${label} · ${ticketTitle}`, exact: true });
+      expect(await row.getAttribute("href", { timeout: 2500 })).toBe(`#${stage}`);
+    }
     await pane.locator(`a[href="#${closedAgain.stage}"]`).click();
     await map.waitFor({ state: "hidden" });
     expect(await hash(page)).toBe(closedAgain.stage);
@@ -243,14 +261,16 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     await page.goto(`${a.live.url}#${stageA}`);
     await shown(page, stageA);
     expect(await selected(page)).toBe(stageA);
-    expect(await page.locator(`#${stageA} [data-reading]`).evaluateAll(els => els.map(el => (el as HTMLElement).dataset.reading))).toEqual([background, first.refs.q1, second.refs.q2]);
+    const fragments = [background, first.refs.q1, second.refs.q2];
+    const bodies = page.locator(fragments.map(id => `#${id}`).join(", "));
+    expect(await bodies.evaluateAll(els => els.map(el => el.id))).toEqual(fragments);
     const stageJump = await openJump(page);
     expect(await jumpIds(stageJump)).toEqual([background, first.refs.q1, second.refs.q2]);
     await page.keyboard.press("Escape");
     await stageJump.waitFor({ state: "hidden" });
 
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-    const bar = await page.locator(".bar").evaluate((el) => el.getBoundingClientRect().top);
+    const bar = await barOf(page).evaluate((el) => el.getBoundingClientRect().top);
     expect(bar).toBe(0);
 
     await page.keyboard.press("l");
@@ -277,6 +297,15 @@ test("Stage tabs show each Stage's own content in first-publication order under 
       "Open decisions", "Progress", "Observations", "Changed since your last visit", "All Stages", "Topics",
     ]);
     expect(await overviewJump.locator("a[aria-current]").innerText()).toBe("Topics");
+    const jumpClose = overviewJump.getByRole("button", { name: "Close", exact: true });
+    for (const [start, bound, name] of [["j", "k", "Open decisions"], ["k", "j", "Topics"]] as const) {
+      await jumpClose.focus();
+      await page.keyboard.press(start);
+      const link = overviewJump.getByRole("link", { name, exact: true });
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+      await page.keyboard.press(bound);
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+    }
     await overviewJump.getByRole("link", { name: "Observations", exact: true }).click();
     await overviewJump.waitFor({ state: "hidden" });
     await page.getByRole("region", { name: "Read-only observations", exact: true }).waitFor();
@@ -720,6 +749,15 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     expect(await stageLinks.nth(1).evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("k");
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
+    const close = map.getByRole("button", { name: "Close", exact: true });
+    for (const [start, bound, link] of [["j", "k", stageLinks.first()], ["k", "j", stageLinks.last()]] as const) {
+      await close.focus();
+      await page.keyboard.press(start);
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+      await page.keyboard.press(bound);
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+    }
+    await stageLinks.first().focus();
     const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
     await page.keyboard.press("ArrowDown");
     const panned = await pane.evaluate((el) => el.scrollTop);

@@ -125,7 +125,7 @@ async function save() {
         <USelect v-model="selectedTarget" :items="targets" class="w-full pointer-coarse:min-h-[44px]" :disabled="pending" />
       </UFormField>
       <UFormField label="Comment" :name="`${r.anchor}-comment`" required>
-        <UTextarea v-model="draft" required :maxlength="4096" :rows="3" class="w-full" :ui="{ base: 'field-sizing-content min-h-[3lh] max-h-[12lh]' }" :disabled="pending" />
+        <UTextarea v-model="draft" :data-reload-focus="`${r.anchor}-comment`" required :maxlength="4096" :rows="3" class="w-full" :ui="{ base: 'field-sizing-content min-h-[3lh] max-h-[12lh]' }" :disabled="pending" />
       </UFormField>
       <p v-if="editing" class="text-muted">Editing preserves the original anchor and revision.</p>
       <div class="flex flex-wrap gap-2">

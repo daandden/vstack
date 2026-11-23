@@ -10,10 +10,10 @@ const dialog = useTemplateRef<HTMLDialogElement>("dialog");
 const enlarged = shallowRef(false);
 
 async function open() {
-  if (enlarged.value) return;
+  if (dialog.value?.open) return;
   enlarged.value = true;
   await nextTick();
-  if (!dialog.value?.isConnected || !enlarged.value) return;
+  if (!dialog.value?.isConnected || dialog.value.open || !enlarged.value) return;
   trigger.value?.focus({ preventScroll: true });
   dialog.value.showModal();
 }

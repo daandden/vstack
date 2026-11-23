@@ -5,7 +5,10 @@ import { stageWorkName, type StageView } from "~/utils/flow";
 
 const { flow } = useReaderState();
 const { stage } = defineProps<{ stage: StageView }>();
-const name = computed(() => stageWorkName(flow.value!, stage));
+const name = computed(() => {
+  const work = stageWorkName(flow.value!, stage);
+  return work === stage.label ? stage.label : `${stage.label} · ${work}`;
+});
 </script>
 
 <template>

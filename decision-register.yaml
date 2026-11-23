@@ -20,7 +20,7 @@ items:
     tree: a8ef561571acbb611de8ff19ba6da75b197c63a8
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts. It retains CLI rows and review axes and fetches originating tracker keys and comments through current descriptions, schemas, and recorded facts (#204, #207, ADR 0035). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts. It retains CLI rows and review axes and fetches originating tracker keys and comments through current descriptions, schemas, and recorded facts (#204, #207, ADR 0035). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Review rounds use Decision briefs (#566)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Questions after item selection use ask on the item's Flow page. Triage picks roles, grills, and writes its outcome without confirmation gates; only unanswered grill questions and reconsidering a prior rejection stop it. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035, ADR 0061)."
+    reason: "Questions after item selection use ask on the item's Flow page. Triage picks roles, grills, and writes its outcome without confirmation gates; only unanswered grill questions and reconsidering a prior rejection stop it. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035, ADR 0061). Bound rounds and re-asks use Decision briefs (#566)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
@@ -292,7 +292,7 @@ items:
     tree: 276eb958ee333a81105a66ef3f417b72ddf88126
     disposition: adapt
     artifacts: [plugin/skills/compare-attempts]
-    reason: "Renamed for independent attempts on the Session model, only when the user asks for several attempts (ADR 0015)."
+    reason: "Renamed for independent attempts on the Session model, only when the user asks for several attempts (ADR 0015). Re-run approval rounds and re-asks use Decision briefs (#566)."
   - id: pstack/automate-me
     upstream: pstack
     kind: skill
@@ -877,7 +877,7 @@ items:
     tree: 200830c5d204c1fd29129af9d392c8a4c258b1b5
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. The agent picks test seams by tdd's rule and asks only for a Costly seam, without holding non-costly patches and with approved costly tests added by a follow-up implementer (ADR 0062). Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
+    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results, with Decision briefs for rounds and re-asks (#566). The agent picks test seams by tdd's rule and asks only for a Costly seam, without holding non-costly patches and with approved costly tests added by a follow-up implementer (ADR 0062). Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
   - id: matt/pr
     upstream: matt
     kind: skill
