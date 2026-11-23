@@ -1,12 +1,14 @@
 # Scratch dir
 
-vstack skills write throwaway output to Scratch, `~/.vstack/tmp/<repo-key>/<kind>/<entry>`. The vstack-tmp path script prints and creates the Scratch dir. Its cleanup script lists expired entries. The model-free `/vstack-clean` Command opens a Tern popup for the user to select and confirm deletion.
+Ordinary Scratch goes under `~/.vstack/tmp/<repo-key>/<kind>/<session-id>/`. The path script prints the project Scratch dir or creates a marked session folder. The cleanup script lists and deletes expired entries, but entry-based cleanup keeps marked session folders. The `/vstack-clean` Command opens the Tern popup for selection and confirmation.
 
 ## Sub-features
 
-- `scratch-path` the path script prints and creates `<home>/.vstack/tmp/<repo-key>/` or a kind directory, with a trailing slash.
+- `scratch-path` the path script creates and prints the project Scratch dir, a marked session folder, or the reserved `to-tickets` dir, with a trailing slash.
+  The explicit subagent mode uses the dir and parent session id it receives, not the current repo.
 - `scratch-key` worktrees and concurrent callers of one repo share its key: the main checkout's name plus 6 hex chars. A real Git reply remains usable when returned capture buffers are lost.
 - `scratch-bad-kind` a kind that is not one lowercase path segment exits 2 and creates nothing.
+- `scratch-bad-session` a missing or invalid session id exits 2 before creating any directory. An existing unmarked folder with the session id as its name stays unchanged.
 - `scratch-identity-failure` unavailable Git, operational failure, or invalid identity output fails before creating a storage namespace. Only a genuine outside-repository reply selects `_global`; owned process-output files do not remain after success or failure.
 - `clean-list` list mode prints expired entries and the `kept` count as JSON, without deletion. A Flow in the `flow` kind is judged by its lifecycle; the Flow page recipe's `flow-retention` covers it.
 - `clean-delete` `--delete <path>...` deletes named expired entries and prints `deleted`, `skipped`, and `pruned`.
@@ -30,13 +32,17 @@ Preconditions:
 
 ### Direct CLI checks
 
-- Step `scratch-dir-path`: Path. With the bash tool's `cwd` set to `CHECKOUT`, run `bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" verify`. Exit 0, stdout ends with `<repo-key>/verify/`, and that directory exists.
+- Step `scratch-dir-path`: Default mode. Set `SID=019abcde-1234-7abc-8def-000000000001`. With `cwd` set to `CHECKOUT`, run `P=$(bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V")`, then `D=$(PI_SESSION_ID="$SID" bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" verify)`. Both exit 0. `P` ends with `<repo-key>/`, and `D` is `${P}verify/$SID/`. Save `ls -la "$D"` as proof that the new folder holds its mark.
+- Step `scratch-dir-subagent-path`: Explicit mode. Set `S="$VERIFY_RUN_DIR/data/parent-scratch"`. Run `bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" --scratch-dir "$S" --session-id "$SID" verify`. It prints `$S/verify/$SID/` and creates a marked folder there, outside the namespace it would get from `CHECKOUT`.
+- Step `scratch-dir-bad-session`: Invalid or missing id. Run `PI_SESSION_ID=bad bun plugin/skills/vstack-tmp/scripts/path.ts --home "${V}-invalid" verify`, then `bun plugin/skills/vstack-tmp/scripts/path.ts --scratch-dir "${S}-missing" verify`. Both exit 2 with a fix hint and no stdout. Neither `${V}-invalid` nor `${S}-missing` exists.
+- Step `scratch-dir-session-collision`: Refusal. Run `mkdir -p "${P}explain/$SID"` and write a file there. Run `PI_SESSION_ID="$SID" bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" explain`. It exits 2, reports the unmarked entry, and leaves that folder and file unchanged. Remove only this fixture afterward.
+- Step `scratch-dir-tickets-path`: Reserved kind. Run `PI_SESSION_ID= bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" to-tickets`. It prints `${P}to-tickets/`. Run it again with `PI_SESSION_ID="$SID"` and require the same path. Neither invocation adds a session folder.
 - Step `scratch-dir-bad-kind`: Bad kind. In the same `cwd`, run `bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" Bad/Kind; echo "exit=$?"`. stderr starts with `path.ts: kind must be one lowercase path segment`, and stdout ends with `exit=2`.
-- Step `scratch-dir-seed`: Seed entries. Run `D=$(bun plugin/skills/vstack-tmp/scripts/path.ts --home "$V" verify)`, then `mkdir -p "${D}old-entry" "${D}new-entry" && echo old > "${D}old-entry/notes.md" && echo new > "${D}new-entry/notes.md" && touch -t 202601010000 "${D}old-entry/notes.md" "${D}old-entry"`.
-- Step `scratch-dir-list`: List. Run `bun plugin/skills/vstack-tmp/scripts/clean.ts --home "$V" --older-than 14d | tee "$VERIFY_RUN_DIR/scratch-clean-list.json"`. Exit 0. `entries` holds only `old-entry`, and `kept` is `1`.
-- Step `scratch-dir-no-deletion`: Prove no deletion. Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-list.txt"`. Both entries remain.
-- Step `scratch-dir-delete`: Delete. Run `bun plugin/skills/vstack-tmp/scripts/clean.ts --home "$V" --older-than 14d --delete "${D}old-entry" | tee "$VERIFY_RUN_DIR/scratch-clean-delete.json"`. Exit 0. `deleted` holds that path.
-- Step `scratch-dir-deletion`: Prove deletion. Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-delete.txt"`. Only `new-entry` remains.
+- Step `scratch-dir-seed`: Seed unmarked entries beside the session folder. Set `K="${P}verify/"`, then run `mkdir -p "${K}old-entry" "${K}new-entry" && echo old > "${K}old-entry/notes.md" && echo new > "${K}new-entry/notes.md"`. Backdate the old unmarked entry and the marked folder: `touch -t 202601010000 "${K}old-entry/notes.md" "${K}old-entry" && find "$D" -type f -exec touch -t 202601010000 {} + && touch -t 202601010000 "$D"`.
+- Step `scratch-dir-list`: Run `bun plugin/skills/vstack-tmp/scripts/clean.ts --home "$V" --older-than 14d | tee "$VERIFY_RUN_DIR/scratch-clean-list.json"`. Exit 0. `entries` holds only `old-entry`, and `kept` is `2`: the new unmarked entry and the old marked folder.
+- Step `scratch-dir-no-deletion`: Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-list.txt"`. Both unmarked entries and the marked folder remain.
+- Step `scratch-dir-delete`: Run `bun plugin/skills/vstack-tmp/scripts/clean.ts --home "$V" --older-than 14d --delete "${K}old-entry" "${D%/}" | tee "$VERIFY_RUN_DIR/scratch-clean-delete.json"`. Exit 0. `deleted` holds the unmarked entry's path. `skipped` names the marked folder and explains that it requires session-aware cleanup.
+- Step `scratch-dir-deletion`: Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-delete.txt"`. Only `new-entry` and the marked folder remain.
 - Step `scratch-dir-key`: Key. Make a throwaway repo with one worktree: `R="$VERIFY_RUN_DIR/data/keyrepo"; git init -q "$R/main" && git -C "$R/main" -c user.name=v -c user.email=v@v commit -q --allow-empty -m init && git -C "$R/main" worktree add -q "$R/wt"`. Run `bun "$CHECKOUT/plugin/skills/vstack-tmp/scripts/path.ts" --home "$V"` twice: once with the bash tool's `cwd` set to the absolute path of `$R/main`, and once with it set to that of `$R/wt`. Both print the same `$V/.vstack/tmp/main-<hex>/`. `main` is the main checkout's dir name, and `<hex>` is the first 6 characters that `printf %s "$(realpath "$R/main/.git")" | shasum -a 256` prints.
 
 ### Identity acquisition (`scratch-key`, `scratch-identity-failure`)

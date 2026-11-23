@@ -20,7 +20,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { CLOSED_RETENTION, compactFlowDatabase, deleteFlowEntry, FLOW_KIND, flowRetentionEntries, flowRetentionEntry, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
 import { measureEntry, removeEntry } from "../../flow-page/scripts/files.ts";
-import { scratchRoot } from "./scratch.ts";
+import { readScratchSession, scratchRoot, TICKETS_KIND } from "./scratch.ts";
 import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
 
@@ -71,9 +71,15 @@ for (const part of relative(home, root).split(sep)) {
   if (st && !st.isDirectory()) usage(`${ancestor} is not a directory`);
 }
 
-type RetentionDecision = { registry: true } | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
+type RetentionDecision =
+  | { registry: true }
+  | { registry?: false; due: false; reason: string }
+  | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
 
 function retentionDecision(kind: string, entry: string, path: string, st: Stats, stored?: FlowRetentionEntry): RetentionDecision {
+  if (kind !== TICKETS_KIND && readScratchSession(path, st)) {
+    return { due: false, reason: "marked session folder requires session-aware cleanup" };
+  }
   const flowEntry = kind === FLOW_KIND ? stored ?? flowRetentionEntry(path) : undefined;
   if (flowEntry?.registry) return { registry: true };
   const { newest, size } = flowEntry ?? measureEntry(path, st);

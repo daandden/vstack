@@ -8,6 +8,7 @@ import { dirname, join } from "node:path";
 import { ENV } from "./support/fixture.ts";
 
 const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "clean.ts");
+const PATH_SCRIPT = join(dirname(CLEAN), "path.ts");
 const DAY = 86_400_000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 
@@ -52,6 +53,38 @@ function file(rel: string, content: string, age: number) {
 function age(rel: string, days: number) {
   utimesSync(join(root, rel), daysAgo(days), daysAgo(days));
 }
+
+test("entry-based cleanup keeps old marked sessions but still lists and deletes unmarked entries", () => {
+  const sessionId = "019abcde-1234-7abc-8def-000000000001";
+  const project = join(root, "shop-aaaaaa");
+  const path = Bun.spawnSync([
+    process.execPath, PATH_SCRIPT, "--home", home, "--scratch-dir", project, "--session-id", sessionId, "verify",
+  ], { cwd: dir, env: ENV, stdout: "pipe", stderr: "pipe" });
+  expect(path.exitCode).toBe(0);
+  const marked = path.stdout.toString().trim();
+  expect(marked).toBe(`${join(project, "verify", sessionId)}/`);
+  const sessionPath = join(marked, ".");
+  const note = join(marked, "notes.md");
+  writeFileSync(note, "keep session output");
+  for (const name of readdirSync(marked)) utimesSync(join(marked, name), daysAgo(30), daysAgo(30));
+  utimesSync(marked, daysAgo(30), daysAgo(30));
+
+  const legacy = `shop-aaaaaa/verify/019abcde-1234-7abc-8def-000000000002`;
+  file(`${legacy}/notes.md`, "unmarked output", 30);
+  age(legacy, 30);
+  const oldPath = join(root, legacy);
+
+  const listed = list();
+  expect(listed.code).toBe(0);
+  expect(listed.json.entries.map((e: Listed) => e.path)).toEqual([oldPath]);
+  expect(listed.json.kept).toBe(1);
+  const deleted = clean("--home", home, "--older-than", "14d", "--delete", sessionPath, oldPath);
+  expect(deleted.code).toBe(0);
+  expect(deleted.json.deleted).toEqual([oldPath]);
+  expect(deleted.json.skipped).toEqual([{ path: sessionPath, reason: expect.stringContaining("marked session folder") }]);
+  expect(existsSync(note)).toBe(true);
+  expect(existsSync(oldPath)).toBe(false);
+});
 
 test("lists entries at depth 3 older than the TTL, with their size, and leaves newer ones out", () => {
   file("shop-aaaaaa/explain/old.html", "12345", 20);

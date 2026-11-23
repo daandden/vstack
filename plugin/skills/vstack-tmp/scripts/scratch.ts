@@ -1,7 +1,7 @@
-// Layout: <home>/.vstack/tmp/<repo-key>/<kind>/<entry>.
+// Ordinary writes use <home>/.vstack/tmp/<repo-key>/<kind>/<session-id>/.
 
 import { createHash } from "node:crypto";
-import { closeSync, fstatSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
 
@@ -10,6 +10,43 @@ export const GLOBAL_KEY = "_global";
 
 /** A kind is one lowercase path segment, such as `explain` or `blast-radius`. */
 export const KIND = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export const TICKETS_KIND = "to-tickets";
+export const SESSION_MARK = ".vstack-scratch-session";
+
+export function isScratchSessionId(id: string | undefined): id is string {
+  return id?.length === 36 && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id);
+}
+
+export function readScratchSession(path: string, entry = lstatSync(path, { throwIfNoEntry: false })): string | undefined {
+  if (!entry?.isDirectory()) return undefined;
+  const id = basename(path);
+  if (!isScratchSessionId(id)) return undefined;
+  const mark = join(path, SESSION_MARK);
+  const stat = lstatSync(mark, { throwIfNoEntry: false });
+  if (stat?.isFile() && stat.size === id.length + 1 && readFileSync(mark, "utf8") === `${id}\n`) return id;
+}
+
+/** Return the session folder, or undefined when an existing entry has no valid mark. */
+export function createScratchSession(scratchDir: string, kind: string, id: string): string | undefined {
+  if (!KIND.test(kind) || !isScratchSessionId(id)) throw new Error("Invalid Scratch kind or session id");
+  const parent = join(scratchDir, kind);
+  const dir = join(parent, id);
+  mkdirSync(parent, { recursive: true });
+  try {
+    mkdirSync(dir);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    return readScratchSession(dir) === id ? dir : undefined;
+  }
+  try {
+    writeFileSync(join(dir, SESSION_MARK), `${id}\n`, { flag: "wx" });
+  } catch (error) {
+    try { rmdirSync(dir); } catch { /* Leave any existing contents untouched. */ }
+    throw error;
+  }
+  return dir;
+}
 
 /** `<home>/.vstack/tmp`, the only directory clean.ts deletes in. */
 export const scratchRoot = (home: string): string => join(home, ".vstack", "tmp");
