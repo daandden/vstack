@@ -210,7 +210,8 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
   page.on("request", (r) => { if (!r.url().startsWith(origin) && !r.url().startsWith("data:")) offOrigin.push(r.url()); });
   context.on("page", (p) => { if (p !== decoder) popups.push(p.url()); });
 
-  await page.goto(opened.live.url);
+  const stageUrl = `${opened.live.url}#${opened.stage}`;
+  await page.goto(stageUrl);
   await page.getByRole("button", { name: "Light" }).click();
 
   const hostile = page.getByRole("img", { name: "Hostile labels" });
@@ -233,7 +234,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     await enlarged.waitFor({ state: "hidden" });
   }
   await Bun.sleep(300);
-  expect(page.url()).toBe(opened.live.url);
+  expect(page.url()).toBe(stageUrl);
   expect({ dialogs, offOrigin, popups }).toEqual({ dialogs: [], offOrigin: [], popups: [] });
 
   const reading = page.getByRole("img", { name: "Reading then answering" });
@@ -296,7 +297,7 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   const context = await browser.newContext({ viewport: { width: 360, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(opened.live.url);
+    await page.goto(`${opened.live.url}#${opened.stage}`);
     const figure = page.getByRole("img", { name: "Wide reading diagram" });
     await figure.locator("svg").waitFor();
     for (const width of [1280, 360]) for (const theme of ["Light", "Dark"]) {
@@ -387,7 +388,7 @@ test("figures retain caption, formatted description and Source when a question s
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1440, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(opened.live.url);
+    await page.goto(`${opened.live.url}#${opened.stage}`);
     await page.getByRole("img", { name: "Narrow flow" }).first().locator("svg").waitFor();
     expect(await page.locator("main").evaluate((m) => m.getBoundingClientRect().width)).toBe(1024);
 
@@ -447,7 +448,7 @@ test("figures retain caption, formatted description and Source when a question s
     }
     expect(await page.locator("figcaption").filter({ hasText: /Q\d+ ·/ }).count()).toBe(0);
 
-    const response = await page.goto(migrated.live.url);
+    const response = await page.goto(`${migrated.live.url}#historical-caption`);
     expect(response!.status()).toBe(200);
     expect((await response!.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")).toContain("Historical example");
     const old = page.locator("#historical-caption");

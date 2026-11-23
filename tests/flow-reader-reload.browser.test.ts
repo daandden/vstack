@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { ENV, git } from "./support/fixture.ts";
+import { decisionBrief } from "./support/decision-brief.ts";
 import type { ReaderComment } from "../plugin/skills/flow-page/scripts/comments.ts";
 
 type Receipt = { flow: string; stage: string; revision: number; live: { state: string; url?: string; error?: string }; refs: Record<string, string> };
@@ -52,7 +53,17 @@ test("served generation swaps refresh unchanged content and reload readers witho
     seal();
     const opened = cli(["open", "--skill", "implement", "--title", "Automatic reader replacement"]);
     const table = { kind: "result", ref: "evidence", shape: "table", title: "Restart evidence", columns: ["Check"], rows: [{ ref: "restart", cells: ["Host restart"] }] };
-    const seed = cli(["submit"], { version: 1, items: [table, { kind: "result", shape: "document", title: "Long reading context", sections: [{ heading: "Evidence", blocks: [{ prose: "Keep reading the captured evidence. ".repeat(1000) }] }] }] });
+    const seed = cli(["submit"], { version: 1, items: [
+      table,
+      { kind: "result", shape: "document", title: "Long reading context", sections: [{ heading: "Evidence", blocks: [{ prose: "Keep reading the captured evidence. ".repeat(1000) }] }] },
+      { kind: "round", now: "The saved draft is ready for review.", questions: [{
+        title: "Retain the draft after replacement?",
+        description: "Compare the retained draft with the original.",
+        brief: decisionBrief("the draft"),
+        needs: [{ need: "Know which draft the reader retains.", kind: "prose" }],
+        options: [{ label: "Retain", does: "Keeps the unsent text.", gains: ["Continuity"], costs: ["Local browser state"] }],
+      }] },
+    ] });
     expect(opened.live).toMatchObject({ state: "serving" });
     const url = opened.live.url;
     if (!url) throw new Error("serving receipt lacks live.url");
@@ -68,6 +79,16 @@ test("served generation swaps refresh unchanged content and reload readers witho
       if (request.url() === new URL("content", url).href) contentLoads++;
       if (request.url() === new URL("comments", url).href && request.method() === "POST") commentWrites++;
     });
+    const bare = await browser.newPage({ viewport: { width: 360, height: 500 } });
+    await bare.goto(url);
+    const overview = bare.getByRole("region", { name: "Overview", exact: true });
+    await overview.getByRole("link", { name: "Retain the draft after replacement?" }).waitFor();
+    const progress = bare.getByRole("region", { name: "Authored progress", exact: true });
+    const progressRow = overview.locator(":scope > details > summary").filter({ hasText: /^Progress$/ });
+    await progressRow.focus();
+    await bare.keyboard.press("Enter");
+    await progress.waitFor();
+    expect(new URL(bare.url()).hash).toBe("");
     await page.goto(`${url}#${seed.refs.evidence}`);
     const region = page.getByRole("region", { name: "Reader comments on Restart evidence" }).first();
     await region.getByRole("button", { name: "Add Reader comment" }).click();
@@ -110,10 +131,21 @@ test("served generation swaps refresh unchanged content and reload readers witho
     expect(navigations).toBe(1);
     writeFileSync(reader, good + "\n<!-- complete replacement -->\n");
     seal();
-    await page.waitForFunction(old => {
+    const generationChanged = (old: string) => {
       const loaded = document.querySelector<HTMLMetaElement>('meta[name="flow-reader-generation"]')?.content;
       return loaded && loaded !== old;
-    }, before.readerGeneration, { timeout: 20_000 });
+    };
+    await Promise.all([page, bare].map(tab => tab.waitForFunction(generationChanged, before.readerGeneration, { timeout: 20_000 })));
+    await progress.waitFor();
+    expect(new URL(bare.url()).hash).toBe("");
+    expect(await bare.getByRole("region", { name: "Open decisions", exact: true }).isVisible()).toBe(true);
+    await bare.waitForFunction(() => document.activeElement?.matches("summary") && document.activeElement.textContent?.trim() === "Progress", undefined, { timeout: 4000 });
+    const proof = process.env.FLOW_READER_EVIDENCE;
+    if (proof) {
+      mkdirSync(proof, { recursive: true });
+      writeFileSync(join(proof, "overview-generation-restored.aria.txt"), await bare.locator("body").ariaSnapshot());
+      await bare.screenshot({ path: join(proof, "overview-generation-restored.png"), fullPage: true });
+    }
     expect(navigations).toBe(2);
     expect((await versions()).revision).toBe(before.revision);
     expect((await versions()).readerGeneration).not.toBe(before.readerGeneration);

@@ -8,8 +8,11 @@ export const jumpOpen = ref(false);
 export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
-export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]:not(details[open])")].filter(el =>
-  shown(el) && !el.parentElement?.closest("details[data-reading-fold]:not([open])"));
+export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]:not(details[open])")].filter(el => {
+  if (!shown(el)) return false;
+  const parent = el.matches("details[data-reading-fold] > summary") ? el.parentElement?.parentElement : el.parentElement;
+  return !parent?.closest("details[data-reading-fold]:not([open])");
+});
 const tabs = () => [...document.querySelectorAll<HTMLElement>("[data-tab]")].map((el) => el.dataset.tab!);
 export const tabOf = (el: Element) => el.closest<HTMLElement>("[data-tab]")?.dataset.tab;
 
@@ -37,7 +40,7 @@ async function reveal(el: HTMLElement) {
 }
 
 function focusOn(el: HTMLElement) {
-  if (!el.matches("a[href], button, input, select, textarea, [tabindex]")) el.tabIndex = -1;
+  if (!el.matches("a[href], button, input, select, summary, textarea, [tabindex]")) el.tabIndex = -1;
   el.focus({ preventScroll: true });
 }
 
@@ -70,15 +73,6 @@ export async function goTo(id: string, focus: boolean, replaceFragment = false):
   if (focus) focusOn(el);
   if (replaceFragment) history.replaceState(null, "", `#${id}`);
   return true;
-}
-
-export async function openFirstOpenQuestionTab() {
-  const { flow } = useReaderState();
-  const first = flow.value?.next[0];
-  const el = first ? document.getElementById(first) : null;
-  tab.value = (el && tabOf(el)) ?? "overview";
-  await nextTick();
-  markFromScroll();
 }
 
 async function select(el: HTMLElement | undefined) {
@@ -131,10 +125,17 @@ export function onScroll() {
   markFromScroll();
 }
 
+function hidingDisclosure(el: Element): HTMLDetailsElement | undefined {
+  for (let child = el; child.parentElement; child = child.parentElement) {
+    const parent = child.parentElement;
+    if (parent instanceof HTMLDetailsElement && !parent.open && child !== parent.querySelector(":scope > summary")) return parent;
+  }
+}
+
 export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
   const visible = (el: Element | null) => {
     const box = el?.getBoundingClientRect();
-    return !!box && box.top < innerHeight && box.bottom > 0;
+    return !!el && !!box && box.top < innerHeight && box.bottom > 0 && !hidingDisclosure(el);
   };
   const target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
   const selected = current.value ? document.getElementById(current.value) : null;
@@ -182,6 +183,8 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
       if (el instanceof HTMLDetailsElement && el.hasAttribute("data-reading-fold")) el.open = true;
     }
   } else if (saved.anchor) resolve(saved.anchor);
+  const anchor = saved.anchor ? document.getElementById(saved.anchor) : null;
+  for (let fold = anchor && hidingDisclosure(anchor); fold; fold = hidingDisclosure(fold)) fold.open = true;
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
   if (saved.focus !== undefined) {
@@ -190,10 +193,7 @@ export async function restoreReadingPlace(value: unknown): Promise<boolean> {
     if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
   }
   scrollTo({ top: saved.y, behavior: "instant" });
-  if (saved.anchor !== undefined && saved.top !== undefined) {
-    const el = document.getElementById(saved.anchor);
-    if (el) restoreReadingAnchor({ el, top: saved.top });
-  }
+  if (anchor && saved.top !== undefined) restoreReadingAnchor({ el: anchor, top: saved.top });
   keepSelectionAtCurrentScroll();
   return true;
 }
@@ -239,7 +239,7 @@ function restoreTypingPositionAfterFragmentNavigation() {
 }
 
 export function onHashChange() {
-  const id = decodeURIComponent(location.hash.slice(1));
+  const id = decodeURIComponent(location.hash.slice(1)) || "overview";
   if (typing?.field.isConnected) {
     heldMove = { id, focus: true, replaceFragment: false };
     restoreTypingPositionAfterFragmentNavigation();

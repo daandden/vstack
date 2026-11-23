@@ -115,7 +115,8 @@ test("readers select typed-table text and manage revision-bound comments across 
     await page.keyboard.press("Enter");
     await otherPage.getByText("Keep the selected passage.", { exact: true }).waitFor();
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    await page.getByRole("button", { name: "Copy feedback", exact: true }).focus();
+    const copyFeedback = page.getByRole("contentinfo").getByRole("button", { name: "Copy feedback", exact: true });
+    await copyFeedback.focus();
     await page.keyboard.press("Enter");
     await page.getByRole("status").filter({ hasText: "Feedback copied" }).waitFor();
     const feedback = await page.evaluate(() => navigator.clipboard.readText());
@@ -143,7 +144,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     await currentComments.getByRole("textbox", { name: "Comment" }).fill("Comment on the appended version.");
     await currentComments.getByRole("button", { name: "Save comment", exact: true }).click();
     await currentComments.getByText("Comment on the appended version.", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Copy feedback", exact: true }).click();
+    await copyFeedback.click();
     await page.getByRole("status").filter({ hasText: "Feedback copied" }).waitFor();
     const focusedFeedback = await page.evaluate(() => navigator.clipboard.readText());
     expect(focusedFeedback).toContain("> Host restart\nConfirm the host restart.");

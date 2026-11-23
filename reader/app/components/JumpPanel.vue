@@ -10,7 +10,14 @@ const stage = computed(() => f.value.stage.get(tab.value));
 const label = computed(() => stage.value ? stageWorkName(f.value, stage.value) : tab.value === "topics" ? "Topics" : "Overview");
 type Jump = { id: string; label: string; state?: string };
 const entries = computed<Jump[]>(() => {
-  if (tab.value === "overview") return [{ id: "progress", label: "Progress" }, { id: "observations", label: "Observations" }, { id: "overview-stages", label: "Stages" }];
+  if (tab.value === "overview") return [
+    { id: "overview:decisions", label: "Open decisions" },
+    { id: "overview:progress-row", label: "Progress" },
+    { id: "observations", label: "Observations" },
+    { id: "overview:visit-row", label: "Changed since your last visit" },
+    { id: "overview:stages-row", label: "All Stages" },
+    { id: "overview:topics-row", label: "Topics" },
+  ];
   if (tab.value === "topics") return f.value.topics.map(t => ({ id: t.id, label: t.title }));
   const ordered: Jump[] = [];
   let includedAssumed = false;

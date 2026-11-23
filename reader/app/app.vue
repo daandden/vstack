@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { startReader, useReaderState } from "~/composables/reader";
-import { captureReadingPlace, restoreReadingPlace, goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
+import { captureReadingPlace, restoreReadingPlace, goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, tab } from "~/composables/navigation";
 import { startLearning } from "~/composables/learning";
 import { finishReaderRestore, onReaderReload, readReloadState } from "~/composables/reload";
 const { flow, connection, failure, updateFailure } = useReaderState();
@@ -19,7 +19,7 @@ onMounted(() => {
     arrived = true;
     startLearning(f.flow.id);
     await nextTick();
-    if (!(await restoreReadingPlace(readReloadState("place"))) && !(await goTo(fragment(), false))) await openFirstOpenQuestionTab();
+    if (!(await restoreReadingPlace(readReloadState("place")))) await goTo(fragment(), false);
     try { finishReaderRestore(); } catch {}
   }, { immediate: true });
   startReader();
@@ -53,19 +53,11 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
       <p v-if="updateFailure" class="notice" role="status">{{ updateFailure }}</p>
       <ContextNotes />
       <main id="reading" class="grid" aria-label="Flow content">
-        <section id="overview" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
-          <h2 id="overview-title">Overview</h2>
-          <ProgressPanel />
-          <ChangedSinceVisit />
-          <StageOverview />
-          <p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next view, <kbd>n</kbd> next open question, <kbd>m</kbd> Stages, <kbd>g</kbd> Jump.</p>
-        </section>
+        <FlowOverview />
         <StagePanel v-for="st in flow.stages" :key="st.id" :stage="st" />
         <section v-if="flow.topics.length" id="topics" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="topics" :hidden="tab !== 'topics'" aria-labelledby="topics-title">
           <h2 id="topics-title">Topic notes</h2>
-          <ul class="bullets">
-            <li v-for="t in flow.topics" :key="t.id"><a :href="`#${t.id}`" v-html="inline(t.title)" /> <span class="quiet" v-html="inline(t.summary)" /></li>
-          </ul>
+          <TopicLinks />
           <section v-if="stageless.length" class="grid gap-1 [padding-block:0.75rem] border-bs border-default" aria-labelledby="topics-historical">
             <h3 id="topics-historical" class="eyebrow">Historical content in retained order</h3>
             <p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p>
@@ -73,6 +65,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
           </section>
         </section>
       </main>
+      <FlowFooter />
       <MapPanel />
       <JumpPanel />
     </template>

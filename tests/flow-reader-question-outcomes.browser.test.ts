@@ -114,6 +114,8 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     const shown = cli(["show", "--flow", opened.flow]) as unknown as { stages: { questions: { id: string; open: boolean }[] }[] };
     expect(shown.stages[0]!.questions.find(x => x.id === q.reasked)?.open).toBe(false);
     await page.goto(`${opened.live.url}#overview`);
+    await page.getByRole("region", { name: "Overview", exact: true })
+      .locator(":scope > details > summary").filter({ hasText: /^All Stages$/ }).click();
     expect(await page.locator("#overview-stages").innerText()).toContain("Re-asked");
     expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with deployment");
     cli(["submit"], [{ kind: "answer", question: corrected.refs.retry, response: { status: "answered", picks: ["B"] } }]);

@@ -69,12 +69,12 @@ const openJump = async (page: Page) => {
   return panel;
 };
 const jumpIds = (panel: Awaited<ReturnType<typeof openJump>>) => panel.getByRole("link").evaluateAll(as => as.map(a => a.getAttribute("href")!.slice(1)));
-async function capture(page: Page, name: string) {
+async function capture(page: Page, name: string, fullPage = false) {
   const dir = process.env.FLOW_NAV_EVIDENCE;
   if (!dir) return;
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, `${name}.aria.txt`), await page.locator("body").ariaSnapshot());
-  await page.screenshot({ path: join(dir, `${name}.png`) });
+  await page.screenshot({ path: join(dir, `${name}.png`), fullPage });
 }
 const hash = (page: Page) => page.evaluate(() => location.hash.slice(1));
 
@@ -265,16 +265,22 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     await page.keyboard.press("h");
     expect(await selected(page)).toBe("overview");
 
-    const overviewStops: string[] = [];
-    for (let i = 0; i < 3; i++) {
+    const overviewIndex = await openJump(page);
+    await overviewIndex.getByRole("link", { name: "Open decisions", exact: true }).click();
+    await overviewIndex.waitFor({ state: "hidden" });
+    for (const name of ["Progress", "Changed since your last visit", "All Stages", "Topics"]) {
       await page.keyboard.press("j");
-      overviewStops.push(await hash(page));
+      expect(await page.locator("#overview summary:focus").innerText()).toBe(name);
     }
     const overviewJump = await openJump(page);
-    expect(overviewStops).toEqual(await jumpIds(overviewJump));
-    expect(await overviewJump.locator("a[aria-current]").getAttribute("href")).toBe(`#${overviewStops[2]}`);
-    await page.keyboard.press("Escape");
+    expect(await overviewJump.getByRole("link").allTextContents()).toEqual([
+      "Open decisions", "Progress", "Observations", "Changed since your last visit", "All Stages", "Topics",
+    ]);
+    expect(await overviewJump.locator("a[aria-current]").innerText()).toBe("Topics");
+    await overviewJump.getByRole("link", { name: "Observations", exact: true }).click();
     await overviewJump.waitFor({ state: "hidden" });
+    await page.getByRole("region", { name: "Read-only observations", exact: true }).waitFor();
+    expect(await hash(page)).toBe("observations");
 
     const clearance = () => page.evaluate((id) => document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom, research.refs.doc);
     await page.goto(`${a.live.url}#${research.refs.doc}`);
@@ -354,6 +360,73 @@ test("Jump lists the latest attempts, one Assumed-picks entry, and exact reading
   }
 }, 120_000);
 
+test("a fresh bare link opens the Flow's current decision queue before choosing a Stage", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Production failover decisions"]);
+  const first = submit(opened.flow, opened.stage, [{ kind: "round", now: "The initial failover review is ready.", questions: [
+    question("prior", "Keep the existing failover?"),
+    question("settled", "Keep the release freeze?"),
+  ] }]).refs;
+  submit(opened.flow, opened.stage, [
+    { kind: "answer", question: first.prior, response: { status: "answered", text: "What if the replica is stale?" }, reading: { outcome: "concern", unresolved: "Check replica lag." } },
+    { kind: "answer", question: first.settled, response: { status: "answered", picks: ["A"] } },
+  ]);
+  const next = submit(opened.flow, opened.stage, [{ kind: "round", now: "Replica lag crossed the failover threshold.", questions: [
+    question("retry", "Change the failover threshold?", first.prior),
+    question("reply", "Keep the replica alert?"),
+    question("fresh", "Add the follow-up report for AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion?"),
+  ] }]).refs;
+  submit(opened.flow, opened.stage, [{ kind: "answer", question: next.reply, response: { status: "answered", text: "Who receives the alert?" }, reading: { outcome: "question", unresolved: "Name the on-call team." } }]);
+  const research = cli(["open", "--flow", opened.flow, "--skill", "research", "--parent", opened.stage]);
+  const second = submit(research.flow, research.stage, [{ kind: "round", now: "The retention review needs an owner.", questions: [
+    question("retention", "Assign the retention review?"),
+  ] }]).refs;
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  try {
+    await page.goto(opened.live.url);
+    const decisions = page.getByRole("region", { name: "Open decisions", exact: true });
+    await decisions.waitFor({ timeout: 3000 });
+    expect(await selected(page)).toBe("overview");
+    expect(await hash(page)).toBe("");
+    const groups = decisions.getByRole("list");
+    expect(await groups.count()).toBe(2);
+    const targets = (group: ReturnType<typeof groups.nth>) =>
+      group.getByRole("link").evaluateAll(links => links.map(link => link.getAttribute("href")));
+    expect(await targets(groups.nth(0))).toEqual([`#${second.retention}`]);
+    expect(await targets(groups.nth(1))).toEqual([next.retry, next.reply, next.fresh].map(id => `#${id}`));
+    expect(await groups.nth(0).getByText("The retention review needs an owner.", { exact: true }).isVisible()).toBe(true);
+    const [retry, reply, fresh] = await groups.nth(1).getByRole("listitem").all();
+    expect(await retry!.getByText("Replica lag crossed the failover threshold.", { exact: true }).isVisible()).toBe(true);
+    expect(await retry!.getByText("Concern", { exact: true }).isVisible()).toBe(true);
+    expect(await reply!.getByText("Question, not settled", { exact: true }).isVisible()).toBe(true);
+    expect(await fresh!.getByText("Open", { exact: true }).isVisible()).toBe(true);
+    const time = retry!.locator("time[datetime]");
+    expect(await time.innerText()).toMatch(/just now|\bago$/);
+    expect(Date.parse((await time.getAttribute("datetime"))!)).toBeGreaterThan(0);
+    await capture(page, "overview-decisions-1280", true);
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.emulateMedia({ colorScheme: "dark" });
+    await barOf(page).getByRole("button", { name: "+2 waiting Stages", exact: true }).waitFor();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await capture(page, "overview-decisions-320-dark", true);
+    await retry!.getByRole("link", { name: "Change the failover threshold?", exact: true }).click();
+    await page.locator(`#${next.retry}`).waitFor();
+    expect(await selected(page)).toBe(opened.stage);
+    expect(await hash(page)).toBe(next.retry);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(next.reply);
+    await page.goBack();
+    await decisions.waitFor();
+    expect(await hash(page)).toBe("");
+    await page.goto(`${opened.live.url}#${research.stage}`);
+    await shown(page, research.stage);
+    await page.goto(`${opened.live.url}#${first.prior}`);
+    await page.locator(`#${first.prior}-fold[open]`).waitFor();
+    expect(await selected(page)).toBe(opened.stage);
+  } finally {
+    await page.close();
+  }
+}, 30_000);
+
 test("with no open question the page opens on Overview", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Nothing open"]);
   submit(a.flow, a.stage, [doc("doc", "Settled findings")]);
@@ -364,6 +437,7 @@ test("with no open question the page opens on Overview", async () => {
     await barOf(page).waitFor();
     expect(await selected(page)).toBe("overview");
     expect(await page.locator("#overview").isVisible()).toBe(true);
+    expect(await page.getByText("No open decisions.", { exact: true }).isVisible()).toBe(true);
   } finally {
     await context.close();
   }

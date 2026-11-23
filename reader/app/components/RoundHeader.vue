@@ -1,23 +1,10 @@
-<script lang="ts">
-import { createSharedComposable, formatTimeAgoIntl, useIntervalFn } from "@vueuse/core";
-
-const useReadingClock = createSharedComposable((initial: number) => {
-  const now = shallowRef(initial);
-  useIntervalFn(() => { now.value = Date.now(); }, 60_000);
-  return now;
-});
-</script>
-
 <script setup lang="ts">
+import { readingAge, useReadingClock } from "~/composables/reading-clock";
+
 const { round, numbers } = defineProps<{ round: { id: string; n: number; time: string; session?: number }; numbers: number[] }>();
-const initial = useState("flow-reading-clock", () => Date.now());
-const now = useReadingClock(initial.value);
-const age = computed(() => {
-  const time = Date.parse(round.time);
-  if (!Number.isFinite(time)) return undefined;
-  if (Math.abs(time - now.value) < 60_000) return "just now";
-  return formatTimeAgoIntl(new Date(time), { locale: "en", relativeTimeFormatOptions: { numeric: "always" } }, now.value);
-});
+const now = useReadingClock();
+const time = computed(() => Date.parse(round.time));
+const age = computed(() => readingAge(time.value, now.value));
 </script>
 
 <template>

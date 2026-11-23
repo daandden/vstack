@@ -58,6 +58,7 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     { kind: "task", ref: "build", title: "Build the reader foundation", state: "active" },
     { kind: "task", title: "Check keyboard navigation", state: "pending" },
     { kind: "end-state", requested: "commit" },
+    { kind: "topic", ref: "spacing", title: "Compact spacing", summary: "The fixture records the chosen spacing.", body: "The bar and reading view use separate spacing.", sources: ["GLOSSARY.md"] },
     { kind: "round", now: "The compact reader is ready to compare with the proposed spacing.", questions: [{ ref: "choice", title: "Keep the compact reader?", brief: decisionBrief("the reader spacing"), description: "Read the Flow before choosing.", needs: [{ need: "Follow reading to choosing.", kind: "context-diagram" }], figures: [{ attachment: "diagram", kind: "context-diagram" }], options: [{ label: "Keep", does: "Keeps the reader compact", gains: ["Familiar reading"], costs: ["No larger spacing"] }] }] },
   ]);
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
@@ -78,6 +79,36 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     expect(policy).toMatch(/script-src 'self' 'sha256-/);
     expect(policy).not.toContain("'unsafe-eval'");
     expect(policy.split("script-src")[1]!.split(";")[0]).not.toContain("'unsafe-inline'");
+    const overview = page.getByRole("region", { name: "Overview", exact: true });
+    const disclosures = overview.locator(":scope > details > summary");
+    expect(await disclosures.allTextContents()).toEqual(["Progress", "Changed since your last visit", "All Stages", "Topics"]);
+    expect(await overview.locator(":scope > details[open]").count()).toBe(0);
+    expect(await overview.getByRole("region", { name: "Open decisions", exact: true }).isVisible()).toBe(true);
+    const footer = page.getByRole("contentinfo");
+    expect(await footer.getByText(`Revision ${submitted.revision}`, { exact: true }).isVisible()).toBe(true);
+    await footer.getByRole("group", { name: "Color theme" }).waitFor();
+    expect(await page.locator(".masthead").innerText()).toBe("Reader foundation");
+    await capture(page, "overview-closed-and-footer");
+    await disclosures.filter({ hasText: /^Progress$/ }).click();
+    await overview.getByRole("region", { name: "Authored progress", exact: true }).getByText("1 active", { exact: false }).waitFor();
+    expect(await overview.getByRole("region", { name: "Read-only observations", exact: true }).isVisible()).toBe(true);
+    await disclosures.filter({ hasText: /^Changed since your last visit$/ }).focus();
+    await page.keyboard.press("Enter");
+    await overview.getByText("First visit in this browser", { exact: false }).waitFor();
+    await disclosures.filter({ hasText: /^All Stages$/ }).click();
+    const stageList = overview.getByRole("list", { name: "Stages", exact: true });
+    expect(await stageList.getByRole("link", { name: "Implement", exact: true }).getAttribute("href")).toBe(`#${opened.stage}`);
+    await disclosures.filter({ hasText: /^Topics$/ }).click();
+    const topic = overview.getByRole("link", { name: "Compact spacing", exact: true });
+    expect(await topic.getAttribute("href")).toBe(`#${submitted.refs.spacing}`);
+    await capture(page, "overview-opened-disclosures");
+    await topic.click();
+    await page.locator(`#${submitted.refs.spacing}`).waitFor();
+    const authored = cli(["show"]);
+    expect(authored.revision).toBe(submitted.revision);
+    expect(authored.next).toEqual([submitted.refs.choice]);
+    expect(authored.progress.complete).toBe(false);
+    await page.goto(`${opened.live.url}#${submitted.refs.choice}`);
     await page.getByRole("img", { name: "Read then choose" }).locator("svg").waitFor();
     const drawing = await page.getByRole("img", { name: "Read then choose" }).locator("svg").elementHandle();
     const colors: Record<string, string> = {};
@@ -126,3 +157,22 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     for (const token of Object.values(tokens)) expect(token).not.toBe("");
   } finally { await context.close(); }
 }, 120_000);
+
+test("Flow lifecycle notices remain outside the identity-only masthead", async () => {
+  const opened = cli(["open", "--skill", "explain", "--title", "Lifecycle notices"]);
+  cli(["submit"], [{ kind: "stage", state: "finished" }]);
+  const closed = cli(["close", "--flow", opened.flow]);
+  const page = await browser.newPage();
+  try {
+    await page.goto(closed.live.url);
+    const footer = page.getByRole("contentinfo");
+    await footer.getByText(/^Closed\b/).waitFor();
+    expect(await page.locator(".masthead").innerText()).toBe("Lifecycle notices");
+    const reopened = cli(["reopen", "--flow", opened.flow, "--skill", "explain"]);
+    await footer.getByText(/^Reopened\b/).waitFor();
+    expect(await footer.getByText(`Revision ${reopened.revision}`, { exact: true }).isVisible()).toBe(true);
+    expect(await page.locator(".masthead").innerText()).toBe("Lifecycle notices");
+  } finally {
+    await page.close();
+  }
+}, 30_000);
