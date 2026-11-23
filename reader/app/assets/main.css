@@ -3,11 +3,11 @@
 
 .reader-field:focus {
   border-color: var(--color-blue);
-  outline: none;
 }
 
-.reader-field[data-state="open"] {
-  outline: none;
+.reader-field:is(:focus, [data-state="open"]) {
+  outline: 2px solid transparent;
+  outline-offset: -2px;
 }
 
 .reader-field[aria-invalid="true"] {

@@ -79,7 +79,8 @@ test("readers select typed-table text and manage revision-bound comments across 
         const css = getComputedStyle(el);
         return {
           border: css.borderTopColor, width: css.borderTopWidth, shadow: css.boxShadow,
-          outline: css.outlineStyle, height: el.getBoundingClientRect().height,
+          outline: css.outlineStyle, outlineColor: css.outlineColor,
+          height: el.getBoundingClientRect().height,
         };
       });
       const target = comments.getByRole("combobox", { name: "Comment target" });
@@ -97,32 +98,42 @@ test("readers select typed-table text and manage revision-bound comments across 
       expect(focused.shadow).toBe("none");
       expect(await count.evaluate(el => getComputedStyle(el).color)).toBe(focused.border);
       expect(await icon.evaluate(el => getComputedStyle(el).color)).toBe(focused.border);
-      expect(focused.outline).toBe("none");
-      if (process.env.FLOW_READER_EVIDENCE) {
-        const dir = process.env.FLOW_READER_EVIDENCE;
-        const name = `comment-invalid-${theme.toLowerCase()}`;
-        mkdirSync(dir, { recursive: true });
-        writeFileSync(join(dir, `${name}.json`), JSON.stringify({ unfocused, focused }, null, 2));
-        writeFileSync(join(dir, `${name}.aria.txt`), await comments.ariaSnapshot());
-        await comments.screenshot({ path: join(dir, `${name}.png`) });
-        const panel = await comments.elementHandle();
-        await target.press("Enter");
-        const listbox = page.getByRole("listbox");
-        await listbox.getByRole("option", { name: "Whole Result block", exact: true }).and(page.locator(":focus")).waitFor();
+      expect(focused.outline).toBe("solid");
+      expect(focused.outlineColor).toBe("rgba(0, 0, 0, 0)");
+      const proof = process.env.FLOW_READER_EVIDENCE;
+      const name = theme.toLowerCase();
+      if (proof) {
+        mkdirSync(proof, { recursive: true });
+        writeFileSync(join(proof, `comment-invalid-${name}.json`), JSON.stringify({ unfocused, focused }, null, 2));
+        writeFileSync(join(proof, `comment-invalid-${name}.aria.txt`), await comments.ariaSnapshot());
+        await comments.screenshot({ path: join(proof, `comment-invalid-${name}.png`) });
+      }
+      const panel = proof && await comments.elementHandle();
+      const openTarget = await target.elementHandle();
+      await target.press("Enter");
+      const listbox = page.getByRole("listbox");
+      await listbox.getByRole("option", { name: "Whole Result block", exact: true }).and(page.locator(":focus")).waitFor();
+      const blue = theme === "Light" ? "oklch(0.559 0.226 262.1)" : "oklch(0.766 0.111 259.9)";
+      expect(await openTarget.evaluate(el => {
+        const css = getComputedStyle(el);
+        return [css.borderTopColor, css.outlineStyle, css.outlineColor];
+      })).toEqual([blue, "solid", "rgba(0, 0, 0, 0)"]);
+      if (proof && panel) {
         await page.keyboard.press("ArrowDown");
         await listbox.getByRole("option", { name: "e1: Host restart", exact: true }).and(page.locator(":focus")).waitFor();
-        await panel.screenshot({ path: join(dir, `comment-target-open-${theme.toLowerCase()}.png`) });
-        writeFileSync(join(dir, `comment-target-open-${theme.toLowerCase()}.aria.txt`), await listbox.ariaSnapshot());
-        await page.keyboard.press("Escape");
-        await listbox.waitFor({ state: "hidden" });
+        await panel.screenshot({ path: join(proof, `comment-target-open-${name}.png`) });
+        writeFileSync(join(proof, `comment-target-open-${name}.aria.txt`), await listbox.ariaSnapshot());
       }
+      await page.keyboard.press("Escape");
+      await listbox.waitFor({ state: "hidden" });
       await draft.fill(atLimit);
       await tooLong.waitFor({ state: "hidden" });
       const valid = await paint();
-      expect(valid.border).toBe(theme === "Light" ? "oklch(0.559 0.226 262.1)" : "oklch(0.766 0.111 259.9)");
+      expect(valid.border).toBe(blue);
       expect(valid.width).toBe("1px");
       expect(valid.shadow).toBe("none");
-      expect(valid.outline).toBe("none");
+      expect(valid.outline).toBe("solid");
+      expect(valid.outlineColor).toBe("rgba(0, 0, 0, 0)");
       if (theme === "Light") {
         await draft.fill(`${atLimit}x`);
         await save.click();

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The desktop Flow reader keeps its Catppuccin themes and uses a denser layout with a Stage graph, collapsible table filters, and inline validation for comments and quiz answers. The shipped reader now uses UnoCSS, shadcn-vue controls, TanStack Form and Table, and Unovis. Existing keyboard shortcuts and theme preferences still work (#542, #555)."
+  ]
+}

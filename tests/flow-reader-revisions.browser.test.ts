@@ -103,7 +103,7 @@ test("readers compare known Document and typed edits without losing snapshots or
     const snapshotStyle = () => trigger.evaluate(el => {
       const style = getComputedStyle(el);
       const { width, height } = el.getBoundingClientRect();
-      return { width, height, border: style.borderColor, shadow: style.boxShadow, outline: style.outlineStyle, padding: style.padding, fontSize: style.fontSize };
+      return { width, height, border: style.borderColor, shadow: style.boxShadow, outline: style.outlineStyle, outlineColor: style.outlineColor, padding: style.padding, fontSize: style.fontSize };
     });
     await changes.getByText(/^Only changed fields are shown\./).click();
     const idleSnapshot = await snapshotStyle();
@@ -156,9 +156,11 @@ test("readers compare known Document and typed edits without losing snapshots or
     expect(openSnapshot.border).not.toBe(idleSnapshot.border);
     expect(focusedSnapshot.border).toBe(openSnapshot.border);
     expect(focusedSnapshot.shadow).toBe("none");
-    expect(focusedSnapshot.outline).toBe("none");
+    expect(focusedSnapshot.outline).toBe("solid");
+    expect(focusedSnapshot.outlineColor).toBe("rgba(0, 0, 0, 0)");
     expect(openSnapshot.shadow).toBe("none");
-    expect(openSnapshot.outline).toBe("none");
+    expect(openSnapshot.outline).toBe("solid");
+    expect(openSnapshot.outlineColor).toBe("rgba(0, 0, 0, 0)");
     const touch = await browser.newContext({ hasTouch: true });
     try {
       const touchPage = await touch.newPage();

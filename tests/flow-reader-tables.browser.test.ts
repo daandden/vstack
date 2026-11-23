@@ -11,6 +11,7 @@ const fieldStyle = (control: Locator) => control.evaluate(el => {
   return {
     width, height, color: style.color, background: style.backgroundColor,
     border: style.borderColor, shadow: style.boxShadow, outline: style.outlineStyle,
+    outlineColor: style.outlineColor,
     padding: style.padding, fontSize: style.fontSize,
     radius: style.borderRadius, weight: style.fontWeight,
   };
@@ -244,7 +245,8 @@ test("table readers sort, filter, and follow stable row links without persisting
     expect(errors).toEqual([]);
     expect(openedStatus.border).not.toBe(idleStatus.border);
     expect(openedStatus.shadow).toBe("none");
-    expect(openedStatus.outline).toBe("none");
+    expect(openedStatus.outline).toBe("solid");
+    expect(openedStatus.outlineColor).toBe("rgba(0, 0, 0, 0)");
   } finally {
     await context.close();
     await browser.close();

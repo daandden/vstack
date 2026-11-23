@@ -180,7 +180,7 @@ function wayfinderTickets(o: Obj, where: string): WayfinderTicket[] {
     dependents.get(b)!.push(t.id);
   }
   const ready = tickets.filter((t) => !t.blockers.length).map((t) => t.id);
-  for (let i = 0; i < ready.length; i++) for (const id of dependents.get(ready[i])!) {
+  for (let i = 0; i < ready.length; i++) for (const id of dependents.get(ready[i]!)!) {
     const left = remaining.get(id)! - 1;
     remaining.set(id, left);
     if (!left) ready.push(id);
@@ -259,7 +259,7 @@ const TIME = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?
 function realTime(t: string): boolean {
   const m = t.match(TIME);
   if (!m) return false;
-  const [y, mo, d, h, mi, sec] = m.slice(1).map((x) => Number(x ?? 0));
+  const [y, mo, d, h, mi, sec] = m.slice(1).map((x) => Number(x ?? 0)) as [number, number, number, number, number, number];
   const days = new Date(`${m[1]}-${m[2]}-01T00:00:00Z`);
   days.setUTCMonth(days.getUTCMonth() + 1, 0);
   const offset = t.match(/[+-](\d{2}):(\d{2})$/);
@@ -272,14 +272,14 @@ export type ClaimState = (typeof CLAIM_STATES)[number];
 export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
 const LINK = /\[[^\]]*\]\(([^)\s]*)\)/g;
 function safeLinks(t: string, where: string): string {
-  for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1])) reject(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`, ["https://", "http://", "#"]);
+  for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1]!)) reject(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`, ["https://", "http://", "#"]);
   return t;
 }
 const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 export const letter = (i: number) => String.fromCharCode(65 + i);
 const letterIndex = (s: string) => (/^[A-Z]$/.test(s) ? s.charCodeAt(0) - 65 : -1);
 /** The full label, such as "B. Second", of the option a letter names. */
-export const optionLabel = (q: Question, l: string) => q.options[letterIndex(l)].label;
+export const optionLabel = (q: Question, l: string) => q.options[letterIndex(l)]!.label;
 
 export function nowIso(d = new Date()): string {
   const off = -d.getTimezoneOffset();
@@ -356,7 +356,7 @@ export function parseAlias(raw: string): string {
   if (!ALIAS_KINDS.includes(kind)) refuse("alias", `${JSON.stringify(raw)} is not a qualified alias; write <kind>:<value> with kind ${listed(ALIAS_KINDS)}, such as spec:267`);
   let value = raw.slice(at + 1);
   if (kind === "spec" || kind === "ticket") value = value.replace(/^#/, "");
-  if (!ALIAS_VALUE[kind].test(value)) refuse("alias", `${JSON.stringify(raw)} has no valid ${kind} value`);
+  if (!ALIAS_VALUE[kind]!.test(value)) refuse("alias", `${JSON.stringify(raw)} has no valid ${kind} value`);
   return `${kind}:${value}`;
 }
 
@@ -569,7 +569,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
       plan(o, where, ids) {
         const adds = o.add === undefined ? undefined : list(o, "add", where);
         if (adds && typeof o.result === "string" && !o.result.includes("/")) {
-          const rid = kinds[o.result] === "result" ? refs[o.result] : o.result;
+          const rid = kinds[o.result] === "result" ? refs[o.result]! : o.result;
           const r = s.results.find((x) => x.id === rid);
           if (r) {
             const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => /^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0)) + 1;
@@ -644,7 +644,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         const qs = list(o, "questions", where);
         const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time };
         s.rounds.push(round);
-        const parsed = validatedMap(qs, (q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve, figure));
+        const parsed = validatedMap(qs, (q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j]!, stage.id, round.id, resolve, figure));
         refuseRepeatedQuestionText(parsed, where);
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
@@ -833,7 +833,7 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
   if (shape === "review") {
     fields(o, where, ["kind", "shape", "title", "axes", "entries"], shared);
     if (!Array.isArray(o.entries)) refuse(where, "entries must be an array, empty when the review has no findings");
-    const entries = (o.entries as unknown[]).map((e, j) => parseEntry(shape, undefined, e, `${where}: entry ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
+    const entries = (o.entries as unknown[]).map((e, j) => parseEntry(shape, undefined, e, `${where}: entry ${j + 1}`, entryIds[j]!.split("/")[1]!, rev, attachment));
     const axes = parseReviewAxes(o.axes, `${where}: axes`);
     checkReview(axes, entries, where);
     return head({ axes, entries });
@@ -844,7 +844,7 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     const c = fields(column, `${where}: column ${j + 1}`, ["label"], ["type"]);
     return { label: text(c, "label", `${where}: column ${j + 1}`), ...(c.type !== undefined ? { type: c.type as "text" | "number" | "status" } : {}) };
   }) : undefined;
-  const entries = validatedMap(list(o, table ? "rows" : "entries", where), (e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
+  const entries = validatedMap(list(o, table ? "rows" : "entries", where), (e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j]!.split("/")[1]!, rev, attachment));
   return head({ ...(columns ? { columns } : {}), entries });
 }
 
@@ -997,7 +997,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     if (WHOLE[r.shape]) refuse(where, `${rid} is ${WHOLE[r.shape]}, which has no entries; publish its next revision with revises`);
     if (entryIds === undefined) refuse(where, `add appends to a Result from an earlier contribution; put new entries of ${o.result} in its result item`);
     const adds = list(o, "add", where);
-    r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev, (v, w) => resolve(v, "attachment", w))));
+    r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j]!.split("/")[1]!, rev, (v, w) => resolve(v, "attachment", w))));
   }
   if (r.shape === "review") checkReview(r.axes!, r.entries, where);
   if (previous.edit !== rev) s.history.push(previous);
@@ -1117,7 +1117,7 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
     seen.add(c.ref);
   }
   const cited = (t: string, w: string) => {
-    for (const m of t.matchAll(CITE)) if (!seen.has(m[1])) reject(w, `[@${m[1]}] names no citation of this Document; add { ref: "${m[1]}", source } to citations`, [...seen]);
+    for (const m of t.matchAll(CITE)) if (!seen.has(m[1]!)) reject(w, `[@${m[1]}] names no citation of this Document; add { ref: "${m[1]}", source } to citations`, [...seen]);
     return safeLinks(t, w);
   };
   const sections = validatedMap(list(o, "sections", where), (sec, j) => {
@@ -1222,7 +1222,7 @@ function parseDemo(raw: unknown, where: string): Demo {
       return { not: condition(c.not, `${w}: not`, depth + 1) };
     }
     const ops = Object.keys(c).filter((k) => k !== "value");
-    if (c.value === undefined || ops.length !== 1 || !(DEMO_OPS as readonly string[]).includes(ops[0])) refuse(w, `a comparison is { "value": "<name>", <op>: <literal> } with one op of ${listed([...DEMO_OPS])}, got ${ops.length ? ops.join(", ") : "none"}`);
+    if (c.value === undefined || ops.length !== 1 || !(DEMO_OPS as readonly string[]).includes(ops[0]!)) refuse(w, `a comparison is { "value": "<name>", <op>: <literal> } with one op of ${listed([...DEMO_OPS])}, got ${ops.length ? ops.join(", ") : "none"}`);
     const op = ops[0] as DemoOp;
     const type = valueType(c.value, w);
     const to = c[op];
@@ -1537,21 +1537,21 @@ function refuseRepeatedQuestionText(questions: Question[], where: string): void 
   const seen = new Map<string, { question: number; field: string }>();
   const repeated: string[] = [];
   for (let i = 0; i < questions.length; i++) {
-    const q = questions[i];
+    const q = questions[i]!;
     const check = (kind: string, field: string, value: string) => {
       const key = `${kind}:${value.replace(/\b([FQ])\d+\b/g, "$1#")}`;
       const earlier = seen.get(key);
       if (!earlier) seen.set(key, { question: i, field });
       else if (earlier.question !== i)
-        repeated.push(`question ${earlier.question + 1} (${questions[earlier.question].title}) ${earlier.field} and question ${i + 1} (${q.title}) ${field}`);
+        repeated.push(`question ${earlier.question + 1} (${questions[earlier.question]!.title}) ${earlier.field} and question ${i + 1} (${q.title}) ${field}`);
     };
     check("description", "description", q.description);
-    for (let j = 0; j < q.needs!.length; j++) check("needs", `needs ${j + 1}`, q.needs![j].need);
+    for (let j = 0; j < q.needs!.length; j++) check("needs", `needs ${j + 1}`, q.needs![j]!.need);
     for (let j = 0; j < q.options.length; j++) {
-      const option = q.options[j];
+      const option = q.options[j]!;
       check("does", `option ${j + 1} does`, option.does);
       for (const kind of ["gains", "costs"] as const)
-        for (let k = 0; k < option[kind].length; k++) check(kind, `option ${j + 1} ${kind} ${k + 1}`, option[kind][k]);
+        for (let k = 0; k < option[kind].length; k++) check(kind, `option ${j + 1} ${kind} ${k + 1}`, option[kind][k]!);
     }
   }
   if (repeated.length) refuse(where, `repeated question text (ignoring F/Q finding numbers): ${repeated.join("; ")}. Put shared context in the Background and write each question's own situation and tradeoffs.`);
@@ -1883,7 +1883,7 @@ function comparisonView(c: ComparisonBody, anchor: string): ComparisonView {
 
 function decimalPlaces(n: number): number {
   const [mantissa, exponent = "0"] = String(n).split(/e/i);
-  return Math.max(0, (mantissa.split(".")[1]?.length ?? 0) - Number(exponent));
+  return Math.max(0, (mantissa!.split(".")[1]?.length ?? 0) - Number(exponent));
 }
 
 function metricsView(m: MetricsBody, anchor: string): MetricsView {

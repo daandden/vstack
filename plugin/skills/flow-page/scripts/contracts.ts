@@ -34,14 +34,14 @@ const figure = union({ attachment: optional({ attachment: ref }, { kind: enumera
 const canonical = union({ file: object({ file: string }), commit: object({ commit: string }), tracker: object({ tracker: string, revision: string }) });
 const axes = array(optional({ axis: enumeration("standards", "spec", "blast-radius"), status: enumeration("findings", "clean", "skipped", "unavailable", "blocked") }, { reason: string }));
 const card = optional({ title: string, label: string, blocking: boolean, impact: string, action: string, evidence: string }, { ref });
-const entryContracts: Record<string, Contract> = {
+const entryContracts = {
   cards: card,
   review: optional({ ...card.fields!, axis: enumeration("standards", "spec", "blast-radius"), location: string }, {}),
   ledger: optional({ claim: string, status: enumeration("confirmed", "cleared", "unproven"), evidence: string, missing_proof: string, consequence: string }, { ref }),
   table: optional({ cells: { ...array({ type: "string", expected: "string" }, 0) } }, { ref }),
   code: { ...optional({ file: string }, { ref, line: { ...number, integer: true, min: 1 }, revision: string, language: string, code: string, diff: string, note: string }), oneOf: ["code", "diff"] },
   timeline: optional({ title: string, outcome: enumeration("succeeded", "failed", "blocked", "skipped", "unknown", "noted") }, { ref, time: string, detail: string, evidence: string, attachments: strings }),
-};
+} satisfies Record<string, Contract>;
 entryContracts.review.required = [...card.required!, "axis", "location"];
 const block = union({ prose: object({ prose: string }), list: optional({ list: strings }, { ordered: boolean }), steps: object({ steps: array(object({ title: string, text: string })) }), code: optional({ code: string }, { language: string, source: string }), figure: object({ figure: ref }) });
 const uncertainty = union({ plusminus: object({ plusminus: { ...number, min: 0 }, of: string }), low: object({ low: number, high: number, of: string }) });
@@ -83,10 +83,10 @@ measurement.check = (value, path) => {
     return diagnostics;
   });
 };
-const condition: Contract = { type: "union", select: value => condition.variants!["all" in value ? "all" : "any" in value ? "any" : "not" in value ? "not" : "value"] };
+const condition: Contract = { type: "union", select: value => condition.variants!["all" in value ? "all" : "any" in value ? "any" : "not" in value ? "not" : "value"]! };
 const literal: Contract = { type: "union", variants: { string: { type: "string", expected: "string" }, number, boolean }, expected: "string, finite number, or boolean" };
 condition.variants = { all: object({ all: array(condition) }), any: object({ any: array(condition) }), not: object({ not: condition }), value: optional({ value: ref }, Object.fromEntries(["eq", "ne", "lt", "le", "gt", "ge"].map(k => [k, literal]))) };
-const effect: Contract = { type: "union", variants: { add: object({ add: number }), toggle: object({ toggle: enumeration(true) }), literal }, select: value => effect.variants!["add" in value ? "add" : "toggle"] };
+const effect: Contract = { type: "union", variants: { add: object({ add: number }), toggle: object({ toggle: enumeration(true) }), literal }, select: value => effect.variants!["add" in value ? "add" : "toggle"]! };
 const demo = optional({
   states: array(optional({ name: ref, label: string }, { description: string }), 1, 32), start: ref,
   actions: array(object({ name: ref, label: string, transitions: array(optional({}, { from: strings, when: condition, to: ref, set: { type: "record", items: effect, min: 1 } }), 1, 16) }), 1, 32),
@@ -109,7 +109,7 @@ export const resultContracts: Record<string, Contract> = {
   review: result("Report standards, spec, and blast-radius review findings.", { axes, entries: array(entryContracts.review, 0) }),
 };
 for (const [shape, contract] of Object.entries(resultContracts)) contract.fields!.shape = enumeration(shape);
-resultContracts.table.check = (value, path) => {
+resultContracts.table!.check = (value, path) => {
   if (!Array.isArray(value.columns) || !Array.isArray(value.rows)) return [];
   const width = value.columns.length;
   return value.rows.flatMap((row, index) => isObj(row) && Array.isArray(row.cells) && row.cells.length !== width
@@ -185,7 +185,7 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
           diagnostics.push({ code: "invalid_enum", path: fieldPath(path, contract.discriminator), message: `${contract.discriminator} must be one of ${Object.keys(variants).join(", ")}, got ${JSON.stringify(key)}`, allowed: Object.keys(variants) });
           return;
         }
-        visit(value, variants[key], path);
+        visit(value, variants[key]!, path);
       } else if (contract.expected) {
         const candidates = Object.values(variants);
         const chosen = candidates.find(c => c.type === typeof value || (isObj(value) && c.type === "object" && Object.keys(c.fields ?? {}).some(k => k in value)) || (Array.isArray(value) && c.type === "array"));
@@ -194,7 +194,7 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
       } else {
         const keys = isObj(value) ? Object.keys(variants).filter(k => value[k] !== undefined) : [];
         if (keys.length !== 1) { report("invalid_union", `must have exactly one of ${Object.keys(variants).join(", ")}`, Object.keys(variants)); return; }
-        visit(value, variants[keys[0]], path);
+        visit(value, variants[keys[0]!]!, path);
       }
       return;
     }
@@ -212,7 +212,7 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
       }
       for (const key of Object.keys(value)) if (!Object.hasOwn(contract.fields!, key)) diagnostics.push({ code: "unknown_field", path: fieldPath(path, key), message: `${key} is not a field here; the fields are ${Object.keys(contract.fields!).join(", ")}`, allowed: Object.keys(contract.fields!) });
       if (contract.oneOf && contract.oneOf.filter(key => value[key] !== undefined).length !== 1) report("invalid_union", `must have exactly one of ${contract.oneOf.join(" or ")}`, contract.oneOf);
-      for (const key of contract.required!) if (value[key] === undefined) diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `needs ${key}`, allowed: contract.fields![key].expected ?? contract.fields![key].values ?? contract.fields![key].type });
+      for (const key of contract.required!) if (value[key] === undefined) diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `needs ${key}`, allowed: contract.fields![key]!.expected ?? contract.fields![key]!.values ?? contract.fields![key]!.type });
       for (const [key, c] of Object.entries(contract.fields!)) if (value[key] !== undefined) visit(value[key], c, fieldPath(path, key));
       diagnostics.push(...(contract.check?.(value, path) ?? []));
       return;
@@ -237,7 +237,7 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
 export class ContributionRefusal extends Refusal {
   constructor(readonly diagnostics: Diagnostic[]) {
     super(diagnostics.map(d => {
-      const location = [...d.path.matchAll(/\.([a-z]+)\[(\d+)\]/g)].map(([, key, index]) => `${key === "entries" ? "entry" : key === "add" ? "add" : key.endsWith("s") ? key.slice(0, -1) : key} ${Number(index) + 1}`).join(": ");
+      const location = [...d.path.matchAll(/\.([a-z]+)\[(\d+)\]/g)].map(([, key, index]) => `${key === "entries" ? "entry" : key === "add" ? "add" : key!.endsWith("s") ? key!.slice(0, -1) : key} ${Number(index) + 1}`).join(": ");
       return `${d.code} ${d.path}${location ? ` (${location})` : ""}: ${d.message}`;
     }).join("\n"));
   }
@@ -252,7 +252,7 @@ export function contributionPath(input: unknown, where: string): string {
     if (part === "contribution") continue;
     const indexed = /^(?:quiz )?([a-z-]+) (\d+)(?: \([^)]+\))?$/.exec(part);
     const named = /^([a-z-]+) ([a-z0-9-]+)$/.exec(part);
-    const key = indexed ? (collectionNames[indexed[1]] ?? indexed[1]) : named ? (collectionNames[named[1]] ?? named[1]) : part;
+    const key = indexed ? (collectionNames[indexed[1]!] ?? indexed[1]!) : named ? (collectionNames[named[1]!] ?? named[1]!) : part;
     if (!isObj(value) || !Object.hasOwn(value, key)) break;
     value = value[key];
     path = fieldPath(path, key);
@@ -266,8 +266,8 @@ export function contributionPath(input: unknown, where: string): string {
       path += `[${index}]`;
       value = value[index];
     } else if (named && isObj(value)) {
-      path = fieldPath(path, named[2]);
-      value = value[named[2]];
+      path = fieldPath(path, named[2]!);
+      value = value[named[2]!];
     }
   }
   return path;

@@ -50,7 +50,7 @@ Parent-versus-head comparisons are feature steps with their own IDs, such as `ti
 
 ## Launch
 
-Nothing builds at launch: the Flow reader is committed prebuilt. Step `reader-build`: When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It generates and ships the bundle under `plugin/skills/flow-page/reader/`. The reader uses Nuxt UI, Tailwind utilities, and Catppuccin theme tokens, with base typography in Tailwind's base layer and no separate `reader.css`. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
+Nothing builds at launch: the Flow reader is committed prebuilt. Step `reader-build`: When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It ships the bundle under `plugin/skills/flow-page/reader/` and reseals `runtime.json`. Unset `FLOW_READER_ASSETS` and `FLOW_READER_SERVER` before starting an isolated host for shipped-reader proof. For scripted smoke proof, `scripts/drive.ts` links the plugin into the run's home and starts a stub model and `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`). It sends the requested RPC commands and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \

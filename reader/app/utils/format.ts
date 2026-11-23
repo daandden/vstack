@@ -57,7 +57,7 @@ export function eventTime(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
   if (!m) return iso;
   const date = `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
-  const t = m[4].match(/^T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/);
+  const t = m[4]!.match(/^T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/);
   if (!t) return date;
   return `${date}, ${t[1]}:${t[2]}${t[3] && t[3] !== "00" ? `:${t[3]}` : ""} ${t[4] === "Z" ? "UTC" : t[4]}`;
 }
