@@ -26,15 +26,14 @@ Only `plugin/` ships. Plugin Upstreams are fetched when needed, never stored in 
 
 ### Reader development skills
 
-Six repo-only skills live under `.omp/skills/`: `nuxt-ui` from `nuxt/ui`, `vue-best-practices`, `vue-debug-guides`, `vue-testing-best-practices`, and `create-adaptable-composable` from `vuejs-ai/skills`, and `vueuse-functions` from `vueuse/skills`. `skills-lock.json` records their upstream paths and content hashes. They do not ship in `plugin/` and have no Pin or Decision register row.
+Five repo-only skills live under `.omp/skills/`: `vue-best-practices`, `vue-debug-guides`, `vue-testing-best-practices`, and `create-adaptable-composable` from `vuejs-ai/skills`, and `vueuse-functions` from `vueuse/skills`. `skills-lock.json` records their upstream paths and content hashes. They do not ship in `plugin/` and have no Pin or Decision register row.
 
-The skills CLI 1.7.6 has no `omp` agent target. Its `pi` target installs project skills into `.agents/skills/`. The initial installation used these commands, then moved the six directories into `.omp/skills/`:
+The skills CLI 1.7.6 has no `omp` agent target. Its `pi` target installs project skills into `.agents/skills/`. To install the five skills from their upstreams, run these commands from the repo root. The `mv` command moves the five directories into `.omp/skills/`:
 
 ```sh
-npx --yes skills@1.7.6 add nuxt/ui --skill nuxt-ui --agent pi --copy --yes
 npx --yes skills@1.7.6 add vuejs-ai/skills --skill vue-best-practices vue-debug-guides vue-testing-best-practices create-adaptable-composable --agent pi --copy --yes
 npx --yes skills@1.7.6 add vueuse/skills --skill vueuse-functions --agent pi --copy --yes
-mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+mv .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
 rmdir .agents/skills .agents
 ```
 
@@ -43,7 +42,7 @@ The skill files are tracked, so a normal checkout already has them. To restore m
 ```sh
 npx --yes skills@1.7.6 experimental_install --frozen-lockfile --agent pi
 mkdir -p .omp/skills
-mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+mv .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
 rmdir .agents/skills .agents
 ```
 
