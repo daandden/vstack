@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "`/vstack-clean` no longer reports \"no Tern plugin claimed the open\" after its popup opened: current Tern exits 0 for a handled open, so the Command now reads `tern open --json` and treats an open with no file blocks as success."
+  ]
+}

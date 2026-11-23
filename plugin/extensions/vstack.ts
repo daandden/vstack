@@ -504,13 +504,17 @@ interface TernPlugins {
   plugins: { id: string; status: string; window: boolean; blocks: { id: string }[] }[];
 }
 
+interface TernOpened {
+  blocks: unknown[];
+}
+
 const AGE = /^\d+[hdw]?$/;
 
 /**
  * Opens the vstack-clean Tern plugin's popup over the calling pane, or says why it cannot. The plugin claims the
- * trigger path `<home>/.vstack/clean-popup/<pane>/<age>`; the path never exists. `tern open` reports a handled open as
- * exit 1 with "cannot open in a file block" and an unclaimed one as exit 0, so readiness comes from the plugin list
- * first and only that exact exit 1 counts as opened.
+ * trigger path `<home>/.vstack/clean-popup/<pane>/<age>`; the path never exists. `tern open --json` exits 0 either way
+ * and lists the file blocks it opened: none when a plugin handled the open, an empty file block when none claimed it.
+ * So readiness comes from the plugin list first, and only an empty block list counts as opened.
  */
 async function openCleanPopup(pi: ExtensionAPI, age: string): Promise<string | undefined> {
   if (!AGE.test(age)) return `age must look like 15d, 15, 36h, or 2w, got "${age}"`;
@@ -525,10 +529,10 @@ async function openCleanPopup(pi: ExtensionAPI, age: string): Promise<string | u
     plugin.id === "vstack-clean" && plugin.status === "ready" && plugin.window && plugin.blocks.some(block => block.id === "popup"));
   if (!ready) return "the vstack-clean Tern plugin is not ready in this Tern; run /skill:setup-vstack to link it";
   const trigger = `${process.env.HOME || homedir()}/.vstack/clean-popup/${pane}/${age}`;
-  const open = await pi.exec(tern, ["open", trigger]);
-  if (open.code === 1 && open.stderr.trim() === `tern open: ${trigger} cannot open in a file block`) return undefined;
-  const why = open.code === 0 ? "no Tern plugin claimed the open" : open.stderr.trim() || `tern open exited ${open.code}`;
-  return `could not open the Scratch cleanup popup: ${why}`;
+  const open = await pi.exec(tern, ["open", "--json", trigger]);
+  if (open.code !== 0) return `could not open the Scratch cleanup popup: ${open.stderr.trim() || `tern open exited ${open.code}`}`;
+  if ((JSON.parse(open.stdout) as TernOpened).blocks.length === 0) return undefined;
+  return "could not open the Scratch cleanup popup: no Tern plugin claimed the open";
 }
 
 function registerCleanCommand(pi: ExtensionAPI): void {
