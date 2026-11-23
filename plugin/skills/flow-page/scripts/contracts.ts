@@ -212,7 +212,10 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
       }
       for (const key of Object.keys(value)) if (!Object.hasOwn(contract.fields!, key)) diagnostics.push({ code: "unknown_field", path: fieldPath(path, key), message: `${key} is not a field here; the fields are ${Object.keys(contract.fields!).join(", ")}`, allowed: Object.keys(contract.fields!) });
       if (contract.oneOf && contract.oneOf.filter(key => value[key] !== undefined).length !== 1) report("invalid_union", `must have exactly one of ${contract.oneOf.join(" or ")}`, contract.oneOf);
-      for (const key of contract.required!) if (value[key] === undefined) diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `needs ${key}`, allowed: contract.fields![key]!.expected ?? contract.fields![key]!.values ?? contract.fields![key]!.type });
+      for (const key of contract.required!) if (value[key] === undefined) {
+        const field = contract.fields![key]!;
+        diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `needs ${key}`, allowed: field.expected ?? field.values ?? field.type });
+      }
       for (const [key, c] of Object.entries(contract.fields!)) if (value[key] !== undefined) visit(value[key], c, fieldPath(path, key));
       diagnostics.push(...(contract.check?.(value, path) ?? []));
       return;
@@ -237,7 +240,10 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
 export class ContributionRefusal extends Refusal {
   constructor(readonly diagnostics: Diagnostic[]) {
     super(diagnostics.map(d => {
-      const location = [...d.path.matchAll(/\.([a-z]+)\[(\d+)\]/g)].map(([, key, index]) => `${key === "entries" ? "entry" : key === "add" ? "add" : key!.endsWith("s") ? key!.slice(0, -1) : key} ${Number(index) + 1}`).join(": ");
+      const location = [...d.path.matchAll(/\.([a-z]+)\[(\d+)\]/g)].map(m => {
+        const key = m[1]!, index = m[2]!;
+        return `${key === "entries" ? "entry" : key === "add" ? "add" : key.endsWith("s") ? key.slice(0, -1) : key} ${Number(index) + 1}`;
+      }).join(": ");
       return `${d.code} ${d.path}${location ? ` (${location})` : ""}: ${d.message}`;
     }).join("\n"));
   }
@@ -252,7 +258,8 @@ export function contributionPath(input: unknown, where: string): string {
     if (part === "contribution") continue;
     const indexed = /^(?:quiz )?([a-z-]+) (\d+)(?: \([^)]+\))?$/.exec(part);
     const named = /^([a-z-]+) ([a-z0-9-]+)$/.exec(part);
-    const key = indexed ? (collectionNames[indexed[1]!] ?? indexed[1]!) : named ? (collectionNames[named[1]!] ?? named[1]!) : part;
+    const collection = indexed ?? named;
+    const key = collection ? (collectionNames[collection[1]!] ?? collection[1]!) : part;
     if (!isObj(value) || !Object.hasOwn(value, key)) break;
     value = value[key];
     path = fieldPath(path, key);
@@ -266,8 +273,9 @@ export function contributionPath(input: unknown, where: string): string {
       path += `[${index}]`;
       value = value[index];
     } else if (named && isObj(value)) {
-      path = fieldPath(path, named[2]!);
-      value = value[named[2]!];
+      const name = named[2]!;
+      path = fieldPath(path, name);
+      value = value[name];
     }
   }
   return path;

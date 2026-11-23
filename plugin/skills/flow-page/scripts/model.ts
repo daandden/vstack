@@ -259,7 +259,8 @@ const TIME = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?
 function realTime(t: string): boolean {
   const m = t.match(TIME);
   if (!m) return false;
-  const [y, mo, d, h, mi, sec] = m.slice(1).map((x) => Number(x ?? 0)) as [number, number, number, number, number, number];
+  const mo = Number(m[2]), d = Number(m[3]);
+  const h = Number(m[4] ?? 0), mi = Number(m[5] ?? 0), sec = Number(m[6] ?? 0);
   const days = new Date(`${m[1]}-${m[2]}-01T00:00:00Z`);
   days.setUTCMonth(days.getUTCMonth() + 1, 0);
   const offset = t.match(/[+-](\d{2}):(\d{2})$/);
@@ -279,7 +280,11 @@ const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join
 export const letter = (i: number) => String.fromCharCode(65 + i);
 const letterIndex = (s: string) => (/^[A-Z]$/.test(s) ? s.charCodeAt(0) - 65 : -1);
 /** The full label, such as "B. Second", of the option a letter names. */
-export const optionLabel = (q: Question, l: string) => q.options[letterIndex(l)]!.label;
+export function optionLabel(q: Question, l: string): string {
+  const option = q.options[letterIndex(l)];
+  if (!option) throw new Error(`${q.id} has no option ${JSON.stringify(l)}`);
+  return option.label;
+}
 
 export function nowIso(d = new Date()): string {
   const off = -d.getTimezoneOffset();

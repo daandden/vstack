@@ -631,10 +631,10 @@ async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefin
   for (const drop of d.drops) {
     if (!pins.upstreams?.[drop.upstream]) throw new Error(`${drop.upstream} is not an Upstream in pins.yaml`);
     if (p?.upstreams.some(u => u.key === drop.upstream)) throw new Error(`${drop.upstream}: an Update cannot move a dropped Upstream`);
-    const dropped = doc.items.filter((row: any) => row.upstream === drop.upstream);
+    const dropped: { artifacts: string[] }[] = doc.items.filter((row: any) => row.upstream === drop.upstream);
     doc.items = doc.items.filter((row: any) => row.upstream !== drop.upstream);
     const kept = new Set([...doc.items.flatMap((row: any) => row.artifacts), ...doc.originals]);
-    const owned = [...new Set(dropped.flatMap((row: any) => row.artifacts as string[]))].filter(a => !kept.has(a));
+    const owned = [...new Set(dropped.flatMap(row => row.artifacts))].filter(a => !kept.has(a));
     for (const a of owned) if (existsSync(join(root, a))) throw new Error(`delete ${a} before prepare`);
     if (Array.isArray(doc.utility)) doc.utility = doc.utility.filter((a: string) => !owned.includes(a));
     delete pins.upstreams[drop.upstream];

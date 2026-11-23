@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "clean-wt updates one Flow summary with cleanup outcomes and pending picks. It keeps raw evidence in Scratch."
+  ]
+}

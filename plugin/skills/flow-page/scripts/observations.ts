@@ -124,8 +124,8 @@ export function observations(store: FlowStore, key: string, s: { flow: { id: str
         if (repoKey(candidate) !== key) continue;
         const git = Bun.spawnSync(["git", "rev-parse", "--show-toplevel", "--path-format=absolute", "--git-common-dir"], { cwd: candidate, stdout: "pipe", stderr: "ignore", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
         if (git.exitCode !== 0) continue;
-        const [root, common] = git.stdout.toString().trim().split("\n") as [string, string];
-        project = { root, common, expires: Date.now() + 15000 };
+        const [root, common] = git.stdout.toString().trim().split("\n");
+        project = { root: root!, common: common!, expires: Date.now() + 15000 };
         projects.set(id, project);
       }
       selected = { context, project };

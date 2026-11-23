@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Flow submit receipts include a short HTML ask form for fresh and repeated rounds, so agents use the page's exact numbered titles and lettered options without rebuilding the picker.",
+    "Flow guidance records picks, Other answers, notes, and timeouts from the HTML ask result without treating automatic values as consent."
+  ]
+}

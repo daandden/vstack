@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "clean-wt shows one line per deletion choice with the short checkout path, repository, investigator verdict, and recommendation. Remove-recommended batches come first, and investigation evidence stays in Scratch. Picker labels and summary rows escape invisible Unicode characters so names that differ only by those characters look distinct. Each pick still applies only to its original checkout path and inspected fingerprint."
+  ]
+}

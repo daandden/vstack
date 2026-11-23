@@ -9,8 +9,9 @@ const st = computed(() => (props.block.stage ? f.value.stage.get(props.block.sta
 const question = computed(() => (props.block.kind === "question" ? f.value.question.get(props.block.id) : undefined));
 const round = computed(() => {
   const q = question.value;
-  const item = q && st.value?.items.find((i) => i.type === "round" && i.round.id === q.round);
-  return item?.type === "round" ? { round: item.round, first: item.questions[0]?.id === q!.id } : undefined;
+  if (!q) return undefined;
+  const item = st.value?.items.find((i) => i.type === "round" && i.round.id === q.round);
+  return item?.type === "round" ? { round: item.round, first: item.questions[0]?.id === q.id } : undefined;
 });
 const result = computed(() => (props.block.kind === "result" ? st.value?.results.find((r) => r.id === props.block.id) : undefined));
 const topic = computed(() => (props.block.kind === "topic" ? f.value.topics.find((t) => t.id === props.block.id) : undefined));

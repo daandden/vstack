@@ -22,7 +22,10 @@ export function parseDiff(diff: string): { lines: DiffLine[]; hunks: Hunk[] } | 
   let leftNew = 0;
   const ended = () => {
     const h = hunks.length;
-    if (h && (leftOld > 0 || leftNew > 0)) return `hunk ${h} ends early: its header counts ${hunks[h - 1]!.old.count} old and ${hunks[h - 1]!.new.count} new lines, but ${leftOld} old and ${leftNew} new lines are missing`;
+    if (h && (leftOld > 0 || leftNew > 0)) {
+      const last = hunks[h - 1]!;
+      return `hunk ${h} ends early: its header counts ${last.old.count} old and ${last.new.count} new lines, but ${leftOld} old and ${leftNew} new lines are missing`;
+    }
     return undefined;
   };
   for (const [i, text] of linesOf(diff).entries()) {

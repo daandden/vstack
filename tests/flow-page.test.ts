@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { storedFolder, temporaryFlowFiles } from "./support/flow-store.ts";
+import { editStoredFlow, storedFolder, temporaryFlowFiles } from "./support/flow-store.ts";
 import { flowContent } from "./support/flow-client.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
@@ -116,7 +116,7 @@ test.each([
   expect(snapshot.path.spec).toBeDefined();
   expect(snapshot.path.grill.skills).toEqual(stages.some(([skill]) => skill === "grill-me") ? ["grill-me"] : stages.some(([skill]) => skill === "grill-with-docs") ? ["grill-with-docs"] : ["grill-with-docs", "grill-me"]);
   const steps = [snapshot.path.grill, snapshot.path.spec, ...snapshot.path.branches.flatMap((b: any) => b.steps)];
-  expect(steps.map((s: any) => [s.id, s.state])).toEqual(expected);
+  expect<readonly (readonly [string, string])[]>(steps.map((s: any) => [s.id, s.state])).toEqual(expected);
   expect(steps.flatMap((s: any) => s.stages)).toEqual(expect.arrayContaining(
     snapshot.stages.map((s: any) => ({ id: s.id, skill: s.skill, state: s.state })),
   ));
@@ -349,6 +349,71 @@ test("a bound caller submits a round and gets assigned references, a numbered la
   expect(receipt.ask.questions[0].options).toEqual([{ label: "A. First" }, { label: "B. Second" }]);
   expect(receipt).not.toHaveProperty("page");
   for (const content of ["Why scope matters.", "First does", "First gain", "it is first"]) expect(r.stdout).not.toContain(content);
+});
+
+test("submit returns the same short ask form for a new round, a repeat, and a pre-HTML receipt replay", () => {
+  const opened = openFlow();
+  const first = submit("s-1", round(question("initial")));
+  expect(first.code).toBe(0);
+  expect(submit("s-1", picked(first.json.refs.initial, "A")).code).toBe(0);
+
+  const next = round(
+    question("commands", {
+      multi: true,
+      title: `Use /skill:<name> & "quotes" and 'marks'?`,
+      description: "Read https://example.com/context first.",
+      today: [{ text: "The old command still runs.", source: "config.ts:1" }],
+      needs: [{ need: "See the configured command.", kind: "source-excerpt" }],
+      figures: [{ text: "enabled = true", kind: "source-excerpt" }],
+      options: [option("Keep defaults"), option(`Use <custom> & "quoted" 'args'`, { recommended: "It permits custom arguments." })],
+    }),
+    question("retry", { again: first.json.refs.initial }),
+  );
+  const published = submit("s-1", next);
+  expect(published.stderr).toBe("");
+  expect(published.code).toBe(0);
+  const { refs, ask, revision } = published.json;
+  const questions = [
+    {
+      id: refs.commands,
+      question: `Q2. Use /skill:<name> & "quotes" and 'marks'?`,
+      options: [{ label: "A. Keep defaults" }, { label: `B. Use <custom> & "quoted" 'args'` }],
+      multi: true, recommended: 1,
+    },
+    {
+      id: refs.retry,
+      question: "Q1. Which retry?",
+      options: [{ label: "A. First" }, { label: "B. Second" }],
+      recommended: 0,
+    },
+  ];
+  expect(ask.questions).toEqual(questions);
+  expect(ask.html).toBeString();
+  expect(ask.html.replace(/>\s+</g, "><")).toBe([
+    "<form><fieldset>",
+    "<legend>Q2. Use /skill:&lt;name&gt; &amp; &quot;quotes&quot; and &#x27;marks&#x27;?</legend>",
+    `<label><input type="checkbox" name="${refs.commands}" value="A. Keep defaults">A. Keep defaults</label>`,
+    `<label><input type="checkbox" name="${refs.commands}" value="B. Use &lt;custom&gt; &amp; &quot;quoted&quot; &#x27;args&#x27;" checked>B. Use &lt;custom&gt; &amp; &quot;quoted&quot; &#x27;args&#x27;</label>`,
+    "</fieldset><fieldset>",
+    "<legend>Q1. Which retry?</legend>",
+    `<label><input type="radio" name="${refs.retry}" value="A. First" checked>A. First</label>`,
+    `<label><input type="radio" name="${refs.retry}" value="B. Second">B. Second</label>`,
+    "</fieldset></form>",
+  ].join(""));
+
+  const replay = () => {
+    const receipt = submit("s-1", next);
+    expect(receipt.stderr).toBe("");
+    expect(receipt.code).toBe(0);
+    expect(receipt.json).toMatchObject({ repeated: true, revision, refs, ask });
+  };
+  const before = show(opened.flow);
+  replay();
+  editStoredFlow(home, opened.flow, (state) => {
+    state.submissions[opened.stage].receipt = { refs, ask: { questions } };
+  });
+  replay();
+  expect(show(opened.flow)).toEqual(before);
 });
 
 function observed() {

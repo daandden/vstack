@@ -64,7 +64,7 @@ bun run reader:typecheck
 
 `reader:prepare` generates the ignored `reader/.nuxt/` configuration and declarations. `reader:typecheck` runs that preparation itself before checking the reader's project references with `vue-tsc`. Preparation is required after a fresh checkout or a Nuxt configuration change. It does not build or replace the shipped reader bundle.
 
-Both checks return a nonzero exit status for source errors. The Bun check includes the omp extension, whose `@oh-my-pi/*` SDK declarations are not installed by this repo. Tests mock those host modules at runtime, but the mocks do not supply TypeScript declarations. Missing host declarations and existing source errors remain visible; do not replace them with ambient `any` modules or disable strict checking.
+Both checks exit 0 on a clean tree and return a nonzero exit status for source errors. The Bun check includes the omp extension. The repo pins `@oh-my-pi/pi-ai`, `@oh-my-pi/pi-coding-agent`, and `@oh-my-pi/pi-tui` as exact devDependencies only for their TypeScript declarations. omp still supplies those modules to the extension at runtime, and tests mock them. Keep the pins on the omp version vstack targets. Do not replace them with ambient `any` modules or disable strict checking.
 
 ### Tern Flow links
 

@@ -13,8 +13,16 @@ mkdirSync(home, { recursive: true });
 const env = { PATH: process.env.PATH ?? "", HOME: home, TERM: "dumb" };
 const ovnfs = Bun.which("ovnfs");
 if (!ovnfs) throw new Error("ovnfs is required. Run /skill:setup-vstack.");
+const statusArgs = [ovnfs, "--json", "status"];
+const statusReply = Bun.spawnSync(statusArgs, { stdout: "pipe", stderr: "pipe" });
+if (statusReply.exitCode !== 0) throw new Error(`ovnfs status failed: ${statusReply.stderr.toString().trim() || statusReply.stdout.toString().trim()}`);
+const { state, mount } = JSON.parse(statusReply.stdout.toString());
+if (typeof state !== "string" || !state || typeof mount !== "string" || !mount) throw new Error("ovnfs --json status must return state and mount paths.");
+const namespace = { OVNFS_STATE: state, OVNFS_MOUNT: mount };
+writeFileSync(join(evidence, "ovnfs-status.json"), JSON.stringify({ command: statusArgs, exit: statusReply.exitCode, state, mount }, null, 2));
+const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 const ovnfsWrapper = join(run, "data", "ovnfs");
-writeFileSync(ovnfsWrapper, `#!/bin/sh\nexport OVNFS_STATE=${JSON.stringify(process.env.OVNFS_STATE ?? join(process.env.HOME!, ".local/state/ovnfs"))}\nexport OVNFS_MOUNT=${JSON.stringify(process.env.OVNFS_MOUNT ?? join(process.env.HOME!, "checkouts"))}\nexec ${JSON.stringify(ovnfs)} "$@"\n`, { mode: 0o755 });
+writeFileSync(ovnfsWrapper, `#!/bin/sh\nexport OVNFS_STATE=${quote(state)}\nexport OVNFS_MOUNT=${quote(mount)}\nexec ${quote(ovnfs)} "$@"\n`, { mode: 0o755 });
 for (const [key, value] of [["task.isolation.enabled", "true"], ["isolation.backend", "auto"], ["ovnfs.path", ovnfsWrapper], ["worktree.base", base], ["async.enabled", "false"], ["eval.js", "true"], ["tools.approvalMode", "yolo"]]) {
   const configured = Bun.spawnSync(["omp", "config", "set", key!, value!], { env, stdout: "pipe", stderr: "pipe" });
   if (configured.exitCode !== 0) throw new Error(configured.stderr.toString());
@@ -26,7 +34,7 @@ const replies: Reply[] = [];
 const cell = (code: string) => replies.push({ tool: "eval", args: { language: "js", code } });
 const child = (path: string, content: string, questions: string[] = []) => {
   replies.push({ tool: "write", args: { path, content } });
-  replies.push({ tool: "yield", args: { data: { changed_paths: [path], open_questions: questions } } });
+  replies.push({ text: [`Changed ${path}.`, ...questions].join("\n") });
 };
 const spawn = (name: string, task: string) => `await agent(${JSON.stringify(task + " " + shared)}, {agent:"vstack-worker", label:${JSON.stringify(name)}, isolated:true, apply:false, merge:false})`;
 const merger = (role: string) => `
@@ -47,13 +55,13 @@ if(newHead.exitCode || branchTip.exitCode || newHead.stdout.toString()!==branchT
 };
 cell(`var fs = await import("node:fs");
 var path = await import("node:path");
-var E=${JSON.stringify(evidence)}, WT=${JSON.stringify(base)}, CLI=${JSON.stringify(cli)};
+var E=${JSON.stringify(evidence)}, WT=${JSON.stringify(base)}, CLI=${JSON.stringify(cli)}, OVNFS=${JSON.stringify(namespace)};
 var repo = process.cwd();
 function cmd(a){var r=Bun.spawnSync(a,{cwd:repo,stdout:"pipe",stderr:"pipe"});if(r.exitCode)throw new Error(a.join(" ")+": "+r.stderr);return r.stdout.toString();}
 function save(n,data){fs.writeFileSync(E+"/"+n+".json",JSON.stringify(data,null,2));}
 function check(ok,msg){if(!ok)throw new Error(msg);}
 function patchOf(result){var text=typeof result==="string"?result:JSON.stringify(result);var m=text.match(/Isolation: changes captured at \\x60?([^\\x60\\n]+?)\\x60? \\(apply=false\\)\\. Not applied\\./);check(m,"missing omp patch notice: "+text);check(fs.statSync(m[1]).size>0,"empty patch");return m[1];}
-function status(id,name,before){var r=Bun.spawnSync(["bun",CLI,"status",id,...(before?["--before",E+"/"+before+".status.json"]:[])],{cwd:repo,env:{...process.env,OMP_WORKTREE_DIR:WT,OVNFS_STATE:${JSON.stringify(process.env.OVNFS_STATE ?? join(process.env.HOME!, ".local/state/ovnfs"))},OVNFS_MOUNT:${JSON.stringify(process.env.OVNFS_MOUNT ?? join(process.env.HOME!, "checkouts"))}},stdout:"pipe",stderr:"pipe"});save(name,{exit:r.exitCode,stdout:r.stdout.toString(),stderr:r.stderr.toString()});check(r.exitCode===0,"status command failed: "+r.stderr);var parsed=JSON.parse(r.stdout.toString());save(name+".status",parsed);return parsed.workers[0];}
+function status(id,name,before){var r=Bun.spawnSync(["bun",CLI,"status",id,...(before?["--before",E+"/"+before+".status.json"]:[])],{cwd:repo,env:{...process.env,OMP_WORKTREE_DIR:WT,...OVNFS},stdout:"pipe",stderr:"pipe"});save(name,{exit:r.exitCode,stdout:r.stdout.toString(),stderr:r.stderr.toString()});check(r.exitCode===0,"status command failed: "+r.stderr);var parsed=JSON.parse(r.stdout.toString());save(name+".status",parsed);return parsed.workers[0];}
 function handoff(role,result,expected){var p=patchOf(result);fs.copyFileSync(p,E+"/"+role+".patch");save(role+"-completion",{result,patch:p});save(role+"-handoff",{patch:p,repo,expected,branch:"integration"});return p;}
 cmd(["git","init","-q","-b","integration"]);cmd(["git","config","user.name","Verify"]);cmd(["git","config","user.email","verify@example.invalid"]);
 fs.writeFileSync(repo+"/lifecycle.txt","base\\n");cmd(["git","add","lifecycle.txt"]);
@@ -73,7 +81,7 @@ cell(`var implPatch=handoff("implementer",implResult,"implemented\\n");var implB
 mergeCell("implementer");
 cell(`var implCommit=cmd(["git","rev-parse","integration"]).trim();check(cmd(["git","show","integration:lifecycle.txt"])==="implemented\\n","implementation commit missing");
 var implHash=Bun.hash(fs.readFileSync(implPatch)).toString(16);
-var implRelease=await tool.write({path:"proc://"+implementer.id+"/kill"});
+var implRelease=await tool.write({path:"proc://"+implementer.id+"/kill",content:""});
 save("implementer-release-reply",{id:implementer.id,release:implRelease});
 var implAfter=status(implementer.id,"implementer-after","implementer-before");check(implAfter.state==="absent","implementer survived release");check(Bun.hash(fs.readFileSync(implPatch)).toString(16)===implHash,"implementation patch changed");
 check(status(protectedWorker.id,"protected-after-implementer").state==="present","unrelated owned work was removed");
@@ -88,13 +96,13 @@ cell(`var fixtureAnswer="Accept reviewed wording";
 save("fixer-answer",{answer:fixtureAnswer,source:"scripted fixture answer, not maintainer authorization",state:"resolved"});${merger("fixer")}`);
 mergeCell("fixer");
 cell(`var fixCommit=cmd(["git","rev-parse","integration"]).trim();check(cmd(["git","show","integration:lifecycle.txt"])==="reviewed\\n","fixer commit missing");
-var fixRelease=await tool.write({path:"proc://"+fixer.id+"/kill"});
+var fixRelease=await tool.write({path:"proc://"+fixer.id+"/kill",content:""});
 save("fixer-release-reply",{id:fixer.id,release:fixRelease});
 var fixerAfter=status(fixer.id,"fixer-after","fixer-held");check(fixerAfter.state==="absent","fixer survived release");
 check(status(protectedWorker.id,"protected-after-fixer").state==="present","unrelated retained worker was deleted");
 check(fs.existsSync(fixerPatch)&&fs.existsSync(E+"/fixer.patch"),"fixer patch evidence missing");
 save("fixer-release",{id:fixer.id,commit:fixCommit,release:fixRelease,before:fixerBefore,after:fixerAfter,patch:fixerPatch,parent_alive:true});
-var protectedRelease=await tool.write({path:"proc://"+protectedWorker.id+"/kill"});
+var protectedRelease=await tool.write({path:"proc://"+protectedWorker.id+"/kill",content:""});
 save("protected-release-reply",{id:protectedWorker.id,release:protectedRelease});
 var protectedAfter=status(protectedWorker.id,"protected-after-preservation","protected-retained");check(protectedAfter.state==="absent","protected worker not released after preserving useful work");
 check(fs.readFileSync(E+"/protected.patch","utf8").includes("preserve this unfinished work"),"useful early-stop work lost");

@@ -297,7 +297,7 @@ for (const field of ["textarea", "select", "contenteditable"]) {
       expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
       const realInput = page.getByRole("textbox").filter({ visible: true }).last();
       await realInput.focus();
-      expect(await selectedStop(page)).toBe(before.stop);
+      expect<string | null | undefined>(await selectedStop(page)).toBe(before.stop);
       await realInput.blur();
       await page.waitForFunction((id) => location.hash === `#${id}`, latest);
       expect(await selectedStop(page)).toBe(`#${latest}`);

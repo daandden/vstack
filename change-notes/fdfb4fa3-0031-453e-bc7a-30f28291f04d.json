@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "web-fullstack curates one component-test stack when testing is requested: Vitest, Vue Test Utils, and happy-dom for Vue with Vite, plus Nuxt Test Utils for Nuxt, all as development dependencies with a `vitest run` test script (#531)."
+  ]
+}

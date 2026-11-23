@@ -964,11 +964,9 @@ function removeAll() {
       if (c.kind === "ovnfs") {
         if (!ovnfs.ok || !ovnfs.command || !c.ovnfs) throw new Error("ovnfs identity is unavailable");
         method = "ovnfs rm";
-        // ovnfs v0.3.0 rm also deletes the checkout's snapshots, which can hold work the Git guards never saw.
-        // A daemon that rejects the field predates that and never deletes snapshots, so plain rm is safe there.
-        let result = run([ovnfs.command, "ctl", "rm", JSON.stringify({ checkout: c.ovnfs.name, sticky_snapshots: true })]);
-        if (result.code !== 0 && `${result.err}${result.out}`.includes('unknown field "sticky_snapshots"')) result = run([ovnfs.command, "--json", "rm", c.ovnfs.name]);
-        if (result.code !== 0) throw new Error(result.err.trim() || `ovnfs rm exit ${result.code}`);
+        // The Git guards can verify a squash draft that ovnfs still considers unsaved.
+        const result = run([ovnfs.command, "--json", "rm", "--force", "--sticky-snapshots", c.ovnfs.name]);
+        if (result.code !== 0) throw new Error(result.err.trim() || result.out.trim() || `ovnfs rm exit ${result.code}`);
         const after = ovnfsListing();
         if (!after.ok || after.checkouts.some((checkout) => checkout.name === c.ovnfs!.name || checkout.path === c.path)) throw new Error("ovnfs removal could not be verified");
         if (lstat(c.entry)) {

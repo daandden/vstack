@@ -1,7 +1,10 @@
-import type { TSchema } from "@oh-my-pi/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
+import type { JudgmentState, TSchema } from "@oh-my-pi/pi-ai";
+import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
+import { toolApprovalScopeToken } from "@oh-my-pi/pi-coding-agent/tools/approval-scope";
+import { parseHtmlForm } from "@oh-my-pi/pi-tui/html-form/parse";
+import { parseHTML } from "@oh-my-pi/pi-utils/dom";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
@@ -24,8 +27,8 @@ const flowIdentity = (ctx: ExtensionContext) => [
   "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
 ];
 
-async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[], identity = flowIdentity(ctx)): Promise<T> {
-  const result = await pi.exec("bun", [flowScript, ...args, ...identity], { cwd: ctx.cwd });
+async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[], identity = flowIdentity(ctx), positionals: readonly string[] = []): Promise<T> {
+  const result = await pi.exec("bun", [flowScript, ...args, ...identity, "--", ...positionals], { cwd: ctx.cwd });
   if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow command exited ${result.code}`);
   return JSON.parse(result.stdout);
 }
@@ -51,6 +54,25 @@ function registerFlowContext(pi: ExtensionAPI): void {
   });
 }
 
+function askControlNames(html: unknown): { names: string[]; duplicates: Set<string>; hidden: Set<string> } {
+  const names = new Set<string>();
+  const duplicates = new Set<string>();
+  const hidden = new Set<string>();
+  if (typeof html !== "string") return { names: [], duplicates, hidden };
+  const { fields } = parseHtmlForm(html);
+  for (const { name } of fields) {
+    if (names.has(name)) duplicates.add(name);
+    else names.add(name);
+  }
+  // Inspect the picker's form root with its DOM parser because parseHtmlForm drops nameless hidden inputs.
+  const { document } = parseHTML(html);
+  const form = document.querySelector("form") ?? document;
+  for (const input of form.querySelectorAll("input")) {
+    if (input.getAttribute("type")?.toLowerCase() === "hidden") hidden.add(input.getAttribute("name") ?? "");
+  }
+  return { names: [...names], duplicates, hidden };
+}
+
 function registerFlowQuestions(pi: ExtensionAPI): void {
   type Bound = { binding: { flow: string; stage: string } | null; live?: { state: string; url?: string; error?: string } };
   const interactive = (ctx: ExtensionContext) => ctx.mode === "tui" && ctx.hasUI && ctx.agent.kind === "main";
@@ -62,16 +84,15 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     presenceWrites = presenceWrites.then(write).catch(() => {});
     return presenceWrites;
   };
-  const startPresence = (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
+  const startPresence = (ctx: ExtensionContext, picker: symbol, ids: readonly string[]) => {
     const identity = flowIdentity(ctx);
     const token = randomUUID();
-    const ids = Array.isArray(questions) ? questions.flatMap(q => typeof q?.id === "string" ? [q.id] : []) : [];
     let closed = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let pending: Promise<unknown>;
     const write = () => {
       pending = writePresence(async () => {
-        if (!closed) await flowPage(pi, ctx, ["picker", "open", "--picker", token, ...ids], identity);
+        if (!closed) await flowPage(pi, ctx, ["picker", "open", "--picker", token], identity, ids);
       });
       void pending.then(() => {
         if (!closed) { timer = setTimeout(write, 10_000); timer.unref(); }
@@ -85,27 +106,31 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     write();
   };
   let shownIn: ExtensionContext | undefined;
-  const showPanel = async (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
+  const showPanel = async (ctx: ExtensionContext, picker: symbol, ids: readonly string[] = [], readError?: string) => {
     pickers.add(picker);
-    startPresence(ctx, picker, questions);
+    startPresence(ctx, picker, ids);
     let text: string;
-    try {
-      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
-      if (!current.binding) return;
-      if (current.live?.state === "serving" && current.live.url) {
-        let target = current.binding.stage;
-        if (Array.isArray(questions) && questions.some(question => typeof question?.id === "string")) {
-          const response = await fetch(new URL("content", current.live.url));
-          if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
-          const content = await response.json() as { questions: { id: string }[] };
-          target = questions.find(question => content.questions.some(saved => saved.id === question?.id))?.id ?? target;
+    if (readError !== undefined) {
+      text = `Flow question lookup failed: ${readError}`;
+    } else {
+      try {
+        const current = await flowPage<Bound>(pi, ctx, ["bound"]);
+        if (!current.binding) return;
+        if (current.live?.state === "serving" && current.live.url) {
+          let target = current.binding.stage;
+          if (ids.length) {
+            const response = await fetch(new URL("content", current.live.url));
+            if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
+            const content = await response.json() as { questions: { id: string }[] };
+            target = ids.find(id => content.questions.some(saved => saved.id === id)) ?? target;
+          }
+          text = `<${current.live.url}#${target}>`;
+        } else {
+          text = `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
         }
-        text = `<${current.live.url}#${target}>`;
-      } else {
-        text = `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+      } catch (error) {
+        text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
       }
-    } catch (error) {
-      text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
     }
     const { Markdown } = await import("@oh-my-pi/pi-tui");
     const { OverlayPanel } = await import("@oh-my-pi/pi-tui/chrome");
@@ -129,21 +154,101 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     shownIn?.ui.setWidget(panelKey, undefined);
     shownIn = undefined;
   };
-  const ordinary = new Map<string, symbol>();
+  type ReadyAsk = { state: "ready"; names: string[]; scope?: object; readError?: string };
+  type OpenAsk = { state: "open"; picker: symbol };
+  type AskCall = { state: "checking" } | { state: "denied" } | ReadyAsk | OpenAsk;
+  const calls = new Map<string, AskCall>();
+  const closeAsk = (id: string) => {
+    const call = calls.get(id);
+    calls.delete(id);
+    if (call?.state === "open") hidePanel(call.picker);
+  };
+  const openAsk = (id: string, ctx: ExtensionContext, names: string[], readError?: string) => {
+    const call: OpenAsk = { state: "open", picker: Symbol(id) };
+    calls.set(id, call);
+    void showPanel(ctx, call.picker, names, readError);
+    return call;
+  };
+  pi.on("tool_call", async (event: ToolCallEvent, ctx: ExtensionContext) => {
+    if (event.toolName !== "ask" || !interactive(ctx)) return;
+    const { toolCallId } = event;
+    closeAsk(toolCallId);
+    const checking: AskCall = { state: "checking" };
+    calls.set(toolCallId, checking);
+    const scope = toolApprovalScopeToken();
+    const { names, duplicates, hidden } = askControlNames(event.input.html);
+    const ready: ReadyAsk = { state: "ready", names, scope };
+    let current: { binding: null } | { binding: { stage: string }; refusals: string[] };
+    try {
+      current = await flowPage(pi, ctx, ["ask-status"], flowIdentity(ctx), names);
+    } catch (error) {
+      ready.readError = error instanceof Error ? error.message : String(error);
+      if (calls.get(toolCallId) === checking) calls.set(toolCallId, ready);
+      return;
+    }
+    if (!current.binding) {
+      if (calls.get(toolCallId) === checking) calls.delete(toolCallId);
+      return;
+    }
+    const reasons = current.refusals;
+    for (const name of duplicates) reasons.push(`${JSON.stringify(name)}: more than one field uses this name`);
+    for (const name of hidden) reasons.push(`${name ? JSON.stringify(name) : "unnamed input"}: hidden controls are not permitted`);
+    if (!names.length && !hidden.size) reasons.push("the form has no controls");
+    if (calls.get(toolCallId) === checking) {
+      if (!reasons.length) calls.set(toolCallId, ready);
+      // The loop emits a synthetic start for a denial. The wrapper rejects without one.
+      else if (!scope) calls.set(toolCallId, { state: "denied" });
+      else calls.delete(toolCallId);
+    }
+    if (!reasons.length) return;
+    return {
+      block: true,
+      reason: `Flow ask refused for ${current.binding.stage}: ${reasons.join("; ")}. Publish the round and pass the receipt's ask.html unchanged to ask. For a re-ask, publish with again.`,
+    };
+  });
   pi.on("tool_execution_start", (event, ctx) => {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
-    const picker = Symbol(event.toolCallId);
-    ordinary.set(event.toolCallId, picker);
-    void showPanel(ctx, picker, event.args?.questions);
+    const call = calls.get(event.toolCallId);
+    if (call?.state === "denied") {
+      calls.delete(event.toolCallId);
+      return;
+    }
+    if (call?.state === "open") return;
+    if (call?.state === "ready") openAsk(event.toolCallId, ctx, call.names, call.readError);
+    else openAsk(event.toolCallId, ctx, askControlNames((event.args as { html?: unknown } | undefined)?.html).names);
   });
-  pi.on("tool_execution_end", event => {
-    const picker = ordinary.get(event.toolCallId);
-    ordinary.delete(event.toolCallId);
-    if (picker) hidePanel(picker);
-  });
-  pi.on("agent_end", () => { ordinary.clear(); hidePanel(); });
+  const finishAsk = (event: { toolName: string; toolCallId: string }) => {
+    if (event.toolName === "ask") closeAsk(event.toolCallId);
+  };
+  pi.on("tool_execution_end", finishAsk);
+  pi.on("tool_result", finishAsk);
+  const resetPickers = () => {
+    calls.clear();
+    hidePanel();
+  };
+  pi.on("agent_end", resetPickers);
   type Dialog = NonNullable<ExtensionContext["ui"]["askDialog"]>;
-  type Route = { ctx: ExtensionContext; depth: number; enabled: boolean; wrappers: Set<Dialog> };
+  type Custom = ExtensionContext["ui"]["custom"];
+  type FormDialog = NonNullable<ExtensionContext["ui"]["formDialog"]>;
+  type Route = { ctx: ExtensionContext; depth: number; enabled: boolean; wrappers: Set<Dialog | Custom | FormDialog> };
+  const duringScopedAsk = <T>(route: Route, dialog: () => Promise<T>): Promise<T> => {
+    const scope = toolApprovalScopeToken();
+    if (scope && route.enabled && interactive(route.ctx)) {
+      // Eval skips the loop start. The wrapper's scope ties this post-approval dialog to its guard result.
+      for (const [id, pending] of calls) {
+        if (pending.state !== "ready" || pending.scope !== scope) continue;
+        const open = openAsk(id, route.ctx, pending.names, pending.readError);
+        return (async () => {
+          try {
+            return await dialog();
+          } finally {
+            if (calls.get(id) === open) closeAsk(id);
+          }
+        })();
+      }
+    }
+    return dialog();
+  };
   const routeKey = Symbol("vstack.flow-questions");
   let active: Route | undefined;
   const install = (_event: unknown, ctx: ExtensionContext) => {
@@ -156,13 +261,29 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     route.ctx = ctx;
     route.enabled = true;
     active = route;
+    const state = route;
+    const custom = own("custom") as Custom | undefined;
+    if (typeof custom === "function" && !state.wrappers.has(custom)) {
+      const wrapped: Custom = <T>(...args: Parameters<Custom>) =>
+        duringScopedAsk(state, () => custom.apply(ctx.ui, args) as Promise<T>);
+      state.wrappers.add(wrapped);
+      ctx.ui.custom = wrapped;
+    }
+    const form = own("formDialog") as FormDialog | undefined;
+    if (typeof form === "function" && !state.wrappers.has(form)) {
+      const wrapped: FormDialog = (...args: Parameters<FormDialog>) =>
+        duringScopedAsk(state, () => form.apply(ctx.ui, args));
+      state.wrappers.add(wrapped);
+      ctx.ui.formDialog = wrapped;
+    }
     const original = own("askDialog") as Dialog | undefined;
     if (typeof original !== "function" || route.wrappers.has(original)) return;
-    const state = route;
     const wrapped: Dialog = async (questions, options) => {
       if (!state.enabled || state.depth || !interactive(state.ctx)) return original.call(ctx.ui, questions, options);
-      const picker = ordinary.size ? undefined : Symbol("askDialog");
-      const owned = picker ? [picker] : [...ordinary.values()];
+      const owned: symbol[] = [];
+      for (const call of calls.values()) if (call.state === "open") owned.push(call.picker);
+      const picker = owned.length ? undefined : Symbol("askDialog");
+      if (picker) owned.push(picker);
       state.depth++;
       if (picker) void showPanel(state.ctx, picker);
       try {
@@ -176,8 +297,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     ctx.ui.askDialog = wrapped;
   };
   const stop = () => {
-    ordinary.clear();
-    hidePanel();
+    resetPickers();
     if (active) active.enabled = false;
   };
   pi.on("session_start", install);
@@ -212,17 +332,17 @@ function startsMidSession(branch: readonly any[]): boolean {
     (entry.type === "message" && (entry.message?.role === "user" || entry.message?.role === "assistant")));
 }
 
-async function pickAddons(ctx: ExtensionContext, state: object, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
+async function pickAddons(ctx: ExtensionContext, state: JudgmentState, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
   try {
     const judge = resolveJudge({
       settings, registry: ctx.modelRegistry, sessionId: ctx.sessionManager.getSessionId(), purpose: "vstack-addons",
       onUsage: journalJudgmentUsage(ctx.sessionManager), cache: sharedJudgmentCache(),
     });
     const result = await judge.withCandidate((candidate, kind) =>
-      kind === "native" ? candidate.judge({ state, questions }, { signal }) : undefined, { signal });
+      kind === "native" ? candidate.judge({ state, questions }, { signal }) : Promise.resolve(undefined), { signal });
     if (!result || signal.aborted) return [];
     return Object.keys(questions).filter(name => {
-      const answer: any = result.answers?.[name];
+      const answer = result.answers?.[name];
       return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
     });
   } catch {

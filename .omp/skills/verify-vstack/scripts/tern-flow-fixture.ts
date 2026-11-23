@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
-import { basename, join, resolve, sep } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 
 const [command, runArg, ...args] = process.argv.slice(2);
@@ -47,26 +47,28 @@ if (command === "seed" || command === "other") {
   requireThat(command !== "seed" || !existsSync(fixturePath), "fixture already seeded; use a fresh run");
   const sessions = args.map(session);
   requireThat(new Set(sessions.map(s => s.id)).size === sessions.length, "native sessions must be distinct");
-  const dir = store.flowsDir(home, sessions[0].cwd);
-  requireThat(sessions.every(s => store.flowsDir(home, s.cwd) === dir), "sessions must share a project key");
-  requireThat(sessions.every(s => !store.readBinding(dir, s.id, "main")), "fixture refuses to overwrite any binding");
+  const project = store.projectStore(home, sessions[0].cwd);
+  requireThat(sessions.every(s => store.projectStore(home, s.cwd).key === project.key), "sessions must share a project key");
   const slug = command === "seed" ? "verify-native-following" : "verify-other-flow";
-  const { id, folder } = store.createFlowFolder(dir, slug);
-  const state = model.newFlow(id, slug, "Disposable Tern following fixture", time);
-  const records = sessions.map((s, index) => {
-    const stage = model.openStage(state, "grill-with-docs", undefined, time);
-    const receipt = model.contribute(state, stage.id, { version: 1, items: [
-      { kind: "round", questions: [{ ref: "choose", title: `Fixture session ${index + 1}?`, description: "Test data only. No user decision or model prompt.", needs: [{ need: "Read this disposable question.", kind: "prose" }], options: ["First", "Second"].map(label => ({ label, does: `Select ${label}.`, gains: ["Exercises following"], costs: ["No real decision"] })) }] },
-      { kind: "result", ref: "lesson", shape: "quiz", title: "Typing fixture", questions: [{ ref: "word", prompt: "Type Flow", answer: { text: ["Flow"] }, explanation: "A learning answer does not settle the picker." }] },
-    ] }, time, { capture() { throw new Error("fixture attachments are unsupported"); }, canonical() { throw new Error("fixture canonical files are unsupported"); } });
-    return { ...s, flow: id, stage: stage.id, question: receipt.refs.choose, result: receipt.refs.lesson };
+  const { id, records } = project.create(slug, (id: string, write: { save: (state: unknown) => void }) => {
+    requireThat(sessions.every(s => !project.binding(s.id, "main")), "fixture refuses to overwrite any binding");
+    const state = model.newFlow(id, slug, "Disposable Tern following fixture", time);
+    const records = sessions.map((s, index) => {
+      const stage = model.openStage(state, "grill-with-docs", undefined, time);
+      const receipt = model.contribute(state, stage.id, { version: 1, items: [
+        { kind: "round", questions: [{ ref: "choose", title: `Fixture session ${index + 1}?`, description: "Test data only. No user decision or model prompt.", needs: [{ need: "Read this disposable question.", kind: "prose" }], options: ["First", "Second"].map(label => ({ label, does: `Select ${label}.`, gains: ["Exercises following"], costs: ["No real decision"] })) }] },
+        { kind: "result", ref: "lesson", shape: "quiz", title: "Typing fixture", questions: [{ ref: "word", prompt: "Type Flow", answer: { text: ["Flow"] }, explanation: "A learning answer does not settle the picker." }] },
+      ] }, time, { capture() { throw new Error("fixture attachments are unsupported"); }, canonical() { throw new Error("fixture canonical files are unsupported"); } });
+      return { ...s, flow: id, stage: stage.id, question: receipt.refs.choose, result: receipt.refs.lesson };
+    });
+    write.save(state);
+    for (const s of records) project.bind({ flow: id, stage: s.stage, session: s.id, agent: "main", bound: time });
+    return { id, records };
   });
-  store.writeAtomic(store.statePath(folder), JSON.stringify(state) + "\n");
-  for (const s of records) store.writeBinding(dir, { flow: id, stage: s.stage, session: s.id, agent: "main", bound: time });
   const connection = await live.connect(home);
   requireThat(connection.state === "serving", `isolated host unavailable: ${JSON.stringify(connection)}`);
   try {
-    output = { fixture: true, home, key: basename(join(dir, "..")), flow: id, url: live.flowUrl(connection.port, connection.secret.read, basename(join(dir, "..")), id), sessions: records };
+    output = { fixture: true, home, key: project.key, flow: id, url: live.flowUrl(connection.port, connection.secret.read, project.key, id), sessions: records };
     writeFileSync(command === "seed" ? fixturePath : join(data, "tern-flow-other.json"), JSON.stringify(output, null, 2) + "\n");
   } finally { connection.release(); }
 } else if (command === "stop") {

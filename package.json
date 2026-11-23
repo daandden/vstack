@@ -19,6 +19,9 @@
     "@iconify-json/lucide": "1.2.150",
     "@nuxtjs/color-mode": "4.1.0",
     "@oh-my-pi/omptype": "19.0.0",
+    "@oh-my-pi/pi-ai": "19.0.0",
+    "@oh-my-pi/pi-coding-agent": "19.0.0",
+    "@oh-my-pi/pi-tui": "19.0.0",
     "@tanstack/vue-form": "1.33.5",
     "@tanstack/vue-table": "8.21.3",
     "@types/bun": "^1.4.4",
@@ -36,11 +39,7 @@
     "reka-ui": "2.11.0",
     "typescript": "6.0.3",
     "unocss": "66.13.0",
-    "vite-plus": "1.4.0",
     "vue": "3.5.44",
     "vue-tsc": "3.3.14"
-  },
-  "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@1.4.0"
   }
 }
