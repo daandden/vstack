@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import type { Subprocess } from "bun";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { writeExecutable } from "./support/executable.ts";
@@ -32,7 +32,7 @@ beforeEach(async () => {
   mkdirSync(repo);
   git(repo, "init", "-q", "-b", "main");
   writeFileSync(join(repo, "README.md"), "hello\n");
-  writeFileSync(join(repo, ".gitignore"), ".env\nnode_modules/\n");
+  writeFileSync(join(repo, ".gitignore"), ".env\nnode_modules/\nbuild/\n*.tsbuildinfo\nlocal-cache/\n");
   git(repo, "add", ".");
   git(repo, "commit", "-q", "-m", "init");
   mkdirSync(join(dir, "bin"));
@@ -133,11 +133,90 @@ function linkedWorktree(name: string, branch = `wt/${name}`) {
   return path;
 }
 
+function writeListedIgnoredTree(path: string) {
+  const tree = join(path, "node_modules");
+  mkdirSync(tree);
+  writeFileSync(join(tree, "local-patch.js"), "hand edit\n");
+  return tree;
+}
+
 test("an unused clean linked worktree is listed as unused and clean, with its branch", () => {
   const path = linkedWorktree("wt-a");
   const c = inventory()[path];
   expect(c).toMatchObject({ entry: path, kind: "linked-worktree", verdict: "unused", state: "clean", branch: "wt/wt-a", reasons: [], owners: [] });
   expect(c.fingerprint).toMatch(/^[0-9a-f]{64}$/);
+});
+
+test("listed ignored content is not read and does not stop automatic cleanup even when it changes", () => {
+  const dependencies = linkedWorktree("wt-dependencies");
+  const monorepo = linkedWorktree("wt-monorepo");
+  const control = linkedWorktree("wt-control");
+  const buildTree = join(monorepo, "packages", "web", "build");
+  const dependencyTree = writeListedIgnoredTree(dependencies);
+  mkdirSync(buildTree, { recursive: true });
+  const dependency = join(dependencyTree, "local-patch.js");
+  writeFileSync(join(monorepo, "packages", "web", "web.tsbuildinfo"), "cache\n");
+  writeFileSync(join(buildTree, "old.js"), "one-off artifact\n");
+  writeFileSync(join(repo, ".env"), "TOKEN=1\n");
+  writeFileSync(join(control, ".env"), "TOKEN=2\n");
+
+  const paths = [dependencies, monorepo];
+  const before = inventory();
+  const progress = cleanWt(["inventory", "--progress"]);
+  expect(progress.code).toBe(0);
+  expect(progress.json.checkouts).toEqual(Object.values(before));
+  const reads = progress.stderr.trim().split("\n").map(line => JSON.parse(line));
+  for (const path of paths) {
+    expect(before[path]).toMatchObject({ state: "clean", automatic: true });
+    expect(before[path].changes).toEqual({});
+    expect(reads).toContainEqual({ phase: "contents", stage: "complete", path, files: 0, bytes: 0 });
+  }
+  expect(before[control]).toMatchObject({ state: "dirty", automatic: false, changes: { ignored_unique: [".env"] } });
+  const controlReads = reads.find(r => r.phase === "contents" && r.stage === "complete" && r.path === control);
+  expect(controlReads.files).toBeGreaterThan(0);
+  expect(controlReads.bytes).toBeGreaterThan(0);
+
+  const ignoredStatus = (path: string) => git(path, "status", "--porcelain=v2", "-z", "--untracked-files=all", "--ignored");
+  const statuses = paths.map(ignoredStatus);
+  writeFileSync(dependency, "different hand edit\n");
+  writeFileSync(join(dependencyTree, "added.js"), "new artifact\n");
+  renameSync(join(buildTree, "old.js"), join(buildTree, "renamed.js"));
+  rmSync(join(monorepo, "packages", "web", "web.tsbuildinfo"));
+  const after = inventory();
+  paths.forEach((path, i) => {
+    expect(ignoredStatus(path)).not.toBe(statuses[i]);
+    expect(after[path].fingerprint).toBe(before[path].fingerprint);
+  });
+
+  const result = remove(...paths.map(path => `${path}=${before[path].fingerprint}`));
+  expect(result).toEqual({ removed: paths.map(path => ({ path, method: "git worktree remove" })), skipped: [], failed: [] });
+  for (const path of paths) {
+    expect(existsSync(path)).toBe(false);
+    expect(git(repo, "rev-parse", "--verify", `refs/heads/${before[path].branch}`)).toMatch(/^[0-9a-f]{40}$/);
+  }
+  expect(readFileSync(join(control, ".env"), "utf8")).toBe("TOKEN=2\n");
+});
+
+test("tracked and non-ignored untracked build paths still block automatic cleanup", () => {
+  const tracked = "packages/web/build/manifest";
+  mkdirSync(join(repo, dirname(tracked)), { recursive: true });
+  writeFileSync(join(repo, tracked), "committed\n");
+  git(repo, "add", "-f", tracked);
+  git(repo, "commit", "-qm", "track build manifest");
+  const path = linkedWorktree("wt-build-work");
+  writeFileSync(join(path, tracked), "edited\n");
+  writeFileSync(join(path, "build"), "untracked\n");
+  writeFileSync(join(path, "packages", "web", "build", "generated"), "ignored\n");
+  const checkout = inventory()[path];
+  expect(checkout).toMatchObject({ state: "dirty", automatic: false, changes: {
+    unstaged: [tracked], untracked: ["build"],
+  } });
+  expect(checkout.changes.ignored_unique).toBeUndefined();
+  const result = remove(`${path}=${checkout.fingerprint}`);
+  expect(result.removed).toEqual([]);
+  expect(result.skipped).toEqual([{ path, reason: "it holds dirty work, and removing it needs --approve" }]);
+  expect(readFileSync(join(path, tracked), "utf8")).toBe("edited\n");
+  expect(readFileSync(join(path, "build"), "utf8")).toBe("untracked\n");
 });
 
 test("machine-wide inventory resolves two repositories equally from Git and non-Git directories", () => {
@@ -191,8 +270,8 @@ test("machine-wide inventory resolves two repositories equally from Git and non-
 test("opt-in progress reports scan work and the actual ownership blocker without changing JSON stdout", () => {
   const path = linkedWorktree("wt-progress");
   for (const root of [repo, path]) {
-    mkdirSync(join(root, "node_modules"));
-    writeFileSync(join(root, "node_modules", "same.bin"), Buffer.alloc(4096, 7));
+    mkdirSync(join(root, "local-cache"));
+    writeFileSync(join(root, "local-cache", "same.bin"), Buffer.alloc(4096, 7));
   }
   const scanned = cleanWt(["inventory", "--progress"]);
   expect(scanned.code).toBe(0);
@@ -217,7 +296,7 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
   const fileBytes = 8192;
   for (const root of [repo, path]) {
     for (let group = 0; group < 32; group++) {
-      const folder = join(root, "node_modules", `package-${group}`);
+      const folder = join(root, "local-cache", `package-${group}`);
       mkdirSync(folder, { recursive: true });
       for (let file = 0; file < 8; file++) writeFileSync(join(folder, `${file}.bin`), Buffer.alloc(fileBytes, group + file));
     }
@@ -239,6 +318,7 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
   writeFileSync(facts, JSON.stringify(prepared));
   const investigated = measure("investigation", ["inventory", "--target", path, "--source-facts", facts]).checkouts[0];
   expect(investigated).toMatchObject({ state: "dirty", automatic: true, integration: { status: "verified" } });
+  expect(measured.find(item => item.operation === "investigation")!.bytes).toBeGreaterThanOrEqual(2 * fileCount * fileBytes);
   const removed = measure("removal", ["remove", `${path}=${investigated.fingerprint}`]);
   expect(removed).toEqual({ removed: [{ path, method: "git worktree remove --force" }], skipped: [], failed: [] });
   expect(measure("final verification", ["inventory"]).checkouts).toEqual([]);
@@ -250,6 +330,7 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
 
 test("a held session lease protects its checkout, and a session whose lease is free does not", async () => {
   const idle = linkedWorktree("wt-idle");
+  writeListedIgnoredTree(idle);
   const old = linkedWorktree("wt-old");
   session("idle-session-01", idle);
   await holdLease("idle-session-01");
@@ -356,31 +437,31 @@ test("staged, unstaged, and untracked changes make a checkout dirty, and each is
 test("an ignored or excluded file counts as dirty unless the main checkout holds the same bytes or link target", () => {
   // The main checkout's own ignored and excluded files, which omp's clone carries into a new worktree.
   writeFileSync(join(repo, ".env"), "TOKEN=1\n");
-  mkdirSync(join(repo, "node_modules", "pkg"), { recursive: true });
-  writeFileSync(join(repo, "node_modules", "pkg", "index.js"), "x\n");
+  mkdirSync(join(repo, "local-cache", "pkg"), { recursive: true });
+  writeFileSync(join(repo, "local-cache", "pkg", "index.js"), "x\n");
   mkdirSync(join(repo, ".omp", "skills"), { recursive: true });
   symlinkSync(join(dir, "verify-app"), join(repo, ".omp", "skills", "verify-app"));
   writeFileSync(join(repo, ".git", "info", "exclude"), ".omp/skills/verify-*\n");
 
   const same = linkedWorktree("wt-same");
   writeFileSync(join(same, ".env"), "TOKEN=1\n");
-  mkdirSync(join(same, "node_modules", "pkg"), { recursive: true });
-  writeFileSync(join(same, "node_modules", "pkg", "index.js"), "x\n");
+  mkdirSync(join(same, "local-cache", "pkg"), { recursive: true });
+  writeFileSync(join(same, "local-cache", "pkg", "index.js"), "x\n");
   mkdirSync(join(same, ".omp", "skills"), { recursive: true });
   symlinkSync(join(dir, "verify-app"), join(same, ".omp", "skills", "verify-app"));
 
   const edited = linkedWorktree("wt-edited");
   writeFileSync(join(edited, ".env"), "TOKEN=2\n");
-  mkdirSync(join(edited, "node_modules", "pkg"), { recursive: true });
-  writeFileSync(join(edited, "node_modules", "pkg", "index.js"), "x\n");
-  writeFileSync(join(edited, "node_modules", "pkg", "patched.js"), "local fix\n");
+  mkdirSync(join(edited, "local-cache", "pkg"), { recursive: true });
+  writeFileSync(join(edited, "local-cache", "pkg", "index.js"), "x\n");
+  writeFileSync(join(edited, "local-cache", "pkg", "patched.js"), "local fix\n");
   mkdirSync(join(edited, ".omp", "skills"), { recursive: true });
   symlinkSync(join(dir, "elsewhere"), join(edited, ".omp", "skills", "verify-app"));
 
   const inv = inventory();
   expect(inv[same]).toMatchObject({ state: "clean" });
   expect(inv[edited].state).toBe("dirty");
-  expect(inv[edited].changes.ignored_unique.sort()).toEqual([".env", ".omp/skills/verify-app", "node_modules/pkg/patched.js"]);
+  expect(inv[edited].changes.ignored_unique.sort()).toEqual([".env", ".omp/skills/verify-app", "local-cache/pkg/patched.js"]);
 });
 
 test("commits and stashes that exist only in a checkout are listed as unique history", () => {
@@ -461,6 +542,7 @@ test("dirty work is removed only with --approve, and unique history is never rem
   const m = join(sandbox, "m");
   git(m, "checkout", "-q", "-b", "task/work");
   git(m, "commit", "-q", "--allow-empty", "-m", "task work");
+  writeListedIgnoredTree(m);
   let inv = inventory();
   const unapproved = remove(`${dirty}=${inv[dirty].fingerprint}`, `${m}=${inv[m].fingerprint}`);
   expect(unapproved.removed).toEqual([]);
@@ -583,20 +665,20 @@ test.skipIf(process.platform === "linux")("a held session lease with no readable
 });
 
 test("an ignored link counts as preserved only when it resolves to the same target", () => {
-  mkdirSync(join(repo, "node_modules", "pkg"), { recursive: true });
-  writeFileSync(join(repo, "node_modules", "pkg", "cli.js"), "x\n");
-  mkdirSync(join(repo, "node_modules", ".bin"));
-  symlinkSync("../pkg/cli.js", join(repo, "node_modules", ".bin", "cli"));
-  symlinkSync("../../repo-notes", join(repo, "node_modules", "notes"));
+  mkdirSync(join(repo, "local-cache", "pkg"), { recursive: true });
+  writeFileSync(join(repo, "local-cache", "pkg", "cli.js"), "x\n");
+  mkdirSync(join(repo, "local-cache", ".bin"));
+  symlinkSync("../pkg/cli.js", join(repo, "local-cache", ".bin", "cli"));
+  symlinkSync("../../repo-notes", join(repo, "local-cache", "notes"));
   const path = linkedWorktree("wt-links");
-  mkdirSync(join(path, "node_modules", "pkg"), { recursive: true });
-  writeFileSync(join(path, "node_modules", "pkg", "cli.js"), "x\n");
-  mkdirSync(join(path, "node_modules", ".bin"));
-  symlinkSync("../pkg/cli.js", join(path, "node_modules", ".bin", "cli"));
+  mkdirSync(join(path, "local-cache", "pkg"), { recursive: true });
+  writeFileSync(join(path, "local-cache", "pkg", "cli.js"), "x\n");
+  mkdirSync(join(path, "local-cache", ".bin"));
+  symlinkSync("../pkg/cli.js", join(path, "local-cache", ".bin", "cli"));
   // The same link text leaves each checkout, so it points at two different dirs.
-  symlinkSync("../../repo-notes", join(path, "node_modules", "notes"));
+  symlinkSync("../../repo-notes", join(path, "local-cache", "notes"));
   const c = inventory()[path];
-  expect(c.changes.ignored_unique).toEqual(["node_modules/notes"]);
+  expect(c.changes.ignored_unique).toEqual(["local-cache/notes"]);
 });
 
 test.skipIf(process.platform === "linux")("a held lease's session file outside the session dirs is found through the process that holds it", async () => {
@@ -1335,6 +1417,7 @@ test("ovnfs reports missing checkout directories as uncertain instead of trustin
 
 test("ovnfs unmerged contents remain protected even with approval and an empty diff", () => {
   const path = ovnfsCheckout("omp-unmerged");
+  writeListedIgnoredTree(path);
   git(path, "checkout", "-qb", "side");
   writeFileSync(join(path, "README.md"), "side\n");
   git(path, "commit", "-qam", "side");
@@ -1354,6 +1437,7 @@ test.each(["linked", "task", "ovnfs"])("a %s source stays protected by every ovn
     ? taskSandbox("t-source", { pid: Bun.spawnSync(["true"]).pid, id: "source-task" })
     : kind === "ovnfs" ? ovnfsCheckout("omp-source") : linkedWorktree("wt-source");
   const path = kind === "task" ? join(entry, "m") : entry;
+  writeListedIgnoredTree(path);
   const before = inventory()[path];
   expect(before.automatic).toBe(true);
   const source = kind === "task" ? join(path, "nested") : path;
@@ -1376,6 +1460,7 @@ test.each(["linked", "task", "ovnfs"])("a %s source stays protected by every ovn
 
 test("cyclic or missing origin evidence keeps native and ovnfs checkouts uncertain", () => {
   const first = linkedWorktree("wt-origin-first");
+  writeListedIgnoredTree(first);
   const second = linkedWorktree("wt-origin-second");
   const before = inventory()[first];
   const mounted = ovnfsCheckout("omp-cycle-first");

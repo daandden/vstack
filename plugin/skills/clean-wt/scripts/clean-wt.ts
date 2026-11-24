@@ -500,15 +500,29 @@ function sourceRepository(path: string, visiting = new Set<string>()): Source | 
   return source;
 }
 
-function expand(root: string, rel: string): string[] {
-  const clean = rel.replace(/\/$/, "");
-  const st = lstat(join(root, clean));
-  if (!st?.isDirectory()) return [clean];
-  try {
-    return readdirSync(join(root, clean)).sort().flatMap((n) => expand(root, `${clean}/${n}`));
-  } catch {
-    return [clean];
-  }
+const DISPOSABLE_IGNORED_NAMES = new Set([
+  "node_modules", ".venv", "build", "out", "dist", "target", ".gradle", ".nuxt", ".output",
+  ".next", ".wrangler", "__pycache__", ".pytest_cache", ".DS_Store", ".idea", ".settings",
+  ".project", ".classpath", ".factorypath",
+]);
+
+function isDisposableIgnoredName(name: string): boolean {
+  return DISPOSABLE_IGNORED_NAMES.has(name) || name.endsWith(".tsbuildinfo");
+}
+
+function expandIgnored(root: string, rel: string, paths: string[]) {
+  if (lstat(join(root, rel))?.isDirectory()) {
+    let names: string[];
+    try {
+      names = readdirSync(join(root, rel)).sort();
+    } catch {
+      paths.push(rel);
+      return;
+    }
+    for (const name of names) {
+      if (!isDisposableIgnoredName(name)) expandIgnored(root, `${rel}/${name}`, paths);
+    }
+  } else paths.push(rel);
 }
 
 
@@ -587,11 +601,18 @@ function workState(path: string, ref: string | null): WorkState {
   const changes: Record<string, string[]> = { staged: [], unstaged: [], unmerged: [], untracked: [], ignored_unique: [], ignored_unverified: [] };
   const ignored: string[] = [];
   const tokens = r.out.split("\0");
+  const keptStatus: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    if (!t) continue;
+    if (t.startsWith("! ")) {
+      const rel = t.slice(2).replace(/\/$/, "");
+      if (rel.split("/").some(isDisposableIgnoredName)) continue;
+      const before = ignored.length;
+      expandIgnored(path, rel, ignored);
+      if (ignored.length === before) continue;
+    }
+    keptStatus.push(t);
     if (t.startsWith("? ")) changes.untracked.push(t.slice(2));
-    else if (t.startsWith("! ")) ignored.push(...expand(path, t.slice(2)));
     else if (t.startsWith("1 ") || t.startsWith("2 ")) {
       const fields = t.split(" ");
       const file = fields.slice(t.startsWith("1 ") ? 8 : 9).join(" ");
@@ -599,13 +620,15 @@ function workState(path: string, ref: string | null): WorkState {
       if (fields[1][1] !== ".") changes.unstaged.push(file);
       if (t.startsWith("2 ")) {
         const original = tokens[++i];
+        keptStatus.push(original);
         if (fields[1][0] !== ".") changes.staged.push(original);
         if (fields[1][1] !== ".") changes.unstaged.push(original);
       }
     } else if (t.startsWith("u ")) changes.unmerged.push(t.split(" ").slice(10).join(" "));
   }
+  const status = keptStatus.length === tokens.length ? r.out : keptStatus.join("\0");
   const flags = run(["git", "ls-files", "-v", "-z"], path);
-  if (flags.code !== 0) return { state: "unknown", changes: { unreadable: ["the index flags could not be read"] }, stamp: [r.out, flags.err] };
+  if (flags.code !== 0) return { state: "unknown", changes: { unreadable: ["the index flags could not be read"] }, stamp: [status, flags.err] };
   const hidden = flags.out.split("\0").filter((line) => line[0] === "S" || /^[a-z]/.test(line)).map((line) => line.slice(2));
   let hiddenUnknown = false;
   if (hidden.length > 0) {
@@ -624,7 +647,7 @@ function workState(path: string, ref: string | null): WorkState {
     }
   }
   const ignoredPaths = new Set(ignored);
-  const stamp = [r.out, flags.out, ...[...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])].map((rel) => {
+  const stamp = [status, flags.out, ...[...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])].map((rel) => {
     const st = lstat(join(path, rel));
     const content = st ? contentStamp(join(path, rel)) : "missing";
     if (ignoredPaths.has(rel)) {

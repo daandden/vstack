@@ -17,6 +17,8 @@ Save the renderer's stdout. Validate it against this Stage, then submit it uncha
 
 `summary.ts` saves `checkout-accounting.json` beside the input. It records full paths, raw records and reasons, offer and pick status, removal attempts, and verification facts.
 
+The inventory omits disposable ignored paths from `changes`. A checkout with only those paths can be a clean automatic candidate. Account for the checkout's removal or retention as usual. Do not add a separate record for the omitted paths.
+
 The skipped count covers both kinds of guarded skip. A final skip row notes missing presence or ownership evidence without changing that count. While cleanup is running, the removed count reflects what the guard reported. The final count includes only verified removals.
 
 After a verification attempt, a normal finish does not count a checkout as kept unless verification lists it and a separate check confirms its disk presence. The summary reports changes in confirmed ownership and excludes newly uncertain ownership from the kept count. If cleanup stops before verification finishes, the summary preserves the inventory and investigation classifications without treating them as verified. Checkouts classified as not safe to judge appear only as counts.

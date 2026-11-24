@@ -66,7 +66,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   const p = (name: string) => join(f.home, name);
   const command = (file: string, json: unknown) => ({ exit_code: 0, file: f.save(file, json) });
   const checkouts = [
-    checkout(p("gone"), { automatic: true }),
+    checkout(p("gone"), { state: "clean", automatic: true, changes: {}, fingerprint: "PRIVATE" }),
     checkout(p("picked-skip")),
     checkout(p("auto-skip"), { automatic: true }),
     checkout(p("failed")),
@@ -145,6 +145,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   f.publish(contribution);
   const accounting = f.accounting();
   expect(accounting.checkouts.map(({ discovery }: any) => discovery.path)).toEqual(checkouts.map(({ path }) => path));
+  expect(accounting.checkouts.find(({ discovery }: any) => discovery.path === p("gone")).discovery).toEqual(checkouts[0]);
   expect(accounting.checkouts.find(({ discovery }: any) => discovery.path === p("layout")).discovery.reasons).toHaveLength(2);
   expect(accounting.checkouts.find(({ discovery }: any) => discovery.path === p("picked-skip"))).toMatchObject({
     offer: { offered: true, picked: true },
