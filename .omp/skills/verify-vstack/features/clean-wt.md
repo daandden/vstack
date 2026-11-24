@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `cwt-inventory` `inventory` prints `base`, `evidence_gaps`, and one record per checkout with `kind`, `verdict`, `state`, `changes`, `unique_history`, `branch`, and `fingerprint`.
+- `cwt-inventory` `inventory` prints `base`, `evidence_gaps`, and one record per checkout. Git-dirty records have `outcome: "contents deferred"`, no usable fingerprint, and Git-reported changes. Targeted inventory supplies the fingerprint for removal of dirty work.
 - `cwt-session` from a session with a held lease, `evidence_gaps` is `[]` and an unowned clean checkout is `unused`. Without a held lease, the gap names the lease and the checkout is `uncertain`.
 - `cwt-remove-clean` `remove <path>=<fingerprint>` removes an unused clean linked worktree with `git worktree remove` and keeps its branch.
 - `cwt-skip-stale` a fingerprint that no longer matches skips the checkout with `it changed since the inventory`.
@@ -45,23 +45,27 @@ g "$F/repo" worktree add -q -b dirty-br "$B/wt-dirty" && echo draft > "$B/wt-dir
 g "$F/repo" worktree add -q --detach "$B/wt-unique" && g "$B/wt-unique" commit -q --allow-empty -m only-here
 ```
 
-The stub model plays the agent: each `{"tool":"bash"}` reply is one command that the session's bash tool runs. Set every call's `cwd` to the disposable source repository for this legacy removal drive. The global CLI proof below also runs from a disposable non-Git directory. Write the replies with `jq`, so the paths are expanded. `fp <name>` expands to a command substitution that reads that checkout's current fingerprint when the tool runs:
+The stub model plays the agent. Each `{"tool":"bash"}` reply runs one command in the disposable source repository. Write the replies with `jq` so paths expand before the drive. `fp` reads a clean checkout's discovery fingerprint. `target_fp` prepares source facts and reads the dirty checkout's targeted fingerprint when the tool runs.
 
 ```sh
 CW="bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts"
 fp() { echo "\$($CW inventory --base $B | jq -r '.checkouts[] | select(.path==\"$B/$1\") | .fingerprint')"; }
+target_fp() {
+  local facts="$VERIFY_RUN_DIR/data/cwt-source-facts.json"
+  echo "\$($CW inventory --base '$B' --prepare-source '$F/repo/.git' > '$facts' && $CW inventory --base '$B' --target '$B/$1' --source-facts '$facts' | jq -er '.checkouts[0].fingerprint | select(length > 0)')"
+}
 jq -n --arg cwd "$F/repo" --arg inv "$CW inventory --base $B" \
   --arg bad "$CW remove --base $B $B/wt-clean=nothex; echo exit=\$?" \
   --arg stale "$CW remove --base $B $B/wt-clean=$(printf '0%.0s' $(seq 64))" \
-  --arg mix "$CW remove --base $B $B/wt-clean=$(fp wt-clean) $B/wt-dirty=$(fp wt-dirty) $B/wt-unique=$(fp wt-unique)" \
-  --arg appr "$CW remove --base $B --approve $B/wt-dirty $B/wt-dirty=$(fp wt-dirty)" \
+  --arg mix "$CW remove --base $B $B/wt-clean=$(fp wt-clean) $B/wt-dirty=$(target_fp wt-dirty) $B/wt-unique=$(fp wt-unique)" \
+  --arg appr "$CW remove --base $B --approve $B/wt-dirty $B/wt-dirty=$(target_fp wt-dirty)" \
   '[{tool:"bash",args:{command:$inv,cwd:$cwd}},{tool:"bash",args:{command:$bad,cwd:$cwd}},{tool:"bash",args:{command:$stale,cwd:$cwd}},{tool:"bash",args:{command:$mix,cwd:$cwd}},{tool:"bash",args:{command:$appr,cwd:$cwd}},{text:"done"}]' \
   > "$VERIFY_RUN_DIR/clean-wt-remove-replies.json"
 ```
 
 Step `clean-wt-remove`: Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-wt-remove --session --replies "$VERIFY_RUN_DIR/clean-wt-remove-replies.json" '{"type":"prompt","message":"/skill:clean-wt"}'`. Exit 0 with `model_requests` 6. Save each tool result with `jq -r 'select(.type=="tool_execution_end") | .result.content[0].text' "$VERIFY_RUN_DIR/clean-wt-remove/rpc.jsonl" > "$VERIFY_RUN_DIR/clean-wt-remove-tools.txt"`. The five results, in order:
 
-1. Step `clean-wt-remove-inventory`: Inventory. `evidence_gaps` is `[]`. All three checkouts are `linked-worktree` and `unused`. `wt-clean` is `clean` on `clean-br`. `wt-dirty` is `dirty` with `changes.untracked` `["draft.txt"]`. `wt-unique` is `clean` with `branch` null and one `unique_history` entry with ref `HEAD`.
+1. Step `clean-wt-remove-inventory`: Inventory. `evidence_gaps` is `[]`. All three checkouts are `linked-worktree` and `unused`. `wt-clean` is `clean` on `clean-br`. `wt-dirty` is `dirty`, with `outcome: "contents deferred"`, `fingerprint: ""`, and `changes.untracked: ["draft.txt"]`. `wt-unique` is `clean` with a null branch and one `unique_history` entry for `HEAD`.
 2. Step `clean-wt-remove-bad-argument`: Bad argument. `clean-wt: <B>/wt-clean=nothex is not <path>=<fingerprint>`, then `exit=2`.
 3. Step `clean-wt-remove-stale`: Stale fingerprint. `removed` is `[]`, and `skipped` holds `wt-clean` with the reason `it changed since the inventory`.
 4. Step `clean-wt-remove-mixed`: Mixed removal. `removed` holds `wt-clean` with method `git worktree remove`. `skipped` holds `wt-dirty` with `it holds dirty work, and removing it needs --approve`, and `wt-unique` with `it holds commits or stashes that exist nowhere else (HEAD); push or branch them first`.
@@ -77,7 +81,7 @@ Use disposable inactive checkouts with a real remote whose symbolic HEAD differs
 
 Run these commands through the session's bash tool with the fixture's explicit `--base`. Save each stdout and exit separately.
 
-1. Step `clean-wt-phased-inventory`: Run `inventory`. Only the clean checkout is `automatic`. Dirty records have no `integration` and identify `source_git_dir`.
+1. Step `clean-wt-phased-inventory`: Run `inventory`. Only the clean checkout is `automatic`. Git-dirty records have `outcome: "contents deferred"` and `fingerprint: ""`. They have no `integration` and identify `source_git_dir`.
 2. Step `clean-wt-phased-clean`: Run `remove <clean-path>=<discovery-fingerprint>` without approval. Prove the clean checkout is absent before starting remote preparation.
 3. Step `clean-wt-phased-source-facts`: Run `inventory --prepare-source <source-git-dir>` once per distinct source, or repeat that flag in one call. Save stdout as `$VERIFY_RUN_DIR/source-facts.json`. Its `source_facts` array contains `{source_git_dir,remote,url,ref,sha}` or `{source_git_dir,reason}`.
 4. Step `clean-wt-phased-targeted`: Launch one `inventory --target <path> --source-facts "$VERIFY_RUN_DIR/source-facts.json"` command per remaining checkout separately. Use the same file in all commands. Each returns only its requested checkout and its newly investigated fingerprint. Equivalent tracked drafts and landed untracked copies qualify. Unique or unverified artifacts do not.
@@ -95,8 +99,8 @@ Step `clean-wt-ovnfs-fixture`: Use a disposable source Git repository under `$VE
 
 Drive the checkout's clean-wt CLI through `drive.ts --session` in a new omp process. Give each bash call `cwd` set to the disposable source repository, an explicit `--base`, and `timeout: 0`. Capture `ovnfs --json status` under the calling home. Prefix the CLI commands with its `state` as `OVNFS_STATE` and `mount` as `OVNFS_MOUNT`, so the throwaway HOME uses the same running daemon.
 
-1. Step `clean-wt-ovnfs-inventory`: Run `inventory` and save its JSON. The kept checkout is `kind: ovnfs`, `verdict: unused`, `state: dirty`, and `automatic: false`. Its `changes.untracked` contains `draft.txt`, and its `source_git_dir` identifies the disposable source. Before any removal, save the exact commands, stdout, stderr, and exit codes for `cat "<checkout>/.git"`, `git -C "<checkout>" rev-parse --path-format=absolute --git-dir`, and `test -d "<resolved-private-git-dir>"`. Require a `.git` file, a resolved private Git directory distinct from the disposable source's Git directory, and an existence check that exits 0. Preserve that absolute private Git path outside `data/` for the after-removal check.
-2. Step `clean-wt-ovnfs-skip`: Run `remove <path>=<fingerprint>` without approval. It reports no removal and skips the dirty checkout. Read `draft.txt` separately to prove its bytes remain.
+1. Step `clean-wt-ovnfs-inventory`: Run `inventory` and save its JSON. Require `kind: ovnfs`, `verdict: unused`, `state: dirty`, `automatic: false`, `outcome: "contents deferred"`, and `fingerprint: ""`. Its `changes.untracked` contains `draft.txt`, and its `source_git_dir` identifies the disposable source. Before any removal, save the commands, stdout, stderr, and exit codes for `cat "<checkout>/.git"`, `git -C "<checkout>" rev-parse --path-format=absolute --git-dir`, and `test -d "<resolved-private-git-dir>"`. Require a `.git` file, a resolved private Git directory distinct from the disposable source's Git directory, and an existence check that exits 0. Save that absolute private Git path outside `data/` for the after-removal check.
+2. Step `clean-wt-ovnfs-skip`: Run `inventory --prepare-source <source_git_dir>` and save stdout as source facts. Run `inventory --target <path> --source-facts <saved JSON>` and save the returned fingerprint. Run `remove <path>=<targeted-fingerprint>` without approval. It reports no removal and skips the dirty checkout. Read `draft.txt` separately to prove its bytes remain.
 3. Step `clean-wt-ovnfs-approved`: For this disposable fixture only, run `remove --approve <path> <path>=<fingerprint>` with the same fingerprint. This scripted flag proves the removal command, not human consent or the skill's picker.
 4. Step `clean-wt-ovnfs-final`: Save a final inventory, a real `ovnfs --json ls`, and a directory-existence check. The checkout is absent from all three, and removal reports method `ovnfs rm`. Run `test -d "<resolved-private-git-dir>"` against the exact path captured before removal and retain its command, stdout, stderr, and exit code. Require that private Git directory to be absent after removal. The snapshot saved before step 1 remains in the listing's `snapshots`. Drop that snapshot with `ovnfs drop <id>` after saving the evidence. Leave unrelated checkouts, snapshots, and session archives unchanged.
 

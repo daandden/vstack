@@ -60,6 +60,7 @@ clean-wt checks live ownership before checkout contents and discovers inactive w
 The JSON contains `base`, `evidence_gaps`, and `checkouts`. Each checkout has:
 
 - `outcome`. An `inspected` record contains the checkout's work-state evidence. A `protected` record has a guard that prevents removal. An `inspection failed` record is also protected. Its `failure` gives the failing `stage` and raw `error`. A `replaced` record means a different checkout instance now occupies the listed path. When identity cannot be established, the record stays protected. `Vanished`, `replaced`, and `inspection failed` records have no usable fingerprint and cannot be automatic, investigated for approval, or removed.
+- `contents deferred` is a discovery `outcome` for a checkout whose Git status reports staged, unstaged, unmerged, or untracked work. The record includes those changes, the source Git directory, and history evidence. Discovery reads no checkout contents for it and returns an empty fingerprint. It is never automatic. Targeted inventory checks its contents, including hidden tracked files and unlisted ignored paths, and returns the fingerprint for any later removal.
 
 - `path`, `entry`, and `kind`. Kinds are `ovnfs`, `linked-worktree`, `standalone-clone`, `task-isolation`, `orphaned-worktree`, and `excluded`. An `excluded` record reports a native entry without a supported checkout layout and carries protection reasons. It is never a removal candidate. Native named, verifier, and unknown-origin ovnfs entries remain visible with their protection reasons. An ovnfs record also has `ovnfs.name`, `ovnfs.source`, and the run-record path when found. Removing a legacy task checkout deletes its wrapper `entry`. Multiple mounts, unverified wrapper artifacts, missing task identity, unsupported mount teardown, and ovnfs dependents protect the whole wrapper.
 - `verdict`, `owners`, and `reasons`. An `owned` checkout has a live session, task, or cwd owner. Idle sessions and recorded extra workspace directories count. An `uncertain` checkout lacks ownership or teardown evidence. Keep both groups without content inspection. Global `evidence_gaps` protect every unowned checkout.
@@ -95,7 +96,7 @@ Mounted metadata can outlast a successful native removal. Once the native listin
 
 Run `inventory` under the Script contract's deadline rule. Record its exit and output in Scratch. On an actual nonzero exit, stop and report stderr. Account for `vanished`, `replaced`, and `inspection failed` records separately. None is a verified keep or removal. Leave `protected` checkouts alone. Keep unique-history checkouts and record the refs that must be preserved outside them before a later cleanup.
 
-Separate the remaining `inspected` records into automatic candidates and unresolved work. Every inventory record must have a group before removal.
+Separate the remaining `inspected` records into automatic candidates and unresolved work. Add `contents deferred` records without history blockers to unresolved work. A deferred record is not a removal candidate. Every inventory record must have a group before removal.
 
 ## 2. Remove clean checkouts first
 
@@ -105,17 +106,17 @@ Record each removal command's outcome, including a skip for a target that vanish
 
 ## 3. Compare remaining inactive work
 
-Group the remaining inactive work by `source_git_dir`. Run `inventory --prepare-source` once with each distinct source directory. Save the returned JSON as this run's shared source-facts file. If a source is unavailable, pass its unresolved reason rather than substituting the source checkout branch.
+Group unresolved work, including checkouts with `outcome: "contents deferred"`, by `source_git_dir`. Run `inventory --prepare-source` once with each distinct source directory. Save the returned JSON as this run's shared source-facts file. If a source is unavailable, pass its unresolved reason rather than substituting the source checkout branch.
 
 Every checkout investigator starts with `inventory --target <path> --source-facts <file>`. This is the integration phase, not a serial prepass. Read that record's remaining tracked diff, staged diff, untracked and ignored contents, and history evidence directly. Reserve deeper session reconstruction for material questions that remain unresolved.
 
 ### Investigation brief
 
-Investigate one inactive checkout read-only. Inputs are its discovery record and fingerprint, the shared source-facts file, and prior removal diagnostics. Run `inventory --progress --target <path> --source-facts <file>` first with a long or disabled bash tool deadline. Use `timeout: 0` to disable it. Save the progress stderr separately from the inventory stdout.
+Investigate one inactive checkout read-only. Inputs are its discovery record, the shared source-facts file, and prior removal diagnostics. Run `inventory --progress --target <path> --source-facts <file>` first with a long or disabled bash tool deadline. Use `timeout: 0` to disable it. Save the progress stderr separately from the inventory stdout.
 
 A host deadline that ends the command with no process exit code is not a nonzero script exit. On an actual nonzero exit, stop and return stderr. If a deadline interrupts the command, keep its command, stdout, stderr, and deadline message, then rerun it once with a longer or disabled deadline. If that retry is interrupted or exits nonzero, return that failure. Write no Scratch. Return every interrupted attempt's diagnostics.
 
-Retain the targeted inventory's raw JSON and investigated fingerprint unchanged. If ownership or safety guards now protect the checkout, return that outcome. Otherwise compare its remaining contents with the verified default commit. Return the checkout, the established source repository name as `repository`, the raw targeted record, original fingerprint, compared files and commits, and missing evidence.
+Retain the targeted inventory's raw JSON and fingerprint unchanged. If ownership or safety guards now protect the checkout, return that outcome. Otherwise compare its remaining contents with the verified default commit. Return the checkout, the established source repository name as `repository`, the raw targeted record, its fingerprint, compared files and commits, and missing evidence.
 
 For eligible unresolved work, also return `verdict` as one nonempty line of plain text. Say what remains in the checkout in words the user can scan in a picker. Give the keep or remove recommendation separately.
 
@@ -131,9 +132,9 @@ With two or more checkouts, use the Fan-out line. With one checkout, use the sin
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per remaining inactive checkout with work. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-scout"`. Each `task`: the investigation brief above, its discovery record and fingerprint, the shared source-facts file, the vstack root. Wait for every result. If they cannot start, stop: keep the unresolved checkouts and report the uninvestigated parts and why they could not start.
+Fan-out (skill://vstack-fan-out): parts: one per remaining inactive checkout with work. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-scout"`. Each `task`: the investigation brief above, its discovery record, the shared source-facts file, the vstack root. Wait for every result. If they cannot start, stop: keep the unresolved checkouts and report the uninvestigated parts and why they could not start.
 
-Spawn one `vstack-scout` via `task` (`agent: "vstack-scout"`): the investigation brief above, its discovery record and fingerprint, the shared source-facts file, the vstack root. Wait for its result. If it cannot be spawned, stop: keep the unresolved checkout and report why its investigation could not start.
+Spawn one `vstack-scout` via `task` (`agent: "vstack-scout"`): the investigation brief above, its discovery record, the shared source-facts file, the vstack root. Wait for its result. If it cannot be spawned, stop: keep the unresolved checkout and report why its investigation could not start.
 
 Investigators use the Session model unless the user configures `task.agentModelOverrides.vstack-scout: "@smol"` in omp settings. This is an opt-in override, not a model requirement.
 

@@ -56,6 +56,7 @@ const HEADINGS = {
   vanished: "Vanished",
   replaced: "Replaced",
   inspectionFailed: "Inspection failed",
+  contentsDeferred: "Contents deferred",
   notAttempted: "Kept, no removal attempted",
 } as const;
 type Group = keyof typeof HEADINGS;
@@ -221,6 +222,9 @@ function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pi
   if (record.discovery.outcome === "vanished") return { group: "vanished", reason: "Absent from the confirmation listings and disk" };
   if (record.discovery.outcome === "replaced") return { group: "replaced", reason: "A different checkout occupied the path during discovery" };
   if (record.discovery.outcome === "inspection failed") return { group: "inspectionFailed", reason: "Discovery inspection did not finish" };
+  if (record.discovery.outcome === "contents deferred" && investigation.status !== "complete") {
+    return { group: "contentsDeferred", reason: "Discovery deferred content inspection" };
+  }
   const attempt = removals.findLast(({ status }) => status === "removed") ?? removals.at(-1);
   if (attempt?.status === "removed") {
     const reason = phase === "finished" ? removalVerification(record, current, verificationStatus) : undefined;
@@ -325,7 +329,7 @@ function render(records: Records, directory: string, revises?: string) {
     const outcome = classify(record, current, records, verificationStatus, pending.get(path)?.label);
     const { group, reason, verificationGap } = outcome;
     if (group === "needsPick") actionable.add(path);
-    else if (group === "uncertain" || group === "vanished" || group === "replaced" || group === "inspectionFailed"
+    else if (group === "uncertain" || group === "vanished" || group === "replaced" || group === "inspectionFailed" || group === "contentsDeferred"
       || ((group === "unverified" || group === "ownershipChanged") && isUnsafe(current))) {
       const reasons = counts.get(group) ?? new Map<string, number>();
       reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
@@ -373,7 +377,7 @@ function render(records: Records, directory: string, revises?: string) {
   const removed = lines.get("removed")?.length ?? 0;
   const skipped = (lines.get("pickedSkip")?.length ?? 0) + (lines.get("automaticSkip")?.length ?? 0);
   const summary = [`${removed} removed`, `${actionable.size} needs your pick`, `${skipped} skipped`, `${kept} kept`];
-  for (const [group, label] of [["vanished", "vanished"], ["replaced", "replaced"], ["inspectionFailed", "inspection failed"]] as const) {
+  for (const [group, label] of [["vanished", "vanished"], ["replaced", "replaced"], ["inspectionFailed", "inspection failed"], ["contentsDeferred", "contents deferred"]] as const) {
     const count = counts.get(group)?.values().next().value;
     if (count) summary.push(`${count} ${label}`);
   }

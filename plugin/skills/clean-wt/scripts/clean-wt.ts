@@ -345,7 +345,7 @@ interface Owner {
 type Kind = "linked-worktree" | "orphaned-worktree" | "task-isolation" | "standalone-clone" | "ovnfs" | "excluded";
 type Verdict = "owned" | "uncertain" | "unused";
 type State = "clean" | "dirty" | "unknown" | "not checked";
-type Outcome = "inspected" | "protected" | "inspection failed" | "vanished" | "replaced";
+type Outcome = "inspected" | "protected" | "contents deferred" | "inspection failed" | "vanished" | "replaced";
 type Failure = { stage: "layout" | "source resolution" | "inspection"; error: string };
 
 interface Checkout {
@@ -605,7 +605,7 @@ function compareIgnored(path: string, ref: string | null, rel: string, content: 
 interface WorkState {
   state: "clean" | "dirty" | "unknown";
   changes: Record<string, string[]>;
-  stamp: unknown[];
+  stamp: unknown[] | null;
 }
 
 function contentStamp(file: string): string {
@@ -651,20 +651,12 @@ function workingEntry(path: string, rel: string): string | undefined {
 function workState(path: string, ref: string | null): WorkState {
   const status = requireGit(run(["git", "status", "--porcelain=v2", "-z", "--untracked-files=all", "--ignored"], path), "status");
   const changes: Record<string, string[]> = { staged: [], unstaged: [], unmerged: [], untracked: [], ignored_unique: [], ignored_unverified: [] };
-  const ignored: string[] = [];
+  const ignoredTokens: number[] = [];
   const tokens = status.split("\0");
-  const keptStatus: string[] = [];
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
-    if (t.startsWith("! ")) {
-      const rel = t.slice(2).replace(/\/$/, "");
-      if (rel.split("/").some(isDisposableIgnoredName)) continue;
-      const before = ignored.length;
-      expandIgnored(path, rel, ignored);
-      if (ignored.length === before) continue;
-    }
-    keptStatus.push(t);
-    if (t.startsWith("? ")) changes.untracked.push(t.slice(2));
+    if (t.startsWith("! ")) ignoredTokens.push(i);
+    else if (t.startsWith("? ")) changes.untracked.push(t.slice(2));
     else if (t.startsWith("1 ") || t.startsWith("2 ")) {
       const fields = t.split(" ");
       const file = fields.slice(t.startsWith("1 ") ? 8 : 9).join(" ");
@@ -672,13 +664,24 @@ function workState(path: string, ref: string | null): WorkState {
       if (fields[1][1] !== ".") changes.unstaged.push(file);
       if (t.startsWith("2 ")) {
         const original = tokens[++i];
-        keptStatus.push(original);
         if (fields[1][0] !== ".") changes.staged.push(original);
         if (fields[1][1] !== ".") changes.unstaged.push(original);
       }
     } else if (t.startsWith("u ")) changes.unmerged.push(t.split(" ").slice(10).join(" "));
   }
-  const stampedStatus = keptStatus.length === tokens.length ? status : keptStatus.join("\0");
+  if (plainInventory && (changes.staged.length || changes.unstaged.length || changes.unmerged.length || changes.untracked.length)) {
+    for (const key of Object.keys(changes)) if (changes[key].length === 0) delete changes[key];
+    return { state: "dirty", changes, stamp: null };
+  }
+  const ignored: string[] = [];
+  const discarded = new Set<number>();
+  for (const i of ignoredTokens) {
+    const rel = tokens[i].slice(2).replace(/\/$/, "");
+    const before = ignored.length;
+    if (!rel.split("/").some(isDisposableIgnoredName)) expandIgnored(path, rel, ignored);
+    if (ignored.length === before) discarded.add(i);
+  }
+  const stampedStatus = discarded.size ? tokens.filter((_, i) => !discarded.has(i)).join("\0") : status;
   const flags = requireGit(run(["git", "ls-files", "-v", "-z"], path), "ls-files");
   const hidden = flags.split("\0").filter((line) => line[0] === "S" || /^[a-z]/.test(line)).map((line) => line.slice(2));
   let hiddenUnknown = false;
@@ -920,6 +923,10 @@ function inspect(path: string, entry: string, kind: Kind, source: Source | null,
   progress("contents", { stage: "complete", path, files: contentReads.files - before.files, bytes: contentReads.bytes - before.bytes });
   progress("checkout", { stage: "history", path });
   const unique_history = uniqueHistory(path, kind, source, head, common.branch === null);
+  if (work.stamp === null) {
+    progress("checkout", { stage: "complete", path, state: "dirty", automatic: false, blockers: unique_history.map(tip => `unique history: ${tip.ref}`) });
+    return { ...common, outcome: "contents deferred", state: "dirty", changes: work.changes, unique_history, fingerprint: "", automatic: false, source_git_dir: source.commonDir };
+  }
   if (compareIntegration && work.state === "dirty") progress("checkout", { stage: "integration", path });
   const integration = compareIntegration && work.state === "dirty" ? integrated(path, source, work) : undefined;
   const artifacts = ["ignored_unique", "ignored_unverified", "unmerged"].some((key) => work.changes[key]?.length);

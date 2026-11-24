@@ -197,6 +197,49 @@ test("listed ignored content is not read and does not stop automatic cleanup eve
   expect(readFileSync(join(control, ".env"), "utf8")).toBe("TOKEN=2\n");
 });
 
+test("discovery defers contents for Git-dirty work that targeted inventory still reads", () => {
+  const path = linkedWorktree("wt-deferred");
+  const control = linkedWorktree("wt-ignored-only");
+  const unlisted = Buffer.alloc(2 * 1024 * 1024, 0x61);
+  const draft = join(path, "draft.txt");
+  writeFileSync(draft, "uncommitted work\n");
+  const listed = writeListedIgnoredTree(path);
+  writeFileSync(join(listed, "generated.bin"), Buffer.alloc(unlisted.length * 2, 0x62));
+  mkdirSync(join(path, "local-cache"));
+  writeFileSync(join(path, "local-cache", "unique.bin"), unlisted);
+  writeFileSync(join(control, ".env"), "TOKEN=local\n");
+
+  const discovery = cleanWt(["inventory", "--progress"]);
+  expect(discovery.code).toBe(0);
+  expect(discovery.json.checkouts).toContainEqual(expect.objectContaining({
+    path, outcome: "contents deferred", state: "dirty", automatic: false, fingerprint: "",
+    source_git_dir: join(repo, ".git"), changes: { untracked: ["draft.txt"] },
+  }));
+  expect(discovery.json.checkouts).toContainEqual(expect.objectContaining({
+    path: control, outcome: "inspected", automatic: false, changes: { ignored_unique: [".env"] },
+  }));
+  const discoveryReads = discovery.stderr.trim().split("\n").map(line => JSON.parse(line));
+  expect(discoveryReads).toContainEqual({ phase: "contents", stage: "complete", path, files: 0, bytes: 0 });
+  expect(discoveryReads).toContainEqual({ phase: "contents", stage: "complete", path: control, files: 1, bytes: 12 });
+
+  const sourceFacts = cleanWt(["inventory", "--prepare-source", join(repo, ".git")]);
+  expect(sourceFacts.code).toBe(0);
+  expect(sourceFacts.stderr).toBe("");
+  const facts = join(dir, "deferred-source-facts.json");
+  writeFileSync(facts, sourceFacts.stdout);
+  const targeted = cleanWt(["inventory", "--progress", "--target", path, "--source-facts", facts]);
+  expect(targeted.code).toBe(0);
+  expect(targeted.json.checkouts).toEqual([expect.objectContaining({
+    path, outcome: "inspected", state: "dirty", automatic: false, fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
+    changes: { untracked: ["draft.txt"], ignored_unique: ["local-cache/unique.bin"] },
+  })]);
+  const targetedReads = targeted.stderr.trim().split("\n").map(line => JSON.parse(line));
+  expect(targetedReads).toContainEqual({ phase: "contents", stage: "complete", path, files: 2, bytes: unlisted.length + 17 });
+  expect(readFileSync(draft, "utf8")).toBe("uncommitted work\n");
+  expect(statSync(join(listed, "generated.bin")).size).toBe(unlisted.length * 2);
+  expect(statSync(join(path, "local-cache", "unique.bin")).size).toBe(unlisted.length);
+});
+
 test("tracked and non-ignored untracked build paths still block automatic cleanup", () => {
   const tracked = "packages/web/build/manifest";
   mkdirSync(join(repo, dirname(tracked)), { recursive: true });
@@ -208,11 +251,12 @@ test("tracked and non-ignored untracked build paths still block automatic cleanu
   writeFileSync(join(path, "build"), "untracked\n");
   writeFileSync(join(path, "packages", "web", "build", "generated"), "ignored\n");
   const checkout = inventory()[path];
-  expect(checkout).toMatchObject({ state: "dirty", automatic: false, changes: {
+  expect(checkout).toMatchObject({ outcome: "contents deferred", state: "dirty", automatic: false, changes: {
     unstaged: [tracked], untracked: ["build"],
   } });
-  expect(checkout.changes.ignored_unique).toBeUndefined();
-  const result = remove(`${path}=${checkout.fingerprint}`);
+  const investigated = comparedCheckout(path);
+  expect(investigated.changes.ignored_unique).toBeUndefined();
+  const result = remove(`${path}=${investigated.fingerprint}`);
   expect(result.removed).toEqual([]);
   expect(result.skipped).toEqual([{ path, reason: "it holds dirty work, and removing it needs --approve" }]);
   expect(readFileSync(join(path, tracked), "utf8")).toBe("edited\n");
@@ -457,7 +501,8 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
   };
   const discovered = measure("discovery", ["inventory"]);
   const record = discovered.checkouts.find((c: Checkout) => c.path === path);
-  expect(record).toMatchObject({ state: "dirty", automatic: false });
+  expect(record).toMatchObject({ outcome: "contents deferred", state: "dirty", automatic: false, fingerprint: "" });
+  expect(measured[0]).toMatchObject({ files: 0, bytes: 0 });
   const prepared = measure("prepare source", ["inventory", "--prepare-source", record.source_git_dir]);
   const facts = join(dir, "large-tree-source.json");
   writeFileSync(facts, JSON.stringify(prepared));
@@ -575,7 +620,7 @@ test("staged, unstaged, and untracked changes make a checkout dirty, and each is
   mkdirSync(join(path, "notes"));
   writeFileSync(join(path, "notes", "draft.md"), "d\n");
   const c = inventory()[path];
-  expect(c.state).toBe("dirty");
+  expect(c).toMatchObject({ outcome: "contents deferred", state: "dirty", automatic: false, fingerprint: "" });
   expect(c.changes).toMatchObject({ staged: ["staged.txt"], unstaged: ["README.md"], untracked: ["notes/draft.md"] });
 });
 
@@ -688,15 +733,15 @@ test("dirty work is removed only with --approve, and unique history is never rem
   git(m, "checkout", "-q", "-b", "task/work");
   git(m, "commit", "-q", "--allow-empty", "-m", "task work");
   writeListedIgnoredTree(m);
-  let inv = inventory();
-  const unapproved = remove(`${dirty}=${inv[dirty].fingerprint}`, `${m}=${inv[m].fingerprint}`);
+  const inv = inventory();
+  const investigated = comparedCheckout(dirty);
+  const unapproved = remove(`${dirty}=${investigated.fingerprint}`, `${m}=${inv[m].fingerprint}`);
   expect(unapproved.removed).toEqual([]);
   expect(unapproved.skipped.map((s) => s.reason)).toEqual([
     "it holds dirty work, and removing it needs --approve",
     "it holds commits or stashes that exist nowhere else (refs/heads/task/work); push or branch them first",
   ]);
-  inv = inventory();
-  const approved = remove("--approve", dirty, "--approve", m, `${dirty}=${inv[dirty].fingerprint}`, `${m}=${inv[m].fingerprint}`);
+  const approved = remove("--approve", dirty, "--approve", m, `${dirty}=${investigated.fingerprint}`, `${m}=${inv[m].fingerprint}`);
   expect(approved.removed).toEqual([{ path: dirty, method: "git worktree remove --force" }]);
   expect(approved.skipped.map((s) => s.path)).toEqual([m]);
   expect(existsSync(dirty)).toBe(false);
@@ -1015,7 +1060,7 @@ test("approval cannot discard replaced untracked bytes even when file metadata i
   writeFileSync(file, "first\n");
   utimesSync(file, 1_700_000_000, 1_700_000_000);
   const before = statSync(file);
-  const c = inventory()[path];
+  const c = comparedCheckout(path);
   writeFileSync(file, "other\n");
   utimesSync(file, before.atime, before.mtime);
   const out = remove("--approve", path, `${path}=${c.fingerprint}`);
@@ -1105,8 +1150,8 @@ test("one approval does not authorize another unresolved checkout", () => {
   const second = linkedWorktree("wt-second");
   writeFileSync(join(first, "notes.txt"), "first\n");
   writeFileSync(join(second, "notes.txt"), "second\n");
-  const inv = inventory();
-  const out = remove("--approve", first, `${first}=${inv[first].fingerprint}`, `${second}=${inv[second].fingerprint}`);
+  const investigated = [first, second].map(comparedCheckout);
+  const out = remove("--approve", first, ...investigated.map(({ path, fingerprint }) => `${path}=${fingerprint}`));
   expect(out.removed.map((c) => c.path)).toEqual([first]);
   expect(out.skipped.map((c) => c.path)).toEqual([second]);
   expect(existsSync(second)).toBe(true);
@@ -1228,7 +1273,7 @@ test("discovery leaves integration for targeted comparisons after clean removal"
   const initial = cleanWt(["inventory"]);
   expect(initial.code).toBe(0);
   const records = Object.fromEntries(initial.json.checkouts.map((c: Checkout) => [c.path, c]));
-  expect(records[path]).toMatchObject({ state: "dirty", automatic: false });
+  expect(records[path]).toMatchObject({ outcome: "contents deferred", state: "dirty", automatic: false, fingerprint: "" });
   expect(records[path].integration).toBeUndefined();
   expect(remove(`${clean}=${records[clean].fingerprint}`).removed.map((c) => c.path)).toEqual([clean]);
   const source = join(repo, ".git");
@@ -1267,7 +1312,7 @@ test.each(["--skip-worktree", "--assume-unchanged"])("unique or unreadable track
   writeFileSync(join(path, "README.md"), "unique hidden draft\n");
   const c = inventory()[path];
   expect(c).toMatchObject({ state: "dirty", automatic: false, changes: { unstaged: ["README.md"] } });
-  expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(remove(`${path}=${comparedCheckout(path).fingerprint}`).removed).toEqual([]);
   chmodSync(join(path, "README.md"), 0);
   try {
     const unavailable = inventory()[path];
@@ -1535,15 +1580,17 @@ test("ovnfs guards protect live owners, private Git work, ignored files, stashes
   expect(JSON.parse(diff.stdout.toString())).toEqual({ changes: [] });
   const inv = inventory();
   expect(inv[owned]).toMatchObject({ verdict: "owned", state: "not checked" });
-  expect(inv[dirty]).toMatchObject({ verdict: "unused", state: "dirty", automatic: false, changes: {
-    staged: ["staged.txt"], unstaged: ["README.md"], untracked: ["draft.txt"], ignored_unique: [".env", "private.txt"],
+  expect(inv[dirty]).toMatchObject({ outcome: "contents deferred", verdict: "unused", state: "dirty", automatic: false, fingerprint: "", changes: {
+    staged: ["staged.txt"], unstaged: ["README.md"], untracked: ["draft.txt"],
   } });
   expect(inv[history].unique_history).toEqual([{ ref: "refs/heads/main", sha: commit }, { ref: "stash@{0}", sha: stash }]);
-  const blocked = remove(`${dirty}=${inv[dirty].fingerprint}`, "--approve", history, `${history}=${inv[history].fingerprint}`);
+  const investigated = comparedCheckout(dirty);
+  expect(investigated.changes.ignored_unique).toEqual([".env", "private.txt"]);
+  const blocked = remove(`${dirty}=${investigated.fingerprint}`, "--approve", history, `${history}=${inv[history].fingerprint}`);
   expect(blocked.removed).toEqual([]);
   expect(blocked.skipped.map((entry) => entry.path)).toEqual([dirty, history]);
   expect(existsSync(owned) && existsSync(dirty) && existsSync(history)).toBe(true);
-  const approved = remove("--approve", dirty, `${dirty}=${inv[dirty].fingerprint}`);
+  const approved = remove("--approve", dirty, `${dirty}=${investigated.fingerprint}`);
   expect(approved.removed).toEqual([{ path: dirty, method: "ovnfs rm" }]);
   expect(existsSync(gitDir)).toBe(false);
 });
@@ -1633,9 +1680,8 @@ test("ovnfs unmerged contents remain protected even with approval and an empty d
   git(path, "commit", "-qam", "main");
   Bun.spawnSync(["git", "merge", "side"], { cwd: path, env: ENV, stdout: "pipe", stderr: "pipe" });
   const c = inventory()[path];
-  expect(c.changes.unmerged).toEqual(["README.md"]);
-  expect(c.automatic).toBe(false);
-  expect(remove("--approve", path, `${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(c).toMatchObject({ outcome: "contents deferred", automatic: false, fingerprint: "", changes: { unmerged: ["README.md"] } });
+  expect(remove("--approve", path, `${path}=${comparedCheckout(path).fingerprint}`).removed).toEqual([]);
   expect(existsSync(path)).toBe(true);
 });
 

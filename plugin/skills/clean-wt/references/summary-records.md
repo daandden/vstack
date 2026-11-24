@@ -11,7 +11,9 @@ Keep `summary-records.json` beside the original command outputs in the run's `cl
 
 Set `phase: "finished"` at every exit. On an early exit, also set `stop` to the failing step: `inventory`, `prepare-source`, `investigation`, `approval`, `removal`, `verification`, or `other`. Do not replace missing evidence with empty successful output.
 
-Discovery records have an `outcome`: `inspected`, `protected`, `inspection failed`, `vanished`, or `replaced`. A scan with any failure or missing listed checkout reads both native listings once more to confirm absence. The confirmation read never adds checkouts. Only agreement between those listings and disk proves `vanished`. `Replaced` means a different checkout instance was observed at the listed path. Keep the raw `failure` from `inspection failed` in Scratch. The summary counts `vanished`, `replaced`, and `inspection failed` separately. None proves that clean-wt kept or removed a checkout.
+Discovery records have an `outcome`: `inspected`, `protected`, `contents deferred`, `inspection failed`, `vanished`, or `replaced`. A scan with any failure or missing listed checkout reads both native listings once more to confirm absence. The confirmation read never adds checkouts. Only agreement between those listings and disk proves `vanished`. `Replaced` means a different checkout instance was observed at the listed path. Keep the raw `failure` from `inspection failed` in Scratch. The summary counts `vanished`, `replaced`, and `inspection failed` separately. None proves that clean-wt kept or removed a checkout.
+
+`Contents deferred` records have no discovery fingerprint. Save the targeted inventory record and its fingerprint in `investigations` after inspection. Until an investigation completes, the summary counts the checkout under `Contents deferred`, not kept or removed. Once an investigation completes, account for removal or retention with the usual evidence.
 
 ## Publish the summary
 

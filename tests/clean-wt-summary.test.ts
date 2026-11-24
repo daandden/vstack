@@ -181,6 +181,49 @@ test("discovery churn and inspection failures are neither verified kept nor remo
   expect(f.accounting().checkouts.map(({ discovery }: { discovery: unknown }) => discovery)).toEqual(checkouts);
 });
 
+test("contents-deferred checkouts count separately until targeted evidence accounts for them", () => {
+  const f = fixture();
+  const checkouts = ["deferred", "removed", "kept"].map(name =>
+    checkout(join(f.home, name), { outcome: "contents deferred", automatic: false, fingerprint: "" }));
+  const [deferred, removed, kept] = checkouts;
+  const command = (file: string, json: unknown) => ({ exit_code: 0, file: f.save(file, json) });
+  const inventory = command("inventory.json", { checkouts, evidence_gaps: [] });
+  f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup deferred contents fixture"]);
+  const running = f.render({ version: 1, phase: "running", inventory });
+  expect(running.items[0].summary).toBe("0 removed · 0 needs your pick · 0 skipped · 0 kept · 3 contents deferred");
+  const receipt = f.publish(running);
+
+  const finished = f.render({
+    version: 1, phase: "finished", inventory,
+    investigations: [removed, kept].map(({ path }) => ({
+      path, status: "complete", checkout: checkout(path, { outcome: "inspected", fingerprint: "a".repeat(64) }),
+    })),
+    removals: [{
+      origin: "picked", targets: [{ path: removed.path, repository: "example" }],
+      output: command("removed.json", { removed: [{ path: removed.path, method: "git worktree remove --force" }], skipped: [], failed: [] }),
+    }],
+    verification: {
+      inventory: command("verify.json", { checkouts: [deferred, kept], evidence_gaps: [] }),
+      observations: [
+        { path: removed.path, disk: "absent", git_registered: false },
+        { path: kept.path, disk: "present" },
+        { path: deferred.path, disk: "present" },
+      ],
+    },
+  }, receipt.refs["cleanup-summary"]);
+  expect(finished.items[0]).toMatchObject({
+    summary: "1 removed · 0 needs your pick · 0 skipped · 1 kept · 1 contents deferred",
+    sections: [
+      { heading: "Removed", blocks: [{ list: ["~/removed · example"] }] },
+      { heading: "Contents deferred", blocks: [{ list: ["1 · Discovery deferred content inspection"] }] },
+      { heading: "Kept, no removal attempted", blocks: [{ list: ["~/kept · not offered for removal"] }] },
+    ],
+  });
+  f.publish(finished);
+  expect(f.accounting().checkouts.map(({ discovery, outcome }: { discovery: unknown; outcome: { group: string } }) =>
+    [discovery, outcome.group])).toEqual([[deferred, "contentsDeferred"], [removed, "removed"], [kept, "notAttempted"]]);
+});
+
 test("guarded skips still count once when final verification cannot confirm presence or ownership", () => {
   const f = fixture();
   const targets = ["confirmed", "missing", "uncertain"].map((name) => ({
