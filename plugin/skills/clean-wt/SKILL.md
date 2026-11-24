@@ -37,6 +37,7 @@ Run the script with this omp session's bash tool, which sets `PI_SESSION_ID`:
 	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" inventory --progress
 	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" inventory --progress --prepare-source <source_git_dir> [--prepare-source <source_git_dir>]...
 	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" inventory --progress --target <path> --source-facts <source-facts.json>
+	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" inventory --progress --verify <summary-records.json>
 	bun "$(realpath skill://clean-wt/scripts/clean-wt.ts)" remove --progress [--approve <path>]... <path>=<fingerprint>...
 	bun "$(realpath skill://clean-wt/scripts/approval.ts)" <investigated-evidence.json>
 	bun "$(realpath skill://clean-wt/scripts/summary.ts)" <summary-records.json> [--revises <result-id>]
@@ -87,6 +88,8 @@ Mounted metadata can outlast a successful native removal. Once the native listin
 `inventory --prepare-source` prepares source facts once per distinct source Git directory without scanning checkout contents. Save its raw JSON as `source-facts.json` in this run's Scratch entry. Its `source_facts` array contains `{source_git_dir, remote, url, ref, sha}` records, or `{source_git_dir, reason}` when verification fails. These are per-run evidence, not a persistent cache or deletion authority.
 
 `inventory --target <path> --source-facts <file>` inspects only that checkout and compares its work with the prepared facts for its actual source. Repeat `--target` only when intentionally inspecting several targets in one process. Separate investigators share the same facts file. Targeted comparisons check the local remote identity and reuse the advertised commit, fetching that exact object into a checkout only if needed. They do not rediscover remote HEAD. They return newly investigated fingerprints bound to their contents and comparison evidence.
+
+`inventory --verify <summary-records.json>` checks the original checkout records against fresh native listings, live ownership, and disk presence. It checks linked-worktree registration and branch refs in the Git common directory from discovery or targeted inventory. Verification checks metadata only, emits no fingerprints, and cannot authorize `remove`.
 
 `remove` validates every requested path before deleting anything. It inspects only requested targets, not all checkout contents under the base. Discovery fingerprints authorize only the discovery classification. For targeted integration fingerprints, removal independently refreshes the source's remote identity and advertised HEAD before rechecking current ownership, bytes, fingerprint, history, and approval. Shared facts never substitute for these checks. It reports per-target `removed`, `skipped`, and `failed` outcomes. A linked worktree goes through Git and keeps its branch. An automatic dirty draft needs forced Git removal but no `--approve`. Other dirty contents need `--approve <path>` and the investigated fingerprint. Unknown Git state stays protected because its history cannot be verified. Approval never overrides ownership, uncertainty, stale evidence, or unique history.
 
@@ -162,6 +165,6 @@ After each removal command reports, record its outcome and revise the summary be
 
 ## 5. Verify and summarize
 
-Run `inventory` again under the Script contract's deadline rule. Save its output and the independent observations described in [Summary records](references/summary-records.md). Check that removed checkouts are absent from inventory and disk, including the ovnfs listing for ovnfs removals. For removed linked worktrees, check that Git no longer registers their paths and that any named branches remain. Check that kept checkouts remain. If evidence is missing or ownership changed, record what you observed without claiming it verifies the outcome.
+Run `inventory --progress --verify <summary-records.json>` under the Script contract's deadline rule. Save stdout and stderr separately. Record the verification output under `verification.inventory` in [Summary records](references/summary-records.md). Use the returned facts as written. If a checkout vanished during verification, its listing and disk disagree, or a required observation is missing, leave the outcome unverified. Report confirmed ownership changes separately.
 
 Set the summary records to `finished` and publish the final revision. On an early exit, record the stop step and publish the same way, with only the evidence you have. Summarize the outcome in chat and name the run's Scratch folder once.

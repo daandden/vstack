@@ -61,6 +61,10 @@ function checkout(path: string, fields: Record<string, unknown> = {}) {
   return { path, kind: "linked-worktree", verdict: "unused", state: "dirty", owners: [], unique_history: [], reasons: [], ...fields };
 }
 
+function observed(path: string, facts: Record<string, unknown> = {}) {
+  return { path, disk: "present", omp_listed: true, ovnfs_listed: false, ...facts };
+}
+
 test("a finished summary groups each original checkout once and keeps raw evidence in Scratch", () => {
   const f = fixture();
   const p = (name: string) => join(f.home, name);
@@ -84,7 +88,14 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   ];
   const inventory = command("inventory.json", { checkouts, evidence_gaps: ["PRIVATE"] });
   const verification = command("verify-inventory.json", {
-    checkouts: checkouts.filter(({ path }) => ![p("gone"), p("gone-unverified")].includes(path)), evidence_gaps: [],
+    checkouts: checkouts.filter(({ path }) => ![p("gone"), p("gone-unverified")].includes(path))
+      .map(({ path, verdict, owners, reasons }) => ({ path, verdict: verdict === "uncertain" ? "unused" : verdict, owners, reasons })),
+    evidence_gaps: [],
+    observations: [
+      observed(p("gone"), { disk: "absent", omp_listed: false, git_registered: false, branch_preserved: true }),
+      observed(p("gone-unverified"), { disk: "absent", omp_listed: false, ovnfs_listed: null }),
+      ...checkouts.filter(({ path }) => ![p("gone"), p("gone-unverified")].includes(path)).map(({ path }) => observed(path)),
+    ],
   });
   const removeAutomatic = command("remove-automatic.json", {
     removed: [{ path: p("gone"), method: "PRIVATE" }],
@@ -114,15 +125,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
       { origin: "automatic", targets: ["gone", "auto-skip"].map((name) => ({ path: p(name), repository: "actual-repo" })), output: removeAutomatic },
       { origin: "picked", targets: mapped.slice(0, 3).map(({ path }) => ({ path, repository: "actual-repo" })), output: removePicked },
     ],
-    verification: {
-      inventory: verification,
-      observations: [
-        { path: p("gone"), disk: "absent", git_registered: false, branch_preserved: true },
-        { path: p("gone-unverified"), disk: "absent", ovnfs_listed: null },
-        ...checkouts.filter(({ path }) => ![p("gone"), p("gone-unverified")].includes(path))
-          .map(({ path }) => ({ path, disk: "present" })),
-      ],
-    },
+    verification: { inventory: verification },
   });
   const [result] = contribution.items;
   expect(result.summary).toBe("1 removed · 0 needs your pick · 2 skipped · 10 kept");
@@ -164,12 +167,13 @@ test("discovery churn and inspection failures are neither verified kept nor remo
   const checkouts = [vanished, replaced, failed];
   const inventory = { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) };
   const verification = {
-    inventory: { exit_code: 0, file: f.save("verify-inventory.json", { checkouts: [checkout(replaced.path), checkout(failed.path)], evidence_gaps: [] }) },
-    observations: [
-      { path: vanished.path, disk: "absent", git_registered: false },
-      { path: replaced.path, disk: "present" },
-      { path: failed.path, disk: "present" },
-    ],
+    inventory: { exit_code: 0, file: f.save("verify-inventory.json", {
+      checkouts: [checkout(replaced.path), checkout(failed.path)], evidence_gaps: [],
+      observations: [
+        observed(vanished.path, { disk: "absent", omp_listed: false, git_registered: false }),
+        observed(replaced.path), observed(failed.path),
+      ],
+    }) },
   };
   f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup discovery fixture"]);
   const contribution = f.render({ version: 1, phase: "finished", inventory, verification });
@@ -203,12 +207,15 @@ test("contents-deferred checkouts count separately until targeted evidence accou
       output: command("removed.json", { removed: [{ path: removed.path, method: "git worktree remove --force" }], skipped: [], failed: [] }),
     }],
     verification: {
-      inventory: command("verify.json", { checkouts: [deferred, kept], evidence_gaps: [] }),
-      observations: [
-        { path: removed.path, disk: "absent", git_registered: false },
-        { path: kept.path, disk: "present" },
-        { path: deferred.path, disk: "present" },
-      ],
+      inventory: command("verify.json", {
+        checkouts: [deferred, kept].map(({ path, verdict, owners, reasons }) => ({ path, verdict, owners, reasons })),
+        evidence_gaps: [],
+        observations: [
+          { path: removed.path, disk: "absent", omp_listed: false, ovnfs_listed: false, git_registered: false },
+          { path: kept.path, disk: "present", omp_listed: true, ovnfs_listed: false },
+          { path: deferred.path, disk: "present", omp_listed: true, ovnfs_listed: false },
+        ],
+      }),
     },
   }, receipt.refs["cleanup-summary"]);
   expect(finished.items[0]).toMatchObject({
@@ -243,10 +250,10 @@ test("guarded skips still count once when final verification cannot confirm pres
       }) },
     }],
     verification: {
-      inventory: { exit_code: 0, file: f.save("verify.json", { evidence_gaps: [], checkouts: [
-        checkout(confirmed.path), checkout(uncertain.path, { verdict: "uncertain" }),
-      ] }) },
-      observations: [{ path: confirmed.path, disk: "present" }, { path: missing.path, disk: "absent" }, { path: uncertain.path, disk: "present" }],
+      inventory: { exit_code: 0, file: f.save("verify.json", {
+        evidence_gaps: [], checkouts: [checkout(confirmed.path), checkout(uncertain.path, { verdict: "uncertain" })],
+        observations: [observed(confirmed.path), observed(missing.path, { disk: "absent", omp_listed: false }), observed(uncertain.path)],
+      }) },
     },
   });
   f.publish(contribution);
@@ -396,11 +403,15 @@ test("the final summary reports ownership changes and does not confirm unobserve
   const checkouts = [stable, lost, changed, gained, missingDisk, missingListing, excluded];
   const verified = [stable, checkout(lost.path), owned("changed", "PRIVATE-6"), owned("gained", "PRIVATE-7"), missingDisk, excluded];
   const inventory = { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) };
-  const observations = [stable, lost, changed, gained, missingListing].map(({ path }) => ({ path, disk: "present" }));
+  const observations = [
+    ...[stable, lost, changed, gained].map(({ path }) => observed(path)),
+    observed(missingDisk.path, { disk: "unknown" }), observed(excluded.path, { disk: "unknown" }),
+    observed(missingListing.path, { omp_listed: false }),
+  ];
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
     version: 1, phase: "finished", inventory,
-    verification: { inventory: { exit_code: 0, file: f.save("verify.json", { checkouts: verified, evidence_gaps: [] }) }, observations },
+    verification: { inventory: { exit_code: 0, file: f.save("verify.json", { checkouts: verified, evidence_gaps: [], observations }) } },
   });
   expect(contribution.items[0]).toMatchObject({
     summary: "0 removed · 0 needs your pick · 0 skipped · 4 kept",
@@ -432,8 +443,7 @@ test("an incomplete verification does not confirm a kept outcome even if the pat
   const contribution = f.render({
     version: 1, phase: "finished", inventory,
     verification: {
-      inventory: { exit_code: 0, file: f.save("verify.json", { checkouts, evidence_gaps: ["PRIVATE"] }) },
-      observations: [{ path, disk: "present" }],
+      inventory: { exit_code: 0, file: f.save("verify.json", { checkouts, evidence_gaps: ["PRIVATE"], observations: [observed(path)] }) },
     },
   });
   expect(contribution.items[0]).toMatchObject({
@@ -455,13 +465,69 @@ test("newly uncertain ownership is not counted as kept even when disk presence i
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
     version: 1, phase: "finished", inventory: inventory("inventory.json", before),
-    verification: { inventory: inventory("verify.json", after), observations: [{ path, disk: "present" }] },
+    verification: { inventory: { exit_code: 0, file: f.save("verify.json", {
+      checkouts: [after], evidence_gaps: [], observations: [observed(path)],
+    }) } },
   });
   f.publish(contribution);
   expect(contribution.items[0]).toMatchObject({
     summary: "0 removed · 0 needs your pick · 0 skipped · 0 kept",
     sections: [{ heading: "Outcome not verified", blocks: [{ list: ["~/draft · ownership could not be verified"] }] }],
   });
+});
+
+test("final counts use only the verification command's independent observations", () => {
+  const f = fixture();
+  const p = (name: string) => join(f.home, name);
+  const removed = ["removed", "branch-unverified", "late-absence"];
+  const kept = ["gained", "uncertain", "vanished", "unlisted"];
+  const observation = (name: string, listed: boolean, disk: string, facts = {}) => ({
+    path: p(name), omp_listed: listed, ovnfs_listed: false, disk, ...facts,
+  });
+  f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup verification fixture"]);
+  const contribution = f.render({
+    version: 1, phase: "finished",
+    inventory: { exit_code: 0, file: f.save("discovery.json", {
+      checkouts: [...removed, ...kept].map((name) => checkout(p(name), { branch: "wt/draft" })), evidence_gaps: [],
+    }) },
+    removals: [{
+      origin: "automatic", targets: removed.map((name) => ({ path: p(name), repository: "example" })),
+      output: { exit_code: 0, file: f.save("remove.json", {
+        removed: removed.map((name) => ({ path: p(name), method: "git worktree remove" })), skipped: [], failed: [],
+      }) },
+    }],
+    verification: { inventory: { exit_code: 0, file: f.save("verify.json", {
+      evidence_gaps: [], ownership_gaps: ["PRIVATE"],
+      checkouts: [
+        { path: p("gained"), verdict: "owned", owners: [{ type: "session", id: "PRIVATE" }], reasons: [] },
+        { path: p("uncertain"), verdict: "uncertain", owners: [], reasons: ["PRIVATE"] },
+        { path: p("vanished"), verdict: "unused", owners: [], reasons: [] },
+      ],
+      observations: [
+        observation("removed", false, "absent", { git_registered: false, branch_preserved: true }),
+        observation("branch-unverified", false, "absent", { git_registered: false, branch_preserved: null }),
+        observation("late-absence", false, "absent", { git_registered: false, branch_preserved: true, disk_changed: true }),
+        observation("gained", true, "present"), observation("uncertain", true, "present"),
+        observation("vanished", true, "absent"), observation("unlisted", false, "present"),
+      ],
+    }) } },
+  });
+  expect(contribution.items[0]).toMatchObject({
+    summary: "1 removed · 0 needs your pick · 0 skipped · 1 kept",
+    sections: [
+      { heading: "Removed", blocks: [{ list: ["~/removed · example"] }] },
+      { heading: "Kept, ownership changed", blocks: [{ list: ["~/gained · in use at verification"] }] },
+      { heading: "Outcome not verified", blocks: [{ list: [
+        "~/branch-unverified · removal reported, but branch preservation was not verified",
+        "~/late-absence · checkout changed on disk during verification",
+        "~/uncertain · ownership could not be verified",
+        "~/vanished · checkout was absent from disk at verification",
+        "~/unlisted · kept checkout was not listed at verification",
+      ] }] },
+    ],
+  });
+  expect(JSON.stringify(contribution)).not.toContain("PRIVATE");
+  f.publish(contribution);
 });
 
 test("separator characters in checkout fields do not make distinct choices look the same", () => {

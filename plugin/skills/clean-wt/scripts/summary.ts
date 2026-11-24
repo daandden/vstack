@@ -24,10 +24,15 @@ type Attempt = { origin: "automatic" | "picked"; targets: { path: string; reposi
 type Observation = {
   path: string;
   disk: "present" | "absent" | "unknown";
-  ovnfs_listed?: boolean | null;
+  entry_disk?: Observation["disk"];
+  disk_changed?: boolean;
+  omp_listed: boolean | null;
+  ovnfs_listed: boolean | null;
   git_registered?: boolean | null;
   branch_preserved?: boolean | null;
 };
+type Ownership = Pick<Checkout, "path" | "verdict" | "owners" | "reasons">;
+type Verification = { checkouts: Ownership[]; evidence_gaps: string[]; observations: Observation[] };
 type Offer = { question_ref: string; picked?: string[] };
 type RemovalResult = { path: string; method?: string; reason?: string; error?: string };
 type RemovalReport = Record<"removed" | "skipped" | "failed", RemovalResult[]>;
@@ -37,7 +42,7 @@ type CheckoutRecord = {
   investigation: Investigation | { status: "not-needed" };
   offer: { offered: boolean; picked: boolean; settled: boolean; question_ref?: string };
   removals: AttemptRecord[];
-  verification: { inventory?: Checkout; observation?: Observation };
+  verification: { inventory?: Ownership; observation?: Observation };
 };
 type Section = { heading: string; blocks: ({ prose: string } | { list: string[] } | { code: string })[] };
 const HEADINGS = {
@@ -101,7 +106,7 @@ type Records = {
   approval_plan?: string;
   offers?: Offer[];
   removals?: Attempt[];
-  verification?: { inventory?: CommandOutput; observations: Observation[] };
+  verification?: { inventory: CommandOutput };
 };
 
 function noInventory(records: Records): string {
@@ -134,6 +139,15 @@ function readInventory(directory: string, output?: CommandOutput): Inventory | u
       && typeof c.verdict === "string" && typeof c.state === "string" && Array.isArray(c.owners)
       && Array.isArray(c.reasons) && Array.isArray(c.unique_history))) return undefined;
   return raw as Inventory;
+}
+
+function readVerification(directory: string, output?: CommandOutput): Verification | undefined {
+  const raw = commandJson(directory, output) as Partial<Verification> | undefined;
+  if (!raw || !Array.isArray(raw.evidence_gaps) || !Array.isArray(raw.checkouts) || !Array.isArray(raw.observations) ||
+    !raw.checkouts.every((c) => c && typeof c.path === "string" && ["owned", "unused", "uncertain"].includes(c.verdict)
+      && Array.isArray(c.owners) && Array.isArray(c.reasons)) ||
+    !raw.observations.every((o) => o && typeof o.path === "string" && ["present", "absent", "unknown"].includes(o.disk))) return undefined;
+  return raw as Verification;
 }
 
 function removalRecords(directory: string, attempts: Attempt[]): Map<string, AttemptRecord[]> {
@@ -182,10 +196,10 @@ function isUnsafe(checkout: Checkout): boolean {
     && (checkout.kind === "excluded" || checkout.verdict !== "unused" || checkout.state === "unknown" || checkout.reasons.length > 0);
 }
 
-function ownershipChange(before: Checkout, after: Checkout): string | undefined {
+function ownershipChange(before: Checkout, after: Ownership): string | undefined {
   if (before.verdict !== "owned") return after.verdict === "owned" ? "in use at verification" : undefined;
   if (after.verdict !== "owned") return "no longer in use at verification";
-  const identities = ({ owners }: Checkout) => new Set(owners.map(({ type, id, pid }) => `${type}:${id ?? pid ?? ""}`));
+  const identities = ({ owners }: Ownership) => new Set(owners.map(({ type, id, pid }) => `${type}:${id ?? pid ?? ""}`));
   const previous = identities(before);
   const current = identities(after);
   if (previous.size !== current.size) return "different owners at verification";
@@ -199,22 +213,32 @@ type VerificationStatus = "not-run" | "incomplete" | "complete";
 function removalVerification(record: CheckoutRecord, target: Checkout, status: VerificationStatus): string | undefined {
   if (status === "not-run") return "removal reported, but verification did not run";
   if (status !== "complete") return "removal reported, but verification did not finish";
-  if (record.verification.inventory) return "removal reported, but the checkout is still listed";
   const observed = record.verification.observation;
-  if (observed?.disk !== "absent") return "removal reported, but absence from disk was not verified";
-  if (target.kind === "ovnfs" && observed.ovnfs_listed !== false) return "removal reported, but ovnfs absence was not verified";
+  if (record.verification.inventory || observed?.omp_listed === true || observed?.ovnfs_listed === true) {
+    return "removal reported, but the checkout is still listed";
+  }
+  if (observed?.disk !== "absent" || (target.kind === "task-isolation" && observed.entry_disk !== "absent")) {
+    return "removal reported, but absence from disk was not verified";
+  }
+  if (observed.disk_changed) return "checkout changed on disk during verification";
+  if (observed.ovnfs_listed !== false) return "removal reported, but ovnfs absence was not verified";
+  if (observed.omp_listed !== false) return "removal reported, but omp absence was not verified";
   if (target.kind === "linked-worktree") {
     if (observed.git_registered !== false) return "removal reported, but Git registration was not verified";
     if (target.branch && observed.branch_preserved !== true) return "removal reported, but branch preservation was not verified";
   }
 }
 
-function keptVerification({ inventory, observation }: CheckoutRecord["verification"], status: VerificationStatus): string | undefined {
+function keptVerification({ inventory, observation }: CheckoutRecord["verification"], status: VerificationStatus, kind: string): string | undefined {
   if (status === "not-run") return "verification did not run";
   if (status !== "complete") return "verification did not finish";
-  if (!inventory) return "kept checkout was not listed at verification";
+  if (!inventory || (kind === "ovnfs" ? observation?.ovnfs_listed : observation?.omp_listed) !== true) {
+    return "kept checkout was not listed at verification";
+  }
   if (observation?.disk === "absent") return "checkout was absent from disk at verification";
   if (observation?.disk !== "present") return "presence on disk was not verified";
+  if (observation.disk_changed) return "checkout changed on disk during verification";
+  if (inventory.verdict === "uncertain") return "ownership could not be verified";
 }
 
 function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pick<Records, "phase" | "stop">, verificationStatus: VerificationStatus, pending?: string): Outcome {
@@ -234,10 +258,9 @@ function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pi
     const picked = attempt.origin === "picked";
     let verificationGap: string | undefined;
     if (phase === "finished") {
+      const gap = keptVerification(verification, verificationStatus, current.kind);
       if (verification.observation?.disk !== "present") verificationGap = "presence not verified";
-      else if (verificationStatus !== "complete" || !verification.inventory || verification.inventory.verdict === "uncertain") {
-        verificationGap = "ownership not verified";
-      }
+      else if (gap) verificationGap = "ownership not verified";
     }
     return { group: picked ? "pickedSkip" : "automaticSkip", reason: skipReason(attempt.outcome?.reason, picked), verificationGap };
   }
@@ -246,16 +269,11 @@ function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pi
     return { group: "removalPending", reason: phase === "finished" ? "picked, but removal did not run" : "picked for removal" };
   }
   if (attempt) return { group: "unverified", reason: "no removal outcome was recorded" };
-  if (phase === "finished" && (!stop || verificationStatus === "complete")) {
-    const reason = keptVerification(verification, verificationStatus);
+  if (phase === "finished" && (!stop || verificationStatus !== "not-run")) {
+    const reason = keptVerification(verification, verificationStatus, current.kind);
     if (reason) return { group: "unverified", reason };
-    if (verification.inventory) {
-      if (current.verdict !== "uncertain" && verification.inventory.verdict === "uncertain") {
-        return { group: "unverified", reason: "ownership could not be verified" };
-      }
-      const change = ownershipChange(current, verification.inventory);
-      if (change) return { group: "ownershipChanged", reason: change };
-    }
+    const change = verification.inventory && ownershipChange(current, verification.inventory);
+    if (change) return { group: "ownershipChanged", reason: change };
   }
   if (pending) return { group: "needsPick", reason: pending };
   if (offer.offered) return { group: "notPicked", reason: "not selected for removal" };
@@ -303,11 +321,11 @@ function render(records: Records, directory: string, revises?: string) {
   }
   const attempts = removalRecords(directory, records.removals ?? []);
   const investigations = new Map(records.investigations?.map((item) => [item.path, item]));
-  const verification = readInventory(directory, records.verification?.inventory);
+  const verification = readVerification(directory, records.verification?.inventory);
   const verificationStatus: VerificationStatus = !records.verification?.inventory ? "not-run"
     : records.verification.inventory.exit_code === 0 && verification?.evidence_gaps.length === 0 ? "complete" : "incomplete";
   const verificationInventory = new Map(verification?.checkouts.map((c) => [c.path, c]));
-  const observations = new Map(records.verification?.observations.map((o) => [o.path, o]));
+  const observations = new Map(verification?.observations.map((o) => [o.path, o]));
   const lines = new Map<Group, string[]>();
   const counts = new Map<Group, Map<string, number>>();
   const actionable = new Set<string>();

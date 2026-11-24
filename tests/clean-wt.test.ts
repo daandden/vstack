@@ -133,6 +133,15 @@ function linkedWorktree(name: string, branch = `wt/${name}`) {
   return path;
 }
 
+function verificationInput(discovered: unknown, investigations: unknown[] = []) {
+  const records = join(dir, "summary-records.json");
+  writeFileSync(join(dir, "discovery.json"), JSON.stringify(discovered));
+  writeFileSync(records, JSON.stringify({
+    version: 1, inventory: { exit_code: 0, file: "discovery.json" }, investigations,
+  }));
+  return records;
+}
+
 function writeListedIgnoredTree(path: string) {
   const tree = join(path, "node_modules");
   mkdirSync(tree);
@@ -481,15 +490,18 @@ test("opt-in progress reports scan work and the actual ownership blocker without
 
 test("large ignored trees keep fresh cleanup guards within a bounded content-read workload", () => {
   const { path } = integratedDraft();
+  const survivor = linkedWorktree("wt-verify-survivor");
   const fileCount = 256;
   const fileBytes = 8192;
-  for (const root of [repo, path]) {
+  const writeTree = (root: string) => {
     for (let group = 0; group < 32; group++) {
       const folder = join(root, "local-cache", `package-${group}`);
       mkdirSync(folder, { recursive: true });
       for (let file = 0; file < 8; file++) writeFileSync(join(folder, `${file}.bin`), Buffer.alloc(fileBytes, group + file));
     }
-  }
+  };
+  writeTree(repo);
+  writeTree(path);
   const measured: { operation: string; files: number; bytes: number; elapsed_ms: number }[] = [];
   const measure = (operation: string, args: string[]) => {
     const started = performance.now();
@@ -511,12 +523,102 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
   expect(measured.find(item => item.operation === "investigation")!.bytes).toBeGreaterThanOrEqual(2 * fileCount * fileBytes);
   const removed = measure("removal", ["remove", `${path}=${investigated.fingerprint}`]);
   expect(removed).toEqual({ removed: [{ path, method: "git worktree remove --force" }], skipped: [], failed: [] });
-  expect(measure("final verification", ["inventory"]).checkouts).toEqual([]);
+  writeTree(survivor);
+  const survivingFile = join(survivor, "local-cache", "package-0", "0.bin");
+  const records = verificationInput(discovered, [{ path, status: "complete", checkout: investigated }]);
+  const verified = measure("final verification", ["inventory", "--verify", records]);
+  expect(verified.checkouts).toEqual([{ path: survivor, verdict: "unused", owners: [], reasons: [] }]);
+  expect(verified.observations).toEqual(expect.arrayContaining([
+    expect.objectContaining({ path, omp_listed: false, ovnfs_listed: false, disk: "absent", git_registered: false, branch_preserved: true }),
+    expect.objectContaining({ path: survivor, omp_listed: true, disk: "present" }),
+  ]));
+  expect(measured.at(-1)).toMatchObject({ files: 0, bytes: 0 });
+  expect(existsSync(path)).toBe(false);
+  expect(readFileSync(survivingFile)).toEqual(Buffer.alloc(fileBytes));
   const totals = measured.reduce((sum, item) => ({ files: sum.files + item.files, bytes: sum.bytes + item.bytes, elapsed_ms: sum.elapsed_ms + item.elapsed_ms }), { files: 0, bytes: 0, elapsed_ms: 0 });
   console.log(JSON.stringify({ workload: { files_per_tree: fileCount, bytes_per_tree: fileCount * fileBytes }, measured, totals }));
   expect(totals.bytes).toBeLessThanOrEqual(8 * fileCount * fileBytes + 1024);
   expect(totals.files).toBeLessThanOrEqual(8 * fileCount + 16);
 }, 30000);
+
+test("verification checks the full branch ref when a tag has the same name", () => {
+  const branch = "draft";
+  const path = linkedWorktree("wt-branch-tag-collision", branch);
+  git(repo, "tag", branch);
+  const discovered = cleanWt(["inventory"]);
+  expect(discovered.code).toBe(0);
+  const records = verificationInput(discovered.json);
+  const [target] = discovered.json.checkouts;
+  const removed = cleanWt(["remove", `${path}=${target.fingerprint}`]);
+  expect(removed.json.removed).toEqual([{ path, method: "git worktree remove" }]);
+
+  const verify = () => {
+    const result = cleanWt(["inventory", "--verify", records]);
+    expect(result.code).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(result.json.observations).toEqual([expect.objectContaining({
+      path, omp_listed: false, ovnfs_listed: false, disk: "absent", git_registered: false,
+    })]);
+    return result.json.observations[0].branch_preserved;
+  };
+  expect(verify()).toBe(true);
+  expect(target.branch).toBe(branch);
+  git(repo, "branch", "-D", branch);
+  expect(git(repo, "tag", "--list", branch).trim()).toBe(branch);
+  expect(verify()).toBe(false);
+});
+
+test("verification reports live owners separately from missing ownership proof and cannot authorize removal", async () => {
+  const owned = linkedWorktree("wt-gained-owner");
+  const uncertain = linkedWorktree("wt-unknown-owner");
+  const records = verificationInput(cleanWt(["inventory"]).json);
+  session("new-owner", owned);
+  await holdLease("new-owner");
+
+  const verified = cleanWt(["inventory", "--verify", records, "--progress"], { PI_SESSION_ID: undefined });
+  expect(verified.code).toBe(0);
+  expect(verified.json.evidence_gaps).toEqual([]);
+  expect(verified.json.ownership_gaps).toEqual([expect.stringContaining("PI_SESSION_ID")]);
+  expect(verified.json.checkouts).toEqual([
+    { path: owned, verdict: "owned", owners: [expect.objectContaining({ type: "session", id: "new-owner" })], reasons: [] },
+    { path: uncertain, verdict: "uncertain", owners: [], reasons: verified.json.ownership_gaps },
+  ]);
+  expect(verified.stdout).not.toContain('"fingerprint"');
+  const rejected = cleanWt(["remove", `${owned}=${verified.json.checkouts[0].fingerprint ?? ""}`]);
+  expect(rejected.code).toBe(2);
+  expect(rejected.stdout).toBe("");
+  expect(rejected.stderr).toContain("is not <path>=<fingerprint>");
+  expect(existsSync(owned)).toBe(true);
+  expect(existsSync(uncertain)).toBe(true);
+  const events = verified.stderr.trim().split("\n").map((line) => JSON.parse(line));
+  expect(events.filter((event) => event.phase === "contents")).toEqual([]);
+  expect(events).toContainEqual({ phase: "verification", stage: "complete", files: 0, bytes: 0 });
+});
+
+test("verification reports disk changes and native listing disagreement without collapsing the facts", () => {
+  const vanished = linkedWorktree("wt-vanished");
+  const unlisted = linkedWorktree("wt-unlisted");
+  const absentAfterStart = linkedWorktree("wt-absent-after-start");
+  const records = verificationInput(cleanWt(["inventory"]).json);
+  writeExecutable(join(dir, "bin", "ovnfs"), "sh", `
+if [ "$1 $2" = "--json ls" ]; then
+  "$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree remove ${JSON.stringify(vanished)}
+  "$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree remove ${JSON.stringify(absentAfterStart)}
+fi
+exec bun ${JSON.stringify(FAKE_OVNFS)} "$@"
+`);
+  const result = cleanWt(["inventory", "--verify", records], { FAKE_OMP_HIDE: "wt-unlisted,wt-absent-after-start" });
+  expect(result.code).toBe(0);
+  expect(result.stderr).toBe("");
+  expect(result.json.observations).toEqual([
+    expect.objectContaining({ path: absentAfterStart, omp_listed: false, disk: "absent", disk_changed: true, git_registered: false, branch_preserved: true }),
+    expect.objectContaining({ path: unlisted, omp_listed: false, disk: "present", git_registered: true }),
+    expect.objectContaining({ path: vanished, omp_listed: true, disk: "absent", disk_changed: true, git_registered: false }),
+  ]);
+  expect(existsSync(vanished)).toBe(false);
+  expect(existsSync(absentAfterStart)).toBe(false);
+  expect(existsSync(unlisted)).toBe(true);
+});
 
 test("a held session lease protects its checkout, and a session whose lease is free does not", async () => {
   const idle = linkedWorktree("wt-idle");

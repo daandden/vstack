@@ -1,6 +1,6 @@
 import { closeSync, existsSync, lstatSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { basename, dirname, join, resolve, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
 import { checkoutEntry, checkoutInstance, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
@@ -23,6 +23,7 @@ try {
       target: { type: "string", multiple: true },
       "prepare-source": { type: "string", multiple: true },
       "source-facts": { type: "string" },
+      verify: { type: "string" },
       progress: { type: "boolean" },
     },
   });
@@ -33,6 +34,9 @@ const { values, positionals } = parsed;
 const command = positionals[0];
 if (command !== "inventory" && command !== "remove") usage("the first argument must be inventory or remove");
 if (command === "inventory" && (positionals.length > 1 || values.approve)) usage("inventory takes only the evidence flags");
+if (values.verify !== undefined && (command !== "inventory" || values.target || values["prepare-source"] || values["source-facts"])) {
+  usage("--verify requires inventory and cannot accompany integration evidence flags");
+}
 if (command === "remove" && (values.target || values["prepare-source"] || values["source-facts"])) usage("integration evidence options belong to inventory");
 if (values.target && (!values["source-facts"] || values["prepare-source"])) usage("--target requires --source-facts and cannot accompany --prepare-source");
 if (values["source-facts"] && !values.target) usage("--source-facts requires --target");
@@ -249,7 +253,7 @@ let ovnfs: ReturnType<typeof ovnfsListing> = { ok: false, checkouts: [] };
 let ovnfsLocations: OvnfsCleanupLocation[] = [];
 let nativeLocations: CheckoutLocation[] = [];
 const sources = new Map<string, Source | null | Error>();
-const plainInventory = command === "inventory" && !values.target && !values["prepare-source"];
+const plainInventory = command === "inventory" && !values.target && !values["prepare-source"] && values.verify === undefined;
 const startingInstances = new Map<string, Instance>();
 let evidenceGaps: string[] = [];
 
@@ -367,6 +371,8 @@ interface Checkout {
   integration?: Integration;
   automatic?: boolean;
   source_git_dir?: string;
+  git_common_dir?: string;
+  branch_ref?: string;
   ovnfs?: { name: string; source: string; record?: string };
 }
 
@@ -909,14 +915,20 @@ function inspect(path: string, entry: string, kind: Kind, source: Source | null,
   const { sessions, moved } = sessionLinks(entry);
   const owners = ownersOf(entry, entryOwners, sessions);
   const { verdict, reasons } = verdictOf(owners, [...evidenceGaps, ...entryGaps]);
-  const common: Pick<Checkout, "path" | "entry" | "kind" | "verdict" | "reasons" | "owners" | "branch" | "sessions" | "moved_sessions"> = { path, entry, kind, verdict, reasons, owners, branch, sessions, moved_sessions: moved };
+  const common: Pick<Checkout, "path" | "entry" | "kind" | "verdict" | "reasons" | "owners" | "branch" | "sessions" | "moved_sessions" | "git_common_dir" | "branch_ref"> = { path, entry, kind, verdict, reasons, owners, branch, sessions, moved_sessions: moved };
   if (verdict !== "unused" || !source) {
     progress("checkout", { stage: "protected", path, blockers: reasons, owners });
     return { ...common, outcome: "protected", state: "not checked", changes: {}, unique_history: [], fingerprint: "" };
   }
-  const symbolicRef = run(["git", "symbolic-ref", "-q", "--short", "HEAD"], path);
-  common.branch = symbolicRef.code === 1 && !symbolicRef.err ? null : requireGit(symbolicRef, "symbolic-ref HEAD").trim();
-  const head = requireGit(run(["git", "rev-parse", "HEAD"], path), "rev-parse HEAD").trim();
+  const symbolicRef = run(["git", "symbolic-ref", "-q", "HEAD"], path);
+  const headRef = symbolicRef.code === 1 && !symbolicRef.err ? null : requireGit(symbolicRef, "symbolic-ref HEAD").trim();
+  common.branch = headRef?.replace(/^refs\/heads\//, "") ?? null;
+  if (kind === "linked-worktree" && headRef !== null) common.branch_ref = headRef;
+  const headArgs = kind === "linked-worktree" ? ["--path-format=absolute", "--git-common-dir", "HEAD"] : ["HEAD"];
+  const revision = requireGit(run(["git", "rev-parse", ...headArgs], path), "rev-parse HEAD").trimEnd();
+  const headOffset = revision.lastIndexOf("\n") + 1;
+  if (kind === "linked-worktree" && headOffset) common.git_common_dir = revision.slice(0, headOffset - 1);
+  const head = revision.slice(headOffset);
   progress("checkout", { stage: "contents", path });
   const before = { ...contentReads };
   const work = workState(path, source.checkout);
@@ -1172,6 +1184,146 @@ function removeAll() {
     }
   }
   return { removed, skipped, failed };
+}
+
+type VerificationTarget = Pick<Checkout, "path" | "entry" | "kind" | "branch" | "branch_ref" | "git_common_dir" | "ovnfs">;
+
+function verificationTargets(file: string): VerificationTarget[] {
+  try {
+    const records = JSON.parse(readFileSync(file, "utf8"));
+    if (records?.version !== 1 || records.inventory?.exit_code !== 0 || typeof records.inventory.file !== "string") {
+      throw new Error("expected version 1 summary records with a successful discovery inventory");
+    }
+    const { checkouts } = JSON.parse(readFileSync(resolve(dirname(file), records.inventory.file), "utf8"));
+    if (!Array.isArray(checkouts)) throw new Error("expected a discovery checkouts array");
+    const targets = new Map<string, VerificationTarget>();
+    for (const checkout of checkouts) {
+      if (!checkout || typeof checkout.path !== "string" || !isAbsolute(checkout.path) ||
+        typeof checkout.entry !== "string" || !isAbsolute(checkout.entry) ||
+        typeof checkout.kind !== "string" || targets.has(checkout.path)) {
+        throw new Error("expected distinct discovery checkouts with absolute paths and entries");
+      }
+      targets.set(checkout.path, checkout);
+    }
+    for (const item of records.investigations ?? []) {
+      const target = targets.get(item?.path);
+      if (target && item.status === "complete" && item.checkout?.path === target.path && item.checkout.kind === target.kind) {
+        targets.set(target.path, {
+          ...target, branch: item.checkout.branch, branch_ref: item.checkout.branch_ref, git_common_dir: item.checkout.git_common_dir,
+        });
+      }
+    }
+    return [...targets.values()];
+  } catch (error) {
+    usage(`cannot read --verify: ${(error as Error).message}`);
+  }
+}
+
+function diskDirectory(path: string) {
+  try {
+    const stat = lstatSync(path);
+    return stat.isDirectory() ? stat : undefined;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "ENOENT" ? null : undefined;
+  }
+}
+
+type DiskDirectory = ReturnType<typeof diskDirectory>;
+const diskPresence = (directory: DiskDirectory) => directory ? "present" : directory === null ? "absent" : "unknown";
+
+function diskChanged(before: DiskDirectory, after: DiskDirectory): boolean {
+  if (before === undefined || after === undefined) return false;
+  if (before === null || after === null) return before !== after;
+  return before.dev !== after.dev || before.ino !== after.ino || before.birthtimeMs !== after.birthtimeMs;
+}
+
+function gitMetadata(commonDir: string, args: string[]): string | null {
+  try {
+    const result = run(["git", `--git-dir=${commonDir}`, ...args]);
+    return result.code === 0 ? result.out : null;
+  } catch {
+    return null;
+  }
+}
+
+function verification(file: string) {
+  const targets = verificationTargets(file);
+  const initialDisk = targets.map(({ path, entry }) => ({
+    path: diskDirectory(path), entry: entry === path ? undefined : diskDirectory(entry),
+  }));
+  progress("evidence", { stage: "native listing" });
+  const native = ompWorktreeListing(base);
+  progress("evidence", { stage: "ovnfs listing" });
+  const virtual = ovnfsListing();
+  let ownershipFailure: string | undefined;
+  try {
+    gatherOwnership();
+  } catch (error) {
+    ownershipFailure = `cannot establish shared ownership evidence: ${String(error)}`;
+    leases = { ok: false, held: new Map(), unknown: new Map() };
+    cwds = { ok: false, list: [] };
+  }
+  const ownership_gaps = [ownershipFailure, leaseDetectionGap(), cwds.ok ? undefined : cwds.reason].filter((g): g is string => !!g);
+  const evidence_gaps = [native.ok ? undefined : native.reason, virtual.ok ? undefined : virtual.reason].filter((g): g is string => !!g);
+  const virtualPaths = new Map(virtual.checkouts.map((checkout) => [checkout.path, checkout.name]));
+  const virtualNames = new Set(virtual.checkouts.map((checkout) => checkout.name));
+  const virtualLocations = new Map(virtual.ok && virtual.checkouts.length
+    ? cleanupOvnfsLocations(base, virtual, new Set()).map((location) => [location.path, location]) : []);
+  const checkouts: Pick<Checkout, "path" | "verdict" | "owners" | "reasons">[] = [];
+  const registrations = new Map<string, Set<string> | null>();
+  const branches = new Map<string, Set<string> | null>();
+  const listed = targets.map(({ path, entry, kind, branch, branch_ref, git_common_dir, ovnfs }) => {
+    progress("checkout", { stage: "verification", path });
+    const omp_listed = native.ok ? native.paths.has(entry) || native.paths.has(path) : null;
+    const ovnfs_listed = virtual.ok ? virtualPaths.has(path) || (!!ovnfs?.name && virtualNames.has(ovnfs.name)) : null;
+    if (kind === "ovnfs" ? virtualPaths.has(path) && virtualPaths.get(path) === ovnfs?.name : omp_listed) {
+      const location = virtualLocations.get(path);
+      const recordEntry = location?.record ? dirname(location.record) : undefined;
+      const task = kind === "task-isolation" ? taskOwner(entry)
+        : kind === "ovnfs" && recordEntry && lstat(join(recordEntry, ".omp-isolation-owner.json")) ? taskOwner(recordEntry) : {};
+      const recordGaps = kind === "ovnfs" ? location?.gaps.filter((gap) =>
+        gap.startsWith("cannot read shared ovnfs run records:") || gap.startsWith("invalid ovnfs run record:")) ?? [] : [];
+      const owners = ownersOf(entry, task.owner ? [task.owner] : [], sessionLinks(entry).sessions);
+      const gaps = [...ownership_gaps, ...recordGaps, ...(task.gap ? [task.gap] : [])];
+      checkouts.push({ path, owners, ...verdictOf(owners, gaps) });
+    }
+    if (kind !== "linked-worktree") return { path, entry, omp_listed, ovnfs_listed };
+    let git_registered: boolean | null = null;
+    let branch_preserved: boolean | null = null;
+    if (typeof git_common_dir === "string" && isAbsolute(git_common_dir)) {
+      if (!registrations.has(git_common_dir)) {
+        const output = gitMetadata(git_common_dir, ["worktree", "list", "--porcelain", "-z"]);
+        const paths = output?.split("\0").filter((field) => field.startsWith("worktree ")).map((field) => field.slice("worktree ".length));
+        registrations.set(git_common_dir, paths?.length ? new Set(paths) : null);
+      }
+      git_registered = registrations.get(git_common_dir)?.has(path) ?? null;
+      if (typeof branch_ref === "string") {
+        if (!branches.has(git_common_dir)) {
+          const output = gitMetadata(git_common_dir, ["for-each-ref", "--format=%(refname)", "refs/heads/"]);
+          branches.set(git_common_dir, output === null ? null : new Set(output.split("\n")));
+        }
+        branch_preserved = branches.get(git_common_dir)?.has(branch_ref) ?? null;
+      }
+    }
+    return { path, entry, omp_listed, ovnfs_listed, git_registered, ...(branch ? { branch_preserved } : {}) };
+  });
+  const observations = listed.map(({ path, entry, ...facts }, i) => {
+    const pathAfter = diskDirectory(path);
+    const entryAfter = entry === path ? undefined : diskDirectory(entry);
+    const changed = diskChanged(initialDisk[i].path, pathAfter) || diskChanged(initialDisk[i].entry, entryAfter);
+    return {
+      path, ...facts, disk: diskPresence(pathAfter),
+      ...(entry === path ? {} : { entry_disk: diskPresence(entryAfter) }),
+      ...(changed ? { disk_changed: true } : {}),
+    };
+  });
+  progress("verification", { stage: "complete", ...contentReads });
+  return { base, evidence_gaps, ownership_gaps, checkouts, observations };
+}
+
+if (values.verify !== undefined) {
+  print(verification(values.verify));
+  process.exit(0);
 }
 
 gatherEvidence();
