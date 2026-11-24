@@ -4,8 +4,13 @@ import { pipeline } from "node:stream/promises";
 import { createGunzip } from "node:zlib";
 import { isScratchSessionId } from "./scratch.ts";
 
-export type ArchiveLink = { owner: string; sessions: string[] };
-type ArchiveSearch = { links: Map<string, ArchiveLink>; titles: Map<string, string>; heldArchiveError?: string };
+type ArchiveLink = { owner: string; sessions: string[] };
+type IsHeld = (id: string) => boolean;
+type ArchiveStamps = Map<string, Map<string, string>>;
+type ArchiveSearch = {
+  links: Map<string, ArchiveLink>; titles: Map<string, string>;
+  heldArchiveError?: string; changedHeldArchive?: (isHeld: IsHeld) => string | undefined;
+};
 
 const archiveSuffix = /\.jsonl(?:\.gz)?$/;
 const artifactSuffix = /\.(?:jsonl|log)(?:\.gz)?$/;
@@ -170,7 +175,15 @@ function archiveSessionId(name: string) {
   return stem.at(-37) === "_" && isScratchSessionId(id) ? id : undefined;
 }
 
-function changedHeldArchive(root: string, rootStamp: string, buckets: Map<string, string>, watched: Map<string, string>, isHeld: (id: string) => boolean) {
+function changedHeldArchive(root: string, rootStamp: string, buckets: Map<string, string>, watched: ArchiveStamps, isHeld: IsHeld) {
+  function unscannedArchive(bucket: string) {
+    for (const entry of readdirSync(bucket, { withFileTypes: true })) {
+      const id = archiveSessionId(entry.name);
+      if (!id || !isHeld(id) || !entry.isDirectory() && !entry.isSymbolicLink() && !archiveSuffix.test(entry.name)) continue;
+      const archive = join(bucket, entry.name);
+      if (!watched.get(id)?.has(archive)) return archive;
+    }
+  }
   let checking = root;
   try {
     if (fingerprint(realDirectory(root)) !== rootStamp) {
@@ -178,22 +191,22 @@ function changedHeldArchive(root: string, rootStamp: string, buckets: Map<string
         checking = join(root, slug.name);
         if (slug.isSymbolicLink()) return checking;
         if (!slug.isDirectory() || buckets.has(checking)) continue;
-        buckets.set(checking, "");
+        const changed = unscannedArchive(checking);
+        if (changed) return changed;
       }
     }
     for (const [bucket, stamp] of buckets) {
       checking = bucket;
       if (fingerprint(realDirectory(bucket)) === stamp) continue;
-      for (const entry of readdirSync(bucket, { withFileTypes: true })) {
-        const id = archiveSessionId(entry.name);
-        if (!id || !isHeld(id) || !entry.isDirectory() && !entry.isSymbolicLink() && !archiveSuffix.test(entry.name)) continue;
-        const archive = join(bucket, entry.name);
-        if (!watched.has(archive)) return archive;
-      }
+      const changed = unscannedArchive(bucket);
+      if (changed) return changed;
     }
-    for (const [path, stamp] of watched) {
-      checking = path;
-      if (fingerprint(lstatSync(path, { bigint: true })) !== stamp) return path;
+    for (const [id, archive] of watched) {
+      if (!isHeld(id)) continue;
+      for (const [path, stamp] of archive) {
+        checking = path;
+        if (fingerprint(lstatSync(path, { bigint: true })) !== stamp) return path;
+      }
     }
   } catch {
     return checking;
@@ -211,7 +224,7 @@ async function scanArtifacts(path: string, scan: (path: string) => Promise<void>
 }
 
 export async function searchSessionArchives(
-  home: string, root: string, entries: ReadonlyMap<string, boolean>, isHeld?: (id: string) => boolean,
+  home: string, root: string, entries: ReadonlyMap<string, boolean>, isHeld?: IsHeld,
 ): Promise<ArchiveSearch> {
   const scanPaths = pathScanner(root, entries);
   const buffer = Buffer.allocUnsafe(1024 * 1024);
@@ -223,7 +236,7 @@ export async function searchSessionArchives(
   realDirectory(omp);
   realDirectory(agent);
   const rootStat = realDirectory(archiveRoot);
-  const watched = isHeld && new Map<string, string>();
+  const watched: ArchiveStamps | undefined = isHeld && new Map();
   const buckets = isHeld && new Map<string, string>();
   for (const slug of readdirSync(archiveRoot, { withFileTypes: true })) {
     const bucket = join(archiveRoot, slug.name);
@@ -237,11 +250,12 @@ export async function searchSessionArchives(
       let session = sessions.get(id);
       if (!session) sessions.set(id, session = { paths: new Set() });
       const current = session;
-      const held = isHeld?.(id) ? watched : undefined;
+      let stamps = watched?.get(id);
+      if (watched && !stamps) watched.set(id, stamps = new Map());
       const scan = async (file: string, main = false) => {
         try {
           const { stat, title } = await readArchive(file, buffer, line => scanPaths(line, current.paths), main ? id : undefined);
-          if (held) held.set(file, fingerprint(stat));
+          if (stamps) stamps.set(file, fingerprint(stat));
           const activity = stat.mtimeNs;
           if (current.activity === undefined || activity > current.activity) current.activity = activity;
           const prior = titles.get(id);
@@ -251,7 +265,7 @@ export async function searchSessionArchives(
         }
       };
       if (archiveSuffix.test(record.name)) await scan(path, true);
-      else if (record.isDirectory()) await scanArtifacts(path, scan, held);
+      else if (record.isDirectory()) await scanArtifacts(path, scan, stamps);
       else if (record.isSymbolicLink()) throw new Error(`Linked archive directory: ${path}`);
     }
   }
@@ -267,9 +281,15 @@ export async function searchSessionArchives(
       }
     }
   }
-  const changed = isHeld && buckets && watched && changedHeldArchive(archiveRoot, fingerprint(rootStat), buckets, watched, isHeld);
+  let checkHeldArchives: ArchiveSearch["changedHeldArchive"];
+  if (buckets && watched) {
+    const rootStamp = fingerprint(rootStat);
+    checkHeldArchives = held => changedHeldArchive(archiveRoot, rootStamp, buckets, watched, held);
+  }
+  const changed = isHeld && checkHeldArchives?.(isHeld);
   return {
     links, titles: new Map([...titles].map(([id, value]) => [id, value.title])),
+    changedHeldArchive: checkHeldArchives,
     ...(changed ? { heldArchiveError: `Held session archive changed during the search: ${changed}` } : {}),
   };
 }

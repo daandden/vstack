@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { removeEntry } from "../../flow-page/scripts/files.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
 import { compactFlowDatabase, deleteFlowEntry } from "../../flow-page/scripts/store.ts";
-import { buildRows, DAY, flowStatus, readDeleteEvidence, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
+import { buildRows, DAY, flowStatus, readDeleteEvidence, recheckRowLeases, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
 import { isScratchSessionId, scratchRoot, TICKETS_KIND } from "./scratch.ts";
 import { sessionTitles } from "./session-archives.ts";
 
@@ -154,6 +154,11 @@ for (const [_, key, scope, members, newest] of targets) {
     : undefined;
   if (!row || reason) {
     skipped.push({ ...shown, reason: reason ?? "Row is missing" });
+    continue;
+  }
+  const leaseStatus = recheckRowLeases(ctx, row, evidence);
+  if (leaseStatus.state !== "offered") {
+    skipped.push({ ...shown, reason: leaseStatus.reason });
     continue;
   }
 

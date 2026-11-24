@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
 import { CLOSED_RETENTION, FLOW_KIND, flowRetentionEntries, type FlowRetentionEntry } from "../../flow-page/scripts/store.ts";
 import { readScratchSession, SESSION_MARK, TICKETS_KIND } from "./scratch.ts";
-import { searchSessionArchives, type ArchiveLink } from "./session-archives.ts";
+import { searchSessionArchives } from "./session-archives.ts";
 import { captureSessionLeases, readSessionLeases } from "./session-leases.ts";
 
 export const DAY = 86_400_000;
@@ -23,7 +23,7 @@ type OrdinaryRow = Row & { linkedSessions?: Set<string>; hasLegacy?: boolean };
 type OrdinaryEntry = { path: string; kind: string; ancestor: string } & (
   { protection: RowStatus } | { session: string } | { directory: boolean }
 );
-type ArchiveEvidence = { paths: Map<string, boolean>; links?: Map<string, ArchiveLink>; titles?: Map<string, string>; error?: string; heldArchiveError?: string };
+type ArchiveEvidence = { paths: Map<string, boolean>; error?: string } & Partial<Awaited<ReturnType<typeof searchSessionArchives>>>;
 type DeleteEvidence = { archives: ArchiveEvidence; leases?: ReturnType<typeof captureSessionLeases> };
 type BuiltRows = { rows: Row[]; inventoryIssues: string[]; selectionError?: string; archiveTitles?: Map<string, string> };
 type InventoryIssue = { kind?: string; reason: string };
@@ -32,6 +32,7 @@ type ProjectInventory = {
 };
 
 const offered = { state: "offered" } as const;
+const unavailableLease = "Session lease state is unavailable";
 const kept = (reason: string): RowStatus => ({ state: "kept", reason });
 const withheld = (reason: string): RowStatus => ({ state: "withheld", reason });
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -252,6 +253,37 @@ function projectRows(ctx: CleanupContext, rootIdentity: string, project: Project
   return { rows: result, selectionError, inventoryIssues: issues.map(issue => issue.reason) };
 }
 
+function rowLeaseStatus(row: OrdinaryRow, leases: ReturnType<typeof readSessionLeases>): RowStatus {
+  if (row.key[1] === "folder") return leases.unnamed.available ? offered : withheld(leases.unnamed.reason);
+  if (row.key[1] !== "session") return offered;
+  const own = leases.sessions.get(row.key[2]);
+  if (own?.state === "held") return kept("Session holds a lease");
+  let unavailable = own?.state === "free" ? undefined : own?.reason ?? unavailableLease;
+  if (row.linkedSessions) for (const id of row.linkedSessions) {
+    const linked = leases.sessions.get(id);
+    if (linked?.state === "held") return kept("A session linked by the archive holds a lease");
+    if (linked?.state !== "free") unavailable ??= linked?.reason ?? unavailableLease;
+  }
+  return unavailable === undefined ? offered : withheld(unavailable);
+}
+
+export function recheckRowLeases(ctx: CleanupContext, row: OrdinaryRow, evidence: DeleteEvidence): RowStatus {
+  const [, kind, id] = row.key;
+  if (kind !== "session" && kind !== "folder") return offered;
+  const sessions = kind === "session" ? row.linkedSessions ?? [id] : [];
+  try {
+    const fresh = captureSessionLeases(ctx.witness, ctx.ompHome);
+    const status = rowLeaseStatus(row, fresh.read(sessions));
+    if (status.state !== "offered" || !row.hasLegacy) return status;
+    const early = evidence.leases, compareArchives = evidence.archives.changedHeldArchive;
+    if (!early || !compareArchives) return withheld("Session archive freshness is unavailable");
+    const changed = compareArchives(session => fresh.isHeld(session) && !early.isHeld(session));
+    return changed ? withheld(`Newly held session archive changed since the search or could not be checked: ${changed}`) : offered;
+  } catch (error) {
+    return withheld(`Cannot recheck session leases: ${errorMessage(error)}`);
+  }
+}
+
 export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey } & DeleteEvidence): Promise<BuiltRows> {
   const rootStat = stat(ctx.root);
   if (!rootStat?.isDirectory()) return { rows: [], inventoryIssues: [] };
@@ -278,19 +310,7 @@ export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey }
   if (sessions.size || needsEnumeration) {
     const leases = selection?.leases?.read(sessions) ?? readSessionLeases(sessions, ctx.witness, ctx.ompHome);
     for (const row of rows) {
-      if (row.status.state !== "offered") continue;
-      if (row.key[1] === "folder" && !leases.unnamed.available) row.status = withheld(leases.unnamed.reason);
-      if (row.key[1] !== "session") continue;
-      const id = row.key[2];
-      const own = leases.sessions.get(id);
-      const linked = row.linkedSessions && [...row.linkedSessions].map(session => leases.sessions.get(session));
-      if (own?.state === "held") row.status = kept("Session holds a lease");
-      else if (linked?.some(lease => lease?.state === "held")) row.status = kept("A session linked by the archive holds a lease");
-      else if (own?.state !== "free") row.status = withheld(own?.reason ?? "Session lease state is unavailable");
-      else {
-        const unknown = linked?.find(lease => lease?.state === "unknown");
-        if (unknown?.state === "unknown") row.status = withheld(unknown.reason);
-      }
+      if (row.status.state === "offered") row.status = rowLeaseStatus(row, leases);
     }
   }
   return {
