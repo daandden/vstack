@@ -15,6 +15,8 @@ Discovery records have an `outcome`: `inspected`, `protected`, `contents deferre
 
 `Contents deferred` records have no discovery fingerprint. Save the targeted inventory record and its fingerprint in `investigations` after inspection. Until an investigation completes, the summary counts the checkout under `Contents deferred`, not kept or removed. Once an investigation completes, account for removal or retention with the usual evidence.
 
+Keep versioned fingerprints unchanged in inventory records, investigation records, and approval mappings. The renderer retains raw inventory and investigation records in Scratch accounting. It uses the saved option labels without publishing the fingerprints. Only `remove` checks whether a saved fingerprint still matches.
+
 ## Verification output
 
 Verification reads the successful discovery inventory and uses completed investigation records for their linked-worktree Git directory and branch. It reads both native listings again and checks the original paths only. Checkouts added since discovery do not enter the summary.

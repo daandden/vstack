@@ -56,7 +56,7 @@ target_fp() {
 }
 jq -n --arg cwd "$F/repo" --arg inv "$CW inventory --base $B" \
   --arg bad "$CW remove --base $B $B/wt-clean=nothex; echo exit=\$?" \
-  --arg stale "$CW remove --base $B $B/wt-clean=$(printf '0%.0s' $(seq 64))" \
+  --arg stale "$CW remove --base $B $B/wt-clean=v1:discovery:$(printf '%064d' 0)" \
   --arg mix "$CW remove --base $B $B/wt-clean=$(fp wt-clean) $B/wt-dirty=$(target_fp wt-dirty) $B/wt-unique=$(fp wt-unique)" \
   --arg appr "$CW remove --base $B --approve $B/wt-dirty $B/wt-dirty=$(target_fp wt-dirty)" \
   '[{tool:"bash",args:{command:$inv,cwd:$cwd}},{tool:"bash",args:{command:$bad,cwd:$cwd}},{tool:"bash",args:{command:$stale,cwd:$cwd}},{tool:"bash",args:{command:$mix,cwd:$cwd}},{tool:"bash",args:{command:$appr,cwd:$cwd}},{text:"done"}]' \
@@ -66,8 +66,8 @@ jq -n --arg cwd "$F/repo" --arg inv "$CW inventory --base $B" \
 Step `clean-wt-remove`: Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-wt-remove --session --replies "$VERIFY_RUN_DIR/clean-wt-remove-replies.json" '{"type":"prompt","message":"/skill:clean-wt"}'`. Exit 0 with `model_requests` 6. Save each tool result with `jq -r 'select(.type=="tool_execution_end") | .result.content[0].text' "$VERIFY_RUN_DIR/clean-wt-remove/rpc.jsonl" > "$VERIFY_RUN_DIR/clean-wt-remove-tools.txt"`. The five results, in order:
 
 1. Step `clean-wt-remove-inventory`: Inventory. `evidence_gaps` is `[]`. All three checkouts are `linked-worktree` and `unused`. `wt-clean` is `clean` on `clean-br`. `wt-dirty` is `dirty`, with `outcome: "contents deferred"`, `fingerprint: ""`, and `changes.untracked: ["draft.txt"]`. `wt-unique` is `clean` with a null branch and one `unique_history` entry for `HEAD`.
-2. Step `clean-wt-remove-bad-argument`: Bad argument. `clean-wt: <B>/wt-clean=nothex is not <path>=<fingerprint>`, then `exit=2`.
-3. Step `clean-wt-remove-stale`: Stale fingerprint. `removed` is `[]`, and `skipped` holds `wt-clean` with the reason `it changed since the inventory`.
+2. Step `clean-wt-remove-bad-argument`: Bad argument. Stderr says `<B>/wt-clean=nothex is not <path>=<fingerprint> with a current fingerprint; run a new inventory`, then the tool prints `exit=2`.
+3. Step `clean-wt-remove-stale`: Pass a version 1 discovery fingerprint with a nonmatching digest. `removed` is `[]`, and `skipped` holds `wt-clean` with the reason `it changed since the inventory`.
 4. Step `clean-wt-remove-mixed`: Mixed removal. `removed` holds `wt-clean` with method `git worktree remove`. `skipped` holds `wt-dirty` with `it holds dirty work, and removing it needs --approve`, and `wt-unique` with `it holds commits or stashes that exist nowhere else (HEAD); push or branch them first`.
 5. Step `clean-wt-remove-approved`: Approved removal. `removed` holds `wt-dirty` with method `git worktree remove --force`.
 

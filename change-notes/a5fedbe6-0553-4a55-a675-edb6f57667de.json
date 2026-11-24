@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Inspect each clean-wt removal target once. Version fingerprints and invalidate them when a compared source copy changes."
+  ]
+}

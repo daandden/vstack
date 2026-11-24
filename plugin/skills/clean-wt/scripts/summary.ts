@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import type { ApprovalChoice, ApprovalPlan } from "./approval.ts";
 import { displayField, FIELD_SEPARATOR, shortPath } from "./display.ts";
+import type { Fingerprint } from "./fingerprint.ts";
 
 type CommandOutput = { exit_code: number | null; file: string };
 type Checkout = {
@@ -11,6 +12,7 @@ type Checkout = {
   verdict: string;
   state: string;
   automatic?: boolean;
+  fingerprint?: "" | Fingerprint;
   branch?: string | null;
   reasons: string[];
   owners: { type: string; id?: string; pid?: number }[];

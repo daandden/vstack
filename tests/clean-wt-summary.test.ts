@@ -70,7 +70,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   const p = (name: string) => join(f.home, name);
   const command = (file: string, json: unknown) => ({ exit_code: 0, file: f.save(file, json) });
   const checkouts = [
-    checkout(p("gone"), { state: "clean", automatic: true, changes: {}, fingerprint: "PRIVATE" }),
+    checkout(p("gone"), { state: "clean", automatic: true, changes: {}, fingerprint: `v1:discovery:${"a".repeat(64)}` }),
     checkout(p("picked-skip")),
     checkout(p("auto-skip"), { automatic: true }),
     checkout(p("failed")),
@@ -106,8 +106,8 @@ test("a finished summary groups each original checkout once and keeps raw eviden
     skipped: [{ path: p("picked-skip"), reason: "it changed since the inventory" }],
     failed: [{ path: p("failed"), error: "PRIVATE" }],
   });
-  const mapped = ["picked-skip", "failed", "gone-unverified", "keep", "not-offered"].map((name) => ({
-    path: p(name), label: `~/${name} · actual-repo · Draft. · Agent says keep`, fingerprint: "PRIVATE", recommendation: "keep",
+  const mapped = ["picked-skip", "failed", "gone-unverified", "keep", "not-offered"].map((name, i) => ({
+    path: p(name), label: `~/${name} · actual-repo · Draft. · Agent says keep`, fingerprint: `v1:targeted:${String(i + 1).repeat(64)}`, recommendation: "keep",
   }));
   const approval_plan = f.save("approval-plan.json", { version: 1, rounds: [
     { question_ref: "cleanup-approval-1", mapping: mapped.slice(0, 4) },
@@ -118,7 +118,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
     version: 1, phase: "finished", inventory, approval_plan,
     offers: [{ question_ref: "cleanup-approval-1", picked: mapped.slice(0, 3).map(({ path }) => path) }],
     investigations: [
-      ...mapped.map(({ path }) => ({ path, status: "complete", checkout: { ...checkouts.find((c) => c.path === path), fingerprint: "PRIVATE" } })),
+      ...mapped.map(({ path, fingerprint }) => ({ path, status: "complete", checkout: { ...checkouts.find((c) => c.path === path), fingerprint } })),
       { path: p("incomplete"), status: "failed", reason: "PRIVATE" },
     ],
     removals: [
@@ -144,7 +144,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
     { heading: "Outcome not verified", blocks: [{ list: ["~/gone-unverified · removal reported, but ovnfs absence was not verified"] }] },
     { heading: "Kept, no removal attempted", blocks: [{ list: ["~/not-offered · not offered for removal"] }] },
   ]);
-  expect(JSON.stringify(contribution)).not.toMatch(/PRIVATE|~\/(?:layout|origin|named|source)|attachments/);
+  expect(JSON.stringify(contribution)).not.toMatch(/PRIVATE|v1:(?:discovery|targeted):|~\/(?:layout|origin|named|source)|attachments/);
   f.publish(contribution);
   const accounting = f.accounting();
   expect(accounting.checkouts.map(({ discovery }: any) => discovery.path)).toEqual(checkouts.map(({ path }) => path));
@@ -200,7 +200,7 @@ test("contents-deferred checkouts count separately until targeted evidence accou
   const finished = f.render({
     version: 1, phase: "finished", inventory,
     investigations: [removed, kept].map(({ path }) => ({
-      path, status: "complete", checkout: checkout(path, { outcome: "inspected", fingerprint: "a".repeat(64) }),
+      path, status: "complete", checkout: checkout(path, { outcome: "inspected", fingerprint: `v1:targeted:${"a".repeat(64)}` }),
     })),
     removals: [{
       origin: "picked", targets: [{ path: removed.path, repository: "example" }],
@@ -270,9 +270,10 @@ test("guarded skips still count once when final verification cannot confirm pres
 test("planner labels and order survive whole-summary links as settled pick rows leave", () => {
   const f = fixture();
   const targets = (["keep", "remove", "remove"] as const).map((action, i) => ({
-    checkout: checkout(join(f.home, i === 2 ? "draft-2[@notes]" : `draft-${i}`), {
-      automatic: false, fingerprint: String(i + 1).repeat(64), reasons: [],
-    }),
+    checkout: {
+      ...checkout(join(f.home, i === 2 ? "draft-2[@notes]" : `draft-${i}`), { automatic: false }),
+      fingerprint: `v1:targeted:${String(i + 1).repeat(64)}`,
+    },
     repository: "example",
     verdict: `Draft ${i} has local changes.`,
     contents: [{ category: "source", detail: "PRIVATE" }],
@@ -293,6 +294,9 @@ test("planner labels and order survive whole-summary links as settled pick rows 
   const resultId = first.refs["cleanup-summary"];
   const pickSummary = f.render({ ...records, phase: "picking" }, resultId);
   f.publish(pickSummary);
+  expect(f.accounting().checkouts.map((row: any) => row.investigation.checkout.fingerprint))
+    .toEqual(targets.map(({ checkout }) => checkout.fingerprint));
+  expect(JSON.stringify(pickSummary)).not.toContain("v1:targeted:");
   expect(pickSummary.items[0].summary).toBe("0 removed · 3 needs your pick · 0 skipped · 0 kept");
   expect(pickSummary.items[0].sections.slice(0, 3)).toEqual([
     { heading: "Needs your pick", blocks: [{ prose: "Select only the checkouts you want removed." }] },
@@ -537,7 +541,7 @@ test("separator characters in checkout fields do not make distinct choices look 
     ["wt-alpha · demo", "upstream · current", "draft"],
     [String.raw`wt-alpha \u00b7 demo`, "upstream · current", "draft"],
   ].map(([name, repository, verdict], i) => ({
-    checkout: checkout(join(f.home, name), { automatic: false, fingerprint: String(i + 1).repeat(64) }),
+    checkout: checkout(join(f.home, name), { automatic: false, fingerprint: `v1:targeted:${String(i + 1).repeat(64)}` }),
     repository, verdict,
     contents: [{ category: "source", detail: "PRIVATE" }],
     integration: { gap: "PRIVATE" }, classification: "PRIVATE", risk: "PRIVATE",
@@ -603,7 +607,7 @@ test("the summary groups a saved recommendation independently of label wording",
   const label = "~/draft · example · Changes already landed. · Agent says remove.";
   const rounds = [{
     question_ref: "cleanup-approval-1",
-    mapping: [{ letter: "A", path, fingerprint: "a".repeat(64), label, recommendation: "remove" }],
+    mapping: [{ letter: "A", path, fingerprint: `v1:targeted:${"a".repeat(64)}`, label, recommendation: "remove" }],
   }];
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const summary = f.render({

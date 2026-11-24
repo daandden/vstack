@@ -2,12 +2,13 @@ import { readFileSync } from "node:fs";
 import { isAbsolute, parse, resolve } from "node:path";
 import type { Option, Question } from "../../flow-page/scripts/model.ts";
 import { displayField, FIELD_SEPARATOR, shortPath } from "./display.ts";
+import { isTargetedFingerprint, type Fingerprint } from "./fingerprint.ts";
 
 const CATEGORIES = ["source", "configuration", "scratch", "design", "generated-metadata", "other"] as const;
 type Recommendation = "keep" | "remove";
 type InspectedTarget = {
   readonly path: string;
-  readonly fingerprint: string;
+  readonly fingerprint: Fingerprint<"targeted">;
   readonly repository: string;
   readonly verdict: string;
   readonly action: Recommendation;
@@ -20,7 +21,7 @@ type ApprovalQuestion = Pick<Question, "title" | "description" | "needs"> & {
   options: Omit<Option, "recommended" | "preview">[];
 };
 
-export type ApprovalChoice = { letter: string; label: string; path: string; fingerprint: string; recommendation: Recommendation };
+export type ApprovalChoice = { letter: string; label: string; path: string; fingerprint: Fingerprint<"targeted">; recommendation: Recommendation };
 type ApprovalRound = {
   question_ref: string;
   mapping: ApprovalChoice[];
@@ -68,8 +69,8 @@ function readTargets(value: unknown): InspectedTarget[] {
     empty(checkout.owners, `${at}.checkout.owners`);
     empty(checkout.reasons, `${at}.checkout.reasons`);
     empty(checkout.unique_history, `${at}.checkout.unique_history`);
-    const fingerprint = text(checkout.fingerprint, `${at}.checkout.fingerprint`);
-    if (fingerprint.length !== 64 || !/^[0-9a-f]{64}$/.test(fingerprint)) throw new Error(`${at}.checkout.fingerprint must be a lowercase SHA-256 fingerprint`);
+    const fingerprint = checkout.fingerprint;
+    if (!isTargetedFingerprint(fingerprint)) throw new Error(`${at}.checkout.fingerprint must be a current targeted fingerprint; run a new inventory`);
     const namedTarget = `${at} (${path})`;
     const repository = oneLine(target.repository, `${namedTarget}.repository`);
     const verdict = oneLine(target.verdict, `${namedTarget}.verdict`);

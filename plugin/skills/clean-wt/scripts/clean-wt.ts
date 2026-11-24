@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
 import { checkoutEntry, checkoutInstance, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
+import { fingerprintKind, makeFingerprint, type Fingerprint } from "./fingerprint.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -365,7 +366,7 @@ interface Checkout {
   changes: Record<string, string[]>;
   unique_history: Tip[];
   branch: string | null;
-  fingerprint: string;
+  fingerprint: "" | Fingerprint;
   sessions: SessionLink[];
   moved_sessions: SessionLink[];
   integration?: Integration;
@@ -586,25 +587,30 @@ function expandIgnored(root: string, rel: string, paths: string[]) {
 
 
 /** Where a link points: its path inside its own checkout when it stays inside, else its absolute target. */
-function linkTarget(root: string, rel: string): string {
-  const target = resolve(dirname(join(root, rel)), readlinkSync(join(root, rel)));
+function linkTarget(root: string, rel: string, text: string): string {
+  const target = resolve(dirname(join(root, rel)), text);
   return inside(target, root) ? `checkout:${target.slice(root.length)}` : target;
 }
 
-function compareIgnored(path: string, ref: string | null, rel: string, content: string): "same" | "unique" | "unverified" {
-  if (!ref) return "unverified";
+type IgnoredPreservation = readonly [result: "same" | "unique" | "unverified", source?: string];
+
+function compareIgnored(path: string, ref: string | null, rel: string, target: ReturnType<typeof lstat>, content: string): IgnoredPreservation {
+  if (!ref || !target || content === "missing" || content === "unverified") return ["unverified"];
   try {
-    const a = lstatSync(join(path, rel));
-    const b = lstat(join(ref, rel));
-    if (a.isSymbolicLink()) return b?.isSymbolicLink() && linkTarget(path, rel) === linkTarget(ref, rel) ? "same" : "unique";
-    if (!a.isFile()) return "unverified";
-    if (content === "missing" || content === "unverified") return "unverified";
-    if (!b?.isFile() || a.size !== b.size) return "unique";
-    const preserved = contentStamp(join(ref, rel));
-    if (preserved === "missing" || preserved === "unverified") return "unverified";
-    return content === preserved ? "same" : "unique";
+    const file = join(ref, rel);
+    const source = lstat(file);
+    if (target.isSymbolicLink()) {
+      if (!source?.isSymbolicLink()) return ["unique"];
+      const preserved = linkTarget(ref, rel, readlinkSync(file));
+      return [linkTarget(path, rel, content.slice("link:".length)) === preserved ? "same" : "unique", preserved];
+    }
+    if (!target.isFile()) return ["unverified"];
+    if (!source?.isFile() || target.size !== source.size) return ["unique"];
+    const preserved = contentStamp(file, source);
+    if (preserved === "missing" || preserved === "unverified") return ["unverified"];
+    return [content === preserved ? "same" : "unique", preserved];
   } catch {
-    return "unverified";
+    return ["unverified"];
   }
 }
 
@@ -614,10 +620,9 @@ interface WorkState {
   stamp: unknown[] | null;
 }
 
-function contentStamp(file: string): string {
+function contentStamp(file: string, st = lstat(file)): string {
   let fd: number | undefined;
   try {
-    const st = lstat(file);
     if (!st) return "missing";
     if (st.isSymbolicLink()) return `link:${readlinkSync(file)}`;
     if (!st.isFile()) return "unverified";
@@ -708,14 +713,13 @@ function workState(path: string, ref: string | null): WorkState {
   }
   const ignoredPaths = new Set(ignored);
   const stamp = [stampedStatus, flags, ...[...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])].map((rel) => {
-    const st = lstat(join(path, rel));
-    const content = st ? contentStamp(join(path, rel)) : "missing";
-    if (ignoredPaths.has(rel)) {
-      const verdict = compareIgnored(path, ref, rel, content);
-      if (verdict === "unique") changes.ignored_unique.push(rel);
-      else if (verdict === "unverified") changes.ignored_unverified.push(rel);
-    }
-    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content] : [rel];
+    const file = join(path, rel);
+    const st = lstat(file);
+    const content = st ? contentStamp(file, st) : "missing";
+    const preservation = ignoredPaths.has(rel) ? compareIgnored(path, ref, rel, st, content) : undefined;
+    if (preservation?.[0] === "unique") changes.ignored_unique.push(rel);
+    else if (preservation?.[0] === "unverified") changes.ignored_unverified.push(rel);
+    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content, preservation] : [rel, preservation];
   })];
   const listed = Object.values(changes).flat();
   for (const k of Object.keys(changes)) if (changes[k].length === 0) delete changes[k];
@@ -806,11 +810,11 @@ function sessionLinks(entry: string): { sessions: SessionLink[]; moved: SessionL
   return { sessions: here.map(link), moved: moved.map(link) };
 }
 
-function inspectOrphan(path: string, gitdir: string, gaps: string[]): Checkout {
+function inspectOrphan(path: string, gitdir: string, gaps: string[], inspection: Inspection): Checkout {
   const { sessions, moved } = sessionLinks(path);
   const owners = ownersOf(path, [], sessions);
   const { verdict, reasons } = verdictOf(owners, [...evidenceGaps, ...gaps]);
-  const fingerprint = verdict !== "unused" ? "" : createHash("sha256").update(JSON.stringify(treeStamp(path))).digest("hex");
+  const fingerprint = verdict !== "unused" ? "" : makeFingerprint(inspection.kind, treeStamp(path));
   const unreadable = [`the repo no longer has this worktree's registration (${gitdir || "no gitdir line"}), so git cannot read its changes`];
   return { path, entry: path, kind: "orphaned-worktree", outcome: "protected", verdict, reasons, owners, state: "unknown", changes: { unreadable }, unique_history: [], branch: null, fingerprint, sessions, moved_sessions: moved };
 }
@@ -836,13 +840,18 @@ interface Integration {
   paths?: string[];
 }
 
-const remoteDefaults = new Map<string, RemoteDefault | string>();
-let refreshRemote = false;
-let compareIntegration = false;
+type RemoteFact = RemoteDefault | string;
+type Inspection = { kind: "discovery" } | { kind: "targeted"; remoteFact: (commonDir: string) => RemoteFact };
 
-function remoteDefault(commonDir: string): RemoteDefault | string {
+const discoveryInspection: Inspection = { kind: "discovery" };
+const remoteDefaults = new Map<string, RemoteFact>();
+const targetedInspection: Inspection = {
+  kind: "targeted",
+  remoteFact: (commonDir) => remoteDefaults.get(commonDir) ?? "no prepared remote-default facts were supplied for this source",
+};
+
+function remoteDefault(commonDir: string): RemoteFact {
   const cached = remoteDefaults.get(commonDir);
-  if (cached && !refreshRemote) return cached;
   const git = ["git", `--git-dir=${commonDir}`];
   const remotes = run([...git, "remote"]).out.trim().split("\n").filter((name) => name && !isOvnfsRemote(name));
   const remote = remotes.includes("origin") ? "origin" : remotes.length === 1 ? remotes[0] : undefined;
@@ -863,11 +872,7 @@ function remoteDefault(commonDir: string): RemoteDefault | string {
   return fact;
 }
 
-function integrated(path: string, source: Source | null, work: WorkState): Integration {
-  const commonDir = source?.commonDir ?? run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path).out.trim();
-  const fact = values["source-facts"]
-    ? remoteDefaults.get(commonDir) ?? "no prepared remote-default facts were supplied for this source"
-    : remoteDefault(commonDir);
+function integrated(path: string, commonDir: string, work: WorkState, fact: RemoteFact): Integration {
   if (typeof fact === "string") return { status: "unresolved", reason: fact };
   const unresolved = (reason: string): Integration => ({ status: "unresolved", default: fact, ref: fact.ref, reason });
   if (run(["git", `--git-dir=${commonDir}`, "remote", "get-url", fact.remote]).out.trim() !== fact.url) return unresolved("the source remote identity changed after preparation");
@@ -909,7 +914,7 @@ function integrated(path: string, source: Source | null, work: WorkState): Integ
   return { status: "verified", default: fact, ref: fact.ref, paths };
 }
 
-function inspect(path: string, entry: string, kind: Kind, source: Source | null, instance: string, entryOwners: Owner[], entryGaps: string[]): Checkout {
+function inspect(path: string, entry: string, kind: Kind, source: Source | null, instance: string, entryOwners: Owner[], entryGaps: string[], inspection: Inspection, ovnfsIdentity?: Checkout["ovnfs"]): Checkout {
   progress("checkout", { stage: "ownership", path });
   const branch: string | null = null;
   const { sessions, moved } = sessionLinks(entry);
@@ -939,11 +944,15 @@ function inspect(path: string, entry: string, kind: Kind, source: Source | null,
     progress("checkout", { stage: "complete", path, state: "dirty", automatic: false, blockers: unique_history.map(tip => `unique history: ${tip.ref}`) });
     return { ...common, outcome: "contents deferred", state: "dirty", changes: work.changes, unique_history, fingerprint: "", automatic: false, source_git_dir: source.commonDir };
   }
-  if (compareIntegration && work.state === "dirty") progress("checkout", { stage: "integration", path });
-  const integration = compareIntegration && work.state === "dirty" ? integrated(path, source, work) : undefined;
+  const remoteFact = inspection.kind === "targeted" ? inspection.remoteFact(source.commonDir) : undefined;
+  if (remoteFact !== undefined && work.state === "dirty") progress("checkout", { stage: "integration", path });
+  const integration = remoteFact !== undefined && work.state === "dirty" ? integrated(path, source.commonDir, work, remoteFact) : undefined;
   const artifacts = ["ignored_unique", "ignored_unverified", "unmerged"].some((key) => work.changes[key]?.length);
   const automatic = unique_history.length === 0 && (work.state === "clean" || (integration?.status === "verified" && !artifacts));
-  const fingerprint = createHash("sha256").update(JSON.stringify([instance, head, common.branch, work.stamp, unique_history, integration])).digest("hex");
+  const fingerprint = makeFingerprint(inspection.kind, [
+    instance, head, common.branch, work.stamp, unique_history, remoteFact, integration,
+    ovnfsIdentity, ovnfsIdentity?.record ? contentStamp(ovnfsIdentity.record) : null,
+  ]);
   const source_git_dir = source.commonDir;
   progress("checkout", { stage: "complete", path, state: work.state, automatic, blockers: [...(work.changes.unreadable ?? []), ...(integration?.reason ? [integration.reason] : []), ...unique_history.map(tip => `unique history: ${tip.ref}`)] });
   return { ...common, outcome: work.state === "unknown" ? "protected" : "inspected", state: work.state, changes: work.changes, unique_history, fingerprint, integration, automatic, source_git_dir };
@@ -970,14 +979,14 @@ function observeInstance({ path, kind }: Pick<Location, "path" | "kind">): Insta
   }
 }
 
-function inspectLocation(location: Location): Checkout {
+function inspectLocation(location: Location, inspection: Inspection): Checkout {
   if ("layoutError" in location && location.layoutError) return failedInspection(location, "layout", location.layoutError);
   const instance = startingInstances.get(location.path) ?? observeInstance(location);
   if ("error" in instance) return failedInspection(location, "layout", instance.error);
   let stage: Failure["stage"] = "source resolution";
   let checkout: Checkout;
   try {
-    checkout = inspectLocatedCheckout(location, instance.id, (next) => { stage = next; });
+    checkout = inspectLocatedCheckout(location, instance.id, inspection, (next) => { stage = next; });
   } catch (error) {
     checkout = failedInspection(location, stage, error);
   }
@@ -1010,7 +1019,7 @@ function protectedLocation(location: Location, outcome: "replaced" | "inspection
   };
 }
 
-function inspectLocatedCheckout(location: Location, instance: string, atStage: (stage: Failure["stage"]) => void): Checkout {
+function inspectLocatedCheckout(location: Location, instance: string, inspection: Inspection, atStage: (stage: Failure["stage"]) => void): Checkout {
   const { path, entry, kind } = location;
   atStage("layout");
   const registered = kind === "worktree" ? registeredGitDir(path) : undefined;
@@ -1027,19 +1036,19 @@ function inspectLocatedCheckout(location: Location, instance: string, atStage: (
   if (kind === "ovnfs") {
     const recordEntry = location.record ? dirname(location.record) : undefined;
     const task = recordEntry && lstat(join(recordEntry, ".omp-isolation-owner.json")) ? taskOwner(recordEntry) : {};
-    const checkout = inspect(path, entry, kind, source, instance, task.owner ? [task.owner] : [], [...gaps, ...(task.gap ? [task.gap] : [])]);
-    checkout.ovnfs = { name: location.name, source: location.source, record: location.record };
-    if (checkout.fingerprint) checkout.fingerprint = createHash("sha256").update(JSON.stringify([checkout.fingerprint, checkout.ovnfs, location.record ? contentStamp(location.record) : null])).digest("hex");
+    const ovnfsIdentity = { name: location.name, source: location.source, record: location.record };
+    const checkout = inspect(path, entry, kind, source, instance, task.owner ? [task.owner] : [], [...gaps, ...(task.gap ? [task.gap] : [])], inspection, ovnfsIdentity);
+    checkout.ovnfs = ovnfsIdentity;
     return checkout;
   }
   if (kind === "worktree") {
-    return registered!.exists ? inspect(path, entry, "linked-worktree", source, instance, [], gaps) : inspectOrphan(path, registered!.gitdir, gaps);
+    return registered!.exists ? inspect(path, entry, "linked-worktree", source, instance, [], gaps, inspection) : inspectOrphan(path, registered!.gitdir, gaps, inspection);
   }
   if (kind === "task-isolation") {
     const { owner, gap } = taskOwner(entry);
-    return inspect(path, entry, kind, source, instance, owner ? [owner] : [], [...(gap ? [gap] : []), ...gaps]);
+    return inspect(path, entry, kind, source, instance, owner ? [owner] : [], [...(gap ? [gap] : []), ...gaps], inspection);
   }
-  return inspect(path, entry, kind, source, instance, [], gaps);
+  return inspect(path, entry, kind, source, instance, [], gaps, inspection);
 }
 
 function missingPath(path: string): boolean {
@@ -1053,7 +1062,7 @@ function missingPath(path: string): boolean {
 
 function scan(): Checkout[] {
   const locations = [...nativeLocations, ...ovnfsLocations];
-  const checkouts = locations.map(inspectLocation).map((checkout, i) =>
+  const checkouts = locations.map((location) => inspectLocation(location, discoveryInspection)).map((checkout, i) =>
     verifyInstance(locations[i], startingInstances.get(checkout.path)!, checkout));
   if (!checkouts.some((checkout) => checkout.failure)) return checkouts;
 
@@ -1070,11 +1079,11 @@ function scan(): Checkout[] {
   });
 }
 
-function rescan(entry: string, path: string): Checkout | undefined {
+function rescan(entry: string, path: string, inspection: Inspection): Checkout | undefined {
   const ovnfsLocation = ovnfsLocations.find((location) => location.path === path && location.entry === entry);
-  if (ovnfsLocation) return inspectLocation(ovnfsLocation);
+  if (ovnfsLocation) return inspectLocation(ovnfsLocation, inspection);
   const location = nativeLocations.find((candidate) => candidate.path === path && candidate.entry === entry);
-  return location ? inspectLocation(location) : undefined;
+  return location ? inspectLocation(location, inspection) : undefined;
 }
 
 function entryFor(path: string): string | undefined {
@@ -1098,17 +1107,22 @@ function print(v: unknown) {
 function removeAll() {
   if (positionals.length < 2) usage("remove needs at least one <path>=<fingerprint>");
   const approved = new Set((values.approve ?? []).map((p) => realpath(p) || resolve(p)));
+  const targetPaths = new Set<string>();
   const targets = positionals.slice(1).map((arg) => {
     const at = arg.lastIndexOf("=");
-    if (at <= 0 || !/^[0-9a-f]{64}$/.test(arg.slice(at + 1))) usage(`${arg} is not <path>=<fingerprint>`);
+    if (at <= 0) usage(`${arg} is not <path>=<fingerprint>`);
+    const fingerprint = arg.slice(at + 1);
+    const kind = fingerprintKind(fingerprint);
+    if (!kind) usage(`${arg} is not <path>=<fingerprint> with a current fingerprint; run a new inventory`);
     const requestedPath = arg.slice(0, at);
     const path = realpath(requestedPath) || resolve(requestedPath);
-    const fingerprint = arg.slice(at + 1);
+    if (targetPaths.has(path)) usage(`${path} names the same checkout more than once`);
+    targetPaths.add(path);
     const entry = entryFor(path);
     if (!entry && !missingPath(path)) usage(`${path} is not a checkout under ${base}`);
-    return { path, entry, fingerprint };
+    return { path, entry, fingerprint, kind };
   });
-  for (const p of approved) if (!targets.some((t) => t.path === p)) usage(`--approve ${p} names no checkout in this removal`);
+  for (const p of approved) if (!targetPaths.has(p)) usage(`--approve ${p} names no checkout in this removal`);
 
   const removed: { path: string; method: string }[] = [];
   const skipped: { path: string; reason: string }[] = [];
@@ -1121,20 +1135,32 @@ function removeAll() {
       skipped.push({ path: t.path, reason });
       continue;
     }
-    compareIntegration = false;
-    const discovered = rescan(t.entry, t.path);
-    compareIntegration = discovered?.state === "dirty" && discovered.fingerprint !== t.fingerprint;
-    refreshRemote = true;
-    if (compareIntegration && discovered?.source_git_dir) remoteDefault(discovered.source_git_dir);
-    refreshRemote = false;
-    gatherEvidence();
-    const c = rescan(t.entry, t.path);
+    let inspection: Inspection = discoveryInspection;
+    let refreshed: { commonDir: string; fact: RemoteFact } | undefined;
+    if (t.kind === "targeted") {
+      try {
+        const source = sourceRepository(t.path);
+        if (source) refreshed = { commonDir: source.commonDir, fact: remoteDefault(source.commonDir) };
+      } catch (error) {
+        progress("evidence", { stage: "remote refresh failed", path: t.path, error: String(error) });
+      }
+      // A remote query can outlast ownership or native listing changes.
+      gatherEvidence();
+      inspection = {
+        kind: "targeted",
+        remoteFact: (commonDir) => refreshed?.commonDir === commonDir ? refreshed.fact : "the source repository could not be refreshed before removal",
+      };
+    }
+    const c = rescan(t.entry, t.path, inspection);
     const needsApproval = !!c && !c.automatic;
     let reason: string | undefined;
     if (!c) reason = unavailableTarget(t.path, t.entry);
     else if (c.outcome === "inspection failed" || c.outcome === "replaced") reason = c.reasons.join("; ");
     else if (c.verdict === "owned") reason = `it is in use now: ${c.owners.map((o) => [o.type, o.id, o.pid].filter((v) => v !== undefined && v !== null).join(" ")).join(", ")}`;
     else if (c.verdict !== "unused") reason = `its ownership is uncertain: ${c.reasons.join("; ")}`;
+    else if (t.kind === "targeted" && c.source_git_dir && c.source_git_dir !== refreshed?.commonDir) {
+      reason = "the source repository could not be refreshed before removal";
+    }
     else if (c.fingerprint !== t.fingerprint) reason = "it changed since the inventory";
     else if (c.unique_history.length > 0) reason = `it holds commits or stashes that exist nowhere else (${c.unique_history.map((h) => h.ref).join(", ")}); push or branch them first`;
     else if (c.state === "unknown") reason = "its Git state and history cannot be verified; repair the checkout before removal";
@@ -1165,19 +1191,21 @@ function removeAll() {
           if (!visible.ok || visible.checkouts.some((checkout) => checkout.name === c.ovnfs!.name || checkout.path === c.path)) throw new Error("ovnfs removal identity changed while waiting for its mounted directory");
         }
       } else if (c.kind === "linked-worktree") {
-        const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], c.path).out.trim();
+        const commonDir = requireGit(run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], c.path), "rev-parse --git-common-dir").trim();
         const force = c.state !== "clean";
         method = force ? "git worktree remove --force" : "git worktree remove";
         const r = run(["git", `--git-dir=${commonDir}`, "worktree", "remove", ...(force ? ["--force"] : []), c.path]);
         if (r.code !== 0) throw new Error(r.err.trim() || `git worktree remove exit ${r.code}`);
-        if (run(["git", `--git-dir=${commonDir}`, "worktree", "list", "--porcelain"]).out.split("\n").includes(`worktree ${c.path}`)) {
+        const registrations = requireGit(run(["git", `--git-dir=${commonDir}`, "worktree", "list", "--porcelain", "-z"]), "worktree list");
+        if (!registrations.startsWith("worktree ")) throw new Error("git worktree list returned no registrations after removal");
+        if (registrations.split("\0").includes(`worktree ${c.path}`)) {
           throw new Error("git still registers the worktree after removal");
         }
       } else {
         method = c.entry === c.path ? "rm -r" : `rm -r ${c.entry}`;
         removeTree(c.entry);
       }
-      if (lstat(c.entry)) throw new Error("the directory still exists after removal");
+      if (!missingPath(c.entry)) throw new Error("the directory's absence could not be verified after removal");
       removed.push({ path: c.path, method });
     } catch (e) {
       failed.push({ path: c.path, error: (e as Error).message });
@@ -1343,17 +1371,16 @@ else if (values["prepare-source"]) {
       if (typeof fact.reason === "string") remoteDefaults.set(fact.source_git_dir, fact.reason);
       else {
         if (![fact.remote, fact.url, fact.ref, fact.sha].every((v) => typeof v === "string" && v.length > 0) || !/^refs\/heads\/.+/.test(fact.ref) || !/^[0-9a-f]{40,64}$/.test(fact.sha)) throw new Error("invalid remote-default fact");
-        remoteDefaults.set(fact.source_git_dir, fact);
+        remoteDefaults.set(fact.source_git_dir, { source_git_dir: fact.source_git_dir, remote: fact.remote, url: fact.url, ref: fact.ref, sha: fact.sha });
       }
     }
   } catch (e) {
     usage(`cannot read --source-facts: ${(e as Error).message}`);
   }
-  compareIntegration = true;
   const targets = [...new Set(values.target.map((p) => realpath(p) || resolve(p)))].map((path) => {
     const entry = entryFor(path);
     if (!entry) usage(`${path} is not a checkout under ${base}`);
     return { path, entry };
   });
-  print({ base, evidence_gaps: evidenceGaps, checkouts: targets.map(({ path, entry }) => rescan(entry, path)).filter(Boolean) });
+  print({ base, evidence_gaps: evidenceGaps, checkouts: targets.map(({ path, entry }) => rescan(entry, path, targetedInspection)).filter(Boolean) });
 } else print({ base, evidence_gaps: evidenceGaps, checkouts: scan() });
