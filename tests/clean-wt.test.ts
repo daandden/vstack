@@ -491,43 +491,68 @@ test("opt-in progress reports scan work and the actual ownership blocker without
 test("large ignored trees keep fresh cleanup guards within a bounded content-read workload", () => {
   const { path } = integratedDraft();
   const survivor = linkedWorktree("wt-verify-survivor");
-  const fileCount = 256;
-  const fileBytes = 8192;
+  const groups = 64;
+  const filesPerGroup = 32;
+  const fileCount = groups * filesPerGroup;
+  const fileBytes = 1024;
   const writeTree = (root: string) => {
-    for (let group = 0; group < 32; group++) {
+    const contents = Buffer.alloc(fileBytes);
+    for (let group = 0; group < groups; group++) {
       const folder = join(root, "local-cache", `package-${group}`);
       mkdirSync(folder, { recursive: true });
-      for (let file = 0; file < 8; file++) writeFileSync(join(folder, `${file}.bin`), Buffer.alloc(fileBytes, group + file));
+      for (let file = 0; file < filesPerGroup; file++) {
+        writeFileSync(join(folder, `${file}.bin`), contents.fill(group + file));
+      }
+      const disposable = join(folder, "build");
+      mkdirSync(disposable);
+      writeFileSync(join(disposable, "generated.bin"), "not compared");
     }
   };
-  writeTree(repo);
-  writeTree(path);
-  const measured: { operation: string; inspections: number; files: number; bytes: number; elapsed_ms: number }[] = [];
-  const measure = (operation: string, args: string[]) => {
+  for (const root of [repo, path, survivor]) writeTree(root);
+  const measured: Record<string, number | string>[] = [];
+  const measure = (operation: string, args: string[], width?: string) => {
     const started = performance.now();
-    const result = cleanWt([...args, "--progress"]);
+    const result = cleanWt([...args, "--progress"], { VSTACK_CLEAN_WT_READER_WIDTH: width });
     expect(result.code).toBe(0);
-    const reads = result.stderr.trim().split("\n").map(line => JSON.parse(line)).filter(event => event.phase === "contents" && event.stage === "complete");
-    measured.push({ operation, inspections: reads.length, files: reads.reduce((sum, event) => sum + event.files, 0), bytes: reads.reduce((sum, event) => sum + event.bytes, 0), elapsed_ms: Math.round(performance.now() - started) });
+    const events = result.stderr.trim().split("\n").map(line => JSON.parse(line));
+    const reads = events.filter(event => event.phase === "contents" && event.stage === "complete");
+    const reader = events.find(event => event.phase === "reader" && event.stage === "complete");
+    expect(reader).toMatchObject({
+      files: reads.reduce((sum, event) => sum + event.files, 0),
+      bytes: reads.reduce((sum, event) => sum + event.bytes, 0),
+    });
+    expect(reader.open_file_limit).toBe(reader.width);
+    expect(reader.buffer_byte_limit).toBe(reader.width * 64 * 1024);
+    expect(reader.peak_open_files).toBeLessThanOrEqual(reader.open_file_limit);
+    expect(reader.peak_buffer_bytes).toBeLessThanOrEqual(reader.buffer_byte_limit);
+    measured.push({ operation, inspections: reads.length, elapsed_ms: Math.round(performance.now() - started), ...reader });
     return result.json;
   };
-  const discovered = measure("discovery", ["inventory"]);
+  const serial = measure("discovery width 1", ["inventory"], "1");
+  const discovered = measure("discovery default", ["inventory"]);
+  expect(discovered).toEqual(serial);
   const record = discovered.checkouts.find((c: Checkout) => c.path === path);
   expect(record).toMatchObject({ outcome: "contents deferred", state: "dirty", automatic: false, fingerprint: "" });
-  expect(measured[0]).toMatchObject({ files: 0, bytes: 0 });
+  expect(discovered.checkouts.find((c: Checkout) => c.path === survivor)).toMatchObject({
+    outcome: "inspected", state: "clean", automatic: true, fingerprint: expect.stringMatching(/^v1:discovery:[a-f0-9]{64}$/),
+  });
+  const ignoredReads = { files: 2 * fileCount, bytes: 2 * fileCount * fileBytes };
+  expect(measured[0]).toMatchObject({ ...ignoredReads, width: 1, peak_open_files: 1, peak_buffer_bytes: 64 * 1024 });
+  expect(measured[1]).toMatchObject(ignoredReads);
+  expect(measured[1].width).toBeGreaterThan(1);
+  expect(measured[1].peak_open_files).toBeGreaterThan(1);
   const prepared = measure("prepare source", ["inventory", "--prepare-source", record.source_git_dir]);
   const facts = join(dir, "large-tree-source.json");
   writeFileSync(facts, JSON.stringify(prepared));
   const investigated = measure("investigation", ["inventory", "--target", path, "--source-facts", facts]).checkouts[0];
   expect(investigated).toMatchObject({ state: "dirty", automatic: true, integration: { status: "verified" } });
-  expect(measured.find(item => item.operation === "investigation")!.bytes).toBeGreaterThanOrEqual(2 * fileCount * fileBytes);
+  const investigation = measured.find(item => item.operation === "investigation")!;
+  expect(investigation).toMatchObject({ files: ignoredReads.files + 1, bytes: ignoredReads.bytes + Buffer.byteLength("integrated\n") });
   const removed = measure("removal", ["remove", `${path}=${investigated.fingerprint}`]);
   expect(removed).toEqual({ removed: [{ path, method: "git worktree remove --force" }], skipped: [], failed: [] });
-  const investigation = measured.find(item => item.operation === "investigation")!;
   expect(measured.find(item => item.operation === "removal")).toMatchObject({
     inspections: 1, files: investigation.files, bytes: investigation.bytes,
   });
-  writeTree(survivor);
   const survivingFile = join(survivor, "local-cache", "package-0", "0.bin");
   const records = verificationInput(discovered, [{ path, status: "complete", checkout: investigated }]);
   const verified = measure("final verification", ["inventory", "--verify", records]);
@@ -536,13 +561,10 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
     expect.objectContaining({ path, omp_listed: false, ovnfs_listed: false, disk: "absent", git_registered: false, branch_preserved: true }),
     expect.objectContaining({ path: survivor, omp_listed: true, disk: "present" }),
   ]));
-  expect(measured.at(-1)).toMatchObject({ files: 0, bytes: 0 });
+  expect(measured.at(-1)).toMatchObject({ inspections: 0, files: 0, bytes: 0, peak_open_files: 0, peak_buffer_bytes: 0 });
   expect(existsSync(path)).toBe(false);
   expect(readFileSync(survivingFile)).toEqual(Buffer.alloc(fileBytes));
-  const totals = measured.reduce((sum, item) => ({ files: sum.files + item.files, bytes: sum.bytes + item.bytes, elapsed_ms: sum.elapsed_ms + item.elapsed_ms }), { files: 0, bytes: 0, elapsed_ms: 0 });
-  console.log(JSON.stringify({ workload: { files_per_tree: fileCount, bytes_per_tree: fileCount * fileBytes }, measured, totals }));
-  expect(totals.bytes).toBeLessThanOrEqual(8 * fileCount * fileBytes + 1024);
-  expect(totals.files).toBeLessThanOrEqual(8 * fileCount + 16);
+  console.log(JSON.stringify({ workload: { files_per_tree: fileCount, bytes_per_tree: fileCount * fileBytes }, measured }));
 }, 30000);
 
 test("verification checks the full branch ref when a tag has the same name", () => {

@@ -1,4 +1,5 @@
 import { closeSync, existsSync, lstatSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync } from "node:fs";
+import { open, type FileHandle } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
@@ -56,7 +57,18 @@ function progress(phase: string, details: Record<string, unknown>) {
   if (values.progress) process.stderr.write(`${JSON.stringify({ phase, ...details })}\n`);
 }
 
+const MAX_READER_WIDTH = 32;
+const CONTENT_BUFFER_BYTES = 64 * 1024;
+const configuredWidth = process.env.VSTACK_CLEAN_WT_READER_WIDTH;
+const readerWidth = configuredWidth === undefined ? 8 : Number(configuredWidth);
+if ((configuredWidth !== undefined && !/^[1-9][0-9]*$/.test(configuredWidth)) || readerWidth > MAX_READER_WIDTH) {
+  usage(`VSTACK_CLEAN_WT_READER_WIDTH must be an integer from 1 to ${MAX_READER_WIDTH}`);
+}
+
 const contentReads = { files: 0, bytes: 0 };
+const contentBuffers: Buffer[] = [];
+let openContentFiles = 0;
+let peakOpenContentFiles = 0;
 let reportedBytes = 0;
 function countContentBytes(file: string, bytes: number) {
   contentReads.bytes += bytes;
@@ -64,6 +76,33 @@ function countContentBytes(file: string, bytes: number) {
     progress("contents", { stage: "reading", path: file, ...contentReads });
     reportedBytes = contentReads.bytes;
   }
+}
+
+function reportReader() {
+  progress("reader", {
+    stage: "complete",
+    width: readerWidth,
+    open_file_limit: readerWidth,
+    buffer_byte_limit: readerWidth * CONTENT_BUFFER_BYTES,
+    peak_open_files: peakOpenContentFiles,
+    peak_buffer_bytes: contentBuffers.length * CONTENT_BUFFER_BYTES,
+    ...contentReads,
+  });
+}
+
+async function readInOrder<T, R>(items: T[], read: (item: T, slot: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  async function worker(slot: number) {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await read(items[index], slot);
+    }
+  }
+  // Drain every worker before starting another checkout, including after an inspection failure.
+  const settled = await Promise.allSettled(Array.from({ length: Math.min(readerWidth, items.length) }, (_, slot) => worker(slot)));
+  for (const result of settled) if (result.status === "rejected") throw result.reason;
+  return results;
 }
 
 const lstat = (p: string) => {
@@ -594,7 +633,7 @@ function linkTarget(root: string, rel: string, text: string): string {
 
 type IgnoredPreservation = readonly [result: "same" | "unique" | "unverified", source?: string];
 
-function compareIgnored(path: string, ref: string | null, rel: string, target: ReturnType<typeof lstat>, content: string): IgnoredPreservation {
+async function compareIgnored(path: string, ref: string | null, rel: string, target: ReturnType<typeof lstat>, content: string, slot: number): Promise<IgnoredPreservation> {
   if (!ref || !target || content === "missing" || content === "unverified") return ["unverified"];
   try {
     const file = join(ref, rel);
@@ -606,7 +645,7 @@ function compareIgnored(path: string, ref: string | null, rel: string, target: R
     }
     if (!target.isFile()) return ["unverified"];
     if (!source?.isFile() || target.size !== source.size) return ["unique"];
-    const preserved = contentStamp(file, source);
+    const preserved = await contentStamp(file, source, slot);
     if (preserved === "missing" || preserved === "unverified") return ["unverified"];
     return [content === preserved ? "same" : "unique", preserved];
   } catch {
@@ -620,27 +659,34 @@ interface WorkState {
   stamp: unknown[] | null;
 }
 
-function contentStamp(file: string, st = lstat(file)): string {
-  let fd: number | undefined;
+async function contentStamp(file: string, st: ReturnType<typeof lstat>, slot: number): Promise<string> {
+  let handle: FileHandle | undefined;
   try {
     if (!st) return "missing";
     if (st.isSymbolicLink()) return `link:${readlinkSync(file)}`;
     if (!st.isFile()) return "unverified";
     const hash = createHash("sha256");
-    const buf = Buffer.alloc(1 << 16);
-    fd = openSync(file, "r");
+    handle = await open(file, "r");
     contentReads.files++;
+    peakOpenContentFiles = Math.max(peakOpenContentFiles, ++openContentFiles);
+    const buf = contentBuffers[slot] ??= Buffer.allocUnsafe(CONTENT_BUFFER_BYTES);
     for (;;) {
-      const n = readSync(fd, buf, 0, buf.length, null);
-      countContentBytes(file, n);
-      if (n === 0) break;
-      hash.update(buf.subarray(0, n));
+      const { bytesRead } = await handle.read(buf, 0, buf.length, null);
+      if (bytesRead === 0) break;
+      countContentBytes(file, bytesRead);
+      hash.update(buf.subarray(0, bytesRead));
     }
     return hash.digest("hex");
   } catch {
     return "unverified";
   } finally {
-    if (fd !== undefined) closeSync(fd);
+    if (handle) {
+      try {
+        await handle.close();
+      } finally {
+        openContentFiles--;
+      }
+    }
   }
 }
 
@@ -659,7 +705,7 @@ function workingEntry(path: string, rel: string): string | undefined {
   }
 }
 
-function workState(path: string, ref: string | null): WorkState {
+async function workState(path: string, ref: string | null): Promise<WorkState> {
   const status = requireGit(run(["git", "status", "--porcelain=v2", "-z", "--untracked-files=all", "--ignored"], path), "status");
   const changes: Record<string, string[]> = { staged: [], unstaged: [], unmerged: [], untracked: [], ignored_unique: [], ignored_unverified: [] };
   const ignoredTokens: number[] = [];
@@ -712,15 +758,21 @@ function workState(path: string, ref: string | null): WorkState {
     }
   }
   const ignoredPaths = new Set(ignored);
-  const stamp = [stampedStatus, flags, ...[...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])].map((rel) => {
+  const paths = [...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])];
+  const entries = await readInOrder(paths, async (rel, slot) => {
     const file = join(path, rel);
     const st = lstat(file);
-    const content = st ? contentStamp(file, st) : "missing";
-    const preservation = ignoredPaths.has(rel) ? compareIgnored(path, ref, rel, st, content) : undefined;
-    if (preservation?.[0] === "unique") changes.ignored_unique.push(rel);
-    else if (preservation?.[0] === "unverified") changes.ignored_unverified.push(rel);
-    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content, preservation] : [rel, preservation];
-  })];
+    const content = await contentStamp(file, st, slot);
+    const preservation = ignoredPaths.has(rel) ? await compareIgnored(path, ref, rel, st, content, slot) : undefined;
+    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content, preservation] as const : [rel, preservation] as const;
+  });
+  const stamp: unknown[] = [stampedStatus, flags];
+  for (const entry of entries) {
+    stamp.push(entry);
+    const preservation = entry.length === 2 ? entry[1] : entry[7];
+    if (preservation?.[0] === "unique") changes.ignored_unique.push(entry[0]);
+    else if (preservation?.[0] === "unverified") changes.ignored_unverified.push(entry[0]);
+  }
   const listed = Object.values(changes).flat();
   for (const k of Object.keys(changes)) if (changes[k].length === 0) delete changes[k];
   return { state: hiddenUnknown ? "unknown" : listed.length > 0 ? "dirty" : "clean", changes, stamp };
@@ -914,7 +966,7 @@ function integrated(path: string, commonDir: string, work: WorkState, fact: Remo
   return { status: "verified", default: fact, ref: fact.ref, paths };
 }
 
-function inspect(path: string, entry: string, kind: Kind, source: Source | null, instance: string, entryOwners: Owner[], entryGaps: string[], inspection: Inspection, ovnfsIdentity?: Checkout["ovnfs"]): Checkout {
+async function inspect(path: string, entry: string, kind: Kind, source: Source | null, instance: string, entryOwners: Owner[], entryGaps: string[], inspection: Inspection, ovnfsIdentity?: Checkout["ovnfs"]): Promise<Checkout> {
   progress("checkout", { stage: "ownership", path });
   const branch: string | null = null;
   const { sessions, moved } = sessionLinks(entry);
@@ -936,7 +988,7 @@ function inspect(path: string, entry: string, kind: Kind, source: Source | null,
   const head = revision.slice(headOffset);
   progress("checkout", { stage: "contents", path });
   const before = { ...contentReads };
-  const work = workState(path, source.checkout);
+  const work = await workState(path, source.checkout);
   progress("contents", { stage: "complete", path, files: contentReads.files - before.files, bytes: contentReads.bytes - before.bytes });
   progress("checkout", { stage: "history", path });
   const unique_history = uniqueHistory(path, kind, source, head, common.branch === null);
@@ -951,7 +1003,7 @@ function inspect(path: string, entry: string, kind: Kind, source: Source | null,
   const automatic = unique_history.length === 0 && (work.state === "clean" || (integration?.status === "verified" && !artifacts));
   const fingerprint = makeFingerprint(inspection.kind, [
     instance, head, common.branch, work.stamp, unique_history, remoteFact, integration,
-    ovnfsIdentity, ovnfsIdentity?.record ? contentStamp(ovnfsIdentity.record) : null,
+    ovnfsIdentity, ovnfsIdentity?.record ? await contentStamp(ovnfsIdentity.record, lstat(ovnfsIdentity.record), 0) : null,
   ]);
   const source_git_dir = source.commonDir;
   progress("checkout", { stage: "complete", path, state: work.state, automatic, blockers: [...(work.changes.unreadable ?? []), ...(integration?.reason ? [integration.reason] : []), ...unique_history.map(tip => `unique history: ${tip.ref}`)] });
@@ -979,14 +1031,14 @@ function observeInstance({ path, kind }: Pick<Location, "path" | "kind">): Insta
   }
 }
 
-function inspectLocation(location: Location, inspection: Inspection): Checkout {
+async function inspectLocation(location: Location, inspection: Inspection): Promise<Checkout> {
   if ("layoutError" in location && location.layoutError) return failedInspection(location, "layout", location.layoutError);
   const instance = startingInstances.get(location.path) ?? observeInstance(location);
   if ("error" in instance) return failedInspection(location, "layout", instance.error);
   let stage: Failure["stage"] = "source resolution";
   let checkout: Checkout;
   try {
-    checkout = inspectLocatedCheckout(location, instance.id, inspection, (next) => { stage = next; });
+    checkout = await inspectLocatedCheckout(location, instance.id, inspection, (next) => { stage = next; });
   } catch (error) {
     checkout = failedInspection(location, stage, error);
   }
@@ -1019,7 +1071,7 @@ function protectedLocation(location: Location, outcome: "replaced" | "inspection
   };
 }
 
-function inspectLocatedCheckout(location: Location, instance: string, inspection: Inspection, atStage: (stage: Failure["stage"]) => void): Checkout {
+async function inspectLocatedCheckout(location: Location, instance: string, inspection: Inspection, atStage: (stage: Failure["stage"]) => void): Promise<Checkout> {
   const { path, entry, kind } = location;
   atStage("layout");
   const registered = kind === "worktree" ? registeredGitDir(path) : undefined;
@@ -1037,7 +1089,7 @@ function inspectLocatedCheckout(location: Location, instance: string, inspection
     const recordEntry = location.record ? dirname(location.record) : undefined;
     const task = recordEntry && lstat(join(recordEntry, ".omp-isolation-owner.json")) ? taskOwner(recordEntry) : {};
     const ovnfsIdentity = { name: location.name, source: location.source, record: location.record };
-    const checkout = inspect(path, entry, kind, source, instance, task.owner ? [task.owner] : [], [...gaps, ...(task.gap ? [task.gap] : [])], inspection, ovnfsIdentity);
+    const checkout = await inspect(path, entry, kind, source, instance, task.owner ? [task.owner] : [], [...gaps, ...(task.gap ? [task.gap] : [])], inspection, ovnfsIdentity);
     checkout.ovnfs = ovnfsIdentity;
     return checkout;
   }
@@ -1060,10 +1112,11 @@ function missingPath(path: string): boolean {
   }
 }
 
-function scan(): Checkout[] {
+async function scan(): Promise<Checkout[]> {
   const locations = [...nativeLocations, ...ovnfsLocations];
-  const checkouts = locations.map((location) => inspectLocation(location, discoveryInspection)).map((checkout, i) =>
-    verifyInstance(locations[i], startingInstances.get(checkout.path)!, checkout));
+  const inspected = [];
+  for (const location of locations) inspected.push(await inspectLocation(location, discoveryInspection));
+  const checkouts = inspected.map((checkout, i) => verifyInstance(locations[i], startingInstances.get(checkout.path)!, checkout));
   if (!checkouts.some((checkout) => checkout.failure)) return checkouts;
 
   progress("evidence", { stage: "confirm absence" });
@@ -1079,7 +1132,7 @@ function scan(): Checkout[] {
   });
 }
 
-function rescan(entry: string, path: string, inspection: Inspection): Checkout | undefined {
+async function rescan(entry: string, path: string, inspection: Inspection): Promise<Checkout | undefined> {
   const ovnfsLocation = ovnfsLocations.find((location) => location.path === path && location.entry === entry);
   if (ovnfsLocation) return inspectLocation(ovnfsLocation, inspection);
   const location = nativeLocations.find((candidate) => candidate.path === path && candidate.entry === entry);
@@ -1104,7 +1157,7 @@ function print(v: unknown) {
   process.stdout.write(`${JSON.stringify(v, null, 2)}\n`);
 }
 
-function removeAll() {
+async function removeAll() {
   if (positionals.length < 2) usage("remove needs at least one <path>=<fingerprint>");
   const approved = new Set((values.approve ?? []).map((p) => realpath(p) || resolve(p)));
   const targetPaths = new Set<string>();
@@ -1151,7 +1204,7 @@ function removeAll() {
         remoteFact: (commonDir) => refreshed?.commonDir === commonDir ? refreshed.fact : "the source repository could not be refreshed before removal",
       };
     }
-    const c = rescan(t.entry, t.path, inspection);
+    const c = await rescan(t.entry, t.path, inspection);
     const needsApproval = !!c && !c.automatic;
     let reason: string | undefined;
     if (!c) reason = unavailableTarget(t.path, t.entry);
@@ -1351,11 +1404,12 @@ function verification(file: string) {
 
 if (values.verify !== undefined) {
   print(verification(values.verify));
+  reportReader();
   process.exit(0);
 }
 
 gatherEvidence();
-if (command === "remove") print(removeAll());
+if (command === "remove") print(await removeAll());
 else if (values["prepare-source"]) {
   const source_facts = [...new Set(values["prepare-source"].map((p) => realpath(p) || resolve(p)))].map((source_git_dir) => {
     const fact = remoteDefault(source_git_dir);
@@ -1382,5 +1436,11 @@ else if (values["prepare-source"]) {
     if (!entry) usage(`${path} is not a checkout under ${base}`);
     return { path, entry };
   });
-  print({ base, evidence_gaps: evidenceGaps, checkouts: targets.map(({ path, entry }) => rescan(entry, path, targetedInspection)).filter(Boolean) });
-} else print({ base, evidence_gaps: evidenceGaps, checkouts: scan() });
+  const checkouts: Checkout[] = [];
+  for (const { path, entry } of targets) {
+    const checkout = await rescan(entry, path, targetedInspection);
+    if (checkout) checkouts.push(checkout);
+  }
+  print({ base, evidence_gaps: evidenceGaps, checkouts });
+} else print({ base, evidence_gaps: evidenceGaps, checkouts: await scan() });
+reportReader();
