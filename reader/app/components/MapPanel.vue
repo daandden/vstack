@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { mapOpen, mapTab, nextReadingIndex, shortcutEligible } from "~/composables/navigation";
 import { useReaderState } from "~/composables/reader";
 import Button from "~/components/ui/Button.vue";
-import { mapOpen, mapTab, shortcutEligible } from "~/composables/navigation";
+import { useReadingDialog, focusReadingItem as focusItem } from "~/composables/reading-dialog";
 
 const { flow } = useReaderState();
 
@@ -11,48 +12,22 @@ const tabs = computed(() => [
   { id: "stages", label: "Stages" },
   ...(f.value.wayfinder ? [{ id: "wayfinder", label: "Wayfinder map" }] : []),
 ]);
-const dialog = ref<HTMLDialogElement>();
-const items = () => [...dialog.value!.querySelectorAll<HTMLElement>("[data-map-item]")].filter((el) => el.getClientRects().length > 0);
-const focusItem = (el: HTMLElement | undefined) => {
-  el?.focus({ preventScroll: true });
-  el?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
-};
-let opener: Element | null = null;
-let openingHash = "";
-watch(mapOpen, async (open) => {
-  const d = dialog.value;
-  if (!d) return;
-  if (open && !d.open) {
-    opener = document.activeElement;
-    openingHash = location.hash;
-    if (!tabs.value.some((t) => t.id === mapTab.value)) mapTab.value = tabs.value[0]!.id;
-    d.showModal();
-    await nextTick();
-    focusItem(items()[0]);
-  } else if (!open && d.open) d.close();
+const dialog = useTemplateRef<HTMLDialogElement>("dialog");
+const items = () => [...dialog.value!.querySelectorAll<HTMLElement>("[data-map-item]")].filter(el => {
+  const parent = el.localName === "summary" ? el.parentElement?.parentElement : el.parentElement;
+  return el.getClientRects().length > 0 && !parent?.closest("details[data-navigation-fold]:not([open])");
 });
+const firstItem = () => items()[0] ?? dialog.value?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? undefined;
+const { closed } = useReadingDialog(mapOpen, dialog, firstItem, "flow-stages");
 watch(flow, () => {
   const d = dialog.value;
   if (!mapOpen.value || !d?.open || d.contains(document.activeElement)) return;
-  focusItem(items()[0] ?? d.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? d);
+  focusItem(firstItem() ?? d);
 }, { flush: "post" });
-function closed() {
-  // A queued native close event can arrive after the dialog has reopened.
-  const d = dialog.value;
-  if (!d || d.open) return;
-  mapOpen.value = false;
-  const focused = document.activeElement;
-  if (location.hash !== openingHash || (focused !== document.body && !d.contains(focused))) return;
-  if (opener instanceof HTMLElement && opener.isConnected && opener !== document.body) {
-    opener.focus({ preventScroll: true });
-  } else {
-    document.getElementById("stages-map-trigger")?.focus({ preventScroll: true });
-  }
-}
 async function switchTab(id: string) {
   mapTab.value = id;
   await nextTick();
-  focusItem(items()[0]);
+  focusItem(firstItem());
 }
 function onKey(e: KeyboardEvent) {
   if (!shortcutEligible(e)) return;
@@ -65,9 +40,9 @@ function onKey(e: KeyboardEvent) {
     e.preventDefault();
     const list = items();
     const at = list.indexOf(target?.closest<HTMLElement>("[data-map-item]")!);
-    const next = at < 0 ? (e.key === "j" ? 0 : list.length - 1) : Math.min(Math.max(at + (e.key === "j" ? 1 : -1), 0), list.length - 1);
+    const next = nextReadingIndex(at, list.length, e.key === "j" ? 1 : -1);
     focusItem(list[next]);
-  } else if (e.key === "Enter" && target?.matches("[data-map-item]:not(a)")) {
+  } else if (e.key === "Enter" && target?.matches("[data-map-item]:not(a, summary)")) {
     e.preventDefault();
     target.querySelector<HTMLAnchorElement>("a[href]")?.click();
   } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
@@ -91,7 +66,7 @@ function onKey(e: KeyboardEvent) {
       <MattPath />
     </div>
     <div id="map-stages" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-stages" :hidden="mapTab !== 'stages'">
-      <StageGraph :stages="f.stages" />
+      <MapStages />
     </div>
     <div v-if="f.wayfinder" id="map-wayfinder" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-wayfinder" :hidden="mapTab !== 'wayfinder'">
       <WayfinderMap :tickets="f.wayfinder.tickets" />

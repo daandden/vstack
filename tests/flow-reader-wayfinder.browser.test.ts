@@ -42,7 +42,7 @@ test("the wayfinder Map tab draws blocking links and states, and Enter opens the
     await context.route("https://tracker.example.test/**", (route) => route.fulfill({ body: "Ticket opened", contentType: "text/plain" }));
     const page = await context.newPage();
     await page.goto(opened.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     await page.keyboard.press("m");
     const tab = page.getByRole("tab", { name: "Wayfinder map", exact: true });
     await tab.waitFor();
@@ -102,7 +102,7 @@ test("the wayfinder Map tab draws blocking links and states, and Enter opens the
     await page.keyboard.press("Escape");
     const ordinary = cli(["open", "--skill", "research", "--title", "No map"]);
     await page.goto(ordinary.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     await page.keyboard.press("m");
     expect(await page.getByRole("tab", { name: "Wayfinder map", exact: true }).count()).toBe(0);
   } finally { await context.close(); }
@@ -115,7 +115,7 @@ test("local ticket paths are selectable text and Enter does not navigate", async
   try {
     const page = await context.newPage();
     await page.goto(opened.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     await page.keyboard.press("m");
     await page.getByRole("tab", { name: "Wayfinder map", exact: true }).click();
     const local = page.locator('[data-ticket-node="storage"] [data-map-item]');
@@ -143,7 +143,7 @@ test("live snapshots recover lost Map focus without stealing retained or closed-
   try {
     const page = await context.newPage();
     await page.goto(opened.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     await page.keyboard.press("m");
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     const wayfinder = page.getByRole("tab", { name: "Wayfinder map", exact: true });
@@ -176,7 +176,7 @@ test("live snapshots recover lost Map focus without stealing retained or closed-
     expect(await page.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
     await page.keyboard.press("Escape");
     await map.waitFor({ state: "hidden" });
-    await page.locator('.bar .tabs a[href="#overview"]').focus();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).locator('a[href="#overview"]').focus();
     const focus = await page.evaluateHandle(() => document.activeElement);
     submit([ticket("after-close")]);
     await page.locator('[data-ticket-node="after-close"]').waitFor({ state: "attached" });
@@ -193,7 +193,7 @@ test("empty and single-ticket maps stay readable at 320px and with enlarged text
     try {
       const page = await context.newPage();
       await page.goto(opened.live.url);
-      await page.locator(".bar .tabs").waitFor();
+      await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
       await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
       await page.keyboard.press("m");
       await page.getByRole("tab", { name: "Wayfinder map", exact: true }).click();
@@ -222,7 +222,7 @@ test("a large ticket graph pans on both axes without moving the page's selection
   try {
     const page = await context.newPage();
     await page.goto(opened.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.getByRole("navigation", { name: "Flow navigation", exact: true }).waitFor();
     await page.keyboard.press("m");
     await page.getByRole("tab", { name: "Wayfinder map", exact: true }).click();
     const pane = page.getByRole("tabpanel", { name: "Wayfinder map" });

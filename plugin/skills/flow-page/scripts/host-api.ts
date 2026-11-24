@@ -4,7 +4,7 @@ export type { Observations } from "./observations.ts";
 export type { Comments } from "./comments.ts";
 export type { Learning } from "./learning.ts";
 
-export type Content = Omit<View, "questions"> & { questions: QuestionView[]; runtimes: Runtimes };
+export type Content = Omit<View, "questions"> & { questions: QuestionView[]; runtimes: Runtimes; project: string };
 export type Versions = { revision: number; observationVersion: string; hostGeneration: string; readerGeneration: string };
 export type PickerPresence = { key: string; flow: string; stage: string; session: string; picker: string; questions: string[]; expires: number };
 export type Presence = { presences: PickerPresence[] };

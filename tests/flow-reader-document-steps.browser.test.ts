@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import { stagesButton } from "./support/reader-layout.ts";
 
 const SCRIPT = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 
@@ -69,9 +70,11 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
     expect(await legacy.locator("pre").textContent()).toBe("const saved = true;");
     expect(await legacy.locator("ol").evaluate(el => getComputedStyle(el).listStyleType)).toBe("decimal");
     expect(await page.getByRole("region", { name: "Citations", exact: true }).locator("ol").evaluate(el => getComputedStyle(el).listStyleType)).toBe("decimal");
-    const stateDot = page.getByRole("navigation", { name: "Flow tabs", exact: true }).locator('[data-state="in-progress"] a > span');
-    expect(await stateDot.evaluate(el => ({ width: el.getBoundingClientRect().width, color: getComputedStyle(el).backgroundColor }))).toMatchObject({ width: 8 });
-    expect(await stateDot.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
+    await stagesButton(page).click();
+    const stages = page.getByRole("tabpanel", { name: "Stages", exact: true });
+    expect(await stages.getByText("In progress · 0 open", { exact: true }).isVisible()).toBe(true);
+    await page.keyboard.press("Escape");
+    await stages.waitFor({ state: "hidden" });
     const proof = process.env.FLOW_READER_EVIDENCE;
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();

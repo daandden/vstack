@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdtempSync, mkdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -126,11 +127,11 @@ test("ordinary historical Results do not acquire inferred correction links", () 
 test("non-Result Correction targets carry their title, with the question's attempt label when the Stage asked it again", () => {
   const w = world();
   const option = { label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["Premature action"] };
-  const ask = (ref: string, title: string, again?: string) => ({ ref, title, description: "Evidence is incomplete.", needs: [{ need: "Review uncertainty", kind: "prose" }], options: [option], ...(again ? { again } : {}) });
-  const first = w.ok(["submit"], [{ kind: "round", questions: [ask("go", "May work proceed?")] }]);
+  const ask = (ref: string, title: string, again?: string) => ({ ref, title, brief: decisionBrief(title, { again: again ? "The earlier attempt did not settle whether work may proceed." : undefined }), description: "Evidence is incomplete.", needs: [{ need: "Review uncertainty", kind: "prose" }], options: [option], ...(again ? { again } : {}) });
+  const first = w.ok(["submit"], [{ kind: "round", now: "The proposal is ready for a decision.", questions: [ask("go", "May work proceed?")] }]);
   const q = first.refs.go;
   w.ok(["submit"], [{ kind: "answer", question: q, response: { status: "answered", text: "probably fine" }, reading: { outcome: "resolved", decision: "Proceed", basis: "Read as consent" } }]);
-  const again = w.ok(["submit"], [{ kind: "round", questions: [ask("again", "May work proceed now?", q)] }]);
+  const again = w.ok(["submit"], [{ kind: "round", now: "The proposal is ready for a decision.", questions: [ask("again", "May work proceed now?", q)] }]);
   w.ok(["submit"], [{ kind: "answer", question: again.refs.again, response: { status: "answered", picks: ["A"] } }, { kind: "stage", state: "finished" }]);
   w.next();
   w.ok(["submit"], [

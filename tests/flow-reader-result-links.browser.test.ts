@@ -27,7 +27,7 @@ test("whole Results link to question headers both ways while entries and earlier
   try {
     const opened = cli(["open", "--title", "Whole Result navigation", "--skill", "grill-me"]);
     if (!opened.live.url) throw new Error(`Reader host unavailable: ${JSON.stringify(opened.live)}`);
-    const sent = cli(["submit"], [...linkedResults(), { kind: "round", questions: [linkedQuestion()] }]);
+    const sent = cli(["submit"], [...linkedResults(), { kind: "round", now: "Local reconnect evidence is ready to review.", questions: [linkedQuestion()] }]);
     cli(["submit"], [{ ...linkedResults()[0], revises: sent.refs.document, summary: "Current evidence" }]);
     const page = await context.newPage();
     const errors: string[] = [];
@@ -35,6 +35,8 @@ test("whole Results link to question headers both ways while entries and earlier
     await page.goto(`${opened.live.url}#${sent.refs.decision}`);
     const question = page.locator(`#${sent.refs.decision}`);
     await question.waitFor();
+    const sources = question.locator("summary").filter({ hasText: /^Sources and context$/ });
+    await sources.click();
     for (const ref of ["document", "comparison", "metrics", "prototype", "quiz", "cards"]) {
       const id = sent.refs[ref];
       await question.locator(`a[href="#${id}"]`).click();
@@ -57,7 +59,7 @@ test("whole Results link to question headers both ways while entries and earlier
     await history.locator(":scope > summary").click();
     expect(await page.locator(`#${sent.refs.document}-r1 header`).innerText()).not.toContain("Asked in");
     expect(await page.locator(`#${sent.refs.document}-r1`).innerText()).toContain("Saved responses survive reconnects");
-    const again = cli(["submit"], [{ kind: "round", questions: [{ ...linkedQuestion([sent.refs.document!]), ref: "retry", again: sent.refs.decision }] }]);
+    const again = cli(["submit"], [{ kind: "round", now: "The reconnect fixture now includes an updated report.", questions: [{ ...linkedQuestion([sent.refs.document!], sent.refs.decision), ref: "retry" }] }]);
     await page.goto(`${opened.live.url}#${sent.refs.document}`);
     const asked = page.locator(`#${sent.refs.document} > div > header`);
     await asked.getByRole("link", { name: "Q1 (attempt 2)", exact: true }).waitFor();
@@ -71,6 +73,9 @@ test("whole Results link to question headers both ways while entries and earlier
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280]) {
         await page.setViewportSize({ width, height: 900 });
+        await asked.getByRole("link", { name: "Q1 (attempt 1)", exact: true }).click();
+        expect(new URL(page.url()).hash).toBe(`#${sent.refs.decision}`);
+        if (!(await sources.evaluate(el => (el.parentElement as HTMLDetailsElement).open))) await sources.click();
         await question.locator(`a[href="#${sent.refs.document}"]`).click();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         const proof = process.env.FLOW_READER_EVIDENCE;

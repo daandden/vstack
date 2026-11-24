@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -27,11 +28,11 @@ function run(args: string[], session: string, items?: object[]) {
 }
 const submit = (session: string, ...items: object[]) => run(["submit"], session, items);
 const option = (label: string) => ({ label, does: label, gains: ["Preserve the work boundary"], costs: ["Requires a planning decision"] });
-const question = (ref: string, extra: object = {}) => ({ ref, title: "Which planning route?", description: "Choose the work boundary.", needs: [{ need: "Compare the independently deliverable work boundaries.", kind: "prose" }], options: [option("One ticket"), option("Two tickets")], ...extra });
+const question = (ref: string, extra: object = {}) => ({ ref, brief: decisionBrief("the work boundary"), title: "Which planning route?", description: "Choose the work boundary.", needs: [{ need: "Compare the independently deliverable work boundaries.", kind: "prose" }], options: [option("One ticket"), option("Two tickets")], ...extra });
 
 test("a planning close preserves a resolved note as an interpretation, not a picked answer", () => {
   const opened = run(["open", "--skill", "grill-me", "--title", "Planning a small change"], "interview");
-  const asked = submit("interview", { kind: "round", questions: [question("scope")] });
+  const asked = submit("interview", { kind: "round", now: "Independent work boundaries are ready to compare.", questions: [question("scope")] });
   submit("interview", {
     kind: "answer", question: asked.refs.scope,
     response: { status: "answered", text: "Keep both independently demoable tickets." },
@@ -59,7 +60,7 @@ test("unbound triage discovery creates no administrative Flow and bound discover
   const discovery = run(["open", "--flow", opened.flow, "--skill", "triage"], "discovery");
   const found = submit("discovery",
     { kind: "result", ref: "buckets", shape: "table", title: "Needs attention", columns: ["Bucket", "Count", "Item"], rows: [{ ref: "bug", cells: ["Unlabeled", "1", "Missing history"] }, { ref: "empty", cells: ["Needs triage", "0", "None"] }] },
-    { kind: "round", questions: [question("item", { results: ["buckets/bug"] })] },
+    { kind: "round", now: "Independent work boundaries are ready to compare.", questions: [question("item", { results: ["buckets/bug"] })] },
   );
   submit("discovery", { kind: "answer", question: found.refs.item, response: { status: "answered", picks: ["A"] } });
   run(["alias", "ticket:287"], "discovery");

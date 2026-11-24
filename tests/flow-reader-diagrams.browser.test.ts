@@ -1,4 +1,5 @@
 
+import { decisionBrief } from "./support/decision-brief.ts";
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -110,9 +111,7 @@ test("stored flowcharts redraw with export step routes, boxed edge labels, and t
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(opened.live.url);
-    await page.reload();
-    await page.locator(`nav[aria-label="Flow tabs"] a[href="#${opened.stage}"]`).click();
+    await page.goto(`${opened.live.url}#${opened.stage}`);
     for (const [theme, background] of [["Light", [239, 241, 245]], ["Dark", [30, 30, 46]]] satisfies [string, [number, number, number]][]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const name of Object.keys(sources)) {
@@ -186,6 +185,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
   const capturedSha = new Bun.CryptoHasher("sha256").update(captured).digest("hex");
   const figure = (ref: string, title: string) => ({
     ref: `${ref}-question`, title, description: `Look at the ${title} diagram.`,
+    brief: decisionBrief(title),
     needs: [{ need: `Follow the ${title} steps.`, kind: "context-diagram" }],
     figures: [{ attachment: ref, kind: "context-diagram" }],
     options: [{ label: "Fine", does: `Accepts the ${title} drawing`, gains: [`Clarity for ${title}`], costs: [`No revision of ${title}`] }],
@@ -195,7 +195,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     { kind: "attachment", ref: "reading", type, caption: "Reading then answering", origin: `Styled ${type} capture`, path: "reading", ...(type === "mermaid" ? { focus: ["a2"] } : {}) },
     { kind: "attachment", ref: "captured", type: "svg", caption: "Captured design review", origin: "Pele render of design-review-sequence.mmd", path: "captured.svg" },
     { kind: "attachment", ref: "styled", type: "svg", caption: "Styled historical design", origin: "Pele render of styled-mocha.mmd", path: "styled.svg" },
-    { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
+    { kind: "round", now: "The diagrams are captured and ready to read.", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
   ] });
   if (type === "mermaid") seedHistoricalMermaidCapture(submitted.flow, submitted.refs.reading, readFileSync(STYLED_SOURCE), "reading.mmd");
 
@@ -210,7 +210,8 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
   page.on("request", (r) => { if (!r.url().startsWith(origin) && !r.url().startsWith("data:")) offOrigin.push(r.url()); });
   context.on("page", (p) => { if (p !== decoder) popups.push(p.url()); });
 
-  await page.goto(opened.live.url);
+  const stageUrl = `${opened.live.url}#${opened.stage}`;
+  await page.goto(stageUrl);
   await page.getByRole("button", { name: "Light" }).click();
 
   const hostile = page.getByRole("img", { name: "Hostile labels" });
@@ -225,9 +226,15 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     };
   });
   expect(injected).toEqual({ active: [], handlers: [], links: [] });
-  for (const text of ["Plain text", "javascript:alert(4)"]) await hostile.getByText(text).first().click();
+  const enlarged = page.getByRole("dialog", { name: "Hostile labels", exact: true });
+  for (const text of ["Plain text", "javascript:alert(4)"]) {
+    await hostile.getByText(text).first().click();
+    await enlarged.waitFor();
+    await page.keyboard.press("Escape");
+    await enlarged.waitFor({ state: "hidden" });
+  }
   await Bun.sleep(300);
-  expect(page.url()).toBe(opened.live.url);
+  expect(page.url()).toBe(stageUrl);
   expect({ dialogs, offOrigin, popups }).toEqual({ dialogs: [], offOrigin: [], popups: [] });
 
   const reading = page.getByRole("img", { name: "Reading then answering" });
@@ -279,8 +286,9 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   const bytes = readFileSync(source);
   cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "wide", type, caption: "Wide reading diagram", origin: "Captured diagram", path: source },
-    { kind: "round", questions: [{
+    { kind: "round", now: "The diagrams are captured and ready to read.", questions: [{
       ref: "wide-reading", title: "Can you follow the full path?", description: "Read every step before answering.",
+      brief: decisionBrief("the full reading path"),
       needs: [{ need: "Follow the full reading path.", kind: "context-diagram" }],
       figures: [{ attachment: "wide", kind: "context-diagram" }],
       options: [{ label: "Continue", does: "Keeps the reading path", gains: ["Readable steps"], costs: ["None"] }],
@@ -289,7 +297,7 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   const context = await browser.newContext({ viewport: { width: 360, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(opened.live.url);
+    await page.goto(`${opened.live.url}#${opened.stage}`);
     const figure = page.getByRole("img", { name: "Wide reading diagram" });
     await figure.locator("svg").waitFor();
     for (const width of [1280, 360]) for (const theme of ["Light", "Dark"]) {
@@ -344,19 +352,20 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   }
 }, 120_000);
 
-test("every figure shows its caption as a title, a formatted description, and a closed Source, above a media box sized to the media", async () => {
+test("figures retain caption, formatted description and Source when a question separates the deciding figure from its sources", async () => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Figure captions"]);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
   writeFileSync(join(root, "caption.png"), png);
   writeFileSync(join(root, "narrow.mmd"), "flowchart TD\n  a[Start] --> b[End]\n");
   const description = "Two steps:\n\n- `Start` comes first\n- [End](https://example.com/end) comes last";
   const options = [{ label: "Inspect", does: "Reads the figure", gains: ["Context"], costs: ["Reading"] }];
-  cli(["submit"], { version: 1, items: [
+  const sent = cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "flow", type: "mermaid", path: "narrow.mmd", caption: "Narrow flow", description, origin: "Mermaid source narrow.mmd" },
     { kind: "attachment", ref: "shot", type: "image", path: "caption.png", caption: "Q1 · Legacy screenshot", origin: "Recorded image fixture" },
     { kind: "background", title: "Context", summary: "Why these figures exist.", sections: [{ heading: "Today", body: "Two figures." }], sources: ["fixture"], figures: [{ attachment: "shot" }] },
-    { kind: "round", questions: [{
-      title: "Which figure reads better?", description: "Compare them.",
+    { kind: "round", now: "The diagrams are captured and ready to read.", questions: [{
+      ref: "decision", title: "Which figure reads better?", description: "Compare them.",
+      brief: decisionBrief("the diagram layout"),
       needs: [{ need: "Read the label.", kind: "source-excerpt" }, { need: "Follow the flow.", kind: "context-diagram" }, { need: "See the screenshot.", kind: "option-preview" }],
       figures: [{ text: "Narrow flow", kind: "source-excerpt" }, { attachment: "flow", kind: "context-diagram" }],
       options: [{ ...options[0], preview: { attachment: "shot", kind: "option-preview" } }],
@@ -372,14 +381,14 @@ test("every figure shows its caption as a title, a formatted description, and a 
     { type: "stage", id: "grill", skill: "grill-me", state: "in-progress", order: 1 },
     { type: "round", id: "r1", stage: "grill", time: "2026-10-28T20:09:59+07:00", session: 1, round: 1 },
     { type: "question", id: "historical-caption", round: "r1", q: 7, title: "Historical pretitle", description: "Keep the exact pretitle.",
-      options: [{ ...options[0], label: "A. Inspect" }], visual: { html: `<p>${pretitle}</p><img src="caption.png" alt="${pretitle}">` } },
+      options: [{ ...options[0], label: "A. Inspect", preview: { html: '<img alt="Unrecorded example">' } }], visual: { html: `<p>${pretitle}</p><img src="caption.png" alt="${pretitle}">` } },
   ].map((row) => JSON.stringify(row)).join("\n") + "\n");
   const migrated = cli(["migrate", historical]);
 
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1440, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(opened.live.url);
+    await page.goto(`${opened.live.url}#${opened.stage}`);
     await page.getByRole("img", { name: "Narrow flow" }).first().locator("svg").waitFor();
     expect(await page.locator("main").evaluate((m) => m.getBoundingClientRect().width)).toBe(1024);
 
@@ -392,6 +401,8 @@ test("every figure shows its caption as a title, a formatted description, and a 
       probe.remove();
       return { color: getComputedStyle(document.body).color, size: parseFloat(getComputedStyle(document.body).fontSize), mantle };
     });
+    const question = page.locator(`#${sent.refs.decision}`);
+    const contextRow = question.locator("summary").filter({ hasText: /^Sources and context$/ });
     for (let i = 0; i < 5; i++) {
       const figure = figures.nth(i);
       await figure.scrollIntoViewIfNeeded();
@@ -402,13 +413,21 @@ test("every figure shows its caption as a title, a formatted description, and a 
       expect(look).toMatchObject({ weight: "650", color: body.color });
       expect(await figure.evaluate((f) => getComputedStyle(f).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
 
-      const source = figure.locator("details.source");
-      expect(await source.locator("summary").innerText()).toBe("Source");
-      expect(await source.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+      const deciding = await figure.getAttribute("id") === `${sent.refs.decision}-figure-2`;
       const origin = (await title.innerText()) === "Narrow flow" ? "Mermaid source narrow.mmd" : "Recorded image fixture";
-      expect(await figure.getByText(origin).isVisible()).toBe(false);
-      await source.locator("summary").click();
-      expect(await figure.getByText(origin).isVisible()).toBe(true);
+      const sourceOwner = deciding ? contextRow.locator("..") : figure;
+      const sourceRow = sourceOwner.getByText("Source", { exact: true });
+      const source = sourceRow.locator("..");
+      expect(await sourceRow.textContent()).toBe("Source");
+      expect(await source.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+      expect(await sourceOwner.getByText(origin).isVisible()).toBe(false);
+      if (deciding) {
+        expect(await figure.getByText("Source", { exact: true }).count()).toBe(0);
+        expect(await source.isVisible()).toBe(false);
+        await contextRow.click();
+      }
+      await sourceRow.click();
+      expect(await sourceOwner.getByText(origin).isVisible()).toBe(true);
 
       if ((await title.innerText()) !== "Narrow flow") continue;
       const text = figure.locator(".figure-description");
@@ -430,19 +449,35 @@ test("every figure shows its caption as a title, a formatted description, and a 
     }
     expect(await page.locator("figcaption").filter({ hasText: /Q\d+ ·/ }).count()).toBe(0);
 
-    const response = await page.goto(migrated.live.url);
+    const response = await page.goto(`${migrated.live.url}#historical-caption`);
     expect(response!.status()).toBe(200);
     expect((await response!.text()).replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")).toContain("Historical example");
     const old = page.locator("#historical-caption");
-    await old.locator("img").evaluate((img: HTMLImageElement) => img.decode());
-    expect(await old.locator(".figure-title").innerText()).toBe("Historical example");
+    const historicalImage = old.getByRole("img", { name: pretitle, exact: true });
+    await historicalImage.evaluate((img: HTMLImageElement) => img.decode());
+    expect(await old.getByText("Historical example", { exact: true }).count()).toBe(1);
     expect((await old.innerText()).split("Historical example").length - 1).toBe(1);
     expect(await old.innerText()).not.toContain("Q7 ·");
-    expect(await old.evaluate((el) => getComputedStyle(el.querySelector(".figure-title")!.closest("[id]")!).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
-    expect(await old.locator("details.source summary").innerText()).toBe("Source");
-    await old.locator("details.source summary").click();
-    const source = await old.locator("details.source").innerText();
+    expect(await old.getByText("Historical example", { exact: true }).evaluate((el) => getComputedStyle(el.closest("[id]")!).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    await historicalImage.click();
+    const largerImage = page.getByRole("dialog", { name: "Historical figure", exact: true });
+    expect(await largerImage.getByRole("img", { name: pretitle, exact: true }).evaluate((img: HTMLImageElement) => img.decode().then(() => img.naturalWidth))).toBeGreaterThan(0);
+    await page.keyboard.press("Escape");
+    await largerImage.waitFor({ state: "hidden" });
+    expect(await old.getByRole("button", { name: "Enlarge figure: Historical figure" }).evaluate(el => document.activeElement === el)).toBe(true);
+    const sources = old.locator("summary").filter({ hasText: /^Sources and context$/ });
+    await sources.click();
+    const sourceRow = sources.locator("..").getByText("Source", { exact: true });
+    expect(await sourceRow.innerText()).toBe("Source");
+    await sourceRow.click();
+    const source = await sourceRow.locator("..").innerText();
     for (const field of ["Image", "Captured", "Revision", "Origin: Grilling page"]) expect(source).toContain(field);
+    const unknownRow = old.getByRole("list", { name: "Choices" }).getByText("Source", { exact: true });
+    await unknownRow.click();
+    expect(await unknownRow.locator("..").innerText()).toContain("Origin: unknown");
+    expect(await unknownRow.locator("..").innerText()).toContain("Unrecorded example identity, theme, or viewport: unknown.");
+    expect(await sourceRow.locator("..").locator("time").getAttribute("datetime")).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(await sourceRow.locator("..").getByText("Revision").locator("code").innerText()).toMatch(/^[a-f0-9]{12}$/);
   } finally {
     await context.close();
   }

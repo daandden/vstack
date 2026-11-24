@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { editStoredFlow, storedFolder, temporaryFlowFiles } from "./support/flow-store.ts";
 import { flowContent } from "./support/flow-client.ts";
+import { decisionBrief } from "./support/decision-brief.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-test-")));
@@ -44,19 +45,24 @@ function run(args: string[], opts: { session?: string; stdin?: unknown } = {}): 
 }
 
 const option = (label: string, extra: object = {}) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`], ...extra });
-const question = (ref: string, extra: object = {}) => ({
-  ref,
-  title: `Which ${ref}?`,
-  description: `Why ${ref} matters.`,
-  needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }],
-  options: ["First", "Second"].map((label) => option(label, {
+const question = (ref: string, { again, options, ...extra }: Record<string, unknown> & { again?: string; options?: ReturnType<typeof option>[] } = {}) => {
+  const choices = options ?? ["First", "Second"].map(label => option(label, {
     does: `${ref}: ${label} does`, gains: [`${ref}: ${label} gain`], costs: [`${ref}: ${label} cost`],
-    ...(label === "First" ? { recommended: "it is first" } : {}),
-  })),
-  ...extra,
-});
+    ...(label === "First" ? { recommended: `${ref}: it is first` } : {}),
+  }));
+  return {
+    ref,
+    title: `Which ${ref}?`,
+    description: `Why ${ref} matters.`,
+    needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }],
+    options: choices,
+    brief: decisionBrief(ref, { recommended: choices.some(option => "recommended" in option), again: again ? `The earlier attempt ${again} did not settle ${ref}.` : undefined }),
+    ...(again !== undefined ? { again } : {}),
+    ...extra,
+  };
+};
 const contribution = (...items: object[]) => ({ version: 1, items });
-const round = (...questions: object[]) => ({ kind: "round", questions });
+const round = (...questions: object[]) => ({ kind: "round", now: "The options are ready for the reader to compare.", questions });
 
 function openFlow(session = "s-1", skill = "grill-me"): any {
   const r = run(["open", "--title", "Checkout limits", "--skill", skill], { session });

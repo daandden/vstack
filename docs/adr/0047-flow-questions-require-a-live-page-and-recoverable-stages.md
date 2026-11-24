@@ -29,7 +29,7 @@ The earlier Eval errors, `Unknown tool from js runtime: flow_ask`, remain a sepa
 
 The user confirmed keeping full Flow history and requested a revert of the introducing change where possible, while retaining independent fixes. Use the mainline introduction, `18b2cf1e64bbac9d83404d3d4ace6f5bbf24d1dc` from PR #337, as the removal reference. It changes 57 files. Its first parent is `f3ff8a21ad57d99bc4915cce9a6f857e309cc944`; do not rewind to the original feature branch's older base.
 
-Remove the wrapper, its registration, custom-route detection, wrapper-only response mapping, caller requirements and lint allowance. Replace wrapper-specific proof with ordinary-ask proof rather than retaining tests that require the removed tool. Keep the existing Flow publisher, generated receipt questions, full question and answer records, and normal omp-tools `ask` integration.
+Remove the wrapper, its registration, custom-route detection, wrapper-only response mapping, caller requirements, and lint allowance. Replace wrapper-specific proof with ordinary `ask` proof. Keep the Flow publisher, generated receipt questions, and full question and answer records. Stock omp `ask` replaces the omp-tools override. [ADR 0056](0056-flow-questions-show-their-link-in-a-flow-panel.md) records how the Flow panel follows the native dialog.
 
 Retain these independent capabilities from mixed hunks:
 
@@ -60,3 +60,5 @@ Keep session and agent authoring identity, binding isolation, full Flow history,
 [ADR 20261111-the-installed-flow-host-replaces-itself-on-update](20261111-the-installed-flow-host-replaces-itself-on-update.md) builds the host ownership above: the installed host replaces itself on update, and every CLI copy writes through the installed code.
 
 [ADR 20261116-scratch-cleanup-moves-to-a-tern-popup](20261116-scratch-cleanup-moves-to-a-tern-popup.md) removes the cleanup Result itself: `/vstack-clean` now writes nothing to a Flow.
+
+[ADR 20261123-flow-records-native-ask-values](20261123-flow-records-native-ask-values.md) allows equal submitted values to count as the same answer when native `ask` does not report input origin. The separate publication, raw-answer, and non-consent rules still apply.

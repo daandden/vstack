@@ -31,10 +31,16 @@ export function legacyBinding(home: string, cwd: string, name: string, value: un
   return source;
 }
 
+function openStore(path: string): Database {
+  const db = new Database(path);
+  db.exec("PRAGMA busy_timeout = 10000");
+  return db;
+}
+
 export function pendingDatabase(home: string, cwd: string): void {
   const path = join(projectStorage(home, cwd), "flow.db");
   mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path);
+  const db = openStore(path);
   const migrations = join(import.meta.dir, "../../plugin/skills/flow-page/scripts/migrations");
   const initial = readFileSync(join(migrations, "0000_broad_silver_surfer.sql"), "utf8");
   const journal = JSON.parse(readFileSync(join(migrations, "meta/_journal.json"), "utf8"));
@@ -64,7 +70,7 @@ export function legacySources(home: string, name = "state"): string[] {
 }
 export function legacyCompanion(source: string, name: string): string { return join(dirname(source), `${name}.json`); }
 export function futureDatabase(home: string, cwd: string): void {
-  const db = new Database(join(projectStorage(home, cwd), "flow.db"));
+  const db = openStore(join(projectStorage(home, cwd), "flow.db"));
   db.exec("ALTER TABLE flows ADD COLUMN future_nullable TEXT; ALTER TABLE flows ADD COLUMN future_default TEXT NOT NULL DEFAULT ''; CREATE TABLE future_data (flow TEXT, value TEXT); CREATE INDEX future_index ON future_data(flow)");
   db.close();
 }
@@ -88,7 +94,7 @@ export function prepareLegacyImport(home: string, cwd: string) {
 
 function stored(home: string, flow: string) {
   for (const path of new Bun.Glob(".vstack/tmp/*/flow.db").scanSync({ cwd: home, dot: true, absolute: true })) {
-    const db = new Database(path);
+    const db = openStore(path);
     const row = db.query<{ folder: string; state: string }, [string]>("SELECT folder, state FROM flows WHERE id = ?").get(flow);
     if (row) return { db, row, path };
     db.close();

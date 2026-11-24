@@ -306,12 +306,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     await page.keyboard.press("Enter");
     await otherPage.getByText("Keep the selected passage.", { exact: true }).waitFor();
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
-    const copyFeedback = page.getByRole("button", { name: "Copy feedback", exact: true });
-    const themeControl = page.getByRole("button", { name: "System", exact: true });
-    const copyBox = (await copyFeedback.boundingBox())!;
-    const themeBox = (await themeControl.boundingBox())!;
-    expect(copyBox.y).toBe(themeBox.y);
-    expect(themeBox.x - (copyBox.x + copyBox.width)).toBe(8);
+    const copyFeedback = page.getByRole("contentinfo").getByRole("button", { name: "Copy feedback", exact: true });
     const pending = Promise.withResolvers<void>();
     await page.route("**/comments", async (route) => {
       await pending.promise;
@@ -356,7 +351,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     await currentComments.getByRole("textbox", { name: "Comment" }).fill("Comment on the appended version.");
     await currentComments.getByRole("button", { name: "Save comment", exact: true }).click();
     await currentComments.getByText("Comment on the appended version.", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "Copy feedback", exact: true }).click();
+    await copyFeedback.click();
     await page.getByRole("status").filter({ hasText: "Feedback copied" }).waitFor();
     const focusedFeedback = await page.evaluate(() => navigator.clipboard.readText());
     expect(focusedFeedback).toContain("> Host restart\nConfirm the host restart.");

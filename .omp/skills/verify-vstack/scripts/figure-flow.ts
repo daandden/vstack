@@ -34,7 +34,9 @@ writeFileSync(mermaid, source);
 const sourceHash = new Bun.CryptoHasher("sha256").update(source).digest("hex");
 writeFileSync(join(evidence, "roles.mmd"), source);
 const file = join(evidence, "submit.json");
+const now = "The renderer captured the group diagram and the seven-role source.";
 const question = { title: "Which order path needs attention?", description: "Disposable fixture, not a real user decision.", needs: [{ need: "Follow the group and child roles.", kind: "context-diagram" }], options: [{ label: "Review", does: "Inspect the group.", gains: ["Visible scope"], costs: ["Time"] }, { label: "Continue", does: "Keep the child meanings.", gains: ["Consistency"], costs: ["No new selection"] }] };
+const brief = { unblocks: "Choose which path to inspect.", undo: "Return to either captured figure.", no_recommendation: "The fixture compares how both figures render." };
 writeFileSync(file, JSON.stringify({ version: 1, items: [
   { kind: "attachment", ref: "order", type: "svg", caption: "Disposable proof of group focus and child roles", origin: "Actual renderer CLI output", path: svg },
   { kind: "attachment", ref: "roles", type: "mermaid", caption: "Disposable seven-role source figure", origin: "Retained seven-role Mermaid fixture", path: mermaid, focus: ["cart"] },
@@ -42,7 +44,7 @@ writeFileSync(file, JSON.stringify({ version: 1, items: [
     { heading: "Captured figure", blocks: [{ figure: "order" }] },
     { heading: "Shared reader roles", blocks: [{ figure: "roles" }, { code: source, language: "mermaid", source: "Retained seven-role Mermaid fixture" }] }
   ] },
-  { kind: "round", questions: [{ ...question, ref: "choose", figures: [{ attachment: "order", kind: "context-diagram" }, { attachment: "roles", kind: "context-diagram" }] }] }
+  { kind: "round", now, questions: [{ ...question, ref: "choose", brief, figures: [{ attachment: "order", kind: "context-diagram" }, { attachment: "roles", kind: "context-diagram" }] }] }
 ] }));
 const submitted = await command(["submit", file]);
 writeFileSync(join(evidence, "receipt.json"), JSON.stringify(submitted, null, 2));
@@ -62,8 +64,9 @@ assert(readFileSync(captured).equals(original));
 assert.equal(readFileSync(capturedSource, "utf8"), source);
 const prior = store.read(opened.flow);
 const invalid = join(evidence, "refused.json");
-writeFileSync(invalid, JSON.stringify({ version: 1, items: [{ kind: "round", questions: [question] }] }));
-await command(["submit", invalid], 1);
+writeFileSync(invalid, JSON.stringify({ version: 1, items: [{ kind: "round", now, questions: [{ ...question, brief }] }] }));
+const refused = await command(["submit", invalid], 1);
+assert(refused.diagnostics.some((d: { message: string }) => d.message.includes("no visual or option preview on this question is a context-diagram")));
 assert.deepEqual(store.read(opened.flow), prior);
 for (const [name, text, focus, diagnostic] of [
   ["unknown-role", "flowchart LR\n A[Unknown]:::okk\n", [], "Unknown color role: okk"],

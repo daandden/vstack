@@ -116,7 +116,50 @@ resultContracts.table!.check = (value, path) => {
     ? [{ code: "invalid_length", path: `${path}.rows[${index}].cells`, message: `cells must list ${width} strings, one per column`, allowed: `${width} strings, one per column` }] : []);
 };
 
-const question = optional({ title: string, description: string, needs: array(object({ need: string, kind: enumeration(...Object.keys(VISUAL_KINDS)) })), options: array(optional({ label: string, does: string, gains: strings, costs: strings }, { recommended: string, preview: figure }), 1, 26) }, { ref, again: ref, reopens: ref, today: array(object({ text: string, source: string })), terms: array(object({ term: string, text: string })), topics: strings, results: strings, example: string, figures: array(figure), multi: boolean });
+const decisionBrief = optional({
+  unblocks: string,
+  undo: string,
+}, {
+  asked_again_because: { ...string, selection: "required when again is set; otherwise absent" },
+  no_recommendation: { ...string, selection: "required when no option has recommended; otherwise absent" },
+});
+const question = optional({
+  title: string, description: string, brief: decisionBrief,
+  needs: array(object({ need: string, kind: enumeration(...Object.keys(VISUAL_KINDS)) })),
+  options: array(optional({ label: string, does: string, gains: strings, costs: strings }, {
+    recommended: { ...string, selection: "reason on exactly one option unless brief.no_recommendation is set" },
+    preview: figure,
+  }), 1, 26),
+}, { ref, again: ref, reopens: ref, today: array(object({ text: string, source: string })), terms: array(object({ term: string, text: string })), topics: strings, results: strings, example: string, figures: array(figure), multi: boolean });
+question.check = (value, path) => {
+  const diagnostics: Diagnostic[] = [];
+  const brief = value.brief;
+  if (isObj(brief)) {
+    const field = `${path}.brief.asked_again_because`;
+    if (value.again !== undefined && brief.asked_again_because === undefined) {
+      diagnostics.push({ code: "required_field", path: field, message: "explain why this question is asked again", allowed: "non-empty string" });
+    } else if (value.again === undefined && brief.asked_again_because !== undefined) {
+      diagnostics.push({ code: "invalid_value", path: field, message: "use asked_again_because only with again" });
+    }
+  }
+  if (Array.isArray(value.options) && value.options.length > 0 && value.options.every(isObj)) {
+    let recommended = false;
+    for (const [index, option] of value.options.entries()) {
+      if (option.recommended === undefined) continue;
+      if (recommended) diagnostics.push({ code: "invalid_value", path: `${path}.options[${index}].recommended`, message: "at most one option can be recommended" });
+      recommended = true;
+    }
+    if (isObj(brief)) {
+      const field = `${path}.brief.no_recommendation`;
+      if (recommended && brief.no_recommendation !== undefined) {
+        diagnostics.push({ code: "invalid_value", path: field, message: "give a recommendation or a reason for none, not both" });
+      } else if (!recommended && brief.no_recommendation === undefined) {
+        diagnostics.push({ code: "required_field", path: field, message: "recommend one option or explain why there is no recommendation", allowed: "non-empty string" });
+      }
+    }
+  }
+  return diagnostics;
+};
 const attachmentFields = { kind: enumeration("attachment"), type: enumeration("image", "video", "svg", "mermaid", "file", "trace", "evidence"), caption: string, origin: string };
 const attachment = optional(attachmentFields, { ref, description: string, path: string, unavailable: string });
 const mermaid = optional({ ...attachmentFields, type: enumeration("mermaid") }, { ref, description: string, path: string, unavailable: string, focus: strings });
@@ -143,7 +186,7 @@ export const contributionKinds: Record<string, Contract> = {
   revise: item({ result: ref }, { base: { ...number, integer: true, min: 1 }, set: { type: "record", items: unknown }, add: array({ type: "record", items: unknown }) }),
   corrects: item({ target: ref, replacement: ref, reason: string }),
   assumed: item({ decision: string, pick: string, why: string }, { ref }),
-  round: item({ questions: array(question) }),
+  round: item({ now: { ...string, selection: "where the work stands, shared by the round's questions" }, questions: array(question) }),
   answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: readingContract }),
   reading: item({ question: ref, reading: readingContract }, { ref }),
   close: item({ decisions: array(object({ question: ref, text: string }), 0) }, { ref, extra: strings }),

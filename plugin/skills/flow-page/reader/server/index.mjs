@@ -99234,6 +99234,46 @@ function tryOnScopeDispose$1(fn, failSilently) {
 function toArray$1(value) {
   return Array.isArray(value) ? value : [value];
 }
+function createSharedComposable$1(composable) {
+  return composable;
+}
+function useIntervalFn(cb, interval = 1000, options = {}) {
+  const { immediate = true, immediateCallback = false } = options;
+  let timer = null;
+  const isActive = exports_vue.shallowRef(false);
+  function clean() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+  function pause() {
+    isActive.value = false;
+    clean();
+  }
+  function resume() {
+    const intervalValue = exports_vue.toValue(interval);
+    if (intervalValue <= 0)
+      return;
+    isActive.value = true;
+    if (immediateCallback)
+      cb();
+    clean();
+    if (isActive.value)
+      timer = setInterval(cb, intervalValue);
+  }
+  if (exports_vue.isRef(interval) || typeof interval === "function")
+    tryOnScopeDispose$1(exports_vue.watch(interval, () => {
+      if (isActive.value && false)
+        ;
+    }));
+  tryOnScopeDispose$1(pause);
+  return {
+    isActive: exports_vue.shallowReadonly(isActive),
+    pause,
+    resume
+  };
+}
 function watchImmediate$1(source, cb, options) {
   return exports_vue.watch(source, cb, {
     ...options,
@@ -99321,6 +99361,40 @@ function useResizeObserver$1(target, callback, options = {}) {
     stop
   };
 }
+function formatTimeAgoIntl(from, options = {}, now = Date.now()) {
+  const { parts, resolvedLocale } = getTimeAgoIntlResult(from, options, now);
+  return formatTimeAgoIntlParts(parts, {
+    ...options,
+    locale: resolvedLocale
+  });
+}
+function getTimeAgoIntlResult(from, options = {}, now = Date.now()) {
+  var _options$units;
+  const { locale, relativeTimeFormatOptions = { numeric: "auto" } } = options;
+  const rtf = new Intl.RelativeTimeFormat(locale, relativeTimeFormatOptions);
+  const { locale: resolvedLocale } = rtf.resolvedOptions();
+  const diff = +from - +now;
+  const absDiff = Math.abs(diff);
+  const units = (_options$units = options.units) !== null && _options$units !== undefined ? _options$units : UNITS;
+  for (const { name, ms } of units)
+    if (absDiff >= ms)
+      return {
+        resolvedLocale,
+        parts: rtf.formatToParts(Math.round(diff / ms), name)
+      };
+  return {
+    resolvedLocale,
+    parts: rtf.formatToParts(0, units[units.length - 1].name)
+  };
+}
+function formatTimeAgoIntlParts(parts, options = {}) {
+  const { insertSpace = true, joinParts, locale } = options;
+  if (typeof joinParts === "function")
+    return joinParts(parts, locale);
+  if (!insertSpace)
+    return parts.map((part) => part.value).join("");
+  return parts.map((part) => part.value.trim()).join(" ");
+}
 function vforBound(source) {
   if (typeof source !== "number" || source <= 1e4)
     return source;
@@ -99333,246 +99407,6 @@ function bound(source) {
 }
 function ssrRenderList$2(source, renderItem) {
   exports_server_renderer.ssrRenderList(bound(source), renderItem);
-}
-function renderInline(s, links) {
-  return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\[([^\]]+)\]\(((?:https?:\/\/|#)[^)\s]+)\)/g, (_, t, u) => links === "label" ? t : `<a href="${u}"${u.startsWith("#") ? "" : ' rel="noreferrer"'}>${t}</a>`);
-}
-function inlineLinkLabel(s) {
-  return renderInline(s, "label");
-}
-function inline3(s, cites) {
-  const out = renderInline(s, "anchor");
-  if (!cites)
-    return out;
-  return out.replace(/\[@([a-z0-9][a-z0-9-]*)\]/g, (m, ref) => {
-    const c = cites.get(ref);
-    return c ? `<a class="cite" href="#${c.anchor}" aria-label="Citation ${c.n}">[${c.n}]</a>` : m;
-  });
-}
-function prose(s, cites) {
-  return s.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).map((block) => {
-    const lines = block.split(`
-`).map((l) => l.trim());
-    if (lines.every((l) => l.startsWith("- ")))
-      return `<ul class="bullets">${lines.map((l) => `<li>${inline3(l.slice(2), cites)}</li>`).join("")}</ul>`;
-    return `<p>${inline3(lines.join(" "), cites)}</p>`;
-  }).join("");
-}
-function sourceFacts(a) {
-  const state = a.availability === "unavailable" ? "Unavailable" : a.availability === "external" ? "Runs outside this page" : "Captured";
-  const revision = a.revision && (a.availability === "captured" ? a.revision.slice(0, 12) : a.revision);
-  return {
-    state,
-    ...revision ? { revision } : {},
-    ...a.from ? { from: a.from.path } : {}
-  };
-}
-function formatTime(iso) {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  return m ? `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}, ${m[4]}:${m[5]}` : iso;
-}
-function eventTime(iso) {
-  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
-  if (!m)
-    return iso;
-  const date = `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
-  const t = m[4].match(/^T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/);
-  if (!t)
-    return date;
-  return `${date}, ${t[1]}:${t[2]}${t[3] && t[3] !== "00" ? `:${t[3]}` : ""} ${t[4] === "Z" ? "UTC" : t[4]}`;
-}
-function flowOf(content) {
-  const aliases = new Map(Object.entries(content.migrated?.anchors ?? {}).filter(([old, target]) => old !== target));
-  for (const st of content.stages)
-    aliases.set(`tab-${st.id}`, st.id);
-  return {
-    ...content,
-    question: new Map(content.questions.map((q) => [q.id, q])),
-    stage: new Map(content.stages.map((st) => [st.id, st])),
-    aliases
-  };
-}
-function sourceText(flow, id) {
-  return flow.sources.find((x) => x.id === id)?.text ?? id;
-}
-function questionOutcome(q) {
-  if (q.asked_again_by.length)
-    return {
-      cls: "text-flow-subtext",
-      html: "Re-asked",
-      previous: q.answer.state === "open" ? undefined : answerOutcome(q)
-    };
-  return answerOutcome(q);
-}
-function answerOutcome(q) {
-  const a = q.answer;
-  if (a.picks)
-    return {
-      cls: "text-flow-yellow",
-      html: `Your pick: ${inline3(a.picks.join(", "))}`
-    };
-  if (a.legacy?.other !== undefined)
-    return {
-      cls: "text-flow-yellow",
-      html: `Recorded answer: ${inline3(a.legacy.other)}`
-    };
-  if (a.state === "resolved" && a.reading?.outcome === "resolved")
-    return {
-      cls: "text-flow-teal",
-      html: `${inline3(a.reading.decision)} <span class="quiet">(read from your words)</span>`
-    };
-  if (a.correction && a.state === "unresolved")
-    return {
-      cls: "text-flow-subtext",
-      html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline3(a.reading.unresolved)}` : ""}`
-    };
-  if (a.state === "unresolved") {
-    const status = a.response?.status;
-    const nonConsent = status === "headless" ? "Headless, not your answer" : status === "cancelled" ? "Cancelled, not your answer" : status === "timed-out" ? "Timed out, not your answer" : status === "empty" ? "Empty response, not your answer" : a.reading && a.reading.outcome !== "resolved" ? `Unresolved: ${inline3(a.reading.unresolved)}` : q.asked_again_by.length ? "No decision recorded at this attempt" : "Not answered";
-    return {
-      cls: "text-flow-subtext",
-      html: `${q.retired ? "Retired: " : ""}${nonConsent}`
-    };
-  }
-  if (q.retired)
-    return {
-      cls: "text-flow-subtext",
-      html: "Retired"
-    };
-  return {
-    cls: "text-flow-subtext",
-    html: "Open"
-  };
-}
-function askLabel(flow, id) {
-  const q = flow.question.get(id);
-  if (!q)
-    return id;
-  let count = 0;
-  let attempt = 0;
-  for (const ask of flow.questions) {
-    if (ask.stage !== q.stage || ask.q !== q.q)
-      continue;
-    count++;
-    if (ask.id === q.id)
-      attempt = count;
-  }
-  return count > 1 ? `Q${q.q} (attempt ${attempt})` : `Q${q.q}`;
-}
-function blockLabel(flow, b) {
-  const st = b.stage ? flow.stage.get(b.stage) : undefined;
-  if (b.kind === "question")
-    return askLabel(flow, b.id);
-  if (b.kind === "result") {
-    const r = st?.results.find((x) => x.id === b.id);
-    return r?.jump ?? r?.title ?? b.id;
-  }
-  if (b.kind === "background")
-    return st?.background?.jump ?? st?.background?.title ?? b.id;
-  if (b.kind === "topic")
-    return flow.topics.find((t) => t.id === b.id)?.title ?? b.id;
-  if (b.kind === "assumed")
-    return `Assumed: ${st?.assumed.find((a) => a.id === b.id)?.decision ?? b.id}`;
-  if (b.kind === "reading")
-    return `Answer reading: ${flow.question.get(st?.readings.find((r) => r.id === b.id)?.question ?? "")?.title ?? b.id}`;
-  return "Summary";
-}
-function measureHeader() {
-  const bar = undefined.querySelector(".bar");
-  if (bar)
-    undefined.documentElement.style.setProperty("--bar", `${bar.offsetHeight}px`);
-}
-function readingAnchor() {
-  const visible = (el) => {
-    const box = el?.getBoundingClientRect();
-    return !!box && box.top < innerHeight && box.bottom > 0;
-  };
-  const target = undefined.hash.length > 1 ? undefined.getElementById(decodeURIComponent(undefined.hash.slice(1))) : null;
-  const selected = current.value ? undefined.getElementById(current.value) : null;
-  const el = visible(target) ? target : visible(selected) ? selected : stops().reverse().find((s) => s.getBoundingClientRect().top <= 0);
-  return el ? {
-    el,
-    top: el.getBoundingClientRect().top
-  } : undefined;
-}
-function restoreReadingAnchor(anchor) {
-  if (!anchor?.el.isConnected)
-    return;
-  const moved = anchor.el.getBoundingClientRect().top - anchor.top;
-  if (Math.abs(moved) >= 0.5)
-    scrollBy({
-      top: moved,
-      behavior: "instant"
-    });
-}
-function keepPlaceNow(change) {
-  const anchor = readingAnchor();
-  change();
-  restoreReadingAnchor(anchor);
-}
-async function refreshComments() {
-  const response = await fetch(new URL("comments", undefined.href), {
-    credentials: "same-origin",
-    cache: "no-store",
-    signal: AbortSignal.timeout(5000)
-  });
-  if (!response.ok)
-    throw new Error(`Could not load Reader comments (${response.status}).`);
-  const raw = await response.text();
-  if (raw !== previous) {
-    readerComments.value = JSON.parse(raw).comments;
-    previous = raw;
-  }
-}
-async function saveComment(result, revision, edit, anchor, text) {
-  await changeComment({
-    version: 1,
-    result,
-    revision,
-    edit,
-    anchor,
-    text
-  });
-}
-async function editComment(id, text) {
-  await changeComment({
-    version: 1,
-    action: "edit",
-    id,
-    text
-  });
-}
-async function removeComment(id) {
-  await changeComment({
-    version: 1,
-    action: "remove",
-    id
-  });
-}
-async function changeComment(input) {
-  const response = await fetch(new URL("comments", undefined.href), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(input),
-    signal: AbortSignal.timeout(5000)
-  });
-  if (!response.ok) {
-    const body = await response.json();
-    throw new Error(body.error ?? `Could not save Reader comment (${response.status}).`);
-  }
-  const body = await response.text();
-  readerComments.value = JSON.parse(body).comments;
-  previous = body;
-}
-function useReaderState() {
-  return {
-    flow: useState("flow"),
-    observations: useState("flow-observations"),
-    failure: useState("flow-failure"),
-    connection: useState("flow-connection", () => "connecting"),
-    updateFailure: useState("flow-update-failure")
-  };
 }
 function clamp2(value, min = Number.NEGATIVE_INFINITY, max = Number.POSITIVE_INFINITY) {
   return Math.min(max, Math.max(min, value));
@@ -100478,6 +100312,317 @@ function compare(value, currentValue, comparator) {
 }
 function shouldShowPlaceholder(value) {
   return value === undefined || value === null || value === "" || Array.isArray(value) && value.length === 0;
+}
+function renderInline(s, links) {
+  return esc(s).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\[([^\]]+)\]\(((?:https?:\/\/|#)[^)\s]+)\)/g, (_, t, u) => links === "label" ? t : `<a href="${u}"${u.startsWith("#") ? "" : ' rel="noreferrer"'}>${t}</a>`);
+}
+function inlineLinkLabel(s) {
+  return renderInline(s, "label");
+}
+function inline3(s, cites) {
+  const out = renderInline(s, "anchor");
+  if (!cites)
+    return out;
+  return out.replace(/\[@([a-z0-9][a-z0-9-]*)\]/g, (m, ref) => {
+    const c = cites.get(ref);
+    return c ? `<a class="cite" href="#${c.anchor}" aria-label="Citation ${c.n}">[${c.n}]</a>` : m;
+  });
+}
+function prose(s, cites) {
+  return s.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean).map((block) => {
+    const lines = block.split(`
+`).map((l) => l.trim());
+    if (lines.every((l) => l.startsWith("- ")))
+      return `<ul class="bullets">${lines.map((l) => `<li>${inline3(l.slice(2), cites)}</li>`).join("")}</ul>`;
+    return `<p>${inline3(lines.join(" "), cites)}</p>`;
+  }).join("");
+}
+function sourceFacts(a) {
+  const state = a.availability === "unavailable" ? "Unavailable" : a.availability === "external" ? "Runs outside this page" : "Captured";
+  const revision = a.revision && (a.availability === "captured" ? a.revision.slice(0, 12) : a.revision);
+  return {
+    state,
+    ...revision ? { revision } : {},
+    ...a.from ? { from: a.from.path } : {}
+  };
+}
+function formatTime(iso) {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return m ? `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}, ${m[4]}:${m[5]}` : iso;
+}
+function eventTime(iso) {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
+  if (!m)
+    return iso;
+  const date = `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+  const t = m[4].match(/^T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/);
+  if (!t)
+    return date;
+  return `${date}, ${t[1]}:${t[2]}${t[3] && t[3] !== "00" ? `:${t[3]}` : ""} ${t[4] === "Z" ? "UTC" : t[4]}`;
+}
+function flowOf(content) {
+  const aliases = new Map(Object.entries(content.migrated?.anchors ?? {}).filter(([old, target]) => old !== target));
+  for (const st of content.stages)
+    aliases.set(`tab-${st.id}`, st.id);
+  const question = new Map(content.questions.map((q) => [q.id, q]));
+  const byStage = /* @__PURE__ */ new Map;
+  const latest = /* @__PURE__ */ new Map;
+  for (let i = content.questions.length - 1;i >= 0; i--) {
+    const { id, again, stage, q } = content.questions[i];
+    let numbers = byStage.get(stage);
+    if (!numbers)
+      byStage.set(stage, numbers = /* @__PURE__ */ new Map);
+    const sameStage = numbers.get(q) ?? i;
+    if (sameStage === i)
+      numbers.set(q, i);
+    const descendant = latest.get(content.questions[sameStage].id) ?? sameStage;
+    if (descendant > i)
+      latest.set(id, descendant);
+    if (again && question.get(again)?.stage !== stage && descendant > (latest.get(again) ?? -1))
+      latest.set(again, descendant);
+  }
+  return {
+    ...content,
+    question,
+    latestAttempt: new Map([...latest].map(([id, index]) => [id, content.questions[index]])),
+    stage: new Map(content.stages.map((st) => [st.id, st])),
+    aliases
+  };
+}
+function questionHasConcern(flow, q) {
+  return q.answer.reading?.outcome === "concern" || !!q.again && flow.question.get(q.again)?.answer.reading?.outcome === "concern";
+}
+function stageWorkName(flow, stage) {
+  if (!stage.ticket || !flow.wayfinder)
+    return stage.label;
+  const id = stage.ticket.replace(/^#/, "");
+  const match = (t) => t.id.replace(/^#/, "") === id;
+  return flow.wayfinder.tickets.find(match)?.title ?? flow.wayfinder.history.findLast((map) => map.tickets.some(match))?.tickets.find(match)?.title ?? stage.label;
+}
+function sourceText(flow, id) {
+  return flow.sources.find((x) => x.id === id)?.text ?? id;
+}
+function questionOutcome(q) {
+  if (q.asked_again_by.length)
+    return {
+      cls: "text-flow-subtext",
+      html: "Re-asked",
+      previous: q.answer.state === "open" ? undefined : answerOutcome(q)
+    };
+  return answerOutcome(q);
+}
+function creditedAnswer(a) {
+  if (a.picks)
+    return {
+      kind: "pick",
+      text: a.picks.join(", ")
+    };
+  if (a.legacy?.other !== undefined)
+    return {
+      kind: "legacy",
+      text: a.legacy.other
+    };
+  if (a.reading?.outcome === "resolved")
+    return {
+      kind: "reading",
+      text: a.reading.decision
+    };
+}
+function foldedQuestionOutcome(q) {
+  const { answer: a } = q;
+  const status = a.response?.status;
+  const reading = a.reading;
+  const credited = creditedAnswer(a);
+  const outcome = credited?.kind === "pick" ? `Your pick: ${credited.text}` : credited?.kind === "legacy" ? `Recorded answer: ${credited.text}` : credited?.kind === "reading" ? `Agent read your words: ${credited.text}` : status && status !== "answered" ? NON_CONSENT[status] : reading?.outcome === "concern" ? "Concern" : reading?.outcome === "question" ? "Question, not settled" : a.correction ? "Unresolved after correction" : "Not settled";
+  if (!q.retired)
+    return outcome;
+  return outcome === "Not settled" ? "Retired" : `Retired \xB7 ${outcome}`;
+}
+function answerOutcome(q) {
+  const a = q.answer;
+  const credited = creditedAnswer(a);
+  if (credited?.kind === "pick")
+    return {
+      cls: "text-flow-yellow",
+      html: `Your pick: ${inline3(credited.text)}`
+    };
+  if (credited?.kind === "legacy")
+    return {
+      cls: "text-flow-yellow",
+      html: `Recorded answer: ${inline3(credited.text)}`
+    };
+  if (credited?.kind === "reading" && a.state === "resolved")
+    return {
+      cls: "text-flow-teal",
+      html: `${inline3(credited.text)} <span class="quiet">(read from your words)</span>`
+    };
+  if (a.correction && a.state === "unresolved")
+    return {
+      cls: "text-flow-subtext",
+      html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline3(a.reading.unresolved)}` : ""}`
+    };
+  if (a.state === "unresolved") {
+    const status = a.response?.status;
+    const nonConsent = status && status !== "answered" ? NON_CONSENT[status] : a.reading && a.reading.outcome !== "resolved" ? `Unresolved: ${inline3(a.reading.unresolved)}` : q.asked_again_by.length ? "No decision recorded at this attempt" : "Not answered";
+    return {
+      cls: "text-flow-subtext",
+      html: `${q.retired ? "Retired: " : ""}${nonConsent}`
+    };
+  }
+  if (q.retired)
+    return {
+      cls: "text-flow-subtext",
+      html: "Retired"
+    };
+  return {
+    cls: "text-flow-subtext",
+    html: "Open"
+  };
+}
+function askLabel(flow, id) {
+  const q = flow.question.get(id);
+  if (!q)
+    return id;
+  let count = 0;
+  let attempt = 0;
+  for (const ask of flow.questions) {
+    if (ask.stage !== q.stage || ask.q !== q.q)
+      continue;
+    count++;
+    if (ask.id === q.id)
+      attempt = count;
+  }
+  return count > 1 ? `Q${q.q} (attempt ${attempt})` : `Q${q.q}`;
+}
+function blockLabel(flow, b) {
+  const st = b.stage ? flow.stage.get(b.stage) : undefined;
+  if (b.kind === "question")
+    return askLabel(flow, b.id);
+  if (b.kind === "result") {
+    const r = st?.results.find((x) => x.id === b.id);
+    return r?.jump ?? r?.title ?? b.id;
+  }
+  if (b.kind === "background")
+    return st?.background?.jump ?? st?.background?.title ?? b.id;
+  if (b.kind === "topic")
+    return flow.topics.find((t) => t.id === b.id)?.title ?? b.id;
+  if (b.kind === "assumed")
+    return `Assumed: ${st?.assumed.find((a) => a.id === b.id)?.decision ?? b.id}`;
+  if (b.kind === "reading")
+    return `Answer reading: ${flow.question.get(st?.readings.find((r) => r.id === b.id)?.question ?? "")?.title ?? b.id}`;
+  return "Summary";
+}
+async function refreshComments() {
+  const response = await fetch(new URL("comments", undefined.href), {
+    credentials: "same-origin",
+    cache: "no-store",
+    signal: AbortSignal.timeout(5000)
+  });
+  if (!response.ok)
+    throw new Error(`Could not load Reader comments (${response.status}).`);
+  const raw = await response.text();
+  if (raw !== previous) {
+    readerComments.value = JSON.parse(raw).comments;
+    previous = raw;
+  }
+}
+async function saveComment(result, revision, edit, anchor, text) {
+  await changeComment({
+    version: 1,
+    result,
+    revision,
+    edit,
+    anchor,
+    text
+  });
+}
+async function editComment(id, text) {
+  await changeComment({
+    version: 1,
+    action: "edit",
+    id,
+    text
+  });
+}
+async function removeComment(id) {
+  await changeComment({
+    version: 1,
+    action: "remove",
+    id
+  });
+}
+async function changeComment(input) {
+  const response = await fetch(new URL("comments", undefined.href), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(5000)
+  });
+  if (!response.ok) {
+    const body = await response.json();
+    throw new Error(body.error ?? `Could not save Reader comment (${response.status}).`);
+  }
+  const body = await response.text();
+  readerComments.value = JSON.parse(body).comments;
+  previous = body;
+}
+function useReaderState() {
+  return {
+    flow: useState("flow"),
+    observations: useState("flow-observations"),
+    failure: useState("flow-failure"),
+    connection: useState("flow-connection", () => "connecting"),
+    updateFailure: useState("flow-update-failure")
+  };
+}
+function hidingDisclosure(el) {
+  for (let child = el;child.parentElement; child = child.parentElement) {
+    const parent = child.parentElement;
+    if (parent instanceof HTMLDetailsElement && !parent.open && child !== parent.querySelector(":scope > summary"))
+      return parent;
+  }
+}
+function readingAnchor() {
+  const visible = (el) => {
+    const box = el?.getBoundingClientRect();
+    return !!el && !!box && box.top < innerHeight && box.bottom > 0 && !hidingDisclosure(el);
+  };
+  const target = undefined.hash.length > 1 ? undefined.getElementById(decodeURIComponent(undefined.hash.slice(1))) : null;
+  const selected = current.value ? undefined.getElementById(current.value) : null;
+  const el = visible(target) ? target : visible(selected) ? selected : stops().reverse().find((s) => s.getBoundingClientRect().top <= 0);
+  return el ? {
+    el,
+    top: el.getBoundingClientRect().top
+  } : undefined;
+}
+function restoreReadingAnchor(anchor) {
+  if (!anchor?.el.isConnected)
+    return;
+  const moved = anchor.el.getBoundingClientRect().top - anchor.top;
+  if (Math.abs(moved) >= 0.5)
+    scrollBy({
+      top: moved,
+      behavior: "instant"
+    });
+}
+function keepPlaceNow(change) {
+  const anchor = readingAnchor();
+  change();
+  restoreReadingAnchor(anchor);
+}
+function useReadingClock() {
+  return sharedClock(useState("flow-reading-clock", () => Date.now()).value);
+}
+function readingAge(time, now) {
+  if (!Number.isFinite(time))
+    return;
+  if (Math.abs(time - now) < 60000)
+    return "just now";
+  return formatTimeAgoIntl(new Date(time), {
+    locale: "en",
+    relativeTimeFormatOptions: { numeric: "always" }
+  }, now);
 }
 function sankeyMode(model) {
   const settings = settingsByModel.get(model);
@@ -107077,6 +107222,47 @@ function route(origin, from, to, columnSpan, rail) {
     return `M${x} ${y} H${endX}`;
   return `M${x} ${y} H${(x + endX) / 2} V${endY} H${endX}`;
 }
+function useReadingDialog(open, dialog, firstItem, triggerId) {
+  let opener = null;
+  let openingHash = "";
+  exports_vue.watch(open, async (show) => {
+    const d = dialog.value;
+    if (!d)
+      return;
+    if (show && !d.open) {
+      opener = undefined.activeElement;
+      openingHash = undefined.hash;
+      d.showModal();
+      await exports_vue.nextTick();
+      if (d.open)
+        focusReadingItem(firstItem());
+    } else if (!show && d.open)
+      d.close();
+  });
+  function closed() {
+    if (dialog.value?.open)
+      return;
+    open.value = false;
+    if (undefined.hash !== openingHash)
+      return;
+    const focus = undefined.activeElement;
+    if (focus && focus !== undefined.body && focus !== opener && !dialog.value?.contains(focus))
+      return;
+    if (opener instanceof HTMLElement && opener.isConnected && opener !== undefined.body)
+      opener.focus({ preventScroll: true });
+    else
+      undefined.getElementById(triggerId)?.focus({ preventScroll: true });
+  }
+  return { closed };
+}
+function focusReadingItem(item) {
+  item?.focus({ preventScroll: true });
+  item?.scrollIntoView({
+    block: "nearest",
+    inline: "nearest",
+    behavior: "instant"
+  });
+}
 var import_es53, _WeakRef, _globalThis, globalKey = "__unctx__", defaultNamespace, getContext = (key, opts = {}) => defaultNamespace.get(key, opts), asyncHandlersKey = "__unctx_async_handlers__", asyncHandlers, createTask, Hookable = class {
   _hooks;
   _before;
@@ -107276,14 +107462,16 @@ var import_es53, _WeakRef, _globalThis, globalKey = "__unctx__", defaultNamespac
     throw nuxtError;
   }
   return nuxtError;
-}, plugin$2, manifestDiagnostics, virtual_nuxt__nuxt_2Froute_rules_default = () => ({}), globalMiddleware, LITERAL_PATH_RE, plugin$1, unheadDiagnostics, headSymbol = "usehead", VueResolver, stateDiagnostics, reducers, plugin, virtual_nuxt__nuxt_2Fcomponents_plugin_default, useStateKeyPrefix = "$s", preference = "system", dataValue = "theme", virtual_nuxt__nuxt_2Fplugins_server_default, toString$1, isObject$1 = (val) => toString$1.call(val) === "[object Object]", defaultWindow$1 = undefined, defaultDocument$1 = undefined, MAX_VFOR_LENGTH = 1e4, renderList$2 = (source, ...rest) => exports_vue.renderList(bound(source), ...rest), esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"), withoutQuestionNumber = (caption) => caption.replace(/^Q\d+ \u00B7 /, ""), UNKNOWN_EXAMPLE = "Unrecorded example identity, theme, or viewport: unknown.", MONTHS, size$1 = (n) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`, signed = (n) => n > 0 ? `+${n}` : String(n), demoValue = (v) => typeof v === "boolean" ? v ? "yes" : "no" : String(v), STATE_LABELS, CLAIM_LABELS, TYPE_LABELS, TASK_LABELS, END_LABELS, PR_LABELS, CHECK_LABELS, OUTCOME_LABELS, AXIS_LABELS, REVIEW_LABELS, VERDICT_LABELS, MEASURE_LABELS, PROVENANCE, SHAPE_LABELS, optionLabel = (q, letter) => q.options[letter.charCodeAt(0) - 65]?.label ?? letter, current, mapOpen, mapTab, tab, shown = (el) => el.getClientRects().length > 0, stops = () => [...undefined.querySelectorAll("[data-stop]")].filter(shown), readerComments, previous = "", isDef = (val) => typeof val !== "undefined", toString2, isObject = (val) => toString2.call(val) === "[object Object]", defaultWindow = undefined, injectConfigProviderContext, locks, useBodyLockStackCount, count2 = 0, Presence_default, Slot, SELF_CLOSING_TAGS, Primitive, context, DismissableLayer_default, useFocusStackState, AUTOFOCUS_ON_MOUNT = "focusScope.autoFocusOnMount", AUTOFOCUS_ON_UNMOUNT = "focusScope.autoFocusOnUnmount", EVENT_OPTIONS, FocusScope_default, Teleport_default, ITEM_DATA_ATTR = "data-reka-collection-item", VisuallyHidden_default, injectPopperRootContext, providePopperRootContext, PopperRoot_default, PopperAnchor_default, _hoisted_1$2, PopperContentPropsDefaultValue, injectPopperContentContext, providePopperContentContext, PopperContent_default, injectFieldRootContext, OPEN_KEYS, SELECTION_KEYS, _hoisted_1$1, injectSelectRootContext, provideSelectRootContext, SelectRoot_default, BubbleSelect_default, SelectPopperPosition_default, SelectContentDefaultContextValue, injectSelectContentContext, provideSelectContentContext, SelectContentImpl_default, injectSelectItemAlignedPositionContext, provideSelectItemAlignedPositionContext, SelectItemAlignedPosition_default, SelectProvider_default, _hoisted_1, SelectContent_default, SelectIcon_default, injectSelectItemContext, provideSelectItemContext, SelectItem_default, SelectItemIndicator_default, SelectItemText_default, SelectPortal_default, SelectScrollButtonImpl_default, SelectScrollDownButton_default, SelectScrollUpButton_default, SelectTrigger_default, SelectValue_default, SelectViewport_default, buttonVariants, Button_vue_vue_type_script_setup_true_lang_default, _plugin_vue_export_helper_default = (sfc, props) => {
+}, plugin$2, manifestDiagnostics, virtual_nuxt__nuxt_2Froute_rules_default = () => ({}), globalMiddleware, LITERAL_PATH_RE, plugin$1, unheadDiagnostics, headSymbol = "usehead", VueResolver, stateDiagnostics, reducers, plugin, virtual_nuxt__nuxt_2Fcomponents_plugin_default, useStateKeyPrefix = "$s", preference = "system", dataValue = "theme", virtual_nuxt__nuxt_2Fplugins_server_default, toString$1, isObject$1 = (val) => toString$1.call(val) === "[object Object]", defaultWindow$1 = undefined, defaultDocument$1 = undefined, UNITS, MAX_VFOR_LENGTH = 1e4, renderList$2 = (source, ...rest) => exports_vue.renderList(bound(source), ...rest), isDef = (val) => typeof val !== "undefined", toString2, isObject = (val) => toString2.call(val) === "[object Object]", defaultWindow = undefined, injectConfigProviderContext, locks, useBodyLockStackCount, count2 = 0, Presence_default, Slot, SELF_CLOSING_TAGS, Primitive, context, DismissableLayer_default, useFocusStackState, AUTOFOCUS_ON_MOUNT = "focusScope.autoFocusOnMount", AUTOFOCUS_ON_UNMOUNT = "focusScope.autoFocusOnUnmount", EVENT_OPTIONS, FocusScope_default, Teleport_default, ITEM_DATA_ATTR = "data-reka-collection-item", VisuallyHidden_default, injectPopperRootContext, providePopperRootContext, PopperRoot_default, PopperAnchor_default, _hoisted_1$2, PopperContentPropsDefaultValue, injectPopperContentContext, providePopperContentContext, PopperContent_default, injectFieldRootContext, OPEN_KEYS, SELECTION_KEYS, _hoisted_1$1, injectSelectRootContext, provideSelectRootContext, SelectRoot_default, BubbleSelect_default, SelectPopperPosition_default, SelectContentDefaultContextValue, injectSelectContentContext, provideSelectContentContext, SelectContentImpl_default, injectSelectItemAlignedPositionContext, provideSelectItemAlignedPositionContext, SelectItemAlignedPosition_default, SelectProvider_default, _hoisted_1, SelectContent_default, SelectIcon_default, injectSelectItemContext, provideSelectItemContext, SelectItem_default, SelectItemIndicator_default, SelectItemText_default, SelectPortal_default, SelectScrollButtonImpl_default, SelectScrollDownButton_default, SelectScrollUpButton_default, SelectTrigger_default, SelectValue_default, SelectViewport_default, buttonVariants, Button_vue_vue_type_script_setup_true_lang_default, _plugin_vue_export_helper_default = (sfc, props) => {
   const target = sfc.__vccOpts || sfc;
   for (const [key, val] of props)
     target[key] = val;
   return target;
-}, _sfc_setup$52, Button_default, tabLink = "tab-link reader-control inline-flex items-center gap-1 py-0.5 font-semibold no-underline text-flow-toned", TabBar_vue_vue_type_script_setup_true_lang_default, _sfc_setup$51, TabBar_default, CopyFeedback_vue_vue_type_script_setup_true_lang_default, _sfc_setup$50, CopyFeedback_default, useColorMode = () => {
-  return useState("color-mode").value;
-}, FlowMasthead_vue_vue_type_script_setup_true_lang_default, _sfc_setup$49, FlowMasthead_default, ContextNotes_vue_vue_type_script_setup_true_lang_default, _sfc_setup$48, ContextNotes_default, ProgressPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$47, ProgressPanel_default, ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default, _sfc_setup$46, ChangedSinceVisit_default, StageOverview_vue_vue_type_script_setup_true_lang_default, _sfc_setup$45, StageOverview_default, CorrectionNotice_vue_vue_type_script_setup_true_lang_default, _sfc_setup$44, CorrectionNotice_default, FigureCaption_vue_vue_type_script_setup_true_lang_default, _sfc_setup$43, FigureCaption_default, settingsByModel, trackedSankey, FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace", BASE$1 = "#1e1e2e", TEXT = "#cdd6f4", SURFACE = "#313244", BORDER = "#6c7086", MAUVE = "#cba6f7", ROLES, ACCENTS, CHARTS, PELE_CLASS, SHAPE, PAINT, decode = (s) => s.replace(/&(?:quot|apos|amp|lt|gt|#\d+|#x[\da-f]+);/gi, (s) => ({
+}, _sfc_setup$64, Button_default, esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"), withoutQuestionNumber = (caption) => caption.replace(/^Q\d+ \u00B7 /, ""), UNKNOWN_EXAMPLE = "Unrecorded example identity, theme, or viewport: unknown.", MONTHS, size$1 = (n) => n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`, signed = (n) => n > 0 ? `+${n}` : String(n), demoValue = (v) => typeof v === "boolean" ? v ? "yes" : "no" : String(v), STATE_LABELS, CLAIM_LABELS, TYPE_LABELS, TASK_LABELS, END_LABELS, PR_LABELS, CHECK_LABELS, OUTCOME_LABELS, AXIS_LABELS, REVIEW_LABELS, VERDICT_LABELS, MEASURE_LABELS, PROVENANCE, SHAPE_LABELS, optionLabel = (q, letter) => q.options[letter.charCodeAt(0) - 65]?.label ?? letter, NON_CONSENT, readerComments, previous = "", current, mapOpen, mapTab, jumpOpen, tab, shown = (el) => el.getClientRects().length > 0, stops = () => [...undefined.querySelectorAll("[data-stop]:not(details[open])")].filter((el) => {
+  if (!shown(el))
+    return false;
+  return !(el.matches("details[data-reading-fold] > summary") ? el.parentElement?.parentElement : el.parentElement)?.closest("details[data-reading-fold]:not([open])");
+}), chipClass = "inline-flex min-h-control shrink-0 touch-manipulation cursor-pointer items-center justify-center gap-1 rounded-sm border border-flow-line text-flow-toned no-underline outline-offset-[-2px] @hover:text-flow-lavender active:text-flow-lavender", FlowBar_vue_vue_type_script_setup_true_lang_default, _sfc_setup$63, FlowBar_default, FlowMasthead_vue_vue_type_script_setup_true_lang_default, _sfc_setup$62, FlowMasthead_default, ContextNotes_vue_vue_type_script_setup_true_lang_default, _sfc_setup$61, ContextNotes_default, sharedClock, OpenDecisions_vue_vue_type_script_setup_true_lang_default, _sfc_setup$60, OpenDecisions_default, ProgressPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$59, ProgressPanel_default, ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default, _sfc_setup$58, ChangedSinceVisit_default, StageOverview_vue_vue_type_script_setup_true_lang_default, _sfc_setup$57, StageOverview_default, TopicLinks_vue_vue_type_script_setup_true_lang_default, _sfc_setup$56, TopicLinks_default, FlowOverview_vue_vue_type_script_setup_true_lang_default, _sfc_setup$55, FlowOverview_default, RoundHeader_vue_vue_type_script_setup_true_lang_default, _sfc_setup$54, RoundHeader_default, CorrectionNotice_vue_vue_type_script_setup_true_lang_default, _sfc_setup$53, CorrectionNotice_default, FigureSource_vue_vue_type_script_setup_true_lang_default, _sfc_setup$52, FigureSource_default, FigureCaption_vue_vue_type_script_setup_true_lang_default, _sfc_setup$51, FigureCaption_default, settingsByModel, trackedSankey, FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace", BASE$1 = "#1e1e2e", TEXT = "#cdd6f4", SURFACE = "#313244", BORDER = "#6c7086", MAUVE = "#cba6f7", ROLES, ACCENTS, CHARTS, PELE_CLASS, SHAPE, PAINT, decode = (s) => s.replace(/&(?:quot|apos|amp|lt|gt|#\d+|#x[\da-f]+);/gi, (s) => ({
   "&quot;": '"',
   "&apos;": "'",
   "&amp;": "&",
@@ -107291,7 +107479,7 @@ var import_es53, _WeakRef, _globalThis, globalKey = "__unctx__", defaultNamespac
   "&gt;": ">"
 })[s] ?? String.fromCodePoint(parseInt(s.slice(s[2] === "x" ? 3 : 2, -1), s[2] === "x" ? 16 : 10))), DIAGRAM_CONFIG, DIAGRAM_FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace", SVG = "http://www.w3.org/2000/svg", ELEMENTS, UNSAFE, SHAPES = ":is(rect, path, polygon, circle, ellipse)", MOCHA_PAINTS, PAINT_ATTRIBUTES, BASE = `:host { display: block; inline-size: fit-content; max-inline-size: 100%; overflow-x: auto; }
 svg { display: block; max-inline-size: none; block-size: auto; }
-text { font-variant-ligatures: none; }`, DiagramFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$42, DiagramFigure_default, FigureList_vue_vue_type_script_setup_true_lang_default, _sfc_setup$41, FigureList_default, VISUAL_KINDS, QuestionBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$40, QuestionBlock_default, ReviewSummary_vue_vue_type_script_setup_true_lang_default, _sfc_setup$39, ReviewSummary_default, CodeFrame_vue_vue_type_script_setup_true_lang_default, _sfc_setup$38, CodeFrame_default, ArtifactView_vue_vue_type_script_setup_true_lang_default, _sfc_setup$37, ArtifactView_default, AttachmentFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$36, AttachmentFigure_default, HEADER, HUNK, linesOf = (s) => {
+text { font-variant-ligatures: none; }`, DiagramFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$50, DiagramFigure_default, FigureList_vue_vue_type_script_setup_true_lang_default, _sfc_setup$49, FigureList_default, VISUAL_KINDS, QuestionFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$48, QuestionFigure_default, EarlierAttempt_vue_vue_type_script_setup_true_lang_default, _sfc_setup$47, EarlierAttempt_default, QuestionBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$46, QuestionBlock_default, QuestionRecord_vue_vue_type_script_setup_true_lang_default, _sfc_setup$45, QuestionRecord_default, ReviewSummary_vue_vue_type_script_setup_true_lang_default, _sfc_setup$44, ReviewSummary_default, CodeFrame_vue_vue_type_script_setup_true_lang_default, _sfc_setup$43, CodeFrame_default, ArtifactView_vue_vue_type_script_setup_true_lang_default, _sfc_setup$42, ArtifactView_default, AttachmentFigure_vue_vue_type_script_setup_true_lang_default, _sfc_setup$41, AttachmentFigure_default, HEADER, HUNK, linesOf = (s) => {
   const ls = s.split(`
 `);
   if (ls.at(-1) === "")
@@ -107311,7 +107499,7 @@ text { font-variant-ligatures: none; }`, DiagramFigure_vue_vue_type_script_setup
   quotes: ['"', "'"],
   keywords,
   hashNeedsSpace: true
-}), LANGS, NUMBER, WORD, Badge_vue_vue_type_script_setup_true_lang_default, _sfc_setup$35, Badge_default, DocumentBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$34, DocumentBody_default, demoControl = "demo-control border border-flow-line bg-flow-muted text-small font-medium text-flow-text", DemoBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$33, DemoBody_default, ComparisonBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$32, ComparisonBody_default, Table_vue_vue_type_script_setup_true_lang_default, _sfc_setup$31, Table_default, MetricsChart_vue_vue_type_script_setup_true_lang_default, _sfc_setup$30, MetricsChart_default, MetricsBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$29, MetricsBody_default, learning2, durableLocal, syncError, flowId = "", syncing = false, key = () => `flow-page:learning:${flowId}`, Field_vue_vue_type_script_setup_true_lang_default, _sfc_setup$28, Field_default, Input_vue_vue_type_script_setup_true_lang_default, _sfc_setup$27, Input_default, OmpError = class {
+}), LANGS, NUMBER, WORD, Badge_vue_vue_type_script_setup_true_lang_default, _sfc_setup$40, Badge_default, DocumentBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$39, DocumentBody_default, demoControl = "demo-control border border-flow-line bg-flow-muted text-small font-medium text-flow-text", DemoBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$38, DemoBody_default, ComparisonBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$37, ComparisonBody_default, Table_vue_vue_type_script_setup_true_lang_default, _sfc_setup$36, Table_default, MetricsChart_vue_vue_type_script_setup_true_lang_default, _sfc_setup$35, MetricsChart_default, MetricsBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$34, MetricsBody_default, learning2, durableLocal, syncError, flowId = "", syncing = false, key = () => `flow-page:learning:${flowId}`, Field_vue_vue_type_script_setup_true_lang_default, _sfc_setup$33, Field_default, Input_vue_vue_type_script_setup_true_lang_default, _sfc_setup$32, Input_default, OmpError = class {
   path;
   data;
   #rawExpected;
@@ -108398,7 +108586,9 @@ text { font-variant-ligatures: none; }`, DiagramFigure_vue_vue_type_script_setup
     this.error(input);
     return false;
   }
-}, kBase, kSteps, EMPTY_STEPS, EMPTY_META, ARK_COMPAT_SCOPE, JIT_THRESHOLD = 3, OPAQUE_OUTPUT_IR, typeMethods, allowsMethod, assertMethod, fromMethod, kIntersections, GENERIC_META, matchBuilder, MODULE_SCOPE, answered, choiceSchema, textSchema, decimal, numberSchema, QuizQuestion_vue_vue_type_script_setup_true_lang_default, _sfc_setup$26, QuizQuestion_default, QuizBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$25, QuizBody_default, Select_vue_vue_type_script_setup_true_lang_default, _sfc_setup$24, Select_default, allStatuses = "all", ResultTable_vue_vue_type_script_setup_true_lang_default, _sfc_setup$23, ResultTable_default, EntryAsks_vue_vue_type_script_setup_true_lang_default, _sfc_setup$22, EntryAsks_default, CodeEntry_vue_vue_type_script_setup_true_lang_default, _sfc_setup$21, CodeEntry_default, ResultEntries_vue_vue_type_script_setup_true_lang_default, _sfc_setup$20, ResultEntries_default, object = (v) => v !== null && typeof v === "object" && !Array.isArray(v), title = (s) => s.replaceAll("_", " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()), tokens = (text) => text.match(/\p{L}[\p{L}\p{M}'\u2019]*|\p{N}+(?:[.,]\p{N}+)*|\s+|[^]/gu) ?? [], ResultChanges_vue_vue_type_script_setup_true_lang_default, _sfc_setup$19, ResultChanges_default, Textarea_vue_vue_type_script_setup_true_lang_default, _sfc_setup$18, Textarea_default, ResultTextSelection_vue_vue_type_script_setup_true_lang_default, _sfc_setup$17, ResultTextSelection_default, COMMENT_LIMIT = 4096, countFormat, commentSchema, ResultComments_vue_vue_type_script_setup_true_lang_default, _sfc_setup$16, ResultComments_default, ResultBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$15, ResultBlock_default, BackgroundBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$14, BackgroundBlock_default, TopicBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$13, TopicBlock_default, AssumedBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$12, AssumedBlock_default, AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$11, AnswerReadingBlock_default, SummaryBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$10, SummaryBlock_default, ReadingEntry_vue_vue_type_script_setup_true_lang_default, _sfc_setup$9, ReadingEntry_default, StagePanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$8, StagePanel_default, MattPathStep_vue_vue_type_script_setup_true_lang_default, _sfc_setup$7, MattPathStep_default, MattPath_vue_vue_type_script_setup_true_lang_default, _sfc_setup$6, MattPath_default, StageGraph_vue_vue_type_script_setup_true_lang_default, _sfc_setup$5, StageGraph_default, WayfinderMap_vue_vue_type_script_setup_true_lang_default, _sfc_setup$4, WayfinderMap_default, MapPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$3, MapPanel_default, app_vue_vue_type_script_setup_true_lang_default, _sfc_setup$2, app_default, _sfc_main$1, _sfc_setup$1, IslandRenderer = () => null, _sfc_main3, _sfc_setup3, entry$1 = async function createNuxtAppServer(ssrContext) {
+}, kBase, kSteps, EMPTY_STEPS, EMPTY_META, ARK_COMPAT_SCOPE, JIT_THRESHOLD = 3, OPAQUE_OUTPUT_IR, typeMethods, allowsMethod, assertMethod, fromMethod, kIntersections, GENERIC_META, matchBuilder, MODULE_SCOPE, answered, choiceSchema, textSchema, decimal, numberSchema, QuizQuestion_vue_vue_type_script_setup_true_lang_default, _sfc_setup$31, QuizQuestion_default, QuizBody_vue_vue_type_script_setup_true_lang_default, _sfc_setup$30, QuizBody_default, Select_vue_vue_type_script_setup_true_lang_default, _sfc_setup$29, Select_default, allStatuses = "all", ResultTable_vue_vue_type_script_setup_true_lang_default, _sfc_setup$28, ResultTable_default, EntryAsks_vue_vue_type_script_setup_true_lang_default, _sfc_setup$27, EntryAsks_default, CodeEntry_vue_vue_type_script_setup_true_lang_default, _sfc_setup$26, CodeEntry_default, ResultEntries_vue_vue_type_script_setup_true_lang_default, _sfc_setup$25, ResultEntries_default, object = (v) => v !== null && typeof v === "object" && !Array.isArray(v), title = (s) => s.replaceAll("_", " ").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()), tokens = (text) => text.match(/\p{L}[\p{L}\p{M}'\u2019]*|\p{N}+(?:[.,]\p{N}+)*|\s+|[^]/gu) ?? [], ResultChanges_vue_vue_type_script_setup_true_lang_default, _sfc_setup$24, ResultChanges_default, Textarea_vue_vue_type_script_setup_true_lang_default, _sfc_setup$23, Textarea_default, ResultTextSelection_vue_vue_type_script_setup_true_lang_default, _sfc_setup$22, ResultTextSelection_default, COMMENT_LIMIT = 4096, countFormat, commentSchema, ResultComments_vue_vue_type_script_setup_true_lang_default, _sfc_setup$21, ResultComments_default, ResultBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$20, ResultBlock_default, BackgroundBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$19, BackgroundBlock_default, TopicBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$18, TopicBlock_default, AssumedBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$17, AssumedBlock_default, AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$16, AnswerReadingBlock_default, SummaryBlock_vue_vue_type_script_setup_true_lang_default, _sfc_setup$15, SummaryBlock_default, ReadingEntry_vue_vue_type_script_setup_true_lang_default, _sfc_setup$14, ReadingEntry_default, StageReading_vue_vue_type_script_setup_true_lang_default, _sfc_setup$13, StageReading_default, StagePanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$12, StagePanel_default, CopyFeedback_vue_vue_type_script_setup_true_lang_default, _sfc_setup$11, CopyFeedback_default, useColorMode = () => {
+  return useState("color-mode").value;
+}, FlowFooter_vue_vue_type_script_setup_true_lang_default, _sfc_setup$10, FlowFooter_default, MattPathStep_vue_vue_type_script_setup_true_lang_default, _sfc_setup$9, MattPathStep_default, MattPath_vue_vue_type_script_setup_true_lang_default, _sfc_setup$8, MattPath_default, StageMapItem_vue_vue_type_script_setup_true_lang_default, _sfc_setup$7, StageMapItem_default, MapStages_vue_vue_type_script_setup_true_lang_default, _sfc_setup$6, MapStages_default, WayfinderMap_vue_vue_type_script_setup_true_lang_default, _sfc_setup$5, WayfinderMap_default, MapPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$4, MapPanel_default, JumpPanel_vue_vue_type_script_setup_true_lang_default, _sfc_setup$3, JumpPanel_default, app_vue_vue_type_script_setup_true_lang_default, _sfc_setup$2, app_default, _sfc_main$1, _sfc_setup$1, IslandRenderer = () => null, _sfc_main3, _sfc_setup3, entry$1 = async function createNuxtAppServer(ssrContext) {
   const vueApp = exports_vue.createApp(_sfc_main3);
   const nuxt = createNuxtApp({
     vueApp,
@@ -108754,119 +108944,36 @@ var init_entry = __esm(() => {
   ];
   typeof WorkerGlobalScope !== "undefined" && globalThis instanceof WorkerGlobalScope;
   toString$1 = Object.prototype.toString;
-  MONTHS = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec"
+  UNITS = [
+    {
+      name: "year",
+      ms: 31536000000
+    },
+    {
+      name: "month",
+      ms: 2592000000
+    },
+    {
+      name: "week",
+      ms: 604800000
+    },
+    {
+      name: "day",
+      ms: 86400000
+    },
+    {
+      name: "hour",
+      ms: 3600000
+    },
+    {
+      name: "minute",
+      ms: 60000
+    },
+    {
+      name: "second",
+      ms: 1000
+    }
   ];
-  STATE_LABELS = {
-    "not-started": "Not started",
-    "in-progress": "In progress",
-    finished: "Finished"
-  };
-  CLAIM_LABELS = {
-    confirmed: "Confirmed",
-    cleared: "Cleared",
-    unproven: "Unproven"
-  };
-  TYPE_LABELS = {
-    image: "Image",
-    video: "Video",
-    svg: "SVG figure",
-    mermaid: "Mermaid diagram",
-    file: "File",
-    trace: "Trace",
-    evidence: "Captured evidence",
-    artifact: "Runnable artifact"
-  };
-  TASK_LABELS = {
-    pending: "To do",
-    active: "Active",
-    done: "Done",
-    skipped: "Skipped",
-    inapplicable: "Does not apply"
-  };
-  END_LABELS = {
-    commit: "Commit",
-    "merge-ready": "Merge-ready",
-    shipped: "Shipped"
-  };
-  PR_LABELS = {
-    open: "Open",
-    merged: "Merged",
-    closed: "Closed"
-  };
-  CHECK_LABELS = {
-    passed: "Passed",
-    failed: "Failed",
-    pending: "Pending"
-  };
-  OUTCOME_LABELS = {
-    succeeded: "Succeeded",
-    failed: "Failed",
-    blocked: "Blocked",
-    skipped: "Skipped",
-    unknown: "Outcome unknown",
-    noted: "Noted"
-  };
-  AXIS_LABELS = {
-    standards: "Standards",
-    spec: "Spec",
-    "blast-radius": "Blast radius"
-  };
-  REVIEW_LABELS = {
-    findings: "Findings",
-    clean: "Clean",
-    skipped: "Skipped",
-    unavailable: "Unavailable",
-    blocked: "Blocked"
-  };
-  VERDICT_LABELS = {
-    chosen: "Chosen",
-    tie: "Tie",
-    inconclusive: "Inconclusive"
-  };
-  MEASURE_LABELS = {
-    better: "Reported better",
-    worse: "Reported worse",
-    "no-difference": "Reported no measurable difference",
-    inconclusive: "Reported inconclusive"
-  };
-  PROVENANCE = {
-    picked: "your pick",
-    written: "your recorded words",
-    resolved: "read from your words",
-    unresolved: "not your answer",
-    open: "not answered"
-  };
-  SHAPE_LABELS = {
-    cards: "Cards",
-    review: "Review",
-    ledger: "Ledger",
-    table: "Table",
-    document: "Document",
-    code: "Code",
-    timeline: "Timeline",
-    prototype: "Prototype",
-    comparison: "Comparison",
-    metrics: "Metrics",
-    quiz: "Quiz",
-    demo: "Demo"
-  };
-  current = exports_vue.ref();
-  mapOpen = exports_vue.ref(false);
-  mapTab = exports_vue.ref("path");
-  tab = exports_vue.ref("overview");
-  readerComments = exports_vue.shallowRef([]);
   typeof WorkerGlobalScope !== "undefined" && globalThis instanceof WorkerGlobalScope;
   toString2 = Object.prototype.toString;
   [injectConfigProviderContext] = /* @__PURE__ */ createContext("ConfigProvider");
@@ -111448,280 +111555,395 @@ var init_entry = __esm(() => {
       };
     }
   });
-  _sfc_setup$52 = Button_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$64 = Button_vue_vue_type_script_setup_true_lang_default.setup;
   Button_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Button.vue");
-    return _sfc_setup$52 ? _sfc_setup$52(props, ctx) : undefined;
+    return _sfc_setup$64 ? _sfc_setup$64(props, ctx) : undefined;
   };
   Button_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(Button_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-3df077bb"]]), { __name: "UiButton" });
-  TabBar_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
-    __name: "TabBar",
+  MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ];
+  STATE_LABELS = {
+    "not-started": "Not started",
+    "in-progress": "In progress",
+    finished: "Finished"
+  };
+  CLAIM_LABELS = {
+    confirmed: "Confirmed",
+    cleared: "Cleared",
+    unproven: "Unproven"
+  };
+  TYPE_LABELS = {
+    image: "Image",
+    video: "Video",
+    svg: "SVG figure",
+    mermaid: "Mermaid diagram",
+    file: "File",
+    trace: "Trace",
+    evidence: "Captured evidence",
+    artifact: "Runnable artifact"
+  };
+  TASK_LABELS = {
+    pending: "To do",
+    active: "Active",
+    done: "Done",
+    skipped: "Skipped",
+    inapplicable: "Does not apply"
+  };
+  END_LABELS = {
+    commit: "Commit",
+    "merge-ready": "Merge-ready",
+    shipped: "Shipped"
+  };
+  PR_LABELS = {
+    open: "Open",
+    merged: "Merged",
+    closed: "Closed"
+  };
+  CHECK_LABELS = {
+    passed: "Passed",
+    failed: "Failed",
+    pending: "Pending"
+  };
+  OUTCOME_LABELS = {
+    succeeded: "Succeeded",
+    failed: "Failed",
+    blocked: "Blocked",
+    skipped: "Skipped",
+    unknown: "Outcome unknown",
+    noted: "Noted"
+  };
+  AXIS_LABELS = {
+    standards: "Standards",
+    spec: "Spec",
+    "blast-radius": "Blast radius"
+  };
+  REVIEW_LABELS = {
+    findings: "Findings",
+    clean: "Clean",
+    skipped: "Skipped",
+    unavailable: "Unavailable",
+    blocked: "Blocked"
+  };
+  VERDICT_LABELS = {
+    chosen: "Chosen",
+    tie: "Tie",
+    inconclusive: "Inconclusive"
+  };
+  MEASURE_LABELS = {
+    better: "Reported better",
+    worse: "Reported worse",
+    "no-difference": "Reported no measurable difference",
+    inconclusive: "Reported inconclusive"
+  };
+  PROVENANCE = {
+    picked: "your pick",
+    written: "your recorded words",
+    resolved: "read from your words",
+    unresolved: "not your answer",
+    open: "not answered"
+  };
+  SHAPE_LABELS = {
+    cards: "Cards",
+    review: "Review",
+    ledger: "Ledger",
+    table: "Table",
+    document: "Document",
+    code: "Code",
+    timeline: "Timeline",
+    prototype: "Prototype",
+    comparison: "Comparison",
+    metrics: "Metrics",
+    quiz: "Quiz",
+    demo: "Demo"
+  };
+  NON_CONSENT = {
+    headless: "Headless, not your answer",
+    cancelled: "Cancelled, not your answer",
+    "timed-out": "Timed out, not your answer",
+    empty: "Empty response, not your answer"
+  };
+  readerComments = exports_vue.shallowRef([]);
+  current = exports_vue.ref();
+  mapOpen = exports_vue.ref(false);
+  mapTab = exports_vue.ref("stages");
+  jumpOpen = exports_vue.ref(false);
+  tab = exports_vue.ref("overview");
+  FlowBar_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "FlowBar",
     __ssrInlineRender: true,
     setup(__props) {
       const { flow } = useReaderState();
       const f = exports_vue.computed(() => flow.value);
-      const blocks = exports_vue.computed(() => [...f.value.reading.historical, ...f.value.reading.publications]);
-      const jumps = exports_vue.computed(() => {
-        if (tab.value === "overview")
-          return [
-            {
-              id: "progress",
-              label: "Progress"
-            },
-            {
-              id: "observations",
-              label: "Observations"
-            },
-            {
-              id: "overview-stages",
-              label: "Stages"
-            }
-          ];
-        if (tab.value === "topics")
-          return f.value.topics.map((t) => ({
-            id: t.id,
-            label: t.title
-          }));
-        return blocks.value.filter((b) => b.stage === tab.value).map((b) => ({
-          id: b.id,
-          label: blockLabel(f.value, b)
-        }));
+      const stage = exports_vue.computed(() => f.value.stage.get(tab.value));
+      const stageName = exports_vue.computed(() => stage.value ? stageWorkName(f.value, stage.value) : tab.value === "topics" ? "Topics" : "Overview");
+      const queue = exports_vue.computed(() => {
+        if (!stage.value)
+          return [];
+        return f.value.next.flatMap((id) => {
+          const q = f.value.question.get(id);
+          if (!q || q.stage !== stage.value.id)
+            return [];
+          return [{
+            q,
+            concern: questionHasConcern(f.value, q)
+          }];
+        });
       });
-      const at = exports_vue.ref();
-      exports_vue.watch([current, jumps], ([id]) => {
-        const el = id ? undefined.getElementById(id) : null;
-        const owner = el?.closest("[data-block]")?.dataset.reading;
-        at.value = owner ?? jumps.value.find((j) => el && undefined.getElementById(j.id)?.contains(el))?.id;
+      const selected = exports_vue.computed(() => queue.value.find(({ q }) => q.id === current.value));
+      const other = exports_vue.computed(() => f.value.stages.filter((st) => st.id !== tab.value && st.open_questions > 0));
+      const slotSizes = exports_vue.computed(() => ({
+        "--queue-slot": `${String(queue.value.at(-1)?.q.q ?? 1).length + 2}ch`,
+        "--open-slot": `${String(queue.value.length).length + 6}ch`,
+        "--queue-count-slot": `${String(queue.value.length).length + 1}ch`,
+        "--other-slot": `${String(other.value.length).length + 1}ch`,
+        "--current-slot": selected.value ? "var(--queue-chip-width)" : "0px"
+      }));
+      const slots = exports_vue.useTemplateRef("slots");
+      const ruler = exports_vue.useTemplateRef("ruler");
+      const width = exports_vue.shallowRef(0);
+      const sizes = exports_vue.shallowRef([]);
+      function measure() {
+        if (!slots.value || !ruler.value)
+          return;
+        width.value = slots.value.getBoundingClientRect().width;
+        sizes.value = [...ruler.value.children].map((el) => el.getBoundingClientRect().width);
+      }
+      useResizeObserver$1([slots, ruler], measure);
+      exports_vue.watch(slotSizes, measure, { flush: "post" });
+      const packed = exports_vue.computed(() => {
+        const active = Number(!!selected.value);
+        const n = queue.value.length - active;
+        const m = other.value.length;
+        const [chip = 0, open = 0, waiting = 0, more = 0, gap = 0] = sizes.value;
+        let questions = 0;
+        let stages = 0;
+        if (!chip || !width.value)
+          return {
+            questions,
+            stages,
+            openCount: false,
+            waitingCount: false
+          };
+        const size = (qs, sts, hasOpen, hasMore) => {
+          const count = active + qs + sts + Number(hasOpen) + Number(hasMore);
+          return (active + qs) * chip + sts * waiting + Number(hasOpen) * open + Number(hasMore) * more + Math.max(0, count - 1) * gap;
+        };
+        const openCount = n > 0 && size(0, 0, true, false) <= width.value;
+        const waitingCount = m > 0 && size(0, 0, openCount, true) <= width.value;
+        const fits = (qs, sts) => size(qs, sts, openCount && qs < n, waitingCount && sts < m) <= width.value;
+        if (m && fits(0, 1))
+          stages = 1;
+        questions = Math.min(n, Math.floor(width.value / chip));
+        while (questions && !fits(questions, stages))
+          questions--;
+        for (let i = Math.min(3, m);i > stages; i--)
+          if (fits(questions, i)) {
+            stages = i;
+            break;
+          }
+        return {
+          questions,
+          stages,
+          openCount: openCount && questions < n,
+          waitingCount: waitingCount && stages < m
+        };
       });
-      const bar = exports_vue.useTemplateRef("bar");
-      useResizeObserver$1(bar, measureHeader);
+      const visibleQueue = exports_vue.computed(() => {
+        let rest = packed.value.questions;
+        return queue.value.filter((item) => item === selected.value || rest-- > 0);
+      });
+      const hiddenQueue = exports_vue.computed(() => queue.value.length - visibleQueue.value.length);
+      const hiddenStages = exports_vue.computed(() => other.value.length - packed.value.stages);
+      const waitingLabel = exports_vue.computed(() => `+${hiddenStages.value} waiting ${hiddenStages.value === 1 ? "Stage" : "Stages"}`);
+      const queueLabel = exports_vue.computed(() => `+${hiddenQueue.value} open`);
+      const inlineWaiting = exports_vue.computed(() => hiddenStages.value > 0 && !packed.value.waitingCount);
+      const inlineQueue = exports_vue.computed(() => hiddenQueue.value > 0 && !packed.value.openCount);
+      function openMap() {
+        mapTab.value = "stages";
+        mapOpen.value = true;
+      }
       return (_ctx, _push, _parent, _attrs) => {
         _push(`<nav${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
-          ref_key: "bar",
-          ref: bar,
-          class: "bar sticky [inset-block-start:0] z-1 grid [grid-column:1/-1]! [grid-template-columns:subgrid] gap-y-1 py-1 border-be border-flow-line bg-flow-base [&>*]:[grid-column:2]",
-          "aria-label": "Flow tabs"
-        }, _attrs))} data-v-345f9bcc><ul class="tabs flex flex-wrap items-center gap-1 m-0 p-0 list-none" data-v-345f9bcc><li data-v-345f9bcc><a href="#overview"${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(tab) === "overview" ? "page" : undefined)} class="${exports_server_renderer.ssrRenderClass(tabLink)}" data-v-345f9bcc>Overview</a></li><!--[-->`);
-        ssrRenderList$2(exports_vue.unref(f).stages, (st) => {
-          _push(`<li${exports_server_renderer.ssrRenderAttr("data-state", st.state)} data-v-345f9bcc><a${exports_server_renderer.ssrRenderAttr("href", `#${st.id}`)}${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(tab) === st.id ? "page" : undefined)} class="${exports_server_renderer.ssrRenderClass(tabLink)}" data-v-345f9bcc><span aria-hidden="true" class="${exports_server_renderer.ssrRenderClass([st.state === "finished" ? "bg-flow-green" : st.state === "in-progress" ? "bg-flow-peach" : "bg-flow-dimmed", "size-2 shrink-0 rounded-full"])}" data-v-345f9bcc></span>${exports_server_renderer.ssrInterpolate(st.label)}</a></li>`);
+          class: "bar sticky inset-bs-0 z-1 [grid-column:1/-1]! border-be border-flow-line bg-flow-base",
+          "aria-label": "Flow navigation"
+        }, _attrs))} data-v-bbc43170><div class="bar-row" style="${exports_server_renderer.ssrRenderStyle(exports_vue.unref(slotSizes))}" data-v-bbc43170><span class="identity project text-flow-subtext"${exports_server_renderer.ssrRenderAttr("title", exports_vue.unref(f).project)} dir="auto" data-v-bbc43170>${exports_server_renderer.ssrInterpolate(exports_vue.unref(f).project)}</span><a href="#overview" class="identity flow-title min-h-control content-center text-flow-text font-bold"${exports_server_renderer.ssrRenderAttr("title", exports_vue.unref(f).flow.title)}${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(tab) === "overview" ? "page" : undefined)} dir="auto" data-v-bbc43170>${exports_server_renderer.ssrInterpolate(exports_vue.unref(f).flow.title)}</a><span class="identity stage-title text-flow-blue font-semibold"${exports_server_renderer.ssrRenderAttr("title", exports_vue.unref(stageName))}${exports_server_renderer.ssrRenderAttr("data-state", exports_vue.unref(stage)?.state)} dir="auto" data-v-bbc43170>${exports_server_renderer.ssrInterpolate(exports_vue.unref(stageName))}</span><div class="slots" data-v-bbc43170><!--[-->`);
+        ssrRenderList$2(exports_vue.unref(visibleQueue), ({ q, concern }) => {
+          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${q.id}`)} class="${exports_server_renderer.ssrRenderClass([[chipClass, concern ? "text-flow-peach!" : exports_vue.unref(current) === q.id ? "text-flow-blue!" : ""], "queue-chip aria-[current=location]:border-flow-blue aria-[current=location]:bg-flow-accented"])}"${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(current) === q.id ? "location" : undefined)}${exports_server_renderer.ssrRenderAttr("aria-label", `Q${q.q}. ${q.title}${concern ? " \xB7 Concern recorded" : ""}`)}${exports_server_renderer.ssrRenderAttr("title", `${q.title}${concern ? " \xB7 Concern recorded" : ""}`)} data-v-bbc43170><span class="truncate" data-v-bbc43170>Q${exports_server_renderer.ssrInterpolate(q.q)}</span>`);
+          if (concern)
+            _push(`<span class="shrink-0 font-extrabold" aria-hidden="true" data-v-bbc43170>!</span>`);
+          else
+            _push(`<!---->`);
+          _push(`</a>`);
         });
         _push(`<!--]-->`);
-        if (exports_vue.unref(f).topics.length)
-          _push(`<li data-v-345f9bcc><a href="#topics"${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(tab) === "topics" ? "page" : undefined)} class="${exports_server_renderer.ssrRenderClass(tabLink)}" data-v-345f9bcc>Topics</a></li>`);
-        else
-          _push(`<!---->`);
-        if (exports_vue.unref(f).stages.length) {
-          _push(`<li data-v-345f9bcc>`);
+        if (exports_vue.unref(packed).openCount)
           _push(exports_server_renderer.ssrRenderComponent(Button_default, {
-            id: "stages-map-trigger",
             variant: "bare",
-            class: "map-trigger gap-1 cursor-pointer touch-manipulation text-flow-blue underline underline-offset-[0.2em]",
+            class: ["open-count", chipClass],
             "aria-haspopup": "dialog",
-            "aria-keyshortcuts": "m",
-            onClick: ($event) => {
-              mapTab.value = "stages";
-              mapOpen.value = true;
-            }
+            onClick: ($event) => jumpOpen.value = true
           }, {
             default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
               if (_push)
-                _push(`Stages <kbd data-v-345f9bcc${_scopeId}>m</kbd>`);
+                _push(`<span class="truncate" data-v-bbc43170${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(queueLabel))}</span>`);
               else
-                return [exports_vue.createTextVNode("Stages "), exports_vue.createVNode("kbd", null, "m")];
+                return [exports_vue.createVNode("span", { class: "truncate" }, exports_vue.toDisplayString(exports_vue.unref(queueLabel)), 1)];
             }),
             _: 1
           }, _parent));
-          _push(`</li>`);
-        } else
+        else
           _push(`<!---->`);
-        _push(`</ul>`);
-        if (exports_vue.unref(jumps).length) {
-          _push(`<nav class="jump-row flex flex-wrap gap-x-2 gap-y-1 border-bs border-flow-line text-small" aria-label="In this tab" data-v-345f9bcc><!--[-->`);
-          ssrRenderList$2(exports_vue.unref(jumps), (j) => {
-            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${j.id}`)}${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(at) === j.id ? "location" : undefined)} class="jump-link reader-control inline-flex items-center text-flow-toned no-underline tabular-nums" data-v-345f9bcc><span data-v-345f9bcc>${exports_vue.unref(inlineLinkLabel)(j.label) ?? ""}</span></a>`);
-          });
-          _push(`<!--]--></nav>`);
-        } else
-          _push(`<!---->`);
-        _push(`</nav>`);
-      };
-    }
-  });
-  _sfc_setup$51 = TabBar_vue_vue_type_script_setup_true_lang_default.setup;
-  TabBar_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
-    const ssrContext = exports_vue.useSSRContext();
-    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/TabBar.vue");
-    return _sfc_setup$51 ? _sfc_setup$51(props, ctx) : undefined;
-  };
-  TabBar_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(TabBar_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-345f9bcc"]]), { __name: "TabBar" });
-  CopyFeedback_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
-    __name: "CopyFeedback",
-    __ssrInlineRender: true,
-    setup(__props) {
-      const { flow } = useReaderState();
-      const pending = exports_vue.shallowRef(false);
-      const status = exports_vue.shallowRef("");
-      const error = exports_vue.shallowRef("");
-      async function copy() {
-        pending.value = true;
-        status.value = "";
-        error.value = "";
-        try {
-          await refreshComments();
-          const f = flow.value;
-          const feedback = readerComments.value.map((c) => {
-            const stage = f.stage.get(c.stage);
-            const current = stage?.results.find((r) => r.id === c.result);
-            const result = c.edit === undefined ? undefined : [current, ...current?.history ?? []].find((r) => r && r.revision === c.revision && (r.edit ?? null) === c.edit);
-            const anchor = c.anchor;
-            const entry2 = anchor.kind === "entry" ? result?.entries.find((e) => e.id === anchor.entry) : undefined;
-            const quote = c.anchor.kind === "text" ? c.anchor.quote : entry2 ? String(entry2.title ?? entry2.claim ?? entry2.file ?? entry2.cells?.join(" | ") ?? entry2.id) : result?.title ?? c.result;
-            const target = c.anchor.kind === "entry" ? `Entry ${c.anchor.entry}` : c.anchor.kind === "block" ? "Whole Result block" : "Selected text";
-            return `Stage ${c.stage}${stage ? `: ${stage.label}` : ""}
-Result ${c.result}${result ? `: ${result.title}` : ""}
-Revision ${c.revision}${c.edit != null ? ` \xB7 Edit ${c.edit}` : ""}${c.edit === undefined ? " \xB7 Captured version unknown" : ""} \xB7 ${target}
-${quote.split(`
-`).map((line) => `> ${line}`).join(`
-`)}
-${c.text}`;
-          });
-          await undefined.clipboard.writeText(`Please review these Reader comments. They are notes, not answers or consent.
-
-${feedback.join(`
-
-`)}`);
-          status.value = "Feedback copied";
-        } catch (cause) {
-          error.value = `Could not copy feedback: ${cause.message}`;
-        } finally {
-          pending.value = false;
-        }
-      }
-      return (_ctx, _push, _parent, _attrs) => {
-        if (exports_vue.unref(readerComments).length) {
-          _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-1 text-small [overflow-wrap:anywhere]" }, _attrs))} data-v-fa187c79>`);
+        _push(`<!--[-->`);
+        ssrRenderList$2(exports_vue.unref(other).slice(0, exports_vue.unref(packed).stages), (st) => {
+          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${st.id}`)} class="${exports_server_renderer.ssrRenderClass([chipClass, "waiting-chip"])}"${exports_server_renderer.ssrRenderAttr("title", `${exports_vue.unref(stageWorkName)(exports_vue.unref(f), st)} \xB7 ${st.open_questions} open`)}${exports_server_renderer.ssrRenderAttr("aria-label", `${exports_vue.unref(stageWorkName)(exports_vue.unref(f), st)} \xB7 ${st.open_questions} open`)} data-v-bbc43170><span class="truncate" dir="auto" data-v-bbc43170>${exports_server_renderer.ssrInterpolate(exports_vue.unref(stageWorkName)(exports_vue.unref(f), st))}</span><span class="shrink-0 text-flow-peach" data-v-bbc43170>${exports_server_renderer.ssrInterpolate(st.open_questions)}</span></a>`);
+        });
+        _push(`<!--]-->`);
+        if (exports_vue.unref(packed).waitingCount)
           _push(exports_server_renderer.ssrRenderComponent(Button_default, {
-            variant: "soft",
-            "aria-busy": exports_vue.unref(pending) || undefined,
-            disabled: exports_vue.unref(pending),
-            class: "w-fit max-w-full whitespace-normal",
-            onClick: copy
+            variant: "bare",
+            class: ["waiting-count", chipClass],
+            "aria-haspopup": "dialog",
+            "aria-label": exports_vue.unref(waitingLabel),
+            title: exports_vue.unref(waitingLabel),
+            onClick: openMap
           }, {
             default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
-              if (_push) {
-                if (exports_vue.unref(pending))
-                  _push(`<span class="copy-spinner i-lucide-loader-circle shrink-0 text-base" aria-hidden="true" data-v-fa187c79${_scopeId}></span>`);
-                else
-                  _push(`<!---->`);
-                _push(` Copy feedback `);
-              } else
-                return [exports_vue.unref(pending) ? (exports_vue.openBlock(), exports_vue.createBlock("span", {
-                  key: 0,
-                  class: "copy-spinner i-lucide-loader-circle shrink-0 text-base",
-                  "aria-hidden": "true"
-                })) : exports_vue.createCommentVNode("", true), exports_vue.createTextVNode(" Copy feedback ")];
+              if (_push)
+                _push(`<span class="truncate" data-v-bbc43170${_scopeId}>+${exports_server_renderer.ssrInterpolate(exports_vue.unref(hiddenStages))}</span>`);
+              else
+                return [exports_vue.createVNode("span", { class: "truncate" }, "+" + exports_vue.toDisplayString(exports_vue.unref(hiddenStages)), 1)];
             }),
             _: 1
           }, _parent));
-          if (exports_vue.unref(readerComments).some((c) => c.version_unknown))
-            _push(`<p class="text-flow-peach" data-v-fa187c79>Some saved Reader comments have an unknown captured version. Copy feedback includes them without attaching them to current content.</p>`);
-          else
-            _push(`<!---->`);
-          if (exports_vue.unref(status))
-            _push(`<p role="status" data-v-fa187c79>${exports_server_renderer.ssrInterpolate(exports_vue.unref(status))}</p>`);
-          else
-            _push(`<!---->`);
-          if (exports_vue.unref(error))
-            _push(`<p role="alert" class="text-flow-red" data-v-fa187c79>${exports_server_renderer.ssrInterpolate(exports_vue.unref(error))}</p>`);
-          else
-            _push(`<!---->`);
-          _push(`</div>`);
-        } else
+        else
           _push(`<!---->`);
+        _push(`</div>`);
+        _push(exports_server_renderer.ssrRenderComponent(Button_default, {
+          id: "flow-stages",
+          class: "action shrink-0 text-small leading-none [--count-slot:var(--other-slot)]",
+          "aria-label": exports_vue.unref(inlineWaiting) ? `Stages \xB7 ${exports_vue.unref(waitingLabel)}` : "Stages",
+          "aria-description": exports_vue.unref(hiddenStages) && !exports_vue.unref(inlineWaiting) ? exports_vue.unref(waitingLabel) : undefined,
+          title: exports_vue.unref(hiddenStages) ? `Stages (m) \xB7 ${exports_vue.unref(waitingLabel)}` : "Stages (m)",
+          "aria-haspopup": "dialog",
+          "aria-keyshortcuts": "m",
+          onClick: openMap
+        }, {
+          default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+            if (_push) {
+              _push(`<span class="action-label truncate" aria-hidden="true" data-v-bbc43170${_scopeId}>Stages</span><span class="i-lucide-list-tree action-icon size-[1.25em]" aria-hidden="true" data-v-bbc43170${_scopeId}></span><span class="action-hint" aria-hidden="true" data-v-bbc43170${_scopeId}>`);
+              if (exports_vue.unref(inlineWaiting))
+                _push(`<span class="max-w-full truncate" data-v-bbc43170${_scopeId}>+${exports_server_renderer.ssrInterpolate(exports_vue.unref(hiddenStages))}</span>`);
+              else
+                _push(`<kbd data-v-bbc43170${_scopeId}>m</kbd>`);
+              _push(`</span>`);
+            } else
+              return [
+                exports_vue.createVNode("span", {
+                  class: "action-label truncate",
+                  "aria-hidden": "true"
+                }, "Stages"),
+                exports_vue.createVNode("span", {
+                  class: "i-lucide-list-tree action-icon size-[1.25em]",
+                  "aria-hidden": "true"
+                }),
+                exports_vue.createVNode("span", {
+                  class: "action-hint",
+                  "aria-hidden": "true"
+                }, [exports_vue.unref(inlineWaiting) ? (exports_vue.openBlock(), exports_vue.createBlock("span", {
+                  key: 0,
+                  class: "max-w-full truncate"
+                }, "+" + exports_vue.toDisplayString(exports_vue.unref(hiddenStages)), 1)) : (exports_vue.openBlock(), exports_vue.createBlock("kbd", { key: 1 }, "m"))])
+              ];
+          }),
+          _: 1
+        }, _parent));
+        _push(exports_server_renderer.ssrRenderComponent(Button_default, {
+          id: "flow-jump",
+          class: "action shrink-0 text-small leading-none [--count-slot:var(--queue-count-slot)]",
+          "aria-label": exports_vue.unref(inlineQueue) ? `Jump \xB7 ${exports_vue.unref(queueLabel)}` : "Jump",
+          "aria-description": exports_vue.unref(hiddenQueue) && !exports_vue.unref(inlineQueue) ? exports_vue.unref(queueLabel) : undefined,
+          title: exports_vue.unref(hiddenQueue) ? `Jump (g) \xB7 ${exports_vue.unref(queueLabel)}` : "Jump (g)",
+          "aria-haspopup": "dialog",
+          "aria-keyshortcuts": "g",
+          onClick: ($event) => jumpOpen.value = true
+        }, {
+          default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+            if (_push) {
+              _push(`<span class="action-label truncate" aria-hidden="true" data-v-bbc43170${_scopeId}>Jump</span><span class="i-lucide-list-end action-icon size-[1.25em]" aria-hidden="true" data-v-bbc43170${_scopeId}></span><span class="action-hint" aria-hidden="true" data-v-bbc43170${_scopeId}>`);
+              if (exports_vue.unref(inlineQueue))
+                _push(`<span class="max-w-full truncate" data-v-bbc43170${_scopeId}>+${exports_server_renderer.ssrInterpolate(exports_vue.unref(hiddenQueue))}</span>`);
+              else
+                _push(`<kbd data-v-bbc43170${_scopeId}>g</kbd>`);
+              _push(`</span>`);
+            } else
+              return [
+                exports_vue.createVNode("span", {
+                  class: "action-label truncate",
+                  "aria-hidden": "true"
+                }, "Jump"),
+                exports_vue.createVNode("span", {
+                  class: "i-lucide-list-end action-icon size-[1.25em]",
+                  "aria-hidden": "true"
+                }),
+                exports_vue.createVNode("span", {
+                  class: "action-hint",
+                  "aria-hidden": "true"
+                }, [exports_vue.unref(inlineQueue) ? (exports_vue.openBlock(), exports_vue.createBlock("span", {
+                  key: 0,
+                  class: "max-w-full truncate"
+                }, "+" + exports_vue.toDisplayString(exports_vue.unref(hiddenQueue)), 1)) : (exports_vue.openBlock(), exports_vue.createBlock("kbd", { key: 1 }, "g"))])
+              ];
+          }),
+          _: 1
+        }, _parent));
+        _push(`<div class="ruler" aria-hidden="true" data-v-bbc43170><span class="queue-chip" data-v-bbc43170></span><span class="open-count" data-v-bbc43170></span><span class="waiting-chip" data-v-bbc43170></span><span class="waiting-count" data-v-bbc43170></span><span class="gap-size" data-v-bbc43170></span></div></div></nav>`);
       };
     }
   });
-  _sfc_setup$50 = CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup;
-  CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+  _sfc_setup$63 = FlowBar_vue_vue_type_script_setup_true_lang_default.setup;
+  FlowBar_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
-    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CopyFeedback.vue");
-    return _sfc_setup$50 ? _sfc_setup$50(props, ctx) : undefined;
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FlowBar.vue");
+    return _sfc_setup$63 ? _sfc_setup$63(props, ctx) : undefined;
   };
-  CopyFeedback_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(CopyFeedback_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-fa187c79"]]), { __name: "CopyFeedback" });
+  FlowBar_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(FlowBar_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-bbc43170"]]), { __name: "FlowBar" });
   FlowMasthead_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "FlowMasthead",
     __ssrInlineRender: true,
     setup(__props) {
       const { flow } = useReaderState();
       const f = exports_vue.computed(() => flow.value);
-      const colorMode = useColorMode();
-      const last = exports_vue.computed(() => f.value.lifecycle.at(-1));
-      const open = exports_vue.computed(() => f.value.next.length);
-      const stages = exports_vue.computed(() => f.value.stages.length);
-      const progress = exports_vue.computed(() => f.value.progress.complete ? "complete" : "not complete");
-      const themes = [
-        {
-          value: "system",
-          label: "System"
-        },
-        {
-          value: "light",
-          label: "Light"
-        },
-        {
-          value: "dark",
-          label: "Dark"
-        }
-      ];
       return (_ctx, _push, _parent, _attrs) => {
-        const _component_CopyFeedback = CopyFeedback_default;
-        _push(`<header${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "masthead grid gap-1 pbe-2" }, _attrs))} data-v-ed8e37d7>`);
+        _push(`<header${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "masthead grid gap-1 pbe-2" }, _attrs))}>`);
         if (exports_vue.unref(f).flow.crumb)
-          _push(`<p class="quiet" data-v-ed8e37d7>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(f).flow.crumb) ?? ""}</p>`);
+          _push(`<p class="quiet">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(f).flow.crumb) ?? ""}</p>`);
         else
           _push(`<!---->`);
-        _push(`<h1 data-v-ed8e37d7>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(f).flow.title) ?? ""}</h1><p class="meta" data-v-ed8e37d7>`);
-        if (exports_vue.unref(last))
-          _push(`<span class="font-semibold text-flow-state"${exports_server_renderer.ssrRenderAttr("data-state", exports_vue.unref(last).event)} data-v-ed8e37d7>${exports_server_renderer.ssrInterpolate(exports_vue.unref(last).event === "closed" ? "Closed" : "Reopened")} <time${exports_server_renderer.ssrRenderAttr("datetime", exports_vue.unref(last).time)} class="font-normal" data-v-ed8e37d7>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(exports_vue.unref(last).time))}</time></span>`);
-        else
-          _push(`<!---->`);
-        _push(`<span data-v-ed8e37d7>${exports_server_renderer.ssrInterpolate(exports_vue.unref(stages))} ${exports_server_renderer.ssrInterpolate(exports_vue.unref(stages) === 1 ? "Stage" : "Stages")}</span><span data-v-ed8e37d7>${exports_server_renderer.ssrInterpolate(exports_vue.unref(open))} open ${exports_server_renderer.ssrInterpolate(exports_vue.unref(open) === 1 ? "question" : "questions")}`);
-        if (exports_vue.unref(open))
-          _push(`<!--[--> \xB7 <kbd data-v-ed8e37d7>n</kbd> visits them<!--]-->`);
-        else
-          _push(`<!---->`);
-        _push(`</span><a href="#overview" data-v-ed8e37d7>Progress: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(progress))}</a><span data-v-ed8e37d7>Revision ${exports_server_renderer.ssrInterpolate(exports_vue.unref(f).revision)}</span></p><div class="flex flex-wrap items-start gap-2" data-v-ed8e37d7>`);
-        _push(exports_server_renderer.ssrRenderComponent(_component_CopyFeedback, null, null, _parent));
-        _push(`<div class="theme flex flex-wrap gap-1" role="group" aria-label="Color theme" data-v-ed8e37d7><!--[-->`);
-        ssrRenderList$2(themes, (t) => {
-          _push(exports_server_renderer.ssrRenderComponent(Button_default, {
-            key: t.value,
-            variant: "bare",
-            "aria-pressed": exports_vue.unref(colorMode).preference === t.value,
-            class: "theme-button border border-flow-line bg-flow-muted text-small text-flow-toned font-semibold cursor-pointer touch-manipulation motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out",
-            onClick: ($event) => exports_vue.unref(colorMode).preference = t.value
-          }, {
-            default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
-              if (_push)
-                _push(`${exports_server_renderer.ssrInterpolate(t.label)}`);
-              else
-                return [exports_vue.createTextVNode(exports_vue.toDisplayString(t.label), 1)];
-            }),
-            _: 2
-          }, _parent));
-        });
-        _push(`<!--]--></div></div></header>`);
+        _push(`<h1>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(f).flow.title) ?? ""}</h1></header>`);
       };
     }
   });
-  _sfc_setup$49 = FlowMasthead_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$62 = FlowMasthead_vue_vue_type_script_setup_true_lang_default.setup;
   FlowMasthead_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FlowMasthead.vue");
-    return _sfc_setup$49 ? _sfc_setup$49(props, ctx) : undefined;
+    return _sfc_setup$62 ? _sfc_setup$62(props, ctx) : undefined;
   };
-  FlowMasthead_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(FlowMasthead_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-ed8e37d7"]]), { __name: "FlowMasthead" });
+  FlowMasthead_default = Object.assign(FlowMasthead_vue_vue_type_script_setup_true_lang_default, { __name: "FlowMasthead" });
   ContextNotes_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "ContextNotes",
     __ssrInlineRender: true,
@@ -111742,7 +111964,10 @@ ${feedback.join(`
       }))));
       const ask = (id) => f.value.question.get(id);
       return (_ctx, _push, _parent, _attrs) => {
-        _push(`<details${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "context-outline py-1 border-be border-flow-line open:grid open:gap-2 open:pbe-2" }, _attrs))}><summary>Context and related notes</summary><div class="grid gap-2">`);
+        _push(`<details${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          id: "context-notes",
+          class: "context-outline py-1 border-be border-flow-line open:grid open:gap-2 open:pbe-2"
+        }, _attrs))}><summary>Context and related notes</summary><div class="grid gap-2">`);
         if (exports_vue.unref(backgrounds).length) {
           _push(`<section aria-labelledby="context-backgrounds"><h2 id="context-backgrounds" class="eyebrow">Backgrounds</h2><ul class="bullets gap-1 ps-3"><!--[-->`);
           ssrRenderList$2(exports_vue.unref(backgrounds), ({ stage, bg }) => {
@@ -111793,13 +112018,108 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$48 = ContextNotes_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$61 = ContextNotes_vue_vue_type_script_setup_true_lang_default.setup;
   ContextNotes_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ContextNotes.vue");
-    return _sfc_setup$48 ? _sfc_setup$48(props, ctx) : undefined;
+    return _sfc_setup$61 ? _sfc_setup$61(props, ctx) : undefined;
   };
   ContextNotes_default = Object.assign(ContextNotes_vue_vue_type_script_setup_true_lang_default, { __name: "ContextNotes" });
+  sharedClock = createSharedComposable$1((initial) => {
+    const now = exports_vue.shallowRef(initial);
+    useIntervalFn(() => {
+      now.value = Date.now();
+    }, 60000);
+    return now;
+  });
+  OpenDecisions_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "OpenDecisions",
+    __ssrInlineRender: true,
+    setup(__props) {
+      const { flow } = useReaderState();
+      const now = useReadingClock();
+      const sentences = new Intl.Segmenter("en", { granularity: "sentence" });
+      const groups = exports_vue.computed(() => {
+        const f = flow.value;
+        const queued = /* @__PURE__ */ new Map;
+        for (const id of f.next) {
+          const q = f.question.get(id);
+          if (!q)
+            continue;
+          const group = queued.get(q.stage);
+          if (group)
+            group.push(q);
+          else
+            queued.set(q.stage, [q]);
+        }
+        return [...queued].map(([id, questions]) => {
+          const stage = f.stage.get(id);
+          const rounds = new Map(stage.items.flatMap((item) => item.type === "round" ? [[item.round.id, item.round]] : []));
+          return {
+            stage,
+            name: stageWorkName(f, stage),
+            decisions: questions.map((q) => {
+              const round = rounds.get(q.round);
+              const lead = (q.brief ? round?.now : undefined) ?? sentences.segment(q.description.trim())[Symbol.iterator]().next().value?.segment.trim();
+              const status = q.answer.state !== "open" ? foldedQuestionOutcome(q) : questionHasConcern(f, q) ? "Concern" : "Open";
+              const time = round?.time;
+              const timestamp = time ? Date.parse(time) : NaN;
+              return {
+                q,
+                lead,
+                status,
+                timestamp,
+                time: Number.isFinite(timestamp) ? time : undefined
+              };
+            })
+          };
+        });
+      });
+      return (_ctx, _push, _parent, _attrs) => {
+        _push(`<section${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          id: "overview:decisions",
+          class: "grid gap-3 min-w-0 wrap-anywhere",
+          "data-stop": "",
+          "aria-labelledby": "overview:decisions-title"
+        }, _attrs))}><h3 id="overview:decisions-title">Open decisions</h3>`);
+        if (!exports_vue.unref(groups).length)
+          _push(`<p class="quiet">No open decisions.</p>`);
+        else
+          _push(`<!---->`);
+        _push(`<!--[-->`);
+        ssrRenderList$2(exports_vue.unref(groups), (group) => {
+          _push(`<section class="grid gap-1"><h4 class="font-semibold" dir="auto">${exports_server_renderer.ssrInterpolate(group.name)} `);
+          if (group.name !== group.stage.label)
+            _push(`<span class="quiet">${exports_server_renderer.ssrInterpolate(group.stage.label)}</span>`);
+          else
+            _push(`<!---->`);
+          _push(`</h4><ol class="grid list-none divide-y divide-flow-line rounded-md border border-flow-line bg-flow-muted"><!--[-->`);
+          ssrRenderList$2(group.decisions, ({ q, lead, status, time, timestamp }) => {
+            _push(`<li class="grid gap-1 px-3 py-2"><div class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><a${exports_server_renderer.ssrRenderAttr("href", `#${q.id}`)} class="font-semibold" dir="auto">${exports_vue.unref(inlineLinkLabel)(q.title) ?? ""}</a><span class="${exports_server_renderer.ssrRenderClass([status === "Open" ? "" : "font-semibold text-flow-peach", "quiet"])}">${exports_server_renderer.ssrInterpolate(status)}</span>`);
+            if (time)
+              _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", time)}${exports_server_renderer.ssrRenderAttr("title", ("eventTime" in _ctx ? _ctx.eventTime : exports_vue.unref(eventTime))(time))}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(readingAge)(timestamp, exports_vue.unref(now)))}</time>`);
+            else
+              _push(`<!---->`);
+            _push(`</div>`);
+            if (lead)
+              _push(`<p class="text-flow-toned" dir="auto">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(lead) ?? ""}</p>`);
+            else
+              _push(`<!---->`);
+            _push(`</li>`);
+          });
+          _push(`<!--]--></ol></section>`);
+        });
+        _push(`<!--]--></section>`);
+      };
+    }
+  });
+  _sfc_setup$60 = OpenDecisions_vue_vue_type_script_setup_true_lang_default.setup;
+  OpenDecisions_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/OpenDecisions.vue");
+    return _sfc_setup$60 ? _sfc_setup$60(props, ctx) : undefined;
+  };
+  OpenDecisions_default = Object.assign(OpenDecisions_vue_vue_type_script_setup_true_lang_default, { __name: "OpenDecisions" });
   ProgressPanel_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "ProgressPanel",
     __ssrInlineRender: true,
@@ -111862,7 +112182,7 @@ ${feedback.join(`
         else {
           _push(`<!--[-->${exports_server_renderer.ssrInterpolate(("END_LABELS" in _ctx ? _ctx.END_LABELS : exports_vue.unref(END_LABELS))[exports_vue.unref(p).reached.value])} <span class="quiet">${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(exports_vue.unref(p).reached.time))}, <a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(p).reached.stage}`)}>${exports_server_renderer.ssrInterpolate(stageLabel(exports_vue.unref(p).reached.stage))}</a></span>`);
           if (exports_vue.unref(p).reached.evidence.length) {
-            _push(`<details class="disclosure"><summary>Evidence</summary><ul class="bullets"><!--[-->`);
+            _push(`<details id="progress-reached-evidence" class="disclosure"><summary>Evidence</summary><ul class="bullets"><!--[-->`);
             ssrRenderList$2(exports_vue.unref(p).reached.evidence, (e, i) => {
               _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(e) ?? ""}</li>`);
             });
@@ -111885,7 +112205,7 @@ ${feedback.join(`
           ssrRenderList$2(exports_vue.unref(p).checks, (x) => {
             _push(`<li${exports_server_renderer.ssrRenderAttr("id", x.id)}><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(x.name) ?? ""}</span> <span class="tag"${exports_server_renderer.ssrRenderAttr("data-check", x.outcome)}>${exports_server_renderer.ssrInterpolate(("CHECK_LABELS" in _ctx ? _ctx.CHECK_LABELS : exports_vue.unref(CHECK_LABELS))[x.outcome])}</span><span class="quiet">reported ${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(x.reported.time))}, <a${exports_server_renderer.ssrRenderAttr("href", `#${x.reported.stage}`)}>${exports_server_renderer.ssrInterpolate(stageLabel(x.reported.stage))}</a></span>`);
             if (x.evidence.length) {
-              _push(`<details class="disclosure"><summary>Evidence</summary><ul class="bullets"><!--[-->`);
+              _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${x.id}-evidence`)} class="disclosure"><summary>Evidence</summary><ul class="bullets"><!--[-->`);
               ssrRenderList$2(x.evidence, (e, i) => {
                 _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(e) ?? ""}</li>`);
               });
@@ -111933,7 +112253,7 @@ ${feedback.join(`
             else
               _push(`<!---->`);
             if (t.evidence.length) {
-              _push(`<details class="disclosure basis-full"><summary>Evidence</summary><ul class="bullets"><!--[-->`);
+              _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${t.id}-evidence`)} class="disclosure basis-full"><summary>Evidence</summary><ul class="bullets"><!--[-->`);
               ssrRenderList$2(t.evidence, (e, i) => {
                 _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(e) ?? ""}</li>`);
               });
@@ -111994,11 +112314,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$47 = ProgressPanel_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$59 = ProgressPanel_vue_vue_type_script_setup_true_lang_default.setup;
   ProgressPanel_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ProgressPanel.vue");
-    return _sfc_setup$47 ? _sfc_setup$47(props, ctx) : undefined;
+    return _sfc_setup$59 ? _sfc_setup$59(props, ctx) : undefined;
   };
   ProgressPanel_default = Object.assign(ProgressPanel_vue_vue_type_script_setup_true_lang_default, { __name: "ProgressPanel" });
   ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -112059,7 +112379,7 @@ ${feedback.join(`
         _push(`<nav${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
           class: "grid gap-1.5 text-small",
           "aria-labelledby": "visit-changes-title"
-        }, _attrs))}><h3 id="visit-changes-title">Changed since last visit</h3>`);
+        }, _attrs))}><h3 id="visit-changes-title" class="sr-only">Changed since your last visit</h3>`);
         if (exports_vue.unref(storageUnavailable))
           _push(`<p class="quiet">Browser-local viewing state is unavailable. This visit cannot be remembered.</p>`);
         else if (!exports_vue.unref(previous))
@@ -112085,11 +112405,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$46 = ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$58 = ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default.setup;
   ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ChangedSinceVisit.vue");
-    return _sfc_setup$46 ? _sfc_setup$46(props, ctx) : undefined;
+    return _sfc_setup$58 ? _sfc_setup$58(props, ctx) : undefined;
   };
   ChangedSinceVisit_default = Object.assign(ChangedSinceVisit_vue_vue_type_script_setup_true_lang_default, { __name: "ChangedSinceVisit" });
   StageOverview_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -112137,13 +112457,114 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$45 = StageOverview_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$57 = StageOverview_vue_vue_type_script_setup_true_lang_default.setup;
   StageOverview_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/StageOverview.vue");
-    return _sfc_setup$45 ? _sfc_setup$45(props, ctx) : undefined;
+    return _sfc_setup$57 ? _sfc_setup$57(props, ctx) : undefined;
   };
   StageOverview_default = Object.assign(StageOverview_vue_vue_type_script_setup_true_lang_default, { __name: "StageOverview" });
+  TopicLinks_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "TopicLinks",
+    __ssrInlineRender: true,
+    setup(__props) {
+      const { flow } = useReaderState();
+      return (_ctx, _push, _parent, _attrs) => {
+        if (exports_vue.unref(flow)?.topics.length) {
+          _push(`<ul${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "bullets gap-1 ps-3 wrap-anywhere" }, _attrs))}><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(flow).topics, (t) => {
+            _push(`<li><a${exports_server_renderer.ssrRenderAttr("href", `#${t.id}`)}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.title) ?? ""}</a> <span class="quiet">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.summary) ?? ""}</span></li>`);
+          });
+          _push(`<!--]--></ul>`);
+        } else
+          _push(`<p${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "quiet" }, _attrs))}>No Topic notes yet.</p>`);
+      };
+    }
+  });
+  _sfc_setup$56 = TopicLinks_vue_vue_type_script_setup_true_lang_default.setup;
+  TopicLinks_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/TopicLinks.vue");
+    return _sfc_setup$56 ? _sfc_setup$56(props, ctx) : undefined;
+  };
+  TopicLinks_default = Object.assign(TopicLinks_vue_vue_type_script_setup_true_lang_default, { __name: "TopicLinks" });
+  FlowOverview_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "FlowOverview",
+    __ssrInlineRender: true,
+    setup(__props) {
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_OpenDecisions = OpenDecisions_default;
+        const _component_ProgressPanel = ProgressPanel_default;
+        const _component_ChangedSinceVisit = ChangedSinceVisit_default;
+        const _component_StageOverview = StageOverview_default;
+        const _component_TopicLinks = TopicLinks_default;
+        _push(`<section${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          id: "overview",
+          class: "panel grid gap-3 py-entry border-bs border-flow-line [&>details]:border-bs [&>details]:border-flow-line [&>details>summary]:min-h-9 [&>details>summary]:py-2",
+          "data-tab": "overview",
+          hidden: exports_vue.unref(tab) !== "overview",
+          "aria-labelledby": "overview-title"
+        }, _attrs))}><h2 id="overview-title">Overview</h2>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_OpenDecisions, null, null, _parent));
+        _push(`<details id="overview:progress" class="open:grid open:gap-2" data-reading-fold><summary id="overview:progress-row" data-stop>Progress</summary>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_ProgressPanel, null, null, _parent));
+        _push(`</details><details id="overview:visit" class="open:grid open:gap-2" data-reading-fold><summary id="overview:visit-row" data-stop>Changed since your last visit</summary>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_ChangedSinceVisit, null, null, _parent));
+        _push(`</details><details id="overview:stages" class="open:grid open:gap-2" data-reading-fold><summary id="overview:stages-row" data-stop>All Stages</summary>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_StageOverview, null, null, _parent));
+        _push(`</details><details id="overview:topics" class="open:grid open:gap-2" data-reading-fold><summary id="overview:topics-row" data-stop>Topics</summary>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_TopicLinks, null, null, _parent));
+        _push(`</details><p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next view, <kbd>n</kbd> next open question, <kbd>m</kbd> Stages, <kbd>g</kbd> Jump.</p></section>`);
+      };
+    }
+  });
+  _sfc_setup$55 = FlowOverview_vue_vue_type_script_setup_true_lang_default.setup;
+  FlowOverview_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FlowOverview.vue");
+    return _sfc_setup$55 ? _sfc_setup$55(props, ctx) : undefined;
+  };
+  FlowOverview_default = Object.assign(FlowOverview_vue_vue_type_script_setup_true_lang_default, { __name: "FlowOverview" });
+  RoundHeader_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "RoundHeader",
+    __ssrInlineRender: true,
+    props: {
+      round: {},
+      numbers: {}
+    },
+    setup(__props) {
+      const now = useReadingClock();
+      const time = exports_vue.computed(() => Date.parse(__props.round.time));
+      const age = exports_vue.computed(() => readingAge(time.value, now.value));
+      return (_ctx, _push, _parent, _attrs) => {
+        _push(`<header${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          id: __props.round.id,
+          class: "meta"
+        }, _attrs))}>`);
+        if (__props.round.session !== undefined)
+          _push(`<span>Session ${exports_server_renderer.ssrInterpolate(__props.round.session)}</span>`);
+        else
+          _push(`<!---->`);
+        _push(`<h3${exports_server_renderer.ssrRenderAttr("id", `${__props.round.id}-title`)}>Round ${exports_server_renderer.ssrInterpolate(__props.round.n)}</h3>`);
+        if (__props.round.time)
+          _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", __props.round.time)}>${exports_server_renderer.ssrInterpolate(("eventTime" in _ctx ? _ctx.eventTime : exports_vue.unref(eventTime))(__props.round.time))}</time>`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(age))
+          _push(`<span>${exports_server_renderer.ssrInterpolate(exports_vue.unref(age))}</span>`);
+        else
+          _push(`<!---->`);
+        _push(`<span>${exports_server_renderer.ssrInterpolate(__props.numbers.map((n) => `Q${n}`).join(", "))}</span></header>`);
+      };
+    }
+  });
+  _sfc_setup$54 = RoundHeader_vue_vue_type_script_setup_true_lang_default.setup;
+  RoundHeader_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/RoundHeader.vue");
+    return _sfc_setup$54 ? _sfc_setup$54(props, ctx) : undefined;
+  };
+  RoundHeader_default = Object.assign(RoundHeader_vue_vue_type_script_setup_true_lang_default, { __name: "RoundHeader" });
   CorrectionNotice_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "CorrectionNotice",
     __ssrInlineRender: true,
@@ -112173,24 +112594,62 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$44 = CorrectionNotice_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$53 = CorrectionNotice_vue_vue_type_script_setup_true_lang_default.setup;
   CorrectionNotice_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CorrectionNotice.vue");
-    return _sfc_setup$44 ? _sfc_setup$44(props, ctx) : undefined;
+    return _sfc_setup$53 ? _sfc_setup$53(props, ctx) : undefined;
   };
   CorrectionNotice_default = Object.assign(CorrectionNotice_vue_vue_type_script_setup_true_lang_default, { __name: "CorrectionNotice" });
+  FigureSource_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "FigureSource",
+    __ssrInlineRender: true,
+    props: { a: {} },
+    setup(__props) {
+      const facts = exports_vue.computed(() => __props.a && sourceFacts(__props.a));
+      return (_ctx, _push, _parent, _attrs) => {
+        _push(`<details${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "source disclosure" }, _attrs))}><summary class="min-h-control content-center">Source</summary>`);
+        if (__props.a && exports_vue.unref(facts)) {
+          _push(`<p class="meta"><span class="${exports_server_renderer.ssrRenderClass([__props.a.availability === "unavailable" ? "text-flow-red" : __props.a.availability === "external" ? "text-flow-peach" : "text-flow-teal", "kind font-semibold"])}">${exports_server_renderer.ssrInterpolate(("TYPE_LABELS" in _ctx ? _ctx.TYPE_LABELS : exports_vue.unref(TYPE_LABELS))[__props.a.type])}</span><span>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).state)}</span>`);
+          if (exports_vue.unref(facts).revision)
+            _push(`<span>Revision <code>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).revision)}</code></span>`);
+          else
+            _push(`<!---->`);
+          if (exports_vue.unref(facts).from)
+            _push(`<span>From <code>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).from)}</code></span>`);
+          else
+            _push(`<!---->`);
+          _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", __props.a.time)}>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(__props.a.time))}</time></p>`);
+        } else
+          _push(`<!---->`);
+        _push(`<p>Origin: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a?.origin ?? "unknown") ?? ""}</span></p>`);
+        if (!__props.a || __props.a.type === "image" || __props.a.type === "svg")
+          _push(`<p class="quiet">${exports_server_renderer.ssrInterpolate("UNKNOWN_EXAMPLE" in _ctx ? _ctx.UNKNOWN_EXAMPLE : exports_vue.unref(UNKNOWN_EXAMPLE))}</p>`);
+        else
+          _push(`<!---->`);
+        _push(`</details>`);
+      };
+    }
+  });
+  _sfc_setup$52 = FigureSource_vue_vue_type_script_setup_true_lang_default.setup;
+  FigureSource_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FigureSource.vue");
+    return _sfc_setup$52 ? _sfc_setup$52(props, ctx) : undefined;
+  };
+  FigureSource_default = Object.assign(FigureSource_vue_vue_type_script_setup_true_lang_default, { __name: "FigureSource" });
   FigureCaption_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "FigureCaption",
     __ssrInlineRender: true,
     props: {
       a: {},
-      as: {}
+      anchor: {},
+      as: {},
+      hideSource: { type: Boolean }
     },
     setup(__props) {
-      const props = __props;
-      const facts = exports_vue.computed(() => sourceFacts(props.a));
       return (_ctx, _push, _parent, _attrs) => {
+        const _component_FigureSource = FigureSource_default;
         exports_server_renderer.ssrRenderVNode(_push, exports_vue.createVNode(exports_vue.resolveDynamicComponent(__props.as ?? "figcaption"), exports_vue.mergeProps({ class: "figure-caption grid justify-self-stretch gap-1" }, _attrs), {
           default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
             if (_push) {
@@ -112199,21 +112658,13 @@ ${feedback.join(`
                 _push(`<div class="figure-description grid gap-1.5 text-flow-toned"${_scopeId}>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.a.description) ?? ""}</div>`);
               else
                 _push(`<!---->`);
-              _push(`<details class="source text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"${_scopeId}><summary${_scopeId}>Source</summary><p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext"${_scopeId}><span class="${exports_server_renderer.ssrRenderClass([__props.a.availability === "unavailable" ? "text-flow-red" : __props.a.availability === "external" ? "text-flow-peach" : "text-flow-teal", "kind font-semibold"])}"${_scopeId}>${exports_server_renderer.ssrInterpolate(("TYPE_LABELS" in _ctx ? _ctx.TYPE_LABELS : exports_vue.unref(TYPE_LABELS))[__props.a.type])}</span><span${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).state)}</span>`);
-              if (exports_vue.unref(facts).revision)
-                _push(`<span${_scopeId}>Revision <code${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).revision)}</code></span>`);
+              if (!__props.hideSource)
+                _push(exports_server_renderer.ssrRenderComponent(_component_FigureSource, {
+                  id: `${__props.anchor}-source`,
+                  a: __props.a
+                }, null, _parent, _scopeId));
               else
                 _push(`<!---->`);
-              if (exports_vue.unref(facts).from)
-                _push(`<span${_scopeId}>From <code${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(facts).from)}</code></span>`);
-              else
-                _push(`<!---->`);
-              _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", __props.a.time)}${_scopeId}>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(__props.a.time))}</time></p><p${_scopeId}>Origin: <span${_scopeId}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.origin) ?? ""}</span></p>`);
-              if (__props.a.type === "image" || __props.a.type === "svg")
-                _push(`<p class="quiet"${_scopeId}>${exports_server_renderer.ssrInterpolate("UNKNOWN_EXAMPLE" in _ctx ? _ctx.UNKNOWN_EXAMPLE : exports_vue.unref(UNKNOWN_EXAMPLE))}</p>`);
-              else
-                _push(`<!---->`);
-              _push(`</details>`);
             } else
               return [
                 exports_vue.createVNode("p", {
@@ -112225,21 +112676,11 @@ ${feedback.join(`
                   class: "figure-description grid gap-1.5 text-flow-toned",
                   innerHTML: ("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.a.description)
                 }, null, 8, ["innerHTML"])) : exports_vue.createCommentVNode("", true),
-                exports_vue.createVNode("details", { class: "source text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body" }, [
-                  exports_vue.createVNode("summary", null, "Source"),
-                  exports_vue.createVNode("p", { class: "flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext" }, [
-                    exports_vue.createVNode("span", { class: ["kind font-semibold", __props.a.availability === "unavailable" ? "text-flow-red" : __props.a.availability === "external" ? "text-flow-peach" : "text-flow-teal"] }, exports_vue.toDisplayString(("TYPE_LABELS" in _ctx ? _ctx.TYPE_LABELS : exports_vue.unref(TYPE_LABELS))[__props.a.type]), 3),
-                    exports_vue.createVNode("span", null, exports_vue.toDisplayString(exports_vue.unref(facts).state), 1),
-                    exports_vue.unref(facts).revision ? (exports_vue.openBlock(), exports_vue.createBlock("span", { key: 0 }, [exports_vue.createTextVNode("Revision "), exports_vue.createVNode("code", null, exports_vue.toDisplayString(exports_vue.unref(facts).revision), 1)])) : exports_vue.createCommentVNode("", true),
-                    exports_vue.unref(facts).from ? (exports_vue.openBlock(), exports_vue.createBlock("span", { key: 1 }, [exports_vue.createTextVNode("From "), exports_vue.createVNode("code", null, exports_vue.toDisplayString(exports_vue.unref(facts).from), 1)])) : exports_vue.createCommentVNode("", true),
-                    exports_vue.createVNode("time", { datetime: __props.a.time }, exports_vue.toDisplayString(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(__props.a.time)), 9, ["datetime"])
-                  ]),
-                  exports_vue.createVNode("p", null, [exports_vue.createTextVNode("Origin: "), exports_vue.createVNode("span", { innerHTML: ("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.origin) }, null, 8, ["innerHTML"])]),
-                  __props.a.type === "image" || __props.a.type === "svg" ? (exports_vue.openBlock(), exports_vue.createBlock("p", {
-                    key: 0,
-                    class: "quiet"
-                  }, exports_vue.toDisplayString("UNKNOWN_EXAMPLE" in _ctx ? _ctx.UNKNOWN_EXAMPLE : exports_vue.unref(UNKNOWN_EXAMPLE)), 1)) : exports_vue.createCommentVNode("", true)
-                ])
+                !__props.hideSource ? (exports_vue.openBlock(), exports_vue.createBlock(_component_FigureSource, {
+                  key: 1,
+                  id: `${__props.anchor}-source`,
+                  a: __props.a
+                }, null, 8, ["id", "a"])) : exports_vue.createCommentVNode("", true)
               ];
           }),
           _: 1
@@ -112247,11 +112688,11 @@ ${feedback.join(`
       };
     }
   });
-  _sfc_setup$43 = FigureCaption_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$51 = FigureCaption_vue_vue_type_script_setup_true_lang_default.setup;
   FigureCaption_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FigureCaption.vue");
-    return _sfc_setup$43 ? _sfc_setup$43(props, ctx) : undefined;
+    return _sfc_setup$51 ? _sfc_setup$51(props, ctx) : undefined;
   };
   FigureCaption_default = Object.assign(FigureCaption_vue_vue_type_script_setup_true_lang_default, { __name: "FigureCaption" });
   settingsByModel = /* @__PURE__ */ new WeakMap;
@@ -112457,56 +112898,57 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$42 = DiagramFigure_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$50 = DiagramFigure_vue_vue_type_script_setup_true_lang_default.setup;
   DiagramFigure_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/DiagramFigure.vue");
-    return _sfc_setup$42 ? _sfc_setup$42(props, ctx) : undefined;
+    return _sfc_setup$50 ? _sfc_setup$50(props, ctx) : undefined;
   };
   DiagramFigure_default = Object.assign(DiagramFigure_vue_vue_type_script_setup_true_lang_default, { __name: "DiagramFigure" });
   FigureList_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "FigureList",
     __ssrInlineRender: true,
-    props: { figures: {} },
+    props: {
+      figures: {},
+      part: { default: "complete" }
+    },
     setup(__props) {
       const { flow } = useReaderState();
       const f = exports_vue.computed(() => flow.value);
       const attachment = (id) => f.value.attachments.find((a) => a.id === id);
+      const displayId = (id) => __props.part === "enlarged" ? `${id}-enlarged` : id;
       const scoped = (css, id) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors, body) => `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`).join(", ")} { ${body} }`);
       const withImages = (html) => /<img\b/i.test(html);
       const hydrated = exports_vue.shallowRef(false);
-      function source(doc, a) {
-        const details = doc.createElement("details");
-        details.className = "source text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body";
-        const add = (tag, text, className) => {
-          const el = doc.createElement(tag);
-          el.textContent = text;
-          if (className)
-            el.className = className;
-          return el;
-        };
-        details.append(add("summary", "Source"));
-        if (a) {
-          const facts = sourceFacts(a);
-          const meta = add("p", "", "flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext");
-          meta.append(add("span", TYPE_LABELS[a.type] ?? a.type, "font-semibold text-flow-teal"), add("span", facts.state));
-          if (facts.revision)
-            meta.append(add("span", `Revision ${facts.revision}`));
-          if (facts.from)
-            meta.append(add("span", `From ${facts.from}`));
-          meta.append(add("time", formatTime(a.time)));
-          details.append(meta);
-        }
-        details.append(add("p", `Origin: ${a?.origin ?? "unknown"}`), add("p", UNKNOWN_EXAMPLE, "quiet"));
-        return details;
-      }
-      const historical = (fig) => {
-        if (!hydrated.value)
-          return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${fig.html}`;
+      const sourcePrefix = exports_vue.useId();
+      const historical = (fig, index) => {
+        const sources = [];
+        const stylesheet = fig.css && __props.part !== "source" ? `<style>${scoped(fig.css, displayId(fig.id))}</style>` : "";
+        if (!hydrated.value || !withImages(fig.html))
+          return {
+            html: __props.part === "source" ? "" : `${stylesheet}${fig.html}`,
+            sources
+          };
         const doc = new DOMParser().parseFromString(fig.html, "text/html");
         for (const img of doc.querySelectorAll("img")) {
-          const a = f.value.attachments.find((a) => a.file && img.getAttribute("src")?.split("#")[0] === `assets/${a.file}`);
-          const title = withoutQuestionNumber(a?.caption || img.getAttribute("alt") || "Example identity unknown");
+          const src = img.getAttribute("src");
+          const alt = img.getAttribute("alt");
+          const file = src?.split("#", 1)[0];
+          const a = f.value.attachments.find((a) => a.file && file === `assets/${a.file}`);
+          const slot = `${sourcePrefix}-${index}-${sources.length}`;
+          if (__props.part === "source" || __props.part === "complete")
+            sources.push({
+              a,
+              slot,
+              key: JSON.stringify([
+                fig.id,
+                src,
+                alt
+              ])
+            });
+          if (__props.part === "source")
+            continue;
+          const title = withoutQuestionNumber(a?.caption || alt || "Example identity unknown");
           const media = img.closest("picture") ?? img;
           const label = doc.createElement("div");
           label.className = "figure-caption grid justify-self-stretch gap-1";
@@ -112514,25 +112956,71 @@ ${drawn.css}`;
           const heading = previous && withoutQuestionNumber(previous.textContent ?? "") === title ? previous : doc.createElement("p");
           heading.className = "figure-title font-heading text-body leading-heading [font-weight:var(--font-weight-heading)] text-flow-text text-balance";
           heading.textContent = title;
-          label.append(heading, source(doc, a));
+          label.append(heading);
+          if (__props.part === "complete") {
+            const host = doc.createElement("div");
+            host.dataset.figureSource = slot;
+            label.append(host);
+          }
           media.before(label);
         }
-        return `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${doc.body.innerHTML}`;
+        return {
+          html: __props.part === "source" ? "" : `${stylesheet}${doc.body.innerHTML}`,
+          sources
+        };
       };
+      const displays = exports_vue.computed(() => (__props.figures ?? []).map((fig, index) => ({
+        fig,
+        legacy: "html" in fig ? historical(fig, index) : undefined
+      })));
       return (_ctx, _push, _parent, _attrs) => {
+        const _component_FigureSource = FigureSource_default;
         const _component_FigureCaption = FigureCaption_default;
         const _component_DiagramFigure = DiagramFigure_default;
         _push(`<!--[-->`);
-        ssrRenderList$2(__props.figures ?? [], (fig) => {
+        ssrRenderList$2(exports_vue.unref(displays), ({ fig, legacy }) => {
           _push(`<!--[-->`);
-          if ("text" in fig)
-            _push(`<div${exports_server_renderer.ssrRenderAttr("id", fig.id)} class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 overflow-x-auto rounded-md bg-flow-muted p-2"><pre>${exports_server_renderer.ssrInterpolate(fig.text)}</pre></div>`);
-          else if ("html" in fig)
-            _push(`<div${exports_server_renderer.ssrRenderAttr("id", fig.id)} class="${exports_server_renderer.ssrRenderClass([withImages(fig.html) ? "figure" : "visual relative overflow-x-auto rounded-md bg-flow-muted p-2", "grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 [&_img]:rounded [&_img]:bg-flow-accented [&_video]:rounded [&_video]:bg-flow-accented"])}">${historical(fig) ?? ""}</div>`);
-          else {
-            _push(`<figure${exports_server_renderer.ssrRenderAttr("id", fig.id)} class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">`);
+          if (__props.part === "source") {
+            _push(`<!--[-->`);
+            if ("attachment" in fig && attachment(fig.attachment))
+              _push(exports_server_renderer.ssrRenderComponent(_component_FigureSource, {
+                id: `${fig.id}-source`,
+                a: attachment(fig.attachment)
+              }, null, _parent));
+            else if (legacy?.sources.length) {
+              _push(`<div class="grid gap-1"><!--[-->`);
+              ssrRenderList$2(legacy.sources, (source) => {
+                _push(exports_server_renderer.ssrRenderComponent(_component_FigureSource, {
+                  key: source.slot,
+                  "data-reload-key": source.key,
+                  a: source.a
+                }, null, _parent));
+              });
+              _push(`<!--]--></div>`);
+            } else
+              _push(`<!---->`);
+            _push(`<!--]-->`);
+          } else if ("text" in fig)
+            _push(`<div${exports_server_renderer.ssrRenderAttr("id", displayId(fig.id))} class="visual relative grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 overflow-x-auto rounded-md bg-flow-muted p-2"${exports_server_renderer.ssrRenderAttr("tabindex", __props.part === "complete" ? undefined : 0)}><pre>${exports_server_renderer.ssrInterpolate(fig.text)}</pre></div>`);
+          else if ("html" in fig) {
+            _push(`<!--[--><div${exports_server_renderer.ssrRenderAttr("id", displayId(fig.id))} class="${exports_server_renderer.ssrRenderClass([withImages(fig.html) ? "figure" : "visual relative overflow-x-auto rounded-md bg-flow-muted p-2", "grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1 [&_img]:rounded [&_img]:bg-flow-accented [&_video]:rounded [&_video]:bg-flow-accented"])}">${legacy.html ?? ""}</div><!--[-->`);
+            ssrRenderList$2(legacy.sources, (source) => {
+              exports_server_renderer.ssrRenderTeleport(_push, (_push) => {
+                _push(exports_server_renderer.ssrRenderComponent(_component_FigureSource, {
+                  "data-reload-key": source.key,
+                  a: source.a
+                }, null, _parent));
+              }, `[data-figure-source='${source.slot}']`, false, _parent);
+            });
+            _push(`<!--]--><!--]-->`);
+          } else {
+            _push(`<figure${exports_server_renderer.ssrRenderAttr("id", displayId(fig.id))} class="figure grid grid-cols-[minmax(0,1fr)] justify-items-start gap-1.5">`);
             if (attachment(fig.attachment))
-              _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, { a: attachment(fig.attachment) }, null, _parent));
+              _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, {
+                a: attachment(fig.attachment),
+                anchor: displayId(fig.id),
+                "hide-source": __props.part !== "complete"
+              }, null, _parent));
             else
               _push(`<!---->`);
             if (attachment(fig.attachment)?.availability === "captured" && attachment(fig.attachment).type !== "image")
@@ -112549,11 +113037,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$41 = FigureList_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$49 = FigureList_vue_vue_type_script_setup_true_lang_default.setup;
   FigureList_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FigureList.vue");
-    return _sfc_setup$41 ? _sfc_setup$41(props, ctx) : undefined;
+    return _sfc_setup$49 ? _sfc_setup$49(props, ctx) : undefined;
   };
   FigureList_default = Object.assign(FigureList_vue_vue_type_script_setup_true_lang_default, { __name: "FigureList" });
   VISUAL_KINDS = {
@@ -112568,6 +113056,144 @@ ${drawn.css}`;
     scenario: "Scenario walkthrough",
     prose: "Prose"
   };
+  QuestionFigure_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "QuestionFigure",
+    __ssrInlineRender: true,
+    props: {
+      figure: {},
+      attachment: {}
+    },
+    setup(__props) {
+      const title = exports_vue.computed(() => __props.attachment ? withoutQuestionNumber(__props.attachment.caption) : __props.figure.kind ? VISUAL_KINDS[__props.figure.kind] : "Historical figure");
+      const trigger = exports_vue.useTemplateRef("trigger");
+      const dialog = exports_vue.useTemplateRef("dialog");
+      const enlarged = exports_vue.shallowRef(false);
+      async function open() {
+        if (dialog.value?.open)
+          return;
+        enlarged.value = true;
+        await exports_vue.nextTick();
+        if (!dialog.value?.isConnected || dialog.value.open || !enlarged.value)
+          return;
+        trigger.value?.$el.focus({ preventScroll: true });
+        dialog.value.showModal();
+      }
+      function close() {
+        if (dialog.value?.open)
+          dialog.value.close();
+        else
+          enlarged.value = false;
+      }
+      exports_vue.watch(tab, close);
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_FigureList = FigureList_default;
+        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-2" }, _attrs))} data-v-1f52258a><div class="decision-visual grid" data-v-1f52258a>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, {
+          figures: [__props.figure],
+          part: "inline"
+        }, null, _parent));
+        _push(`</div>`);
+        _push(exports_server_renderer.ssrRenderComponent(Button_default, {
+          ref_key: "trigger",
+          ref: trigger,
+          "aria-haspopup": "dialog",
+          "aria-label": `Enlarge figure: ${exports_vue.unref(title)}`,
+          class: "w-fit text-flow-blue",
+          onClick: open
+        }, {
+          default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+            if (_push)
+              _push(` Enlarge figure `);
+            else
+              return [exports_vue.createTextVNode(" Enlarge figure ")];
+          }),
+          _: 1
+        }, _parent));
+        _push(`<dialog${exports_server_renderer.ssrRenderAttr("aria-label", exports_vue.unref(title))} class="figure-dialog m-auto w-[calc(100%_-_2rem)] max-h-[calc(100%_-_2rem)] max-w-none overflow-clip rounded-lg border border-flow-line bg-flow-base p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--color-base)_70%,transparent)]" data-v-1f52258a><header class="flex shrink-0 justify-end border-be border-flow-line px-4 py-2" data-v-1f52258a>`);
+        _push(exports_server_renderer.ssrRenderComponent(Button_default, {
+          autofocus: "",
+          onClick: close
+        }, {
+          default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+            if (_push)
+              _push(`Close figure`);
+            else
+              return [exports_vue.createTextVNode("Close figure")];
+          }),
+          _: 1
+        }, _parent));
+        _push(`</header>`);
+        if (exports_vue.unref(enlarged)) {
+          _push(`<div class="enlarged-visual grid min-h-0 gap-2 overflow-auto overscroll-contain p-4" data-v-1f52258a>`);
+          _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, {
+            figures: [__props.figure],
+            part: "enlarged"
+          }, null, _parent));
+          _push(`</div>`);
+        } else
+          _push(`<!---->`);
+        _push(`</dialog></div>`);
+      };
+    }
+  });
+  _sfc_setup$48 = QuestionFigure_vue_vue_type_script_setup_true_lang_default.setup;
+  QuestionFigure_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/QuestionFigure.vue");
+    return _sfc_setup$48 ? _sfc_setup$48(props, ctx) : undefined;
+  };
+  QuestionFigure_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(QuestionFigure_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-1f52258a"]]), { __name: "QuestionFigure" });
+  EarlierAttempt_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "EarlierAttempt",
+    __ssrInlineRender: true,
+    props: {
+      question: {},
+      label: {}
+    },
+    setup(__props) {
+      const answer = exports_vue.computed(() => __props.question.answer);
+      const response = exports_vue.computed(() => answer.value.response);
+      const reading = exports_vue.computed(() => answer.value.reading);
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_CorrectionNotice = CorrectionNotice_default;
+        _push(`<details${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "disclosure wrap-anywhere" }, _attrs))}><summary class="min-h-control content-center">Earlier attempt</summary><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.question.id}`)}>${exports_server_renderer.ssrInterpolate(__props.label)}, asked earlier</a>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: exports_vue.unref(answer) }, null, _parent));
+        _push(`<p>${exports_server_renderer.ssrInterpolate(exports_vue.unref(foldedQuestionOutcome)(__props.question))}</p><dl class="grid gap-1 [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-teal">`);
+        if (exports_vue.unref(response)?.status === "answered" && exports_vue.unref(response).text !== undefined) {
+          _push(`<!--[--><dt>Your words`);
+          if (exports_vue.unref(response).note_on)
+            _push(`<span> on ${exports_server_renderer.ssrInterpolate(exports_vue.unref(response).note_on)}</span>`);
+          else
+            _push(`<!---->`);
+          _push(`</dt><dd class="whitespace-pre-wrap">${exports_server_renderer.ssrInterpolate(exports_vue.unref(response).text)}</dd><!--]-->`);
+        } else if (exports_vue.unref(answer).legacy?.other !== undefined)
+          _push(`<!--[--><dt>Recorded answer</dt><dd class="whitespace-pre-wrap">${exports_server_renderer.ssrInterpolate(exports_vue.unref(answer).legacy.other)}</dd><!--]-->`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(answer).legacy?.note)
+          _push(`<!--[--><dt>Recorded note</dt><dd class="whitespace-pre-wrap">${exports_server_renderer.ssrInterpolate(exports_vue.unref(answer).legacy.note)}</dd><!--]-->`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(reading)) {
+          _push(`<!--[--><dt>Agent reading</dt>`);
+          if (exports_vue.unref(reading).outcome === "resolved")
+            _push(`<dd class="grid gap-1"><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reading).decision) ?? ""}</p><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reading).basis) ?? ""}</p></dd>`);
+          else
+            _push(`<dd>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reading).unresolved) ?? ""}</dd>`);
+          _push(`<!--]-->`);
+        } else
+          _push(`<!---->`);
+        _push(`</dl></details>`);
+      };
+    }
+  });
+  _sfc_setup$47 = EarlierAttempt_vue_vue_type_script_setup_true_lang_default.setup;
+  EarlierAttempt_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/EarlierAttempt.vue");
+    return _sfc_setup$47 ? _sfc_setup$47(props, ctx) : undefined;
+  };
+  EarlierAttempt_default = Object.assign(EarlierAttempt_vue_vue_type_script_setup_true_lang_default, { __name: "EarlierAttempt" });
   QuestionBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "QuestionBlock",
     __ssrInlineRender: true,
@@ -112577,8 +113203,12 @@ ${drawn.css}`;
       const props = __props;
       const f = exports_vue.computed(() => flow.value);
       const st = exports_vue.computed(() => f.value.stage.get(props.q.stage));
+      const now = exports_vue.computed(() => {
+        const item = st.value.items.find((item) => item.type === "round" && item.round.id === props.q.round);
+        return item?.type === "round" ? item.round.now : undefined;
+      });
+      const recommended = exports_vue.computed(() => props.q.options.find((option) => option.recommended !== undefined));
       const picks = exports_vue.computed(() => new Set(props.q.answer.picks ?? []));
-      const rank = exports_vue.computed(() => f.value.next.indexOf(props.q.id));
       const ask = (id) => f.value.question.get(id);
       const askedIn = (id) => {
         const other = ask(id);
@@ -112588,18 +113218,52 @@ ${drawn.css}`;
       const reopened = exports_vue.computed(() => props.q.reopens ? f.value.stages.flatMap((s) => s.assumed).find((a) => a.id === props.q.reopens) : undefined);
       const label = (letter) => optionLabel(props.q, letter);
       const outcome = exports_vue.computed(() => questionOutcome(props.q));
-      const latestAttempt = exports_vue.computed(() => {
-        const attempts = /* @__PURE__ */ new Set([props.q.id]);
-        let latest;
-        for (const question of f.value.questions)
-          if (question.again && attempts.has(question.again)) {
-            attempts.add(question.id);
-            latest = question;
-          }
-        return latest;
-      });
+      const latestAttempt = exports_vue.computed(() => f.value.latestAttempt.get(props.q.id));
       const latestOutcome = exports_vue.computed(() => latestAttempt.value && questionOutcome(latestAttempt.value));
       const earlierAttempts = exports_vue.computed(() => props.q.asked_again_by.filter((id) => id !== latestAttempt.value?.id));
+      const earlier = exports_vue.computed(() => props.q.again ? ask(props.q.again) : undefined);
+      function visualPriority(kind) {
+        switch (kind) {
+          case "option-diagram":
+          case "before-after":
+          case "comparison-table":
+          case "data-chart":
+          case "scenario":
+            return 3;
+          case "context-diagram":
+          case "source-view":
+            return 2;
+          case "source-excerpt":
+            return 1;
+          case "option-preview":
+            return -1;
+          default:
+            return 0;
+        }
+      }
+      const visuals = exports_vue.computed(() => {
+        let deciding;
+        let attachment;
+        let priority = -1;
+        for (const fig of props.q.figures ?? []) {
+          const rank = visualPriority(fig.kind);
+          if (rank <= priority)
+            continue;
+          const captured = "attachment" in fig ? f.value.attachments.find((a) => a.id === fig.attachment) : undefined;
+          if ("attachment" in fig && captured?.availability !== "captured")
+            continue;
+          deciding = fig;
+          attachment = captured;
+          priority = rank;
+        }
+        return {
+          deciding,
+          attachment,
+          source: !!(attachment || deciding && ("html" in deciding) && /<img\b/i.test(deciding.html)),
+          additional: deciding ? props.q.figures?.filter((fig) => fig !== deciding) : props.q.figures
+        };
+      });
+      const hasSources = exports_vue.computed(() => !!(st.value.background || topics.value.length || props.q.result_links.length || props.q.terms?.length || props.q.today?.length || visuals.value.source || visuals.value.additional?.length));
       const NOT_ASKED = {
         "timed-out": "The ask timed out. This is not your answer.",
         cancelled: "The ask was cancelled. This is not your answer.",
@@ -112679,7 +113343,7 @@ ${drawn.css}`;
             label: "Retired",
             html: inline3(props.q.retired.reason)
           });
-        if (!out.length && !a.picks) {
+        if (!out.length && !a.picks && !props.q.open) {
           if (props.q.asked_again_by.length)
             out.push({
               label: "Re-asked",
@@ -112687,8 +113351,8 @@ ${drawn.css}`;
             });
           else
             out.push({
-              label: props.q.latest ? "Open" : "Not answered",
-              html: props.q.open ? "Waiting for your answer." : "No answer was recorded."
+              label: "Not answered",
+              html: "No answer was recorded."
             });
         }
         return out;
@@ -112696,112 +113360,83 @@ ${drawn.css}`;
       return (_ctx, _push, _parent, _attrs) => {
         const _component_CorrectionNotice = CorrectionNotice_default;
         const _component_FigureList = FigureList_default;
-        _push(`<article${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
-          id: __props.q.id,
-          class: "question grid gap-2",
-          "data-state": __props.q.answer.state,
-          "data-next": exports_vue.unref(rank) >= 0 ? exports_vue.unref(rank) : undefined,
-          "data-retired": __props.q.retired ? "" : undefined,
-          "data-stop": ""
-        }, _attrs))}><div${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-context`)}>`);
+        const _component_QuestionFigure = QuestionFigure_default;
+        const _component_EarlierAttempt = EarlierAttempt_default;
+        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "question-body grid gap-2.5 wrap-anywhere" }, _attrs))} data-v-e81a9f02><div${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-context`)} data-v-e81a9f02>`);
         _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.q.context }, null, _parent));
-        _push(`</div><h2><span class="me-2 tabular-nums">Q${exports_server_renderer.ssrInterpolate(__props.q.q)}</span><span class="sr-only">: </span><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></h2><section aria-label="Current outcome" class="grid gap-1 text-small"><p class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(outcome).cls)}">${exports_vue.unref(outcome).html ?? ""}</p>`);
+        _push(`</div><header class="flex flex-wrap items-baseline gap-x-3 gap-y-1" data-v-e81a9f02><h2 class="wrap-anywhere text-[length:var(--text-question-title)] text-flow-mauve" data-v-e81a9f02><span class="me-2.5 tabular-nums" data-v-e81a9f02>Q${exports_server_renderer.ssrInterpolate(__props.q.q)}</span><span class="sr-only" data-v-e81a9f02>: </span><span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></h2><section aria-label="Current outcome" class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-small wrap-anywhere" data-v-e81a9f02><p class="${exports_server_renderer.ssrRenderClass([exports_vue.unref(outcome).cls, "w-fit rounded border border-flow-line bg-flow-muted px-2"])}" data-v-e81a9f02>${exports_vue.unref(outcome).html ?? ""}</p>`);
         if (exports_vue.unref(outcome).previous)
-          _push(`<p class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(outcome).previous.cls)}">${exports_vue.unref(outcome).previous.html ?? ""}</p>`);
+          _push(`<p class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(outcome).previous.cls)}" data-v-e81a9f02>${exports_vue.unref(outcome).previous.html ?? ""}</p>`);
         else
           _push(`<!---->`);
-        _push(`<nav aria-label="Question details" class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5"><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.id}-choices`)}>Choices</a><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.id}-evidence`)}>Evidence</a>`);
-        if (exports_vue.unref(latestAttempt))
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latestAttempt).id}`)}>Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(askLabel)(exports_vue.unref(f), exports_vue.unref(latestAttempt).id))}${exports_server_renderer.ssrInterpolate(askedIn(exports_vue.unref(latestAttempt).id))}</a>`);
-        else
-          _push(`<!---->`);
-        if (exports_vue.unref(latestOutcome))
-          _push(`<span class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(latestOutcome).cls)}">${exports_vue.unref(latestOutcome).html ?? ""}</span>`);
-        else
-          _push(`<!---->`);
-        _push(`</nav></section><section${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-evidence`)} aria-label="Question evidence" class="grid gap-2"><div class="grid gap-1.5">${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.q.description) ?? ""}</div><p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-flow-subtext [&amp;_a]:no-underline">`);
-        if (exports_vue.unref(st).background)
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(st).background.id}`)}>Background: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(st).background.title) ?? ""}</span></a>`);
-        else
-          _push(`<!---->`);
-        _push(`<!--[-->`);
-        ssrRenderList$2(exports_vue.unref(topics), (t) => {
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${t.id}`)}>Topic: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.title) ?? ""}</span></a>`);
-        });
-        _push(`<!--]--><!--[-->`);
-        ssrRenderList$2(__props.q.result_links, (link) => {
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${link.anchor}`)}><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(link.title) ?? ""}</span> `);
-          if (link.entry)
-            _push(`<span class="entry-id">${exports_server_renderer.ssrInterpolate(link.entry)}</span>`);
+        if (exports_vue.unref(latestAttempt)) {
+          _push(`<!--[--><a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latestAttempt).id}`)} data-v-e81a9f02>Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(askLabel)(exports_vue.unref(f), exports_vue.unref(latestAttempt).id))}${exports_server_renderer.ssrInterpolate(askedIn(exports_vue.unref(latestAttempt).id))}</a>`);
+          if (exports_vue.unref(latestOutcome))
+            _push(`<span class="${exports_server_renderer.ssrRenderClass(exports_vue.unref(latestOutcome).cls)}" data-v-e81a9f02>${exports_vue.unref(latestOutcome).html ?? ""}</span>`);
           else
             _push(`<!---->`);
-          _push(`</a>`);
-        });
-        _push(`<!--]-->`);
-        if (__props.q.again)
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.again}`)}>Q${exports_server_renderer.ssrInterpolate(ask(__props.q.again)?.q)}${exports_server_renderer.ssrInterpolate(askedIn(__props.q.again))}, asked earlier</a>`);
-        else
-          _push(`<!---->`);
-        _push(`<!--[-->`);
-        ssrRenderList$2(exports_vue.unref(earlierAttempts), (id) => {
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${id}`)}>Q${exports_server_renderer.ssrInterpolate(ask(id)?.q)}${exports_server_renderer.ssrInterpolate(askedIn(id))}, asked again</a>`);
-        });
-        _push(`<!--]-->`);
-        if (exports_vue.unref(reopened))
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(reopened).id}`)}>Reopens an Assumed pick: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reopened).decision) ?? ""}</span></a>`);
-        else
-          _push(`<!---->`);
-        if (__props.q.decided_in)
-          _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.decided_in}`)}>Decision in the summary</a>`);
-        else
-          _push(`<!---->`);
-        _push(`</p>`);
-        if (__props.q.terms?.length) {
-          _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Term notes (${exports_server_renderer.ssrInterpolate(__props.q.terms.length)})</summary><dl class="grid gap-0.5 [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-teal [&amp;_dd+dt]:mbs-1.5"><!--[-->`);
-          ssrRenderList$2(__props.q.terms, (t) => {
-            _push(`<!--[--><dt>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.term) ?? ""}</dt><dd class="ms-0">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.text) ?? ""}</dd><!--]-->`);
-          });
-          _push(`<!--]--></dl></details>`);
+          _push(`<!--]-->`);
         } else
           _push(`<!---->`);
-        if (__props.q.needs?.length) {
-          _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Reader needs (${exports_server_renderer.ssrInterpolate(__props.q.needs.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
-          ssrRenderList$2(__props.q.needs, (n, i) => {
-            _push(`<li><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(n.need) ?? ""}</span> <span class="text-small text-flow-subtext">${exports_server_renderer.ssrInterpolate(exports_vue.unref(VISUAL_KINDS)[n.kind])}</span></li>`);
-          });
-          _push(`<!--]--></ul></details>`);
+        _push(`</section></header>`);
+        if (__props.q.brief && exports_vue.unref(now) !== undefined) {
+          _push(`<section aria-label="Decision brief" class="min-w-0 wrap-anywhere" data-v-e81a9f02><dl class="grid gap-1 [&amp;_dd]:inline [&amp;_dd]:ms-2 [&amp;_dt]:inline [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-teal" data-v-e81a9f02><div data-v-e81a9f02><dt data-v-e81a9f02>Now</dt><dd data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(now)) ?? ""}</dd></div>`);
+          if (__props.q.brief.asked_again_because)
+            _push(`<div data-v-e81a9f02><dt data-v-e81a9f02>Asked again because</dt><dd data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.brief.asked_again_because) ?? ""}</dd></div>`);
+          else
+            _push(`<!---->`);
+          if (exports_vue.unref(recommended)?.recommended)
+            _push(`<div data-v-e81a9f02><dt data-v-e81a9f02>Recommendation</dt><dd data-v-e81a9f02><span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(recommended).label) ?? ""}</span>: <span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(recommended).recommended) ?? ""}</span></dd></div>`);
+          else if (__props.q.brief.no_recommendation)
+            _push(`<div data-v-e81a9f02><dt data-v-e81a9f02>No recommendation</dt><dd data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.brief.no_recommendation) ?? ""}</dd></div>`);
+          else
+            _push(`<!---->`);
+          _push(`<div data-v-e81a9f02><dt data-v-e81a9f02>After you answer</dt><dd data-v-e81a9f02><span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.brief.unblocks) ?? ""}</span> <span class="font-semibold" data-v-e81a9f02>Undo:</span> <span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.brief.undo) ?? ""}</span></dd></div></dl></section>`);
         } else
           _push(`<!---->`);
-        if (__props.q.today?.length) {
-          _push(`<div class="grid gap-1.5"><p class="font-semibold text-[var(--color-pink)]">Today</p><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
-          ssrRenderList$2(__props.q.today, (fact, i) => {
-            _push(`<li><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(fact.text) ?? ""}</span></li>`);
+        _push(`<div class="grid gap-1.5" data-v-e81a9f02>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.q.description) ?? ""}</div>`);
+        if (exports_vue.unref(earlierAttempts).length || exports_vue.unref(reopened) || __props.q.decided_in) {
+          _push(`<p class="meta" data-v-e81a9f02><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(earlierAttempts), (id) => {
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${id}`)} data-v-e81a9f02>Q${exports_server_renderer.ssrInterpolate(ask(id)?.q)}${exports_server_renderer.ssrInterpolate(askedIn(id))}, asked again</a>`);
           });
-          _push(`<!--]--></ul><details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Sources (${exports_server_renderer.ssrInterpolate(__props.q.today.length)})</summary><ol class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
+          _push(`<!--]-->`);
+          if (exports_vue.unref(reopened))
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(reopened).id}`)} data-v-e81a9f02>Reopens an Assumed pick: <span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reopened).decision) ?? ""}</span></a>`);
+          else
+            _push(`<!---->`);
+          if (__props.q.decided_in)
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${__props.q.decided_in}`)} data-v-e81a9f02>Decision in the summary</a>`);
+          else
+            _push(`<!---->`);
+          _push(`</p>`);
+        } else
+          _push(`<!---->`);
+        if (!__props.q.brief && __props.q.today?.length) {
+          _push(`<div class="labelled" data-v-e81a9f02><p class="font-semibold text-flow-pink" data-v-e81a9f02>Today</p><ul class="bullets" data-v-e81a9f02><!--[-->`);
           ssrRenderList$2(__props.q.today, (fact, i) => {
-            _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(sourceText)(exports_vue.unref(f), fact.source)) ?? ""}</li>`);
+            _push(`<li data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(fact.text) ?? ""}</li>`);
           });
-          _push(`<!--]--></ol></details></div>`);
+          _push(`<!--]--></ul></div>`);
         } else
           _push(`<!---->`);
         if (__props.q.example)
-          _push(`<div class="grid gap-1.5"><p class="font-semibold text-[var(--color-pink)]">Example</p><p class="whitespace-pre-wrap">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.example) ?? ""}</p></div>`);
+          _push(`<div class="labelled" data-v-e81a9f02><p class="font-semibold text-flow-pink" data-v-e81a9f02>Example</p><p class="whitespace-pre-wrap" data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.example) ?? ""}</p></div>`);
         else
           _push(`<!---->`);
-        _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, { figures: __props.q.figures }, null, _parent));
-        _push(`</section><div class="grid gap-4 pbs-1.5"><ol${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-choices`)} aria-label="Choices" class="options grid list-none gap-4 ps-0"><!--[-->`);
+        _push(`<div class="${exports_server_renderer.ssrRenderClass([{ "with-deciding-figure": exports_vue.unref(visuals).deciding }, "grid items-start gap-4 pbs-1.5"])}" data-v-e81a9f02><ol${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-choices`)} aria-label="Choices" class="options grid list-none gap-4 ps-0" data-v-e81a9f02><!--[-->`);
         ssrRenderList$2(__props.q.options, (o) => {
-          _push(`<li class="option group/option grid gap-1"${exports_server_renderer.ssrRenderAttr("data-recommended", o.recommended ? "" : undefined)}${exports_server_renderer.ssrRenderAttr("data-picked", exports_vue.unref(picks).has(o.label) ? "" : undefined)}><h3 class="font-semibold group-data-[picked]/option:font-bold group-data-[picked]/option:text-flow-yellow"><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.label) ?? ""}</span>`);
+          _push(`<li class="option group/option grid gap-1"${exports_server_renderer.ssrRenderAttr("data-recommended", o.recommended ? "" : undefined)}${exports_server_renderer.ssrRenderAttr("data-picked", exports_vue.unref(picks).has(o.label) ? "" : undefined)} data-v-e81a9f02><h3 class="font-semibold group-data-[picked]/option:font-bold group-data-[picked]/option:text-flow-yellow" data-v-e81a9f02><span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.label) ?? ""}</span>`);
           if (o.recommended)
-            _push(`<span class="ms-2 font-bold text-flow-yellow" aria-hidden="true">*</span>`);
+            _push(`<span class="ms-2 font-bold text-flow-yellow" aria-hidden="true" data-v-e81a9f02>*</span>`);
           else
             _push(`<!---->`);
           if (o.recommended)
-            _push(`<span class="sr-only"> (recommended)</span>`);
+            _push(`<span class="sr-only" data-v-e81a9f02> (recommended)</span>`);
           else
             _push(`<!---->`);
           if (exports_vue.unref(picks).has(o.label))
-            _push(`<span class="sr-only"> (your answer)</span>`);
+            _push(`<span class="sr-only" data-v-e81a9f02> (your answer)</span>`);
           else
             _push(`<!---->`);
           _push(`</h3>`);
@@ -112809,56 +113444,197 @@ ${drawn.css}`;
             _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, { figures: [o.preview] }, null, _parent));
           else
             _push(`<!---->`);
-          _push(`<p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.does) ?? ""}</p><ul class="grid list-none ps-0"><!--[-->`);
+          _push(`<p data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.does) ?? ""}</p><ul class="grid list-none ps-0" data-v-e81a9f02><!--[-->`);
           ssrRenderList$2(o.gains, (g, i) => {
-            _push(`<li class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-green before:content-[&#39;+&#39;]">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(g) ?? ""}</li>`);
+            _push(`<li class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-green before:content-[&#39;+&#39;]" data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(g) ?? ""}</li>`);
           });
           _push(`<!--]--><!--[-->`);
           ssrRenderList$2(o.costs, (c, i) => {
-            _push(`<li class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-red before:content-[&#39;\u2212&#39;]">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(c) ?? ""}</li>`);
+            _push(`<li class="relative ps-3 before:absolute before:[inset-inline-start:0] before:font-bold before:text-flow-red before:content-[&#39;\u2212&#39;]" data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(c) ?? ""}</li>`);
           });
           _push(`<!--]--></ul>`);
-          if (o.recommended)
-            _push(`<p class="text-small text-flow-subtext">Recommended: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.recommended) ?? ""}</span></p>`);
+          if (o.recommended && !__props.q.brief)
+            _push(`<p class="text-small text-flow-subtext" data-v-e81a9f02>Recommended: <span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(o.recommended) ?? ""}</span></p>`);
           else
             _push(`<!---->`);
           _push(`</li>`);
         });
         _push(`<!--]--></ol>`);
-        if (__props.q.answer.correction || __props.q.answer.corrects.length || __props.q.answer.recorded_reading) {
-          _push(`<section${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-reading`)} class="grid gap-1.5">`);
-          _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.q.answer }, null, _parent));
-          if (__props.q.answer.recorded_reading) {
-            _push(`<details><summary>Original agent reading, no longer current</summary>`);
-            if (__props.q.answer.recorded_reading.outcome === "resolved")
-              _push(`<!--[--><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.decision) ?? ""}</p><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.basis) ?? ""}</p><!--]-->`);
-            else
-              _push(`<p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.unresolved) ?? ""}</p>`);
-            _push(`</details>`);
+        if (exports_vue.unref(visuals).deciding)
+          _push(exports_server_renderer.ssrRenderComponent(_component_QuestionFigure, {
+            figure: exports_vue.unref(visuals).deciding,
+            attachment: exports_vue.unref(visuals).attachment
+          }, null, _parent));
+        else
+          _push(`<!---->`);
+        _push(`</div>`);
+        if (exports_vue.unref(lines).length || __props.q.answer.correction || __props.q.answer.corrects.length || __props.q.answer.recorded_reading) {
+          _push(`<div class="grid gap-4 pbs-1.5" data-v-e81a9f02>`);
+          if (__props.q.answer.correction || __props.q.answer.corrects.length || __props.q.answer.recorded_reading) {
+            _push(`<section${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-reading`)} class="grid gap-1.5" data-v-e81a9f02>`);
+            _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.q.answer }, null, _parent));
+            if (__props.q.answer.recorded_reading) {
+              _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-recorded-reading`)} data-v-e81a9f02><summary data-v-e81a9f02>Original agent reading, no longer current</summary>`);
+              if (__props.q.answer.recorded_reading.outcome === "resolved")
+                _push(`<!--[--><p data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.decision) ?? ""}</p><p data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.basis) ?? ""}</p><!--]-->`);
+              else
+                _push(`<p data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.answer.recorded_reading.unresolved) ?? ""}</p>`);
+              _push(`</details>`);
+            } else
+              _push(`<!---->`);
+            _push(`</section>`);
           } else
             _push(`<!---->`);
-          _push(`</section>`);
+          if (exports_vue.unref(lines).length) {
+            _push(`<div class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-flow-border px-3 py-2" data-v-e81a9f02><!--[-->`);
+            ssrRenderList$2(exports_vue.unref(lines), (l, i) => {
+              _push(`<p class="col-span-full grid grid-cols-subgrid" data-v-e81a9f02><span class="font-semibold" data-v-e81a9f02>${exports_server_renderer.ssrInterpolate(l.label)}</span><span data-v-e81a9f02>${l.html ?? ""}</span></p>`);
+            });
+            _push(`<!--]--></div>`);
+          } else
+            _push(`<!---->`);
+          _push(`</div>`);
         } else
           _push(`<!---->`);
-        if (exports_vue.unref(lines).length) {
-          _push(`<div class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--color-surface1)] px-3 py-2"><!--[-->`);
-          ssrRenderList$2(exports_vue.unref(lines), (l, i) => {
-            _push(`<p class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">${exports_server_renderer.ssrInterpolate(l.label)}</span><span>${l.html ?? ""}</span></p>`);
+        _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-sources-context`)} class="disclosure" data-v-e81a9f02><summary${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-evidence`)} class="min-h-control content-center" data-v-e81a9f02>Sources and context</summary>`);
+        if (exports_vue.unref(st).background || exports_vue.unref(topics).length || __props.q.result_links.length) {
+          _push(`<p class="meta" data-v-e81a9f02>`);
+          if (exports_vue.unref(st).background)
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(st).background.id}`)} data-v-e81a9f02>Background: <span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(st).background.title) ?? ""}</span></a>`);
+          else
+            _push(`<!---->`);
+          _push(`<!--[-->`);
+          ssrRenderList$2(exports_vue.unref(topics), (t) => {
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${t.id}`)} data-v-e81a9f02>Topic: <span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.title) ?? ""}</span></a>`);
           });
-          _push(`<!--]--></div>`);
+          _push(`<!--]--><!--[-->`);
+          ssrRenderList$2(__props.q.result_links, (link) => {
+            _push(`<a${exports_server_renderer.ssrRenderAttr("href", `#${link.anchor}`)} data-v-e81a9f02><span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(link.title) ?? ""}</span> `);
+            if (link.entry)
+              _push(`<span class="entry-id" data-v-e81a9f02>${exports_server_renderer.ssrInterpolate(link.entry)}</span>`);
+            else
+              _push(`<!---->`);
+            _push(`</a>`);
+          });
+          _push(`<!--]--></p>`);
         } else
           _push(`<!---->`);
-        _push(`</div></article>`);
+        if (__props.q.terms?.length) {
+          _push(`<div class="labelled" data-v-e81a9f02><p class="font-semibold text-flow-teal" data-v-e81a9f02>Term notes</p><dl class="grid gap-0.5 [&amp;_dt]:font-semibold [&amp;_dd+dt]:mbs-1.5" data-v-e81a9f02><!--[-->`);
+          ssrRenderList$2(__props.q.terms, (t) => {
+            _push(`<!--[--><dt data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.term) ?? ""}</dt><dd data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.text) ?? ""}</dd><!--]-->`);
+          });
+          _push(`<!--]--></dl></div>`);
+        } else
+          _push(`<!---->`);
+        if (__props.q.today?.length) {
+          _push(`<div class="labelled" data-v-e81a9f02><p class="font-semibold text-flow-teal" data-v-e81a9f02>${exports_server_renderer.ssrInterpolate(__props.q.brief ? "Today" : "Today sources")}</p><ul class="bullets" data-v-e81a9f02><!--[-->`);
+          ssrRenderList$2(__props.q.today, (fact, i) => {
+            _push(`<li data-v-e81a9f02>`);
+            if (__props.q.brief)
+              _push(`<p data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(fact.text) ?? ""}</p>`);
+            else
+              _push(`<!---->`);
+            _push(`<span class="quiet" data-v-e81a9f02>`);
+            if (__props.q.brief)
+              _push(`<!--[-->Source: <!--]-->`);
+            else
+              _push(`<!---->`);
+            _push(`<span data-v-e81a9f02>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(sourceText)(exports_vue.unref(f), fact.source)) ?? ""}</span></span></li>`);
+          });
+          _push(`<!--]--></ul></div>`);
+        } else
+          _push(`<!---->`);
+        if (exports_vue.unref(visuals).deciding && exports_vue.unref(visuals).source)
+          _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, {
+            figures: [exports_vue.unref(visuals).deciding],
+            part: "source"
+          }, null, _parent));
+        else
+          _push(`<!---->`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, { figures: exports_vue.unref(visuals).additional }, null, _parent));
+        if (!exports_vue.unref(hasSources))
+          _push(`<p class="quiet" data-v-e81a9f02>No sources or additional context were recorded.</p>`);
+        else
+          _push(`<!---->`);
+        _push(`</details>`);
+        if (exports_vue.unref(earlier))
+          _push(exports_server_renderer.ssrRenderComponent(_component_EarlierAttempt, {
+            id: `${__props.q.id}-earlier-attempt`,
+            question: exports_vue.unref(earlier),
+            label: `Q${exports_vue.unref(earlier).q}${askedIn(exports_vue.unref(earlier).id)}`
+          }, null, _parent));
+        else
+          _push(`<!---->`);
+        _push(`</div>`);
       };
     }
   });
-  _sfc_setup$40 = QuestionBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$46 = QuestionBlock_vue_vue_type_script_setup_true_lang_default.setup;
   QuestionBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/QuestionBlock.vue");
-    return _sfc_setup$40 ? _sfc_setup$40(props, ctx) : undefined;
+    return _sfc_setup$46 ? _sfc_setup$46(props, ctx) : undefined;
   };
-  QuestionBlock_default = Object.assign(QuestionBlock_vue_vue_type_script_setup_true_lang_default, { __name: "QuestionBlock" });
+  QuestionBlock_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(QuestionBlock_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-e81a9f02"]]), { __name: "QuestionBlock" });
+  QuestionRecord_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "QuestionRecord",
+    __ssrInlineRender: true,
+    props: { q: {} },
+    setup(__props) {
+      const { flow } = useReaderState();
+      const disclosure = exports_vue.useTemplateRef("disclosure");
+      const expanded = exports_vue.shallowRef(false);
+      const rank = exports_vue.computed(() => flow.value.next.indexOf(__props.q.id));
+      const outcome = exports_vue.computed(() => foldedQuestionOutcome(__props.q));
+      const latest = exports_vue.computed(() => flow.value.latestAttempt.get(__props.q.id));
+      const latestLabel = exports_vue.computed(() => {
+        if (!latest.value)
+          return;
+        const f = flow.value;
+        const title = askLabel(f, latest.value.id);
+        return latest.value.stage === __props.q.stage ? title : `${title} in ${f.stage.get(latest.value.stage)?.label}`;
+      });
+      exports_vue.watch(() => __props.q.open, (open) => {
+        expanded.value = !open && (current.value === __props.q.id || disclosure.value?.contains(undefined.activeElement) === true);
+      });
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_QuestionBlock = QuestionBlock_default;
+        _push(`<article${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          id: __props.q.id,
+          class: "question grid gap-2.5",
+          "data-fold-target": `${__props.q.id}-fold`,
+          "data-state": __props.q.answer.state,
+          "data-next": exports_vue.unref(rank) >= 0 ? exports_vue.unref(rank) : undefined,
+          "data-retired": __props.q.retired ? "" : undefined,
+          "data-stop": ""
+        }, _attrs))}><details${exports_server_renderer.ssrRenderAttr("id", `${__props.q.id}-fold`)} data-reading-fold${exports_server_renderer.ssrIncludeBooleanAttr(__props.q.open || exports_vue.unref(expanded)) ? " open" : ""}><summary class="min-h-8 py-1 [overflow-wrap:anywhere]" style="${exports_server_renderer.ssrRenderStyle(!__props.q.open ? null : { display: "none" })}">`);
+        if (!exports_vue.unref(expanded)) {
+          _push(`<!--[--><span class="text-flow-text"><span class="tabular-nums">Q${exports_server_renderer.ssrInterpolate(__props.q.q)}: </span><span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.q.title) ?? ""}</span></span><span class="text-small font-normal text-flow-subtext"> \xB7 ${exports_server_renderer.ssrInterpolate(exports_vue.unref(outcome))}</span>`);
+          if (__props.q.context.correction || __props.q.answer.correction)
+            _push(`<span class="text-small text-flow-peach"> \xB7 Corrected</span>`);
+          else
+            _push(`<!---->`);
+          if (exports_vue.unref(latest))
+            _push(`<!--[--> \xB7 <a${exports_server_renderer.ssrRenderAttr("href", `#${exports_vue.unref(latest).id}`)} class="text-small font-normal">Latest attempt: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(latestLabel))}</a><!--]-->`);
+          else
+            _push(`<!---->`);
+          _push(`<!--]-->`);
+        } else
+          _push(`<!--[-->Collapse question<!--]-->`);
+        _push(`</summary>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_QuestionBlock, { q: __props.q }, null, _parent));
+        _push(`</details></article>`);
+      };
+    }
+  });
+  _sfc_setup$45 = QuestionRecord_vue_vue_type_script_setup_true_lang_default.setup;
+  QuestionRecord_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/QuestionRecord.vue");
+    return _sfc_setup$45 ? _sfc_setup$45(props, ctx) : undefined;
+  };
+  QuestionRecord_default = Object.assign(QuestionRecord_vue_vue_type_script_setup_true_lang_default, { __name: "QuestionRecord" });
   ReviewSummary_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "ReviewSummary",
     __ssrInlineRender: true,
@@ -112893,11 +113669,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$39 = ReviewSummary_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$44 = ReviewSummary_vue_vue_type_script_setup_true_lang_default.setup;
   ReviewSummary_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ReviewSummary.vue");
-    return _sfc_setup$39 ? _sfc_setup$39(props, ctx) : undefined;
+    return _sfc_setup$44 ? _sfc_setup$44(props, ctx) : undefined;
   };
   ReviewSummary_default = Object.assign(ReviewSummary_vue_vue_type_script_setup_true_lang_default, { __name: "ReviewSummary" });
   CodeFrame_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -112925,11 +113701,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$38 = CodeFrame_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$43 = CodeFrame_vue_vue_type_script_setup_true_lang_default.setup;
   CodeFrame_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CodeFrame.vue");
-    return _sfc_setup$38 ? _sfc_setup$38(props, ctx) : undefined;
+    return _sfc_setup$43 ? _sfc_setup$43(props, ctx) : undefined;
   };
   CodeFrame_default = Object.assign(CodeFrame_vue_vue_type_script_setup_true_lang_default, { __name: "CodeFrame" });
   ArtifactView_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -112952,6 +113728,7 @@ ${drawn.css}`;
         }, _attrs))}>`);
         _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, {
           a: __props.a,
+          anchor: __props.anchor,
           as: "div"
         }, null, _parent));
         _push(`<div class="grid justify-self-stretch justify-items-stretch gap-1 rounded-md bg-flow-muted p-2">`);
@@ -112959,7 +113736,7 @@ ${drawn.css}`;
           _push(`<!--[--><p role="status" class="font-semibold text-flow-green" data-availability="available">Available in an isolated viewer</p><iframe${exports_server_renderer.ssrRenderAttr("id", `${__props.anchor}-viewer`)} class="block aspect-video w-full border border-flow-line bg-flow-base"${exports_server_renderer.ssrRenderAttr("title", __props.a.caption)}${exports_server_renderer.ssrRenderAttr("src", __props.runtime.url)} sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe><!--]-->`);
         else
           _push(`<p role="status" class="font-semibold text-flow-peach" data-availability="unavailable">Unavailable: <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(exports_vue.unref(reason)) ?? ""}</span></p>`);
-        _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"${exports_server_renderer.ssrIncludeBooleanAttr(!exports_vue.unref(available) || undefined) ? " open" : ""}><summary>How to run it</summary><div class="grid gap-1.5">${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.a.launch ?? "") ?? ""}</div>`);
+        _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${__props.anchor}-instructions`)} class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"${exports_server_renderer.ssrIncludeBooleanAttr(!exports_vue.unref(available) || undefined) ? " open" : ""}><summary>How to run it</summary><div class="grid gap-1.5">${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.a.launch ?? "") ?? ""}</div>`);
         if (!__props.a.runtime && __props.a.url)
           _push(`<p><a${exports_server_renderer.ssrRenderAttr("href", __props.a.url)} target="_blank" rel="noopener noreferrer">${exports_server_renderer.ssrInterpolate(__props.a.url)}</a></p>`);
         else
@@ -112968,11 +113745,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$37 = ArtifactView_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$42 = ArtifactView_vue_vue_type_script_setup_true_lang_default.setup;
   ArtifactView_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ArtifactView.vue");
-    return _sfc_setup$37 ? _sfc_setup$37(props, ctx) : undefined;
+    return _sfc_setup$42 ? _sfc_setup$42(props, ctx) : undefined;
   };
   ArtifactView_default = Object.assign(ArtifactView_vue_vue_type_script_setup_true_lang_default, { __name: "ArtifactView" });
   AttachmentFigure_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -113005,7 +113782,10 @@ ${drawn.css}`;
             "data-type": __props.a.type,
             "data-availability": __props.a.availability
           }, _attrs))}>`);
-          _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, { a: __props.a }, null, _parent));
+          _push(exports_server_renderer.ssrRenderComponent(_component_FigureCaption, {
+            a: __props.a,
+            anchor: __props.anchor
+          }, null, _parent));
           if (__props.a.availability === "unavailable")
             _push(`<p class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-flow-red">Not captured</span> <span>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.reason ?? "") ?? ""}</span></p>`);
           else if (__props.a.availability === "external") {
@@ -113028,11 +113808,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$36 = AttachmentFigure_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$41 = AttachmentFigure_vue_vue_type_script_setup_true_lang_default.setup;
   AttachmentFigure_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/AttachmentFigure.vue");
-    return _sfc_setup$36 ? _sfc_setup$36(props, ctx) : undefined;
+    return _sfc_setup$41 ? _sfc_setup$41(props, ctx) : undefined;
   };
   AttachmentFigure_default = Object.assign(AttachmentFigure_vue_vue_type_script_setup_true_lang_default, { __name: "AttachmentFigure" });
   HEADER = /^(diff |index |--- |\+\+\+ |new file mode|deleted file mode|old mode|new mode|similarity index|dissimilarity index|rename from|rename to|copy from|copy to)/;
@@ -113129,11 +113909,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$35 = Badge_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$40 = Badge_vue_vue_type_script_setup_true_lang_default.setup;
   Badge_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Badge.vue");
-    return _sfc_setup$35 ? _sfc_setup$35(props, ctx) : undefined;
+    return _sfc_setup$40 ? _sfc_setup$40(props, ctx) : undefined;
   };
   Badge_default = Object.assign(Badge_vue_vue_type_script_setup_true_lang_default, { __name: "UiBadge" });
   DocumentBody_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -113163,20 +113943,20 @@ ${drawn.css}`;
         const _component_DiagramFigure = DiagramFigure_default;
         const _component_CodeFrame = CodeFrame_default;
         const _component_AttachmentFigure = AttachmentFigure_default;
-        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-2 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-flow-dimmed" }, _attrs))} data-v-579d7aa2><!--[-->`);
+        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-2 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-flow-dimmed" }, _attrs))} data-v-6af404ef><!--[-->`);
         ssrRenderList$2(__props.doc.sections, (sec) => {
-          _push(`<section${exports_server_renderer.ssrRenderAttr("id", sec.anchor)} class="doc-section grid gap-2 target:bg-flow-accented"${exports_server_renderer.ssrRenderAttr("aria-labelledby", `${sec.anchor}-title`)}${exports_server_renderer.ssrRenderAttr("data-stop", exports_vue.unref(stop))} data-v-579d7aa2><h3${exports_server_renderer.ssrRenderAttr("id", `${sec.anchor}-title`)} data-v-579d7aa2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(sec.heading) ?? ""}</h3><!--[-->`);
+          _push(`<section${exports_server_renderer.ssrRenderAttr("id", sec.anchor)} class="doc-section grid gap-2 target:bg-flow-accented"${exports_server_renderer.ssrRenderAttr("aria-labelledby", `${sec.anchor}-title`)}${exports_server_renderer.ssrRenderAttr("data-stop", exports_vue.unref(stop))} data-v-6af404ef><h3${exports_server_renderer.ssrRenderAttr("id", `${sec.anchor}-title`)} data-v-6af404ef>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(sec.heading) ?? ""}</h3><!--[-->`);
           ssrRenderList$2(sec.blocks, (b, i) => {
             _push(`<!--[-->`);
             if ("prose" in b)
-              _push(`<div class="grid gap-1.5" data-v-579d7aa2>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(b.prose, exports_vue.unref(cites)) ?? ""}</div>`);
+              _push(`<div class="grid gap-1.5" data-v-6af404ef>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(b.prose, exports_vue.unref(cites)) ?? ""}</div>`);
             else if ("list" in b)
               exports_server_renderer.ssrRenderVNode(_push, exports_vue.createVNode(exports_vue.resolveDynamicComponent(b.ordered ? "ol" : "ul"), { class: ["grid gap-0.5 ps-5 marker:text-flow-dimmed", b.ordered ? "list-decimal" : "list-disc"] }, {
                 default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
                   if (_push) {
                     _push(`<!--[-->`);
                     ssrRenderList$2(b.list, (t, j) => {
-                      _push(`<li data-v-579d7aa2${_scopeId}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t, exports_vue.unref(cites)) ?? ""}</li>`);
+                      _push(`<li data-v-6af404ef${_scopeId}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t, exports_vue.unref(cites)) ?? ""}</li>`);
                     });
                     _push(`<!--]-->`);
                   } else
@@ -113190,9 +113970,9 @@ ${drawn.css}`;
                 _: 2
               }), _parent);
             else if ("steps" in b) {
-              _push(`<ol aria-label="Procedure steps" role="list" class="grid list-none grid-cols-[auto_minmax(0,1fr)] gap-x-2" data-v-579d7aa2><!--[-->`);
+              _push(`<ol aria-label="Procedure steps" role="list" class="grid list-none grid-cols-[auto_minmax(0,1fr)] gap-x-2" data-v-6af404ef><!--[-->`);
               ssrRenderList$2(b.steps, (step, j) => {
-                _push(`<li class="procedure-step col-span-2 grid" data-v-579d7aa2><div class="flex flex-col items-center" data-v-579d7aa2>`);
+                _push(`<li class="procedure-step col-span-2 grid" data-v-6af404ef><div class="flex flex-col items-center" data-v-6af404ef>`);
                 _push(exports_server_renderer.ssrRenderComponent(Badge_default, { class: "min-h-5 min-w-5 px-1 tabular-nums" }, {
                   default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
                     if (_push)
@@ -113203,25 +113983,25 @@ ${drawn.css}`;
                   _: 2
                 }, _parent));
                 if (j < b.steps.length - 1)
-                  _push(`<span class="w-px flex-1 bg-flow-line" aria-hidden="true" data-v-579d7aa2></span>`);
+                  _push(`<span class="w-px flex-1 bg-flow-line" aria-hidden="true" data-v-6af404ef></span>`);
                 else
                   _push(`<!---->`);
-                _push(`</div><div class="grid gap-1" data-v-579d7aa2><h4 class="font-semibold" data-v-579d7aa2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(step.title, exports_vue.unref(cites)) ?? ""}</h4><div class="grid gap-1" data-v-579d7aa2>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(step.text, exports_vue.unref(cites)) ?? ""}</div></div></li>`);
+                _push(`</div><div class="grid gap-1" data-v-6af404ef><h4 class="font-semibold" data-v-6af404ef>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(step.title, exports_vue.unref(cites)) ?? ""}</h4><div class="grid gap-1" data-v-6af404ef>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(step.text, exports_vue.unref(cites)) ?? ""}</div></div></li>`);
               });
               _push(`<!--]--></ol>`);
             } else if ("code" in b && b.language === "mermaid") {
-              _push(`<figure class="figure grid grid-cols-[minmax(0,1fr)] gap-1.5 justify-items-start" data-v-579d7aa2>`);
+              _push(`<figure class="figure grid grid-cols-[minmax(0,1fr)] gap-1.5 justify-items-start" data-v-6af404ef>`);
               _push(exports_server_renderer.ssrRenderComponent(_component_DiagramFigure, {
                 source: b.code,
                 name: `${sec.heading} diagram ${i + 1}`
               }, null, _parent));
-              _push(`<details class="disclosure source code grid-cols-[minmax(0,1fr)] justify-self-stretch" data-v-579d7aa2><summary data-v-579d7aa2>Source</summary>`);
+              _push(`<details${exports_server_renderer.ssrRenderAttr("data-reload-key", b.code)} class="disclosure source code grid-cols-[minmax(0,1fr)] justify-self-stretch" data-v-6af404ef><summary data-v-6af404ef>Source</summary>`);
               _push(exports_server_renderer.ssrRenderComponent(_component_CodeFrame, {
                 html: ("esc" in _ctx ? _ctx.esc : exports_vue.unref(esc))(b.code),
                 language: "mermaid"
               }, null, _parent));
               if (b.source)
-                _push(`<p class="quiet" data-v-579d7aa2>${exports_server_renderer.ssrInterpolate(b.source)}</p>`);
+                _push(`<p class="quiet" data-v-6af404ef>${exports_server_renderer.ssrInterpolate(b.source)}</p>`);
               else
                 _push(`<!---->`);
               _push(`</details></figure>`);
@@ -113252,19 +114032,19 @@ ${drawn.css}`;
         });
         _push(`<!--]-->`);
         if (__props.doc.limitations.length) {
-          _push(`<section${exports_server_renderer.ssrRenderAttr("id", __props.doc.limitationsAnchor)} class="grid gap-1.5"${exports_server_renderer.ssrRenderAttr("data-stop", exports_vue.unref(stop))} data-v-579d7aa2><p class="font-semibold" data-v-579d7aa2>Limitations</p><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed" data-v-579d7aa2><!--[-->`);
+          _push(`<section${exports_server_renderer.ssrRenderAttr("id", __props.doc.limitationsAnchor)} class="grid gap-1.5"${exports_server_renderer.ssrRenderAttr("data-stop", exports_vue.unref(stop))} data-v-6af404ef><p class="font-semibold" data-v-6af404ef>Limitations</p><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed" data-v-6af404ef><!--[-->`);
           ssrRenderList$2(__props.doc.limitations, (l, i) => {
-            _push(`<li data-v-579d7aa2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(l) ?? ""}</li>`);
+            _push(`<li data-v-6af404ef>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(l) ?? ""}</li>`);
           });
           _push(`<!--]--></ul></section>`);
         } else
           _push(`<!---->`);
         if (__props.doc.citations.length) {
-          _push(`<section${exports_server_renderer.ssrRenderAttr("id", __props.doc.citationsAnchor)} class="grid gap-1.5" aria-label="Citations"${exports_server_renderer.ssrRenderAttr("data-stop", exports_vue.unref(stop))} data-v-579d7aa2><p class="font-semibold" data-v-579d7aa2>Citations</p><ol class="grid list-decimal gap-0.5 ps-5 marker:text-flow-dimmed" data-v-579d7aa2><!--[-->`);
+          _push(`<section${exports_server_renderer.ssrRenderAttr("id", __props.doc.citationsAnchor)} class="grid gap-1.5" aria-label="Citations"${exports_server_renderer.ssrRenderAttr("data-stop", exports_vue.unref(stop))} data-v-6af404ef><p class="font-semibold" data-v-6af404ef>Citations</p><ol class="grid list-decimal gap-0.5 ps-5 marker:text-flow-dimmed" data-v-6af404ef><!--[-->`);
           ssrRenderList$2(__props.doc.citations, (c) => {
-            _push(`<li${exports_server_renderer.ssrRenderAttr("id", c.anchor)} data-v-579d7aa2><span data-v-579d7aa2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(c.text) ?? ""}</span><!--[-->`);
+            _push(`<li${exports_server_renderer.ssrRenderAttr("id", c.anchor)} data-v-6af404ef><span data-v-6af404ef>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(c.text) ?? ""}</span><!--[-->`);
             ssrRenderList$2(c.cited_in, (s) => {
-              _push(`<a class="text-small font-semibold tabular-nums no-underline"${exports_server_renderer.ssrRenderAttr("href", `#${s}`)} data-v-579d7aa2> Cited in <span data-v-579d7aa2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(heading(s)) ?? ""}</span></a>`);
+              _push(`<a class="text-small font-semibold tabular-nums no-underline"${exports_server_renderer.ssrRenderAttr("href", `#${s}`)} data-v-6af404ef> Cited in <span data-v-6af404ef>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(heading(s)) ?? ""}</span></a>`);
             });
             _push(`<!--]--></li>`);
           });
@@ -113272,9 +114052,9 @@ ${drawn.css}`;
         } else
           _push(`<!---->`);
         if (__props.doc.sources.length) {
-          _push(`<details${exports_server_renderer.ssrRenderAttr("id", __props.doc.sourcesAnchor)} class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body" data-v-579d7aa2><summary data-v-579d7aa2>Sources (${exports_server_renderer.ssrInterpolate(__props.doc.sources.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed" data-v-579d7aa2><!--[-->`);
+          _push(`<details${exports_server_renderer.ssrRenderAttr("id", __props.doc.sourcesAnchor)} class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body" data-v-6af404ef><summary data-v-6af404ef>Sources (${exports_server_renderer.ssrInterpolate(__props.doc.sources.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed" data-v-6af404ef><!--[-->`);
           ssrRenderList$2(__props.doc.sourceTexts, (x, i) => {
-            _push(`<li data-v-579d7aa2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(x) ?? ""}</li>`);
+            _push(`<li data-v-6af404ef>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(x) ?? ""}</li>`);
           });
           _push(`<!--]--></ul></details>`);
         } else
@@ -113283,13 +114063,13 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$34 = DocumentBody_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$39 = DocumentBody_vue_vue_type_script_setup_true_lang_default.setup;
   DocumentBody_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/DocumentBody.vue");
-    return _sfc_setup$34 ? _sfc_setup$34(props, ctx) : undefined;
+    return _sfc_setup$39 ? _sfc_setup$39(props, ctx) : undefined;
   };
-  DocumentBody_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(DocumentBody_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-579d7aa2"]]), { __name: "DocumentBody" });
+  DocumentBody_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(DocumentBody_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-6af404ef"]]), { __name: "DocumentBody" });
   DemoBody_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "DemoBody",
     __ssrInlineRender: true,
@@ -113385,25 +114165,25 @@ ${drawn.css}`;
         _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
           id: exports_vue.unref(id),
           class: "demo grid justify-items-start gap-1 rounded-md border border-flow-line bg-flow-muted p-2"
-        }, _attrs))} data-v-70fabb9f><div class="grid gap-1" aria-live="polite" data-v-70fabb9f><p class="flex flex-wrap items-baseline gap-x-2 gap-y-1" data-v-70fabb9f><span class="font-semibold text-flow-subtext" data-v-70fabb9f>State</span> <strong${exports_server_renderer.ssrRenderAttr("id", `${exports_vue.unref(id)}-state`)} class="text-title text-flow-mauve" data-v-70fabb9f>${exports_server_renderer.ssrInterpolate(exports_vue.unref(stateLabel))}</strong></p><!--[-->`);
+        }, _attrs))} data-v-7d2f691e><div class="grid gap-1" aria-live="polite" data-v-7d2f691e><p class="flex flex-wrap items-baseline gap-x-2 gap-y-1" data-v-7d2f691e><span class="font-semibold text-flow-subtext" data-v-7d2f691e>State</span> <strong${exports_server_renderer.ssrRenderAttr("id", `${exports_vue.unref(id)}-state`)} class="text-title text-flow-mauve" data-v-7d2f691e>${exports_server_renderer.ssrInterpolate(exports_vue.unref(stateLabel))}</strong></p><!--[-->`);
         ssrRenderList$2(__props.demo.states, (s) => {
           _push(`<!--[-->`);
           if (s.description && s.name === exports_vue.unref(now).state)
-            _push(`<div class="grid gap-1" data-v-70fabb9f>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(s.description) ?? ""}</div>`);
+            _push(`<div class="grid gap-1" data-v-7d2f691e>${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(s.description) ?? ""}</div>`);
           else
             _push(`<!---->`);
           _push(`<!--]-->`);
         });
         _push(`<!--]-->`);
         if (__props.demo.values.length) {
-          _push(`<dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1" data-v-70fabb9f><!--[-->`);
+          _push(`<dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1" data-v-7d2f691e><!--[-->`);
           ssrRenderList$2(__props.demo.values, (v) => {
-            _push(`<!--[--><dt class="text-small font-semibold text-flow-toned" data-v-70fabb9f>${exports_server_renderer.ssrInterpolate(v.label)}</dt><dd${exports_server_renderer.ssrRenderAttr("id", `${exports_vue.unref(id)}-v-${v.name}`)} class="ms-0 text-flow-teal tabular-nums" data-v-70fabb9f>${exports_server_renderer.ssrInterpolate(("demoValue" in _ctx ? _ctx.demoValue : exports_vue.unref(demoValue))(exports_vue.unref(now).values[v.name]))}</dd><!--]-->`);
+            _push(`<!--[--><dt class="text-small font-semibold text-flow-toned" data-v-7d2f691e>${exports_server_renderer.ssrInterpolate(v.label)}</dt><dd${exports_server_renderer.ssrRenderAttr("id", `${exports_vue.unref(id)}-v-${v.name}`)} class="ms-0 text-flow-teal tabular-nums" data-v-7d2f691e>${exports_server_renderer.ssrInterpolate(("demoValue" in _ctx ? _ctx.demoValue : exports_vue.unref(demoValue))(exports_vue.unref(now).values[v.name]))}</dd><!--]-->`);
           });
           _push(`<!--]--></dl>`);
         } else
           _push(`<!---->`);
-        _push(`</div><div class="flex flex-wrap gap-2" role="group" aria-label="Actions" data-v-70fabb9f><!--[-->`);
+        _push(`</div><div class="flex flex-wrap gap-2" role="group" aria-label="Actions" data-v-7d2f691e><!--[-->`);
         ssrRenderList$2(__props.demo.actions, (a) => {
           _push(exports_server_renderer.ssrRenderComponent(Button_default, {
             key: a.name,
@@ -113437,25 +114217,25 @@ ${drawn.css}`;
           }),
           _: 1
         }, _parent));
-        _push(`</div><p class="text-small text-flow-subtext" data-v-70fabb9f>Runs in this browser only. What you do here stays here: it answers no question and records no work.</p><details class="text-small open:grid open:gap-1 [&amp;&gt;:not(summary)]:text-body" data-v-70fabb9f><summary data-v-70fabb9f>How it works</summary><dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1 [&amp;_dt]:text-small [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-toned [&amp;_dd]:ms-0" data-v-70fabb9f><!--[-->`);
+        _push(`</div><p class="text-small text-flow-subtext" data-v-7d2f691e>Runs in this browser only. What you do here stays here: it answers no question and records no work.</p><details${exports_server_renderer.ssrRenderAttr("id", `${exports_vue.unref(id)}-instructions`)} class="text-small open:grid open:gap-1 [&amp;&gt;:not(summary)]:text-body" data-v-7d2f691e><summary data-v-7d2f691e>How it works</summary><dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-3 gap-y-1 [&amp;_dt]:text-small [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-toned [&amp;_dd]:ms-0" data-v-7d2f691e><!--[-->`);
         ssrRenderList$2(__props.demo.actions, (a) => {
-          _push(`<!--[--><dt data-v-70fabb9f>${exports_server_renderer.ssrInterpolate(a.label)}</dt><dd data-v-70fabb9f><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed" data-v-70fabb9f><!--[-->`);
+          _push(`<!--[--><dt data-v-7d2f691e>${exports_server_renderer.ssrInterpolate(a.label)}</dt><dd data-v-7d2f691e><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed" data-v-7d2f691e><!--[-->`);
           ssrRenderList$2(a.transitions, (t, i) => {
-            _push(`<li data-v-70fabb9f>${exports_server_renderer.ssrInterpolate(rule(t))}</li>`);
+            _push(`<li data-v-7d2f691e>${exports_server_renderer.ssrInterpolate(rule(t))}</li>`);
           });
           _push(`<!--]--></ul></dd><!--]-->`);
         });
-        _push(`<!--]--></dl><p class="text-small text-flow-subtext" data-v-70fabb9f>The first line that applies runs; with none, the action is unavailable. Reset returns to ${exports_server_renderer.ssrInterpolate(exports_vue.unref(label).get(__props.demo.start))} with every starting value.</p></details></div>`);
+        _push(`<!--]--></dl><p class="text-small text-flow-subtext" data-v-7d2f691e>The first line that applies runs; with none, the action is unavailable. Reset returns to ${exports_server_renderer.ssrInterpolate(exports_vue.unref(label).get(__props.demo.start))} with every starting value.</p></details></div>`);
       };
     }
   });
-  _sfc_setup$33 = DemoBody_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$38 = DemoBody_vue_vue_type_script_setup_true_lang_default.setup;
   DemoBody_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/DemoBody.vue");
-    return _sfc_setup$33 ? _sfc_setup$33(props, ctx) : undefined;
+    return _sfc_setup$38 ? _sfc_setup$38(props, ctx) : undefined;
   };
-  DemoBody_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(DemoBody_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-70fabb9f"]]), { __name: "DemoBody" });
+  DemoBody_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(DemoBody_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-7d2f691e"]]), { __name: "DemoBody" });
   ComparisonBody_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "ComparisonBody",
     __ssrInlineRender: true,
@@ -113532,11 +114312,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$32 = ComparisonBody_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$37 = ComparisonBody_vue_vue_type_script_setup_true_lang_default.setup;
   ComparisonBody_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ComparisonBody.vue");
-    return _sfc_setup$32 ? _sfc_setup$32(props, ctx) : undefined;
+    return _sfc_setup$37 ? _sfc_setup$37(props, ctx) : undefined;
   };
   ComparisonBody_default = Object.assign(ComparisonBody_vue_vue_type_script_setup_true_lang_default, { __name: "ComparisonBody" });
   Table_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -113557,11 +114337,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$31 = Table_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$36 = Table_vue_vue_type_script_setup_true_lang_default.setup;
   Table_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Table.vue");
-    return _sfc_setup$31 ? _sfc_setup$31(props, ctx) : undefined;
+    return _sfc_setup$36 ? _sfc_setup$36(props, ctx) : undefined;
   };
   Table_default = Object.assign(Table_vue_vue_type_script_setup_true_lang_default, { __name: "UiTable" });
   MetricsChart_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -113692,11 +114472,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$30 = MetricsChart_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$35 = MetricsChart_vue_vue_type_script_setup_true_lang_default.setup;
   MetricsChart_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/MetricsChart.vue");
-    return _sfc_setup$30 ? _sfc_setup$30(props, ctx) : undefined;
+    return _sfc_setup$35 ? _sfc_setup$35(props, ctx) : undefined;
   };
   MetricsChart_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(MetricsChart_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-bdc394f9"]]), { __name: "MetricsChart" });
   MetricsBody_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -113800,11 +114580,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$29 = MetricsBody_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$34 = MetricsBody_vue_vue_type_script_setup_true_lang_default.setup;
   MetricsBody_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/MetricsBody.vue");
-    return _sfc_setup$29 ? _sfc_setup$29(props, ctx) : undefined;
+    return _sfc_setup$34 ? _sfc_setup$34(props, ctx) : undefined;
   };
   MetricsBody_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(MetricsBody_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-29d20ee9"]]), { __name: "MetricsBody" });
   learning2 = exports_vue.ref({
@@ -113870,11 +114650,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$28 = Field_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$33 = Field_vue_vue_type_script_setup_true_lang_default.setup;
   Field_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Field.vue");
-    return _sfc_setup$28 ? _sfc_setup$28(props, ctx) : undefined;
+    return _sfc_setup$33 ? _sfc_setup$33(props, ctx) : undefined;
   };
   Field_default = Object.assign(Field_vue_vue_type_script_setup_true_lang_default, { __name: "UiField" });
   Input_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -113896,11 +114676,11 @@ ${drawn.css}`;
       };
     }
   });
-  _sfc_setup$27 = Input_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$32 = Input_vue_vue_type_script_setup_true_lang_default.setup;
   Input_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Input.vue");
-    return _sfc_setup$27 ? _sfc_setup$27(props, ctx) : undefined;
+    return _sfc_setup$32 ? _sfc_setup$32(props, ctx) : undefined;
   };
   Input_default = Object.assign(Input_vue_vue_type_script_setup_true_lang_default, { __name: "UiInput" });
   MISSING = Symbol("omptype.missing");
@@ -115200,11 +115980,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$26 = QuizQuestion_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$31 = QuizQuestion_vue_vue_type_script_setup_true_lang_default.setup;
   QuizQuestion_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/QuizQuestion.vue");
-    return _sfc_setup$26 ? _sfc_setup$26(props, ctx) : undefined;
+    return _sfc_setup$31 ? _sfc_setup$31(props, ctx) : undefined;
   };
   QuizQuestion_default = Object.assign(QuizQuestion_vue_vue_type_script_setup_true_lang_default, { __name: "QuizQuestion" });
   QuizBody_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -115250,11 +116030,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$25 = QuizBody_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$30 = QuizBody_vue_vue_type_script_setup_true_lang_default.setup;
   QuizBody_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/QuizBody.vue");
-    return _sfc_setup$25 ? _sfc_setup$25(props, ctx) : undefined;
+    return _sfc_setup$30 ? _sfc_setup$30(props, ctx) : undefined;
   };
   QuizBody_default = Object.assign(QuizBody_vue_vue_type_script_setup_true_lang_default, { __name: "QuizBody" });
   Select_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -115618,11 +116398,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$24 = Select_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$29 = Select_vue_vue_type_script_setup_true_lang_default.setup;
   Select_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Select.vue");
-    return _sfc_setup$24 ? _sfc_setup$24(props, ctx) : undefined;
+    return _sfc_setup$29 ? _sfc_setup$29(props, ctx) : undefined;
   };
   Select_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(Select_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-a6a1fafb"]]), { __name: "UiSelect" });
   ResultTable_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -115928,11 +116708,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$23 = ResultTable_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$28 = ResultTable_vue_vue_type_script_setup_true_lang_default.setup;
   ResultTable_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ResultTable.vue");
-    return _sfc_setup$23 ? _sfc_setup$23(props, ctx) : undefined;
+    return _sfc_setup$28 ? _sfc_setup$28(props, ctx) : undefined;
   };
   ResultTable_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(ResultTable_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-957586cd"]]), { __name: "ResultTable" });
   EntryAsks_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -115955,11 +116735,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$22 = EntryAsks_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$27 = EntryAsks_vue_vue_type_script_setup_true_lang_default.setup;
   EntryAsks_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/EntryAsks.vue");
-    return _sfc_setup$22 ? _sfc_setup$22(props, ctx) : undefined;
+    return _sfc_setup$27 ? _sfc_setup$27(props, ctx) : undefined;
   };
   EntryAsks_default = Object.assign(EntryAsks_vue_vue_type_script_setup_true_lang_default, { __name: "EntryAsks" });
   CodeEntry_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -116057,11 +116837,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$21 = CodeEntry_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$26 = CodeEntry_vue_vue_type_script_setup_true_lang_default.setup;
   CodeEntry_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CodeEntry.vue");
-    return _sfc_setup$21 ? _sfc_setup$21(props, ctx) : undefined;
+    return _sfc_setup$26 ? _sfc_setup$26(props, ctx) : undefined;
   };
   CodeEntry_default = Object.assign(CodeEntry_vue_vue_type_script_setup_true_lang_default, { __name: "CodeEntry" });
   ResultEntries_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -116147,7 +116927,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
               _push(`<!--[--><dt>Axis</dt><dd>${exports_server_renderer.ssrInterpolate(("AXIS_LABELS" in _ctx ? _ctx.AXIS_LABELS : exports_vue.unref(AXIS_LABELS))[str(e.axis)])}</dd><dt>Location</dt><dd>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(str(e.location)) ?? ""}</dd><!--]-->`);
             else
               _push(`<!---->`);
-            _push(`</dl><details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Evidence</summary><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(str(e.evidence)) ?? ""}</p></details>`);
+            _push(`</dl><details${exports_server_renderer.ssrRenderAttr("id", `${e.anchor}-evidence`)} class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Evidence</summary><p>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(str(e.evidence)) ?? ""}</p></details>`);
             _push(exports_server_renderer.ssrRenderComponent(_component_FigureList, { figures: figures(e.figures) }, null, _parent));
             _push(exports_server_renderer.ssrRenderComponent(_component_EntryAsks, { questions: e.questions }, null, _parent));
             _push(`</li>`);
@@ -116157,11 +116937,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$20 = ResultEntries_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$25 = ResultEntries_vue_vue_type_script_setup_true_lang_default.setup;
   ResultEntries_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ResultEntries.vue");
-    return _sfc_setup$20 ? _sfc_setup$20(props, ctx) : undefined;
+    return _sfc_setup$25 ? _sfc_setup$25(props, ctx) : undefined;
   };
   ResultEntries_default = Object.assign(ResultEntries_vue_vue_type_script_setup_true_lang_default, { __name: "ResultEntries" });
   ResultChanges_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -116257,7 +117037,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           id: `${__props.r.id}-changes`,
           class: "grid min-w-0 gap-1.5 text-small",
           "aria-label": `Changes to ${__props.r.title}`
-        }, _attrs))}><details class="open:grid open:gap-2.5"><summary>Compare revisions</summary><div${exports_server_renderer.ssrRenderAttr("id", anchor(exports_vue.unref(earlier)))} class="grid gap-2.5"><div class="grid max-w-full justify-items-start gap-1"><label${exports_server_renderer.ssrRenderAttr("for", `${__props.r.id}-earlier`)} class="font-medium">Earlier snapshot</label>`);
+        }, _attrs))}><details${exports_server_renderer.ssrRenderAttr("id", `${__props.r.anchor}-compare`)} class="open:grid open:gap-2.5"><summary>Compare revisions</summary><div${exports_server_renderer.ssrRenderAttr("id", anchor(exports_vue.unref(earlier)))} class="grid gap-2.5"><div class="grid max-w-full justify-items-start gap-1"><label${exports_server_renderer.ssrRenderAttr("for", `${__props.r.id}-earlier`)} class="font-medium">Earlier snapshot</label>`);
         _push(exports_server_renderer.ssrRenderComponent(Select_default, {
           id: `${__props.r.id}-earlier`,
           "model-value": exports_vue.unref(earlier).changed,
@@ -116291,11 +117071,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$19 = ResultChanges_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$24 = ResultChanges_vue_vue_type_script_setup_true_lang_default.setup;
   ResultChanges_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ResultChanges.vue");
-    return _sfc_setup$19 ? _sfc_setup$19(props, ctx) : undefined;
+    return _sfc_setup$24 ? _sfc_setup$24(props, ctx) : undefined;
   };
   ResultChanges_default = Object.assign(ResultChanges_vue_vue_type_script_setup_true_lang_default, { __name: "ResultChanges" });
   Textarea_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -116316,11 +117096,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$18 = Textarea_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$23 = Textarea_vue_vue_type_script_setup_true_lang_default.setup;
   Textarea_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ui/Textarea.vue");
-    return _sfc_setup$18 ? _sfc_setup$18(props, ctx) : undefined;
+    return _sfc_setup$23 ? _sfc_setup$23(props, ctx) : undefined;
   };
   Textarea_default = Object.assign(Textarea_vue_vue_type_script_setup_true_lang_default, { __name: "UiTextarea" });
   ResultTextSelection_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -116414,11 +117194,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$17 = ResultTextSelection_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$22 = ResultTextSelection_vue_vue_type_script_setup_true_lang_default.setup;
   ResultTextSelection_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ResultTextSelection.vue");
-    return _sfc_setup$17 ? _sfc_setup$17(props, ctx) : undefined;
+    return _sfc_setup$22 ? _sfc_setup$22(props, ctx) : undefined;
   };
   ResultTextSelection_default = Object.assign(ResultTextSelection_vue_vue_type_script_setup_true_lang_default, { __name: "ResultTextSelection" });
   countFormat = new Intl.NumberFormat("en-US");
@@ -116539,21 +117319,21 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         _push(`<section${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
           "aria-label": `Reader comments on ${__props.r.title}`,
           class: "grid min-w-0 gap-2 rounded-md border border-dashed border-flow-border bg-flow-muted p-2 text-small [overflow-wrap:anywhere]"
-        }, _attrs))} data-v-fd4f4b6d><h3 class="text-small" data-v-fd4f4b6d>Reader comments</h3><p class="text-flow-subtext" data-v-fd4f4b6d>Reader notes, not agent-authored content, answers, or consent.</p>`);
+        }, _attrs))} data-v-4f7d0722><h3 class="text-small" data-v-4f7d0722>Reader comments</h3><p class="text-flow-subtext" data-v-4f7d0722>Reader notes, not agent-authored content, answers, or consent.</p>`);
         if (exports_vue.unref(saved).length) {
-          _push(`<ul class="grid list-none gap-3 ps-0" aria-live="polite" data-v-fd4f4b6d><!--[-->`);
+          _push(`<ul class="grid list-none gap-3 ps-0" aria-live="polite" data-v-4f7d0722><!--[-->`);
           ssrRenderList$2(exports_vue.unref(saved), (c) => {
-            _push(`<li class="grid gap-1" data-v-fd4f4b6d><p class="text-flow-subtext" data-v-fd4f4b6d>Stage ${exports_server_renderer.ssrInterpolate(c.stage)} \xB7 Result ${exports_server_renderer.ssrInterpolate(c.result)}: ${exports_server_renderer.ssrInterpolate(__props.r.title)} \xB7 Revision ${exports_server_renderer.ssrInterpolate(c.revision)}`);
+            _push(`<li class="grid gap-1" data-v-4f7d0722><p class="text-flow-subtext" data-v-4f7d0722>Stage ${exports_server_renderer.ssrInterpolate(c.stage)} \xB7 Result ${exports_server_renderer.ssrInterpolate(c.result)}: ${exports_server_renderer.ssrInterpolate(__props.r.title)} \xB7 Revision ${exports_server_renderer.ssrInterpolate(c.revision)}`);
             if (c.edit != null)
               _push(`<!--[--> \xB7 Edit ${exports_server_renderer.ssrInterpolate(c.edit)}<!--]-->`);
             else
               _push(`<!---->`);
             _push(` \xB7 ${exports_server_renderer.ssrInterpolate(c.anchor.kind === "entry" ? `Entry ${c.anchor.entry}` : c.anchor.kind === "text" ? "Selected text" : "Whole Result block")}</p>`);
             if (c.anchor.kind === "text")
-              _push(`<blockquote class="whitespace-pre-wrap border-s-2 border-flow-border ps-2" data-v-fd4f4b6d>${exports_server_renderer.ssrInterpolate(c.anchor.quote)}</blockquote>`);
+              _push(`<blockquote class="whitespace-pre-wrap border-s-2 border-flow-border ps-2" data-v-4f7d0722>${exports_server_renderer.ssrInterpolate(c.anchor.quote)}</blockquote>`);
             else
               _push(`<!---->`);
-            _push(`<p class="whitespace-pre-wrap" data-v-fd4f4b6d>${exports_server_renderer.ssrInterpolate(c.text)}</p><time${exports_server_renderer.ssrRenderAttr("datetime", c.time)} class="text-flow-subtext" data-v-fd4f4b6d>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(c.time))}</time><div class="flex flex-wrap items-center gap-2" data-v-fd4f4b6d>`);
+            _push(`<p class="whitespace-pre-wrap" data-v-4f7d0722>${exports_server_renderer.ssrInterpolate(c.text)}</p><time${exports_server_renderer.ssrRenderAttr("datetime", c.time)} class="text-flow-subtext" data-v-4f7d0722>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(c.time))}</time><div class="flex flex-wrap items-center gap-2" data-v-4f7d0722>`);
             _push(exports_server_renderer.ssrRenderComponent(Button_default, {
               variant: "ghost",
               disabled: exports_vue.unref(pending),
@@ -116584,7 +117364,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                 _: 2
               }, _parent));
             else {
-              _push(`<!--[--><span data-v-fd4f4b6d>Remove this Reader comment?</span>`);
+              _push(`<!--[--><span data-v-4f7d0722>Remove this Reader comment?</span>`);
               _push(exports_server_renderer.ssrRenderComponent(Button_default, {
                 disabled: exports_vue.unref(pending),
                 "aria-busy": exports_vue.unref(pending) || undefined,
@@ -116619,9 +117399,9 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           });
           _push(`<!--]--></ul>`);
         } else
-          _push(`<p class="text-flow-subtext" data-v-fd4f4b6d>No Reader comments on this revision.</p>`);
+          _push(`<p class="text-flow-subtext" data-v-4f7d0722>No Reader comments on this revision.</p>`);
         if (exports_vue.unref(removeError))
-          _push(`<p role="alert" class="text-flow-red" data-v-fd4f4b6d>${exports_server_renderer.ssrInterpolate(exports_vue.unref(removeError))}</p>`);
+          _push(`<p role="alert" class="text-flow-red" data-v-4f7d0722>${exports_server_renderer.ssrInterpolate(exports_vue.unref(removeError))}</p>`);
         else
           _push(`<!---->`);
         if (!exports_vue.unref(open))
@@ -116662,14 +117442,14 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
             _: 1
           }, _parent));
         else {
-          _push(`<form class="grid min-w-0 gap-2" novalidate data-v-fd4f4b6d><p class="text-flow-subtext" data-v-fd4f4b6d>Draft for Revision ${exports_server_renderer.ssrInterpolate(exports_vue.unref(revision))}`);
+          _push(`<form class="grid min-w-0 gap-2" novalidate data-v-4f7d0722><p class="text-flow-subtext" data-v-4f7d0722>Draft for Revision ${exports_server_renderer.ssrInterpolate(exports_vue.unref(revision))}`);
           if (exports_vue.unref(edit) != null)
             _push(`<!--[--> \xB7 Edit ${exports_server_renderer.ssrInterpolate(exports_vue.unref(edit))}<!--]-->`);
           else
             _push(`<!---->`);
           _push(`. Saving is a separate action.</p>`);
           if (exports_vue.unref(passage))
-            _push(`<blockquote class="whitespace-pre-wrap border-s-2 border-flow-border ps-2" data-v-fd4f4b6d>${exports_server_renderer.ssrInterpolate(exports_vue.unref(passage))}</blockquote>`);
+            _push(`<blockquote class="whitespace-pre-wrap border-s-2 border-flow-border ps-2" data-v-4f7d0722>${exports_server_renderer.ssrInterpolate(exports_vue.unref(passage))}</blockquote>`);
           else if (!exports_vue.unref(editing))
             _push(exports_server_renderer.ssrRenderComponent(Field_default, {
               id: `${__props.r.anchor}-target`,
@@ -116714,6 +117494,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                   default: exports_vue.withCtx(({ control }, _push, _parent, _scopeId) => {
                     if (_push)
                       _push(exports_server_renderer.ssrRenderComponent(Textarea_default, exports_vue.mergeProps(control, {
+                        "data-reload-focus": `${__props.r.anchor}-comment`,
                         "model-value": field.state.value,
                         rows: 3,
                         disabled: exports_vue.unref(pending),
@@ -116723,6 +117504,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                       }), null, _parent, _scopeId));
                     else
                       return [exports_vue.createVNode(Textarea_default, exports_vue.mergeProps(control, {
+                        "data-reload-focus": `${__props.r.anchor}-comment`,
                         "model-value": field.state.value,
                         rows: 3,
                         disabled: exports_vue.unref(pending),
@@ -116730,6 +117512,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                         "onUpdate:modelValue": ($event) => field.handleChange($event ?? ""),
                         onBlur: ($event) => field.handleBlur()
                       }), null, 16, [
+                        "data-reload-focus",
                         "model-value",
                         "disabled",
                         "onUpdate:modelValue",
@@ -116739,7 +117522,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                   "error-detail": exports_vue.withCtx((_, _push, _parent, _scopeId) => {
                     if (_push) {
                       if (field.state.value.length > COMMENT_LIMIT)
-                        _push(`<p class="ms-auto whitespace-nowrap tabular-nums" data-v-fd4f4b6d${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(countFormat).format(field.state.value.length))} / ${exports_server_renderer.ssrInterpolate(exports_vue.unref(countFormat).format(COMMENT_LIMIT))}</p>`);
+                        _push(`<p class="ms-auto whitespace-nowrap tabular-nums" data-v-4f7d0722${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(countFormat).format(field.state.value.length))} / ${exports_server_renderer.ssrInterpolate(exports_vue.unref(countFormat).format(COMMENT_LIMIT))}</p>`);
                       else
                         _push(`<!---->`);
                     } else
@@ -116751,14 +117534,14 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                   _: 2
                 }, _parent, _scopeId));
                 if (exports_vue.unref(editing))
-                  _push(`<p class="text-flow-subtext" data-v-fd4f4b6d${_scopeId}>Editing preserves the original anchor and revision.</p>`);
+                  _push(`<p class="text-flow-subtext" data-v-4f7d0722${_scopeId}>Editing preserves the original anchor and revision.</p>`);
                 else
                   _push(`<!---->`);
                 if (exports_vue.unref(saveError))
-                  _push(`<p role="alert" class="text-flow-red" data-v-fd4f4b6d${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(saveError))}</p>`);
+                  _push(`<p role="alert" class="text-flow-red" data-v-4f7d0722${_scopeId}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(saveError))}</p>`);
                 else
                   _push(`<!---->`);
-                _push(`<div class="flex flex-wrap gap-2" data-v-fd4f4b6d${_scopeId}>`);
+                _push(`<div class="flex flex-wrap gap-2" data-v-4f7d0722${_scopeId}>`);
                 _push(exports_server_renderer.ssrRenderComponent(Button_default, {
                   type: "submit",
                   disabled: exports_vue.unref(pending) || !field.state.value.trim(),
@@ -116797,6 +117580,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                     errors: field.state.value.trim() ? field.state.meta.errors : []
                   }, {
                     default: exports_vue.withCtx(({ control }) => [exports_vue.createVNode(Textarea_default, exports_vue.mergeProps(control, {
+                      "data-reload-focus": `${__props.r.anchor}-comment`,
                       "model-value": field.state.value,
                       rows: 3,
                       disabled: exports_vue.unref(pending),
@@ -116804,6 +117588,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                       "onUpdate:modelValue": ($event) => field.handleChange($event ?? ""),
                       onBlur: ($event) => field.handleBlur()
                     }), null, 16, [
+                      "data-reload-focus",
                       "model-value",
                       "disabled",
                       "onUpdate:modelValue",
@@ -116851,13 +117636,13 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$16 = ResultComments_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$21 = ResultComments_vue_vue_type_script_setup_true_lang_default.setup;
   ResultComments_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ResultComments.vue");
-    return _sfc_setup$16 ? _sfc_setup$16(props, ctx) : undefined;
+    return _sfc_setup$21 ? _sfc_setup$21(props, ctx) : undefined;
   };
-  ResultComments_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(ResultComments_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-fd4f4b6d"]]), { __name: "ResultComments" });
+  ResultComments_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(ResultComments_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-4f7d0722"]]), { __name: "ResultComments" });
   ResultBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "ResultBlock",
     __ssrInlineRender: true,
@@ -116999,7 +117784,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                 content: exports_vue.unref(content)
               }, null, _parent, _scopeId));
               if (__props.r.history.length) {
-                _push(`<details class="text-small open:grid open:gap-2 [&amp;&gt;:not(summary)]:text-body"${_scopeId}><summary${_scopeId}>Earlier revisions (${exports_server_renderer.ssrInterpolate(__props.r.history.length)})</summary><!--[-->`);
+                _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${__props.r.anchor}-history`)} class="text-small open:grid open:gap-2 [&amp;&gt;:not(summary)]:text-body"${_scopeId}><summary${_scopeId}>Earlier revisions (${exports_server_renderer.ssrInterpolate(__props.r.history.length)})</summary><!--[-->`);
                 ssrRenderList$2(exports_vue.unref(earlier), (h) => {
                   _push(exports_server_renderer.ssrRenderComponent(_component_ResultBlock, {
                     key: h.anchor,
@@ -117106,6 +117891,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                 }, null, 8, ["r", "content"]),
                 __props.r.history.length ? (exports_vue.openBlock(), exports_vue.createBlock("details", {
                   key: 2,
+                  id: `${__props.r.anchor}-history`,
                   class: "text-small open:grid open:gap-2 [&>:not(summary)]:text-body"
                 }, [exports_vue.createVNode("summary", null, "Earlier revisions (" + exports_vue.toDisplayString(__props.r.history.length) + ")", 1), (exports_vue.openBlock(true), exports_vue.createBlock(exports_vue.Fragment, null, renderList$2(exports_vue.unref(earlier), (h) => {
                   return exports_vue.openBlock(), exports_vue.createBlock(_component_ResultBlock, {
@@ -117113,7 +117899,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
                     r: h,
                     historical: ""
                   }, null, 8, ["r"]);
-                }), 128))])) : exports_vue.createCommentVNode("", true)
+                }), 128))], 8, ["id"])) : exports_vue.createCommentVNode("", true)
               ];
           }),
           _: 1
@@ -117121,11 +117907,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$15 = ResultBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$20 = ResultBlock_vue_vue_type_script_setup_true_lang_default.setup;
   ResultBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ResultBlock.vue");
-    return _sfc_setup$15 ? _sfc_setup$15(props, ctx) : undefined;
+    return _sfc_setup$20 ? _sfc_setup$20(props, ctx) : undefined;
   };
   ResultBlock_default = Object.assign(ResultBlock_vue_vue_type_script_setup_true_lang_default, { __name: "ResultBlock" });
   BackgroundBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117151,7 +117937,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         });
         _push(`<!--]-->`);
         if (__props.bg.sourceTexts.length) {
-          _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Sources (${exports_server_renderer.ssrInterpolate(__props.bg.sourceTexts.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
+          _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${__props.bg.id}-sources`)} class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Sources (${exports_server_renderer.ssrInterpolate(__props.bg.sourceTexts.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
           ssrRenderList$2(__props.bg.sourceTexts, (x, i) => {
             _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(x) ?? ""}</li>`);
           });
@@ -117162,11 +117948,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$14 = BackgroundBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$19 = BackgroundBlock_vue_vue_type_script_setup_true_lang_default.setup;
   BackgroundBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/BackgroundBlock.vue");
-    return _sfc_setup$14 ? _sfc_setup$14(props, ctx) : undefined;
+    return _sfc_setup$19 ? _sfc_setup$19(props, ctx) : undefined;
   };
   BackgroundBlock_default = Object.assign(BackgroundBlock_vue_vue_type_script_setup_true_lang_default, { __name: "BackgroundBlock" });
   TopicBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117186,7 +117972,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         _push(`<h2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.topic.title) ?? ""}</h2><p class="text-flow-toned">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.topic.summary) ?? ""}</p><div class="grid gap-1.5">${("prose" in _ctx ? _ctx.prose : exports_vue.unref(prose))(__props.topic.body) ?? ""}</div>`);
         _push(exports_server_renderer.ssrRenderComponent(_component_EntryAsks, { questions: __props.topic.questions }, null, _parent));
         if (__props.topic.sourceTexts.length) {
-          _push(`<details class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Sources (${exports_server_renderer.ssrInterpolate(__props.topic.sourceTexts.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
+          _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${__props.topic.id}-sources`)} class="text-small open:grid open:gap-1.5 [&amp;&gt;:not(summary)]:text-body"><summary>Sources (${exports_server_renderer.ssrInterpolate(__props.topic.sourceTexts.length)})</summary><ul class="grid list-disc gap-0.5 ps-5 marker:text-flow-dimmed"><!--[-->`);
           ssrRenderList$2(__props.topic.sourceTexts, (x, i) => {
             _push(`<li>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(x) ?? ""}</li>`);
           });
@@ -117197,11 +117983,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$13 = TopicBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$18 = TopicBlock_vue_vue_type_script_setup_true_lang_default.setup;
   TopicBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/TopicBlock.vue");
-    return _sfc_setup$13 ? _sfc_setup$13(props, ctx) : undefined;
+    return _sfc_setup$18 ? _sfc_setup$18(props, ctx) : undefined;
   };
   TopicBlock_default = Object.assign(TopicBlock_vue_vue_type_script_setup_true_lang_default, { __name: "TopicBlock" });
   AssumedBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117219,15 +118005,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         const _component_CorrectionNotice = CorrectionNotice_default;
         _push(`<section${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
           id: __props.a.id,
-          class: "assumed grid gap-2.5",
+          class: "assumed grid gap-2.5 [overflow-wrap:anywhere]",
           "data-stop": ""
         }, _attrs))}>`);
         _push(exports_server_renderer.ssrRenderComponent(_component_CorrectionNotice, { notice: __props.a }, null, _parent));
-        if (__props.first)
-          _push(`<span${exports_server_renderer.ssrRenderAttr("id", `${__props.stage}-assumed`)}></span>`);
-        else
-          _push(`<!---->`);
-        _push(`<h2>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.decision) ?? ""}</h2><dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&amp;_dt]:text-small [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-toned"><dt>Pick</dt><dd class="ms-0">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.pick) ?? ""}</dd><dt>Why</dt><dd class="ms-0">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.why) ?? ""}</dd></dl>`);
+        _push(`<h2${exports_server_renderer.ssrRenderAttr("id", __props.first ? `${__props.stage}-assumed` : undefined)}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.decision) ?? ""}</h2><dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&amp;_dt]:text-small [&amp;_dt]:font-semibold [&amp;_dt]:text-flow-toned"><dt>Pick</dt><dd class="ms-0">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.pick) ?? ""}</dd><dt>Why</dt><dd class="ms-0">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(__props.a.why) ?? ""}</dd></dl>`);
         if (__props.a.reopened_by)
           _push(`<p class="asks"><a${exports_server_renderer.ssrRenderAttr("href", `#${__props.a.reopened_by}`)}>Reopened in Q${exports_server_renderer.ssrInterpolate(ask(__props.a.reopened_by)?.q)}</a></p>`);
         else
@@ -117236,11 +118018,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$12 = AssumedBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$17 = AssumedBlock_vue_vue_type_script_setup_true_lang_default.setup;
   AssumedBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/AssumedBlock.vue");
-    return _sfc_setup$12 ? _sfc_setup$12(props, ctx) : undefined;
+    return _sfc_setup$17 ? _sfc_setup$17(props, ctx) : undefined;
   };
   AssumedBlock_default = Object.assign(AssumedBlock_vue_vue_type_script_setup_true_lang_default, { __name: "AssumedBlock" });
   AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117268,11 +118050,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$11 = AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$16 = AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default.setup;
   AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/AnswerReadingBlock.vue");
-    return _sfc_setup$11 ? _sfc_setup$11(props, ctx) : undefined;
+    return _sfc_setup$16 ? _sfc_setup$16(props, ctx) : undefined;
   };
   AnswerReadingBlock_default = Object.assign(AnswerReadingBlock_vue_vue_type_script_setup_true_lang_default, { __name: "AnswerReadingBlock" });
   SummaryBlock_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117341,11 +118123,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$10 = SummaryBlock_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$15 = SummaryBlock_vue_vue_type_script_setup_true_lang_default.setup;
   SummaryBlock_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/SummaryBlock.vue");
-    return _sfc_setup$10 ? _sfc_setup$10(props, ctx) : undefined;
+    return _sfc_setup$15 ? _sfc_setup$15(props, ctx) : undefined;
   };
   SummaryBlock_default = Object.assign(SummaryBlock_vue_vue_type_script_setup_true_lang_default, { __name: "SummaryBlock" });
   ReadingEntry_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117361,16 +118143,6 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       const f = exports_vue.computed(() => flow.value);
       const st = exports_vue.computed(() => props.block.stage ? f.value.stage.get(props.block.stage) : undefined);
       const question = exports_vue.computed(() => props.block.kind === "question" ? f.value.question.get(props.block.id) : undefined);
-      const round = exports_vue.computed(() => {
-        const q = question.value;
-        if (!q)
-          return;
-        const item = st.value?.items.find((i) => i.type === "round" && i.round.id === q.round);
-        return item?.type === "round" ? {
-          round: item.round,
-          first: item.questions[0]?.id === q.id
-        } : undefined;
-      });
       const result = exports_vue.computed(() => props.block.kind === "result" ? st.value?.results.find((r) => r.id === props.block.id) : undefined);
       const topic = exports_vue.computed(() => props.block.kind === "topic" ? f.value.topics.find((t) => t.id === props.block.id) : undefined);
       const assumed = exports_vue.computed(() => props.block.kind === "assumed" ? st.value?.assumed.find((a) => a.id === props.block.id) : undefined);
@@ -117379,9 +118151,9 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         const item = props.block.kind === "close" ? st.value?.items.find((i) => i.type === "close" && i.close.id === props.block.id) : undefined;
         return item?.type === "close" ? item.close : undefined;
       });
-      const ordinal = exports_vue.computed(() => props.position === undefined ? undefined : String(props.position).padStart(2, "0"));
+      const ordinal = exports_vue.computed(() => props.position === undefined || question.value ? undefined : String(props.position).padStart(2, "0"));
       return (_ctx, _push, _parent, _attrs) => {
-        const _component_QuestionBlock = QuestionBlock_default;
+        const _component_QuestionRecord = QuestionRecord_default;
         const _component_ResultBlock = ResultBlock_default;
         const _component_BackgroundBlock = BackgroundBlock_default;
         const _component_TopicBlock = TopicBlock_default;
@@ -117389,45 +118161,37 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         const _component_AnswerReadingBlock = AnswerReadingBlock_default;
         const _component_SummaryBlock = SummaryBlock_default;
         _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
-          class: "entry grid gap-2 py-entry [&+.entry]:border-bs [&+.entry]:border-flow-line",
+          class: ["entry grid gap-2 [&+.entry]:border-bs [&+.entry]:border-flow-line", exports_vue.unref(question) && !exports_vue.unref(question).open ? "py-1" : "py-entry"],
           "data-block": "",
           "data-reading": __props.block.id,
           "data-position": __props.position,
           "data-historical": __props.position === undefined ? "" : undefined
-        }, _attrs))}><p class="meta">`);
-        if (exports_vue.unref(ordinal))
-          _push(`<span class="text-flow-toned font-bold tabular-nums"${exports_server_renderer.ssrRenderAttr("title", `First published at position ${__props.position}`)}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(ordinal))}</span>`);
-        else
-          _push(`<!---->`);
-        if (exports_vue.unref(round)) {
-          _push(`<span${exports_server_renderer.ssrRenderAttr("id", exports_vue.unref(round).first ? exports_vue.unref(round).round.id : undefined)}>`);
-          if (exports_vue.unref(round).round.session !== undefined)
-            _push(`<!--[-->Session ${exports_server_renderer.ssrInterpolate(exports_vue.unref(round).round.session)}, <!--]-->`);
+        }, _attrs))}>`);
+        if (!exports_vue.unref(question)) {
+          _push(`<p class="meta">`);
+          if (exports_vue.unref(ordinal))
+            _push(`<span class="text-flow-toned font-bold tabular-nums"${exports_server_renderer.ssrRenderAttr("title", `First published at position ${__props.position}`)}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(ordinal))}</span>`);
           else
             _push(`<!---->`);
-          _push(`Round ${exports_server_renderer.ssrInterpolate(exports_vue.unref(round).round.n)} `);
-          if (exports_vue.unref(round).round.time)
-            _push(`<time${exports_server_renderer.ssrRenderAttr("datetime", exports_vue.unref(round).round.time)}>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(exports_vue.unref(round).round.time))}</time>`);
+          if (exports_vue.unref(result))
+            _push(`<span>${exports_server_renderer.ssrInterpolate(("SHAPE_LABELS" in _ctx ? _ctx.SHAPE_LABELS : exports_vue.unref(SHAPE_LABELS))[exports_vue.unref(result).demo ? "demo" : exports_vue.unref(result).shape] ?? exports_vue.unref(result).shape)} \xB7 revision ${exports_server_renderer.ssrInterpolate(exports_vue.unref(result).revision)}</span>`);
+          else if (exports_vue.unref(topic))
+            _push(`<span>Topic note</span>`);
+          else if (__props.block.kind === "background")
+            _push(`<span>Background</span>`);
+          else if (exports_vue.unref(assumed))
+            _push(`<span>Assumed pick</span>`);
+          else if (exports_vue.unref(reading))
+            _push(`<span>Corrected answer reading</span>`);
+          else if (exports_vue.unref(close))
+            _push(`<span>Summary</span>`);
           else
             _push(`<!---->`);
-          _push(`</span>`);
-        } else if (exports_vue.unref(result))
-          _push(`<span>${exports_server_renderer.ssrInterpolate(("SHAPE_LABELS" in _ctx ? _ctx.SHAPE_LABELS : exports_vue.unref(SHAPE_LABELS))[exports_vue.unref(result).demo ? "demo" : exports_vue.unref(result).shape] ?? exports_vue.unref(result).shape)} \xB7 revision ${exports_server_renderer.ssrInterpolate(exports_vue.unref(result).revision)}</span>`);
-        else if (exports_vue.unref(topic))
-          _push(`<span>Topic note</span>`);
-        else if (__props.block.kind === "background")
-          _push(`<span>Background</span>`);
-        else if (exports_vue.unref(assumed))
-          _push(`<span>Assumed pick</span>`);
-        else if (exports_vue.unref(reading))
-          _push(`<span>Corrected answer reading</span>`);
-        else if (exports_vue.unref(close))
-          _push(`<span>Summary</span>`);
-        else
+          _push(`</p>`);
+        } else
           _push(`<!---->`);
-        _push(`</p>`);
         if (exports_vue.unref(question))
-          _push(exports_server_renderer.ssrRenderComponent(_component_QuestionBlock, { q: exports_vue.unref(question) }, null, _parent));
+          _push(exports_server_renderer.ssrRenderComponent(_component_QuestionRecord, { q: exports_vue.unref(question) }, null, _parent));
         else if (exports_vue.unref(result))
           _push(exports_server_renderer.ssrRenderComponent(_component_ResultBlock, { r: exports_vue.unref(result) }, null, _parent));
         else if (__props.block.kind === "background" && exports_vue.unref(st)?.background)
@@ -117453,13 +118217,115 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$9 = ReadingEntry_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$14 = ReadingEntry_vue_vue_type_script_setup_true_lang_default.setup;
   ReadingEntry_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/ReadingEntry.vue");
-    return _sfc_setup$9 ? _sfc_setup$9(props, ctx) : undefined;
+    return _sfc_setup$14 ? _sfc_setup$14(props, ctx) : undefined;
   };
   ReadingEntry_default = Object.assign(ReadingEntry_vue_vue_type_script_setup_true_lang_default, { __name: "ReadingEntry" });
+  StageReading_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "StageReading",
+    __ssrInlineRender: true,
+    props: {
+      stage: {},
+      blocks: {}
+    },
+    setup(__props) {
+      const { flow } = useReaderState();
+      const props = __props;
+      const sections = exports_vue.computed(() => {
+        const rounds = /* @__PURE__ */ new Map;
+        for (const item of props.stage.items)
+          if (item.type === "round")
+            rounds.set(item.round.id, item.round);
+        const ordered = [];
+        for (const block of props.blocks) {
+          const previous = ordered.at(-1);
+          if (block.kind === "assumed") {
+            if (previous?.type === "assumed")
+              previous.blocks.push(block);
+            else
+              ordered.push({
+                type: "assumed",
+                id: block.id,
+                blocks: [block]
+              });
+            continue;
+          }
+          const question = block.kind === "question" ? flow.value.question.get(block.id) : undefined;
+          const round = question && rounds.get(question.round);
+          if (!question || !round) {
+            ordered.push({
+              type: "entry",
+              id: block.id,
+              block
+            });
+            continue;
+          }
+          if (previous?.type === "round" && previous.id === round.id) {
+            previous.blocks.push(block);
+            previous.numbers.push(question.q);
+          } else
+            ordered.push({
+              type: "round",
+              id: round.id,
+              round,
+              blocks: [block],
+              numbers: [question.q]
+            });
+        }
+        return ordered;
+      });
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_RoundHeader = RoundHeader_default;
+        const _component_ReadingEntry = ReadingEntry_default;
+        _push(`<!--[-->`);
+        ssrRenderList$2(exports_vue.unref(sections), (part) => {
+          _push(`<!--[-->`);
+          if (part.type === "round") {
+            _push(`<section${exports_server_renderer.ssrRenderAttr("aria-labelledby", `${part.id}-title`)} class="entry grid pbs-entry [&amp;+.entry]:border-bs [&amp;+.entry]:border-flow-line">`);
+            _push(exports_server_renderer.ssrRenderComponent(_component_RoundHeader, {
+              round: part.round,
+              numbers: part.numbers
+            }, null, _parent));
+            _push(`<!--[-->`);
+            ssrRenderList$2(part.blocks, (b) => {
+              _push(exports_server_renderer.ssrRenderComponent(_component_ReadingEntry, {
+                key: b.id,
+                block: b,
+                position: b.position
+              }, null, _parent));
+            });
+            _push(`<!--]--></section>`);
+          } else if (part.type === "assumed") {
+            _push(`<details${exports_server_renderer.ssrRenderAttr("id", `${part.id}-batch`)} class="entry py-1 [&amp;+.entry]:border-bs [&amp;+.entry]:border-flow-line" data-reading-fold data-stop><summary class="min-h-8 py-1 [overflow-wrap:anywhere]"><span class="text-flow-text">${exports_server_renderer.ssrInterpolate(part.blocks.length)} ${exports_server_renderer.ssrInterpolate(part.blocks.length === 1 ? "decision" : "decisions")} the agent made</span><span class="text-small font-normal text-flow-subtext"> \xB7 To reopen one, name it in a picker note.</span></summary><!--[-->`);
+            ssrRenderList$2(part.blocks, (b) => {
+              _push(exports_server_renderer.ssrRenderComponent(_component_ReadingEntry, {
+                key: b.id,
+                block: b,
+                position: b.position
+              }, null, _parent));
+            });
+            _push(`<!--]--></details>`);
+          } else
+            _push(exports_server_renderer.ssrRenderComponent(_component_ReadingEntry, {
+              block: part.block,
+              position: part.block.position
+            }, null, _parent));
+          _push(`<!--]-->`);
+        });
+        _push(`<!--]-->`);
+      };
+    }
+  });
+  _sfc_setup$13 = StageReading_vue_vue_type_script_setup_true_lang_default.setup;
+  StageReading_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/StageReading.vue");
+    return _sfc_setup$13 ? _sfc_setup$13(props, ctx) : undefined;
+  };
+  StageReading_default = Object.assign(StageReading_vue_vue_type_script_setup_true_lang_default, { __name: "StageReading" });
   StagePanel_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "StagePanel",
     __ssrInlineRender: true,
@@ -117472,7 +118338,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       const historical = exports_vue.computed(() => f.value.reading.historical.filter((b) => b.stage === props.stage.id));
       const publications = exports_vue.computed(() => f.value.reading.publications.filter((b) => b.stage === props.stage.id));
       return (_ctx, _push, _parent, _attrs) => {
-        const _component_ReadingEntry = ReadingEntry_default;
+        const _component_StageReading = StageReading_default;
         _push(`<section${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
           id: __props.stage.id,
           class: "panel grid border-bs border-flow-line",
@@ -117498,30 +118364,28 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           _push(`<p class="quiet" role="status">This Stage has no open questions.</p>`);
         else
           _push(`<!---->`);
-        if (exports_vue.unref(historical).length) {
-          _push(`<section class="grid gap-1 py-2 border-bs border-flow-line"${exports_server_renderer.ssrRenderAttr("aria-labelledby", `${__props.stage.id}-historical`)}><h3${exports_server_renderer.ssrRenderAttr("id", `${__props.stage.id}-historical`)} class="eyebrow">Historical content in retained order</h3><p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p><!--[-->`);
-          ssrRenderList$2(exports_vue.unref(historical), (b) => {
-            _push(exports_server_renderer.ssrRenderComponent(_component_ReadingEntry, {
-              key: b.id,
-              block: b
-            }, null, _parent));
-          });
-          _push(`<!--]--></section>`);
-        } else
-          _push(`<!---->`);
-        if (exports_vue.unref(historical).length && exports_vue.unref(publications).length)
-          _push(`<section class="grid gap-1 py-2 border-bs border-flow-line"${exports_server_renderer.ssrRenderAttr("aria-labelledby", `${__props.stage.id}-publication`)}><h3${exports_server_renderer.ssrRenderAttr("id", `${__props.stage.id}-publication`)} class="eyebrow">First-publication order starts here</h3><p class="quiet">Positions below record each block&#39;s first publication to the Flow. Answers and revisions update their block in place.</p></section>`);
+        if (exports_vue.unref(historical).length)
+          _push(`<p${exports_server_renderer.ssrRenderAttr("id", `${__props.stage.id}-historical`)} class="quiet pbs-3">Historical content in retained order. Exact publication order is unknown.</p>`);
         else
           _push(`<!---->`);
-        _push(`<!--[-->`);
-        ssrRenderList$2(exports_vue.unref(publications), (b) => {
-          _push(exports_server_renderer.ssrRenderComponent(_component_ReadingEntry, {
-            key: b.id,
-            block: b,
-            position: b.position
+        if (exports_vue.unref(historical).length)
+          _push(exports_server_renderer.ssrRenderComponent(_component_StageReading, {
+            stage: __props.stage,
+            blocks: exports_vue.unref(historical)
           }, null, _parent));
-        });
-        _push(`<!--]-->`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(historical).length && exports_vue.unref(publications).length)
+          _push(`<div${exports_server_renderer.ssrRenderAttr("id", `${__props.stage.id}-publication`)} class="border-bs border-flow-line"></div>`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(publications).length)
+          _push(exports_server_renderer.ssrRenderComponent(_component_StageReading, {
+            stage: __props.stage,
+            blocks: exports_vue.unref(publications)
+          }, null, _parent));
+        else
+          _push(`<!---->`);
         if (!exports_vue.unref(historical).length && !exports_vue.unref(publications).length)
           _push(`<p class="quiet">Nothing recorded yet.</p>`);
         else
@@ -117530,13 +118394,165 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$8 = StagePanel_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$12 = StagePanel_vue_vue_type_script_setup_true_lang_default.setup;
   StagePanel_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/StagePanel.vue");
-    return _sfc_setup$8 ? _sfc_setup$8(props, ctx) : undefined;
+    return _sfc_setup$12 ? _sfc_setup$12(props, ctx) : undefined;
   };
   StagePanel_default = Object.assign(StagePanel_vue_vue_type_script_setup_true_lang_default, { __name: "StagePanel" });
+  CopyFeedback_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "CopyFeedback",
+    __ssrInlineRender: true,
+    setup(__props) {
+      const { flow } = useReaderState();
+      const pending = exports_vue.shallowRef(false);
+      const status = exports_vue.shallowRef("");
+      const error = exports_vue.shallowRef("");
+      async function copy() {
+        pending.value = true;
+        status.value = "";
+        error.value = "";
+        try {
+          await refreshComments();
+          const f = flow.value;
+          const feedback = readerComments.value.map((c) => {
+            const stage = f.stage.get(c.stage);
+            const current = stage?.results.find((r) => r.id === c.result);
+            const result = c.edit === undefined ? undefined : [current, ...current?.history ?? []].find((r) => r && r.revision === c.revision && (r.edit ?? null) === c.edit);
+            const anchor = c.anchor;
+            const entry2 = anchor.kind === "entry" ? result?.entries.find((e) => e.id === anchor.entry) : undefined;
+            const quote = c.anchor.kind === "text" ? c.anchor.quote : entry2 ? String(entry2.title ?? entry2.claim ?? entry2.file ?? entry2.cells?.join(" | ") ?? entry2.id) : result?.title ?? c.result;
+            const target = c.anchor.kind === "entry" ? `Entry ${c.anchor.entry}` : c.anchor.kind === "block" ? "Whole Result block" : "Selected text";
+            return `Stage ${c.stage}${stage ? `: ${stage.label}` : ""}
+Result ${c.result}${result ? `: ${result.title}` : ""}
+Revision ${c.revision}${c.edit != null ? ` \xB7 Edit ${c.edit}` : ""}${c.edit === undefined ? " \xB7 Captured version unknown" : ""} \xB7 ${target}
+${quote.split(`
+`).map((line) => `> ${line}`).join(`
+`)}
+${c.text}`;
+          });
+          await undefined.clipboard.writeText(`Please review these Reader comments. They are notes, not answers or consent.
+
+${feedback.join(`
+
+`)}`);
+          status.value = "Feedback copied";
+        } catch (cause) {
+          error.value = `Could not copy feedback: ${cause.message}`;
+        } finally {
+          pending.value = false;
+        }
+      }
+      return (_ctx, _push, _parent, _attrs) => {
+        if (exports_vue.unref(readerComments).length) {
+          _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-1 text-small [overflow-wrap:anywhere]" }, _attrs))} data-v-fa187c79>`);
+          _push(exports_server_renderer.ssrRenderComponent(Button_default, {
+            variant: "soft",
+            "aria-busy": exports_vue.unref(pending) || undefined,
+            disabled: exports_vue.unref(pending),
+            class: "w-fit max-w-full whitespace-normal",
+            onClick: copy
+          }, {
+            default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+              if (_push) {
+                if (exports_vue.unref(pending))
+                  _push(`<span class="copy-spinner i-lucide-loader-circle shrink-0 text-base" aria-hidden="true" data-v-fa187c79${_scopeId}></span>`);
+                else
+                  _push(`<!---->`);
+                _push(` Copy feedback `);
+              } else
+                return [exports_vue.unref(pending) ? (exports_vue.openBlock(), exports_vue.createBlock("span", {
+                  key: 0,
+                  class: "copy-spinner i-lucide-loader-circle shrink-0 text-base",
+                  "aria-hidden": "true"
+                })) : exports_vue.createCommentVNode("", true), exports_vue.createTextVNode(" Copy feedback ")];
+            }),
+            _: 1
+          }, _parent));
+          if (exports_vue.unref(readerComments).some((c) => c.version_unknown))
+            _push(`<p class="text-flow-peach" data-v-fa187c79>Some saved Reader comments have an unknown captured version. Copy feedback includes them without attaching them to current content.</p>`);
+          else
+            _push(`<!---->`);
+          if (exports_vue.unref(status))
+            _push(`<p role="status" data-v-fa187c79>${exports_server_renderer.ssrInterpolate(exports_vue.unref(status))}</p>`);
+          else
+            _push(`<!---->`);
+          if (exports_vue.unref(error))
+            _push(`<p role="alert" class="text-flow-red" data-v-fa187c79>${exports_server_renderer.ssrInterpolate(exports_vue.unref(error))}</p>`);
+          else
+            _push(`<!---->`);
+          _push(`</div>`);
+        } else
+          _push(`<!---->`);
+      };
+    }
+  });
+  _sfc_setup$11 = CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup;
+  CopyFeedback_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/CopyFeedback.vue");
+    return _sfc_setup$11 ? _sfc_setup$11(props, ctx) : undefined;
+  };
+  CopyFeedback_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(CopyFeedback_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-fa187c79"]]), { __name: "CopyFeedback" });
+  FlowFooter_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "FlowFooter",
+    __ssrInlineRender: true,
+    setup(__props) {
+      const { flow } = useReaderState();
+      const colorMode = useColorMode();
+      const last = exports_vue.computed(() => flow.value?.lifecycle.at(-1));
+      const themes = [
+        {
+          value: "system",
+          label: "System"
+        },
+        {
+          value: "light",
+          label: "Light"
+        },
+        {
+          value: "dark",
+          label: "Dark"
+        }
+      ];
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_CopyFeedback = CopyFeedback_default;
+        _push(`<footer${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-2 border-bs border-flow-line pbs-3" }, _attrs))} data-v-b75edc9b>`);
+        if (exports_vue.unref(last))
+          _push(`<p class="text-small font-semibold text-flow-state"${exports_server_renderer.ssrRenderAttr("data-state", exports_vue.unref(last).event)} data-v-b75edc9b>${exports_server_renderer.ssrInterpolate(exports_vue.unref(last).event === "closed" ? "Closed" : "Reopened")} <time${exports_server_renderer.ssrRenderAttr("datetime", exports_vue.unref(last).time)} data-v-b75edc9b>${exports_server_renderer.ssrInterpolate(("formatTime" in _ctx ? _ctx.formatTime : exports_vue.unref(formatTime))(exports_vue.unref(last).time))}</time></p>`);
+        else
+          _push(`<!---->`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_CopyFeedback, null, null, _parent));
+        _push(`<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2" data-v-b75edc9b><div class="theme flex flex-wrap gap-1" role="group" aria-label="Color theme" data-v-b75edc9b><!--[-->`);
+        ssrRenderList$2(themes, (t) => {
+          _push(exports_server_renderer.ssrRenderComponent(Button_default, {
+            key: t.value,
+            variant: "bare",
+            "aria-pressed": exports_vue.unref(colorMode).preference === t.value,
+            class: "theme-button border border-flow-line bg-flow-muted text-small text-flow-toned font-semibold cursor-pointer touch-manipulation motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out",
+            onClick: ($event) => exports_vue.unref(colorMode).preference = t.value
+          }, {
+            default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+              if (_push)
+                _push(`${exports_server_renderer.ssrInterpolate(t.label)}`);
+              else
+                return [exports_vue.createTextVNode(exports_vue.toDisplayString(t.label), 1)];
+            }),
+            _: 2
+          }, _parent));
+        });
+        _push(`<!--]--></div><p class="quiet" data-v-b75edc9b>Revision ${exports_server_renderer.ssrInterpolate(exports_vue.unref(flow)?.revision)}</p></div></footer>`);
+      };
+    }
+  });
+  _sfc_setup$10 = FlowFooter_vue_vue_type_script_setup_true_lang_default.setup;
+  FlowFooter_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/FlowFooter.vue");
+    return _sfc_setup$10 ? _sfc_setup$10(props, ctx) : undefined;
+  };
+  FlowFooter_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(FlowFooter_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-b75edc9b"]]), { __name: "FlowFooter" });
   MattPathStep_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "MattPathStep",
     __ssrInlineRender: true,
@@ -117595,11 +118611,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$7 = MattPathStep_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$9 = MattPathStep_vue_vue_type_script_setup_true_lang_default.setup;
   MattPathStep_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/MattPathStep.vue");
-    return _sfc_setup$7 ? _sfc_setup$7(props, ctx) : undefined;
+    return _sfc_setup$9 ? _sfc_setup$9(props, ctx) : undefined;
   };
   MattPathStep_default = Object.assign(MattPathStep_vue_vue_type_script_setup_true_lang_default, { __name: "MattPathStep" });
   MattPath_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117640,96 +118656,126 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$6 = MattPath_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$8 = MattPath_vue_vue_type_script_setup_true_lang_default.setup;
   MattPath_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/MattPath.vue");
-    return _sfc_setup$6 ? _sfc_setup$6(props, ctx) : undefined;
+    return _sfc_setup$8 ? _sfc_setup$8(props, ctx) : undefined;
   };
   MattPath_default = Object.assign(MattPath_vue_vue_type_script_setup_true_lang_default, { __name: "MattPath" });
-  StageGraph_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
-    __name: "StageGraph",
+  StageMapItem_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "StageMapItem",
     __ssrInlineRender: true,
-    props: { stages: {} },
+    props: { stage: {} },
     setup(__props) {
-      const graph = exports_vue.useTemplateRef("graph");
-      const arrow = exports_vue.useId();
-      const layout = exports_vue.computed(() => {
-        const byId = new Map(__props.stages.map((stage) => [stage.id, stage]));
-        const children = /* @__PURE__ */ new Map;
-        for (const stage of __props.stages) {
-          if (!stage.parent)
-            continue;
-          const siblings = children.get(stage.parent);
-          if (siblings)
-            siblings.push(stage);
-          else
-            children.set(stage.parent, [stage]);
-        }
-        const cards = [];
-        let nextRow = 1;
-        let columns = 1;
-        function place(stage, column, parent) {
-          const firstRow = nextRow;
-          const card = {
-            stage,
-            parent,
-            column,
-            row: ""
-          };
-          cards.push(card);
-          columns = Math.max(columns, column);
-          const descendants = children.get(stage.id);
-          if (descendants)
-            for (const child of descendants)
-              place(child, column + 1, stage);
-          else
-            nextRow++;
-          card.row = `${firstRow} / ${nextRow}`;
-        }
-        for (const stage of __props.stages)
-          if (!stage.parent || !byId.has(stage.parent))
-            place(stage, 1);
-        return {
-          cards,
-          columns
-        };
+      const { flow } = useReaderState();
+      const parent = exports_vue.computed(() => __props.stage.parent ? flow.value.stage.get(__props.stage.parent) : undefined);
+      const name = exports_vue.computed(() => {
+        const work = stageWorkName(flow.value, __props.stage);
+        return work === __props.stage.label ? __props.stage.label : `${__props.stage.label} \xB7 ${work}`;
       });
-      const edges = useMapEdges(graph, () => layout.value.cards.flatMap(({ stage, parent }) => parent ? [{
-        from: parent.id,
-        to: stage.id
-      }] : []), "data-stage-node");
       return (_ctx, _push, _parent, _attrs) => {
-        if (!__props.stages.length)
-          _push(`<p${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "quiet p-2" }, _attrs))}>No Stages recorded.</p>`);
-        else {
-          _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
-            ref_key: "graph",
-            ref: graph,
-            class: "relative [inline-size:max-content] p-2"
-          }, _attrs))}><svg class="pointer-events-none absolute inset-0 size-full text-flow-subtext" aria-hidden="true"><defs><marker${exports_server_renderer.ssrRenderAttr("id", exports_vue.unref(arrow))} viewBox="0 0 8 8" refX="8" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path fill="currentColor" d="M0 0L8 4L0 8z"></path></marker></defs><!--[-->`);
-          ssrRenderList$2(exports_vue.unref(edges), (edge) => {
-            _push(`<path${exports_server_renderer.ssrRenderAttr("data-parent", edge.from)}${exports_server_renderer.ssrRenderAttr("data-child", edge.to)}${exports_server_renderer.ssrRenderAttr("d", edge.path)}${exports_server_renderer.ssrRenderAttr("marker-end", `url(#${exports_vue.unref(arrow)})`)} fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"></path>`);
-          });
-          _push(`<!--]--></svg><ol class="relative grid list-none items-center gap-x-10 gap-y-9" style="${exports_server_renderer.ssrRenderStyle({ gridTemplateColumns: `repeat(${exports_vue.unref(layout).columns}, 180px)` })}" aria-label="Stage cards" role="list"><!--[-->`);
-          ssrRenderList$2(exports_vue.unref(layout).cards, (card) => {
-            _push(`<li class="relative grid min-h-17 content-start gap-1 rounded-sm border border-flow-line bg-flow-base p-2"${exports_server_renderer.ssrRenderAttr("data-stage-node", card.stage.id)}${exports_server_renderer.ssrRenderAttr("data-state", card.stage.state)} style="${exports_server_renderer.ssrRenderStyle({
-              gridColumn: card.column,
-              gridRow: card.row
-            })}"><a class="flex min-h-control items-center wrap-anywhere no-underline after:absolute after:inset-0 @hover:underline active:text-flow-lavender" data-map-item${exports_server_renderer.ssrRenderAttr("href", `#${card.stage.id}`)}${exports_server_renderer.ssrRenderAttr("aria-description", card.parent ? `Parent Stage: ${card.parent.label}` : undefined)} dir="auto">${exports_server_renderer.ssrInterpolate(card.stage.label)}</a><p class="quiet tabular-nums"><span class="font-semibold text-flow-state">${exports_server_renderer.ssrInterpolate(exports_vue.unref(STATE_LABELS)[card.stage.state])}</span> \xB7 ${exports_server_renderer.ssrInterpolate(card.stage.open_questions)} open</p></li>`);
-          });
-          _push(`<!--]--></ol></div>`);
-        }
+        _push(`<li${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          class: "grid grid-cols-[1fr_auto] gap-x-3 items-baseline",
+          "data-state": __props.stage.state
+        }, _attrs))}><a class="inline-flex gap-2 items-center min-h-control wrap-anywhere text-flow-blue font-semibold no-underline"${exports_server_renderer.ssrRenderAttr("href", `#${__props.stage.id}`)} data-map-item${exports_server_renderer.ssrRenderAttr("aria-description", exports_vue.unref(parent) ? `Parent Stage: ${exports_vue.unref(parent).label}` : undefined)}${exports_server_renderer.ssrRenderAttr("aria-current", exports_vue.unref(tab) === __props.stage.id ? "page" : undefined)}><span aria-hidden="true" class="shrink-0 size-1.5 rounded-full bg-flow-state"></span><span dir="auto">${exports_server_renderer.ssrInterpolate(exports_vue.unref(name))}</span></a><span class="quiet"><span class="text-flow-state font-semibold">${exports_server_renderer.ssrInterpolate(("STATE_LABELS" in _ctx ? _ctx.STATE_LABELS : exports_vue.unref(STATE_LABELS))[__props.stage.state])}</span> \xB7 ${exports_server_renderer.ssrInterpolate(__props.stage.open_questions)} open</span></li>`);
       };
     }
   });
-  _sfc_setup$5 = StageGraph_vue_vue_type_script_setup_true_lang_default.setup;
-  StageGraph_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+  _sfc_setup$7 = StageMapItem_vue_vue_type_script_setup_true_lang_default.setup;
+  StageMapItem_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
-    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/StageGraph.vue");
-    return _sfc_setup$5 ? _sfc_setup$5(props, ctx) : undefined;
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/StageMapItem.vue");
+    return _sfc_setup$7 ? _sfc_setup$7(props, ctx) : undefined;
   };
-  StageGraph_default = Object.assign(StageGraph_vue_vue_type_script_setup_true_lang_default, { __name: "StageGraph" });
+  StageMapItem_default = Object.assign(StageMapItem_vue_vue_type_script_setup_true_lang_default, { __name: "StageMapItem" });
+  MapStages_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "MapStages",
+    __ssrInlineRender: true,
+    setup(__props) {
+      const { flow } = useReaderState();
+      const groups = exports_vue.computed(() => {
+        const waiting = [];
+        const other = [];
+        const finished = /* @__PURE__ */ new Map;
+        for (const stage of flow.value.stages)
+          if (stage.open_questions > 0)
+            waiting.push(stage);
+          else if (stage.state !== "finished")
+            other.push(stage);
+          else {
+            const ticket = stage.ticket?.replace(/^#/, "") ?? "";
+            const group = finished.get(ticket);
+            if (group)
+              group.push(stage);
+            else
+              finished.set(ticket, [stage]);
+          }
+        return {
+          waiting,
+          other,
+          finished
+        };
+      });
+      return (_ctx, _push, _parent, _attrs) => {
+        const _component_StageMapItem = StageMapItem_default;
+        _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "grid gap-4 px-4 py-3" }, _attrs))}>`);
+        if (exports_vue.unref(groups).waiting.length) {
+          _push(`<section aria-labelledby="map-waiting"><h3 id="map-waiting" class="eyebrow">Waiting for an answer</h3><ul class="grid list-none"><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(groups).waiting, (st) => {
+            _push(exports_server_renderer.ssrRenderComponent(_component_StageMapItem, {
+              key: st.id,
+              stage: st
+            }, null, _parent));
+          });
+          _push(`<!--]--></ul></section>`);
+        } else
+          _push(`<!---->`);
+        if (exports_vue.unref(groups).other.length) {
+          _push(`<section aria-labelledby="map-in-progress"><h3 id="map-in-progress" class="eyebrow">No open questions</h3><ul class="grid list-none"><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(groups).other, (st) => {
+            _push(exports_server_renderer.ssrRenderComponent(_component_StageMapItem, {
+              key: st.id,
+              stage: st
+            }, null, _parent));
+          });
+          _push(`<!--]--></ul></section>`);
+        } else
+          _push(`<!---->`);
+        if (exports_vue.unref(groups).finished.size) {
+          _push(`<section aria-labelledby="map-finished"><h3 id="map-finished" class="eyebrow">Finished</h3><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(groups).finished, ([ticket, stages]) => {
+            _push(`<details data-navigation-fold><summary class="py-2 wrap-anywhere" data-map-item>${exports_server_renderer.ssrInterpolate(ticket ? `#${ticket}` : "Ticketless")} \xB7 ${exports_server_renderer.ssrInterpolate(stages.length)} ${exports_server_renderer.ssrInterpolate(stages.length === 1 ? "Stage" : "Stages")}</summary><ul class="grid list-none border-s border-flow-line ps-3"><!--[-->`);
+            ssrRenderList$2(stages, (st) => {
+              _push(exports_server_renderer.ssrRenderComponent(_component_StageMapItem, {
+                key: st.id,
+                stage: st
+              }, null, _parent));
+            });
+            _push(`<!--]--></ul></details>`);
+          });
+          _push(`<!--]--></section>`);
+        } else
+          _push(`<!---->`);
+        if (!exports_vue.unref(flow).stages.length)
+          _push(`<p class="quiet">No Stages recorded.</p>`);
+        else
+          _push(`<!---->`);
+        if (exports_vue.unref(flow).topics.length)
+          _push(`<a href="#topics" class="justify-self-start" data-map-item>Topics</a>`);
+        else
+          _push(`<!---->`);
+        _push(`</div>`);
+      };
+    }
+  });
+  _sfc_setup$6 = MapStages_vue_vue_type_script_setup_true_lang_default.setup;
+  MapStages_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/MapStages.vue");
+    return _sfc_setup$6 ? _sfc_setup$6(props, ctx) : undefined;
+  };
+  MapStages_default = Object.assign(MapStages_vue_vue_type_script_setup_true_lang_default, { __name: "MapStages" });
   WayfinderMap_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "WayfinderMap",
     __ssrInlineRender: true,
@@ -117842,11 +118888,11 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$4 = WayfinderMap_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$5 = WayfinderMap_vue_vue_type_script_setup_true_lang_default.setup;
   WayfinderMap_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/WayfinderMap.vue");
-    return _sfc_setup$4 ? _sfc_setup$4(props, ctx) : undefined;
+    return _sfc_setup$5 ? _sfc_setup$5(props, ctx) : undefined;
   };
   WayfinderMap_default = Object.assign(WayfinderMap_vue_vue_type_script_setup_true_lang_default, { __name: "WayfinderMap" });
   MapPanel_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
@@ -117869,52 +118915,34 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           label: "Wayfinder map"
         }] : []
       ]);
-      const dialog = exports_vue.ref();
-      const items = () => [...dialog.value.querySelectorAll("[data-map-item]")].filter((el) => el.getClientRects().length > 0);
-      const focusItem = (el) => {
-        el?.focus({ preventScroll: true });
-        el?.scrollIntoView({
-          block: "nearest",
-          inline: "nearest",
-          behavior: "instant"
-        });
-      };
-      exports_vue.watch(mapOpen, async (open) => {
-        const d = dialog.value;
-        if (!d)
-          return;
-        if (open && !d.open) {
-          undefined.activeElement;
-          undefined.hash;
-          if (!tabs.value.some((t) => t.id === mapTab.value))
-            mapTab.value = tabs.value[0].id;
-          d.showModal();
-          await exports_vue.nextTick();
-          focusItem(items()[0]);
-        } else if (!open && d.open)
-          d.close();
+      const dialog = exports_vue.useTemplateRef("dialog");
+      const items = () => [...dialog.value.querySelectorAll("[data-map-item]")].filter((el) => {
+        const parent = el.localName === "summary" ? el.parentElement?.parentElement : el.parentElement;
+        return el.getClientRects().length > 0 && !parent?.closest("details[data-navigation-fold]:not([open])");
       });
+      const firstItem = () => items()[0] ?? dialog.value?.querySelector('[role="tab"][aria-selected="true"]') ?? undefined;
+      useReadingDialog(mapOpen, dialog, firstItem, "flow-stages");
       exports_vue.watch(flow, () => {
         const d = dialog.value;
         if (!mapOpen.value || !d?.open || d.contains(undefined.activeElement))
           return;
-        focusItem(items()[0] ?? d.querySelector('[role="tab"][aria-selected="true"]') ?? d);
+        focusReadingItem(firstItem() ?? d);
       }, { flush: "post" });
       async function switchTab(id) {
         mapTab.value = id;
         await exports_vue.nextTick();
-        focusItem(items()[0]);
+        focusReadingItem(firstItem());
       }
       return (_ctx, _push, _parent, _attrs) => {
         const _component_MattPath = MattPath_default;
-        const _component_StageGraph = StageGraph_default;
+        const _component_MapStages = MapStages_default;
         const _component_WayfinderMap = WayfinderMap_default;
         _push(`<dialog${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
           ref_key: "dialog",
           ref: dialog,
           class: "map-panel m-auto [inline-size:min(48rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-flow-line bg-flow-muted p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--color-base)_70%,transparent)] [&_[data-map-item]:focus-visible]:outline-2 [&_[data-map-item]:focus-visible]:outline-flow-blue [&_[data-map-item]:focus-visible]:-outline-offset-2",
           "aria-labelledby": "map-title"
-        }, _attrs))} data-v-d801b646><header class="flex flex-none items-center justify-between gap-2 border-be border-flow-line p-2" data-v-d801b646><h2 id="map-title" data-v-d801b646>Map</h2>`);
+        }, _attrs))} data-v-1cc26fb5><header class="flex flex-none items-center justify-between gap-2 border-be border-flow-line p-2" data-v-1cc26fb5><h2 id="map-title" data-v-1cc26fb5>Map</h2>`);
         _push(exports_server_renderer.ssrRenderComponent(Button_default, {
           class: "map-control",
           onClick: ($event) => mapOpen.value = false
@@ -117927,7 +118955,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           }),
           _: 1
         }, _parent));
-        _push(`</header><div class="map-tabs flex flex-none flex-wrap gap-2 p-2" role="tablist" aria-label="Map views" data-v-d801b646><!--[-->`);
+        _push(`</header><div class="map-tabs flex flex-none flex-wrap gap-2 p-2" role="tablist" aria-label="Map views" data-v-1cc26fb5><!--[-->`);
         ssrRenderList$2(exports_vue.unref(tabs), (t) => {
           _push(exports_server_renderer.ssrRenderComponent(Button_default, {
             id: `map-tab-${t.id}`,
@@ -117950,16 +118978,16 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
         });
         _push(`<!--]--></div>`);
         if (exports_vue.unref(f).path) {
-          _push(`<div id="map-path" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-path"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(mapTab) !== "path")} data-v-d801b646>`);
+          _push(`<div id="map-path" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-path"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(mapTab) !== "path")} data-v-1cc26fb5>`);
           _push(exports_server_renderer.ssrRenderComponent(_component_MattPath, null, null, _parent));
           _push(`</div>`);
         } else
           _push(`<!---->`);
-        _push(`<div id="map-stages" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-stages"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(mapTab) !== "stages")} data-v-d801b646>`);
-        _push(exports_server_renderer.ssrRenderComponent(_component_StageGraph, { stages: exports_vue.unref(f).stages }, null, _parent));
+        _push(`<div id="map-stages" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-stages"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(mapTab) !== "stages")} data-v-1cc26fb5>`);
+        _push(exports_server_renderer.ssrRenderComponent(_component_MapStages, null, null, _parent));
         _push(`</div>`);
         if (exports_vue.unref(f).wayfinder) {
-          _push(`<div id="map-wayfinder" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-wayfinder"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(mapTab) !== "wayfinder")} data-v-d801b646>`);
+          _push(`<div id="map-wayfinder" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-wayfinder"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(mapTab) !== "wayfinder")} data-v-1cc26fb5>`);
           _push(exports_server_renderer.ssrRenderComponent(_component_WayfinderMap, { tickets: exports_vue.unref(f).wayfinder.tickets }, null, _parent));
           _push(`</div>`);
         } else
@@ -117968,13 +118996,140 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       };
     }
   });
-  _sfc_setup$3 = MapPanel_vue_vue_type_script_setup_true_lang_default.setup;
+  _sfc_setup$4 = MapPanel_vue_vue_type_script_setup_true_lang_default.setup;
   MapPanel_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
     const ssrContext = exports_vue.useSSRContext();
     (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/MapPanel.vue");
+    return _sfc_setup$4 ? _sfc_setup$4(props, ctx) : undefined;
+  };
+  MapPanel_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(MapPanel_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-1cc26fb5"]]), { __name: "MapPanel" });
+  JumpPanel_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
+    __name: "JumpPanel",
+    __ssrInlineRender: true,
+    setup(__props) {
+      const { flow } = useReaderState();
+      const f = exports_vue.computed(() => flow.value);
+      const stage = exports_vue.computed(() => f.value.stage.get(tab.value));
+      const label = exports_vue.computed(() => stage.value ? stageWorkName(f.value, stage.value) : tab.value === "topics" ? "Topics" : "Overview");
+      const entries = exports_vue.computed(() => {
+        if (tab.value === "overview")
+          return [
+            {
+              id: "overview:decisions",
+              label: "Open decisions"
+            },
+            {
+              id: "overview:progress-row",
+              label: "Progress"
+            },
+            {
+              id: "observations",
+              label: "Observations"
+            },
+            {
+              id: "overview:visit-row",
+              label: "Changed since your last visit"
+            },
+            {
+              id: "overview:stages-row",
+              label: "All Stages"
+            },
+            {
+              id: "overview:topics-row",
+              label: "Topics"
+            }
+          ];
+        if (tab.value === "topics")
+          return f.value.topics.map((t) => ({
+            id: t.id,
+            label: t.title
+          }));
+        const ordered = [];
+        let includedAssumed = false;
+        for (const blocks of [f.value.reading.historical, f.value.reading.publications])
+          for (const block of blocks) {
+            if (block.stage !== tab.value)
+              continue;
+            if (block.kind === "background" || block.kind === "result")
+              ordered.push({
+                id: block.id,
+                label: blockLabel(f.value, block)
+              });
+            else if (block.kind === "assumed" && !includedAssumed) {
+              ordered.push({
+                id: `${block.id}-batch`,
+                label: "Assumed picks"
+              });
+              includedAssumed = true;
+            } else if (block.kind === "question") {
+              const q = f.value.question.get(block.id);
+              if (!q?.latest || f.value.latestAttempt.has(q.id))
+                continue;
+              const state = q.open && questionHasConcern(f.value, q) ? "Concern" : q.answer.state === "open" && q.open ? "Open" : foldedQuestionOutcome(q);
+              ordered.push({
+                id: q.id,
+                label: `Q${q.q}. ${q.title}`,
+                state
+              });
+            }
+          }
+        return ordered;
+      });
+      const at = exports_vue.computed(() => {
+        const id = current.value;
+        if (!jumpOpen.value || !id)
+          return;
+        if (entries.value.some((entry2) => entry2.id === id))
+          return id;
+        const el = undefined.getElementById(id);
+        if (!el)
+          return;
+        return entries.value.find((entry2) => undefined.getElementById(entry2.id)?.contains(el))?.id;
+      });
+      const dialog = exports_vue.useTemplateRef("dialog");
+      const links = () => [...dialog.value?.querySelectorAll("a[href]") ?? []];
+      useReadingDialog(jumpOpen, dialog, () => links().find((a) => a.getAttribute("aria-current")) ?? links()[0], "flow-jump");
+      return (_ctx, _push, _parent, _attrs) => {
+        _push(`<dialog${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({
+          ref_key: "dialog",
+          ref: dialog,
+          class: "m-auto [inline-size:min(40rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-flow-line bg-flow-muted p-0 text-flow-text open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--color-base)_70%,transparent)]",
+          "aria-labelledby": "jump-title"
+        }, _attrs))}><header class="flex flex-none items-center justify-between gap-3 border-be border-flow-line px-4 py-2"><div class="min-w-0"><h2 id="jump-title">Jump</h2><p class="quiet truncate"${exports_server_renderer.ssrRenderAttr("title", exports_vue.unref(label))}>${exports_server_renderer.ssrInterpolate(exports_vue.unref(label))}</p></div>`);
+        _push(exports_server_renderer.ssrRenderComponent(Button_default, { onClick: ($event) => jumpOpen.value = false }, {
+          default: exports_vue.withCtx((_, _push, _parent, _scopeId) => {
+            if (_push)
+              _push(`Close`);
+            else
+              return [exports_vue.createTextVNode("Close")];
+          }),
+          _: 1
+        }, _parent));
+        _push(`</header><div class="min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable] px-4 py-3">`);
+        if (exports_vue.unref(entries).length) {
+          _push(`<ul class="grid list-none gap-1"><!--[-->`);
+          ssrRenderList$2(exports_vue.unref(entries), (entry2) => {
+            _push(`<li><a${exports_server_renderer.ssrRenderAttr("href", `#${entry2.id}`)}${exports_server_renderer.ssrRenderAttr("aria-current", entry2.id === exports_vue.unref(at) ? "location" : undefined)} class="grid gap-x-3 sm:grid-cols-[1fr_auto] reader-control items-center py-2 wrap-anywhere no-underline text-flow-toned aria-[current]:bg-flow-accented aria-[current]:text-flow-blue focus-visible:-outline-offset-2"><span>${exports_vue.unref(inlineLinkLabel)(entry2.label) ?? ""}</span>`);
+            if (entry2.state)
+              _push(`<span class="quiet">${exports_server_renderer.ssrInterpolate(entry2.state)}</span>`);
+            else
+              _push(`<!---->`);
+            _push(`</a></li>`);
+          });
+          _push(`<!--]--></ul>`);
+        } else
+          _push(`<p class="quiet">Nothing to jump to here.</p>`);
+        _push(`</div></dialog>`);
+      };
+    }
+  });
+  _sfc_setup$3 = JumpPanel_vue_vue_type_script_setup_true_lang_default.setup;
+  JumpPanel_vue_vue_type_script_setup_true_lang_default.setup = (props, ctx) => {
+    const ssrContext = exports_vue.useSSRContext();
+    (ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set)).add("components/JumpPanel.vue");
     return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : undefined;
   };
-  MapPanel_default = /* @__PURE__ */ Object.assign(_plugin_vue_export_helper_default(MapPanel_vue_vue_type_script_setup_true_lang_default, [["__scopeId", "data-v-d801b646"]]), { __name: "MapPanel" });
+  JumpPanel_default = Object.assign(JumpPanel_vue_vue_type_script_setup_true_lang_default, { __name: "JumpPanel" });
   app_vue_vue_type_script_setup_true_lang_default = /* @__PURE__ */ exports_vue.defineComponent({
     __name: "app",
     __ssrInlineRender: true,
@@ -117986,15 +119141,16 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
       useHead(() => ({ title: flow.value ? `Flow: ${flow.value.flow.title}` : "Flow" }));
       const stageless = exports_vue.computed(() => flow.value?.reading.historical.filter((b) => !b.stage) ?? []);
       return (_ctx, _push, _parent, _attrs) => {
-        const _component_TabBar = TabBar_default;
+        const _component_FlowBar = FlowBar_default;
         const _component_FlowMasthead = FlowMasthead_default;
         const _component_ContextNotes = ContextNotes_default;
-        const _component_ProgressPanel = ProgressPanel_default;
-        const _component_ChangedSinceVisit = ChangedSinceVisit_default;
-        const _component_StageOverview = StageOverview_default;
+        const _component_FlowOverview = FlowOverview_default;
         const _component_StagePanel = StagePanel_default;
+        const _component_TopicLinks = TopicLinks_default;
         const _component_ReadingEntry = ReadingEntry_default;
+        const _component_FlowFooter = FlowFooter_default;
         const _component_MapPanel = MapPanel_default;
+        const _component_JumpPanel = JumpPanel_default;
         _push(`<div${exports_server_renderer.ssrRenderAttrs(exports_vue.mergeProps({ class: "reader grid [grid-template-columns:minmax(var(--spacing-gutter),1fr)_min(100%_-_var(--spacing-gutter)*2,var(--container-content))_minmax(var(--spacing-gutter),1fr)] gap-y-2 pbe-6 [&>*]:[grid-column:2]" }, _attrs))}>`);
         if (!exports_vue.unref(flow) && exports_vue.unref(failure))
           _push(`<p class="notice" role="alert"> This Flow could not be read: ${exports_server_renderer.ssrInterpolate(exports_vue.unref(failure))}. The reader needs the running Local Flow host; run any flow-page command, such as <code>bound</code>, to start it, then reload. </p>`);
@@ -118002,7 +119158,7 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           _push(`<p class="notice" role="status">Loading the Flow from the Local Flow host\u2026</p>`);
         else {
           _push(`<!--[-->`);
-          _push(exports_server_renderer.ssrRenderComponent(_component_TabBar, null, null, _parent));
+          _push(exports_server_renderer.ssrRenderComponent(_component_FlowBar, null, null, _parent));
           _push(exports_server_renderer.ssrRenderComponent(_component_FlowMasthead, null, null, _parent));
           if (exports_vue.unref(connection) === "reconnecting")
             _push(`<p class="notice" role="status"> The Local Flow host stopped answering. This page keeps what it showed and reconnects when the host is back. </p>`);
@@ -118013,11 +119169,9 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           else
             _push(`<!---->`);
           _push(exports_server_renderer.ssrRenderComponent(_component_ContextNotes, null, null, _parent));
-          _push(`<main id="reading" class="grid" aria-label="Flow content"><section id="overview" class="panel grid gap-2 py-entry border-bs border-flow-line" data-tab="overview"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(tab) !== "overview")} aria-labelledby="overview-title"><h2 id="overview-title">Overview</h2>`);
-          _push(exports_server_renderer.ssrRenderComponent(_component_ProgressPanel, null, null, _parent));
-          _push(exports_server_renderer.ssrRenderComponent(_component_ChangedSinceVisit, null, null, _parent));
-          _push(exports_server_renderer.ssrRenderComponent(_component_StageOverview, null, null, _parent));
-          _push(`</section><!--[-->`);
+          _push(`<main id="reading" class="grid" aria-label="Flow content">`);
+          _push(exports_server_renderer.ssrRenderComponent(_component_FlowOverview, null, null, _parent));
+          _push(`<!--[-->`);
           ssrRenderList$2(exports_vue.unref(flow).stages, (st) => {
             _push(exports_server_renderer.ssrRenderComponent(_component_StagePanel, {
               key: st.id,
@@ -118026,11 +119180,8 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           });
           _push(`<!--]-->`);
           if (exports_vue.unref(flow).topics.length) {
-            _push(`<section id="topics" class="panel grid gap-2 py-entry border-bs border-flow-line" data-tab="topics"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(tab) !== "topics")} aria-labelledby="topics-title"><h2 id="topics-title">Topic notes</h2><ul class="bullets gap-1 ps-3"><!--[-->`);
-            ssrRenderList$2(exports_vue.unref(flow).topics, (t) => {
-              _push(`<li><a${exports_server_renderer.ssrRenderAttr("href", `#${t.id}`)}>${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.title) ?? ""}</a> <span class="quiet">${("inline" in _ctx ? _ctx.inline : exports_vue.unref(inline3))(t.summary) ?? ""}</span></li>`);
-            });
-            _push(`<!--]--></ul>`);
+            _push(`<section id="topics" class="panel grid gap-2 py-entry border-bs border-flow-line" data-tab="topics"${exports_server_renderer.ssrRenderDynamicAttr("hidden", exports_vue.unref(tab) !== "topics")} aria-labelledby="topics-title"><h2 id="topics-title">Topic notes</h2>`);
+            _push(exports_server_renderer.ssrRenderComponent(_component_TopicLinks, null, null, _parent));
             if (exports_vue.unref(stageless).length) {
               _push(`<section class="grid gap-1 py-2 border-bs border-flow-line" aria-labelledby="topics-historical"><h3 id="topics-historical" class="eyebrow">Historical content in retained order</h3><p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p><!--[-->`);
               ssrRenderList$2(exports_vue.unref(stageless), (b) => {
@@ -118046,7 +119197,9 @@ Right: ${expressionOf(objects[right]).replace(/ }$/, ", + (undeclared): delete }
           } else
             _push(`<!---->`);
           _push(`</main>`);
+          _push(exports_server_renderer.ssrRenderComponent(_component_FlowFooter, null, null, _parent));
           _push(exports_server_renderer.ssrRenderComponent(_component_MapPanel, null, null, _parent));
+          _push(exports_server_renderer.ssrRenderComponent(_component_JumpPanel, null, null, _parent));
           _push(`<!--]-->`);
         }
         _push(`</div>`);
@@ -118161,7 +119314,7 @@ __export(exports_precomputed, {
 });
 var client_precomputed;
 var init_precomputed = __esm(() => {
-  client_precomputed = ((h, j, k, m, o, q, u, x, z, A, B, C, D, E, F, G, H, I, J, K, L, N, P, Q, R, T, U, V, W, X) => ({ dependencies: { "_WKlkmUxp.js": { scripts: {}, styles: {}, preload: { "_WKlkmUxp.js": h = { resourceType: "script", module: true, prefetch: true, preload: true, file: "WKlkmUxp.js", name: "_plugin-vue_export-helper" } }, prefetch: {} }, "_DPEFMf5Q.js": { scripts: {}, styles: {}, preload: { "_DPEFMf5Q.js": j = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DPEFMf5Q.js", name: "GUJTEFZK" } }, prefetch: {} }, "_CQJ_2c2w.js": { scripts: {}, styles: {}, preload: { "_CQJ_2c2w.js": k = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CQJ_2c2w.js", name: "YWXUFHC7" } }, prefetch: {} }, "_DciMwFJ1.js": { scripts: {}, styles: {}, preload: { "_DciMwFJ1.js": m = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DciMwFJ1.js", name: "DKTLEL5E" } }, prefetch: {} }, "_qj2FSERp.js": { scripts: {}, styles: {}, preload: { "_qj2FSERp.js": o = { resourceType: "script", module: true, prefetch: true, preload: true, file: "qj2FSERp.js", name: "KHUP5TOH", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/nuxt/dist/app/entry.js": { scripts: { "../../node_modules/nuxt/dist/app/entry.js": u = { resourceType: "script", module: true, prefetch: true, preload: true, file: "B1m_juQ7.js", name: "entry", src: "../../node_modules/nuxt/dist/app/entry.js", isEntry: true, imports: ["_WKlkmUxp.js", "_DPEFMf5Q.js", "_CQJ_2c2w.js", "_DciMwFJ1.js", "_qj2FSERp.js"], dynamicImports: q = ["../../node_modules/pele/dist/esm/lazy.js", "../../node_modules/nuxt/dist/app/components/error-404.vue", "../../node_modules/nuxt/dist/app/components/error-500.vue"], css: ["entry.JxIBxdfY.css"] } }, styles: { "entry.JxIBxdfY.css": x = { file: "entry.JxIBxdfY.css", resourceType: "style", prefetch: true, preload: true } }, preload: { "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "entry.JxIBxdfY.css": x } }, "../../node_modules/nuxt/dist/app/components/error-404.vue": { scripts: {}, styles: { "error-404.0VRc7TZD.css": z = { file: "error-404.0VRc7TZD.css", resourceType: "style", prefetch: true, preload: true }, "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/nuxt/dist/app/components/error-404.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BU-L6txe.js", name: "error-404", src: "../../node_modules/nuxt/dist/app/components/error-404.vue", isDynamicEntry: true, imports: ["_WKlkmUxp.js", "../../node_modules/nuxt/dist/app/entry.js"], css: ["error-404.0VRc7TZD.css"] }, "error-404.0VRc7TZD.css": z, "_WKlkmUxp.js": h, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "error-404.0VRc7TZD.css": z, "entry.JxIBxdfY.css": x } }, "error-404.0VRc7TZD.css": { scripts: {}, styles: {}, preload: { "error-404.0VRc7TZD.css": z }, prefetch: {} }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { scripts: {}, styles: { "error-500.B6KHwBYu.css": A = { file: "error-500.B6KHwBYu.css", resourceType: "style", prefetch: true, preload: true } }, preload: { "../../node_modules/nuxt/dist/app/components/error-500.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CGiUq1OU.js", name: "error-500", src: "../../node_modules/nuxt/dist/app/components/error-500.vue", isDynamicEntry: true, imports: ["_WKlkmUxp.js"], css: ["error-500.B6KHwBYu.css"] }, "error-500.B6KHwBYu.css": A, "_WKlkmUxp.js": h }, prefetch: { "error-500.B6KHwBYu.css": A } }, "error-500.B6KHwBYu.css": { scripts: {}, styles: {}, preload: { "error-500.B6KHwBYu.css": A }, prefetch: {} }, "entry.JxIBxdfY.css": { scripts: {}, styles: {}, preload: { "entry.JxIBxdfY.css": x }, prefetch: {} }, "_BRacOsTa.js": { scripts: {}, styles: {}, preload: { "_BRacOsTa.js": B = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BRacOsTa.js", name: "IU7WZTP6", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": k }, prefetch: {} }, "_CDgikELR.js": { scripts: {}, styles: {}, preload: { "_CDgikELR.js": C = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CDgikELR.js", name: "D5TW5CPZ", imports: ["_BRacOsTa.js"] }, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k }, prefetch: {} }, "_Bm_zMqIp.js": { scripts: {}, styles: {}, preload: { "_Bm_zMqIp.js": D = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Bm_zMqIp.js", name: "OHJ2EJXK", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DF47FnbQ.js", name: "43YPWK3Q", src: "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": C, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "_jmQjJSVB.js": { scripts: {}, styles: {}, preload: { "_jmQjJSVB.js": E = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jmQjJSVB.js", name: "XLHPVVFU", imports: ["_DPEFMf5Q.js"] }, "_DPEFMf5Q.js": j }, prefetch: {} }, "_Rv0XU_EN.js": { scripts: {}, styles: {}, preload: { "_Rv0XU_EN.js": F = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Rv0XU_EN.js", name: "TR4WJQGX", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DQ7-5EPR.js", name: "45MVAN6X", src: "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": E, "_DPEFMf5Q.js": j, "_Rv0XU_EN.js": F, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m }, prefetch: {} }, "_CggtIYAM.js": { scripts: {}, styles: {}, preload: { "_CggtIYAM.js": G = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CggtIYAM.js", name: "FTXIJQGB" } }, prefetch: {} }, "_D6QVYUu9.js": { scripts: {}, styles: {}, preload: { "_D6QVYUu9.js": H = { resourceType: "script", module: true, prefetch: true, preload: true, file: "D6QVYUu9.js", name: "7WLXJQOR" } }, prefetch: {} }, "_A379Mz0i.js": { scripts: {}, styles: {}, preload: { "_A379Mz0i.js": I = { resourceType: "script", module: true, prefetch: true, preload: true, file: "A379Mz0i.js", name: "YUPSMAUO", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_jUP2eHkt.js": { scripts: {}, styles: {}, preload: { "_jUP2eHkt.js": J = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jUP2eHkt.js", name: "2CHDFZHC" } }, prefetch: {} }, "_Di8lEgbI.js": { scripts: {}, styles: {}, preload: { "_Di8lEgbI.js": K = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Di8lEgbI.js", name: "UWRPUF3N", imports: ["_jUP2eHkt.js", "_qj2FSERp.js"] }, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_DjgDzPAI.js": { scripts: {}, styles: {}, preload: { "_DjgDzPAI.js": L = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DjgDzPAI.js", name: "LLLWOAQD", imports: ["_Di8lEgbI.js"] }, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_DOzvca2k.js": { scripts: {}, styles: {}, preload: { "_DOzvca2k.js": N = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DOzvca2k.js", name: "PDMLSE6I", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_cWIjF4Ta.js": { scripts: {}, styles: {}, preload: { "_cWIjF4Ta.js": P = { resourceType: "script", module: true, prefetch: true, preload: true, file: "cWIjF4Ta.js", name: "NDSCUZ25", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_DvPkyAGP.js": { scripts: {}, styles: {}, preload: { "_DvPkyAGP.js": Q = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DvPkyAGP.js", name: "VSWIZJ7B", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_X8gN6AN4.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "_X8gN6AN4.js": R = { resourceType: "script", module: true, prefetch: true, preload: true, file: "X8gN6AN4.js", name: "O3ACPFEJ", imports: ["_CggtIYAM.js", "../../node_modules/nuxt/dist/app/entry.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.JxIBxdfY.css": x } }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BnegQf0o.js", name: "46GJKBLZ", src: "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js", isDynamicEntry: true, imports: ["_X8gN6AN4.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js"] }, "_X8gN6AN4.js": R, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.JxIBxdfY.css": x } }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CFFRi-Hd.js", name: "63WH7YNF", src: "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", isDynamicEntry: true, imports: ["_CggtIYAM.js", "../../node_modules/nuxt/dist/app/entry.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.JxIBxdfY.css": x } }, "_BxrxwxIF.js": { scripts: {}, styles: {}, preload: { "_BxrxwxIF.js": T = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BxrxwxIF.js", name: "SXSLPWUD", imports: ["_DPEFMf5Q.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": j, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "rsGOuYai.js", name: "6DDU7VKX", src: "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "_DOzvca2k.js", "_DvPkyAGP.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": T, "_DPEFMf5Q.js": j, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DOzvca2k.js": N, "_DvPkyAGP.js": Q, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BKHLL3Zy.js", name: "CLQLV5VT", src: "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js", "_Bm_zMqIp.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_Bm_zMqIp.js": D, "_DOzvca2k.js": N, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: { "entry.JxIBxdfY.css": x } }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DtI7bYOl.js", name: "CUSPXG5M", src: "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": E, "_DPEFMf5Q.js": j, "_Rv0XU_EN.js": F, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "_Ce_hS451.js": { scripts: {}, styles: {}, preload: { "_Ce_hS451.js": U = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Ce_hS451.js", name: "5THPTBWS" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BlSzXU9S.js", name: "D3L7O4X2", src: "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": U, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D9lvdoJG.js", name: "EGADTWYV", src: "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", isDynamicEntry: true, imports: ["_Rv0XU_EN.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Rv0XU_EN.js": F, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_BRacOsTa.js": B }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DC4zHdLs.js", name: "EOJSJZXM", src: "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Dk48IVMN.js", name: "G2OEIG6X", src: "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "4SFSL1cU.js", name: "GXJ2T77W", src: "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": C, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CJFzCM--.js", name: "HX3UMAK7", src: "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "GWcLNi_-.js", name: "J5J2NR2G", src: "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "_CgA1WoRv.js": { scripts: {}, styles: {}, preload: { "_CgA1WoRv.js": V = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CgA1WoRv.js", name: "RVARI57O" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "pImnSmIV.js", name: "JRCWTJEL", src: "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": V, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CNSF0GFe.js", name: "L74FQTH5", src: "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", isDynamicEntry: true, imports: ["_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_cWIjF4Ta.js": P, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DpUcO8Ea.js", name: "LAV4ZXOS", src: "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", isDynamicEntry: true, imports: ["_DOzvca2k.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DOzvca2k.js": N, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Cuoq_p7c.js", name: "LBIZYCRR", src: "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DzaZmTi2.js", name: "LFFXNLRS", src: "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js"] }, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "entry.JxIBxdfY.css": x } }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "3DH5N-i1.js", name: "LTYQZ5U5", src: "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", isDynamicEntry: true, imports: ["_X8gN6AN4.js"] }, "_X8gN6AN4.js": R, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.JxIBxdfY.css": x } }, "_BZmnMkFw.js": { scripts: {}, styles: {}, preload: { "_BZmnMkFw.js": W = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BZmnMkFw.js", name: "G3MDBVQH" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "tHiC8OPv.js", name: "NMN3IKWL", src: "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": W, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D-HpbxLB.js", name: "NMUA3R2D", src: "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", isDynamicEntry: true, imports: ["_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_A379Mz0i.js": I, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CVRYe09m.js", name: "NY5A6PPW", src: "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", isDynamicEntry: true, imports: ["_DPEFMf5Q.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": j, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Vp8uTWHn.js", name: "OU2GIT2H", src: "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BzzWOXOp.js", name: "PJ7X32S5", src: "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Y5AakHLu.js", name: "RLLQ44NJ", src: "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": C, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B3inPF54.js", name: "S6DWMCK5", src: "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": W, "_A379Mz0i.js": I, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B46P-L8x.js", name: "STIOTUT7", src: "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DOzvca2k.js": N, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "C0dqctsN.js", name: "WM7NR6YK", src: "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CF6w7KE0.js", name: "WXKV2YEK", src: "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": V, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CKms6LnG.js", name: "YNX532HU", src: "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": U, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_BRacOsTa.js": B }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DBHTgall.js", name: "ZFRCZTLK", src: "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "../../node_modules/nuxt/dist/app/entry.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": T, "_DPEFMf5Q.js": j, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DciMwFJ1.js": m, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P }, prefetch: { "entry.JxIBxdfY.css": x } }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CPCl8y27.js", name: "ZZDR4CN3", src: "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/lazy.js": { scripts: {}, styles: { "entry.JxIBxdfY.css": x }, preload: { "../../node_modules/pele/dist/esm/lazy.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DqF-Fj-1.js", name: "lazy", src: "../../node_modules/pele/dist/esm/lazy.js", isDynamicEntry: true, imports: ["_CQJ_2c2w.js", "../../node_modules/nuxt/dist/app/entry.js"], dynamicImports: X = ["../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js"] }, "_CQJ_2c2w.js": k, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.JxIBxdfY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "entry.JxIBxdfY.css": x } } }, entrypoints: ["../../node_modules/nuxt/dist/app/entry.js"], modules: { "../../node_modules/nuxt/dist/app/components/error-404.vue": { file: "BU-L6txe.js", resourceType: "script", mimeType: undefined, module: true }, "error-404.0VRc7TZD.css": { file: "error-404.0VRc7TZD.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { file: "CGiUq1OU.js", resourceType: "script", mimeType: undefined, module: true }, "error-500.B6KHwBYu.css": { file: "error-500.B6KHwBYu.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/entry.js": { file: "B1m_juQ7.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: q }, "entry.JxIBxdfY.css": { file: "entry.JxIBxdfY.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { file: "DF47FnbQ.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { file: "DQ7-5EPR.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { file: "BnegQf0o.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { file: "CFFRi-Hd.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { file: "rsGOuYai.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { file: "BKHLL3Zy.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { file: "DtI7bYOl.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { file: "BlSzXU9S.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { file: "D9lvdoJG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { file: "DC4zHdLs.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { file: "Dk48IVMN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { file: "4SFSL1cU.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { file: "CJFzCM--.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { file: "GWcLNi_-.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { file: "pImnSmIV.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { file: "CNSF0GFe.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { file: "DpUcO8Ea.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { file: "Cuoq_p7c.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { file: "DzaZmTi2.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { file: "3DH5N-i1.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { file: "tHiC8OPv.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { file: "D-HpbxLB.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { file: "CVRYe09m.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { file: "Vp8uTWHn.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { file: "BzzWOXOp.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { file: "Y5AakHLu.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { file: "B3inPF54.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { file: "B46P-L8x.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { file: "C0dqctsN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { file: "CF6w7KE0.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { file: "CKms6LnG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { file: "DBHTgall.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { file: "CPCl8y27.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/lazy.js": { file: "DqF-Fj-1.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: X }, "_A379Mz0i.js": { file: "A379Mz0i.js", resourceType: "script", mimeType: undefined, module: true }, "_BRacOsTa.js": { file: "BRacOsTa.js", resourceType: "script", mimeType: undefined, module: true }, "_BZmnMkFw.js": { file: "BZmnMkFw.js", resourceType: "script", mimeType: undefined, module: true }, "_Bm_zMqIp.js": { file: "Bm_zMqIp.js", resourceType: "script", mimeType: undefined, module: true }, "_BxrxwxIF.js": { file: "BxrxwxIF.js", resourceType: "script", mimeType: undefined, module: true }, "_CDgikELR.js": { file: "CDgikELR.js", resourceType: "script", mimeType: undefined, module: true }, "_CQJ_2c2w.js": { file: "CQJ_2c2w.js", resourceType: "script", mimeType: undefined, module: true }, "_Ce_hS451.js": { file: "Ce_hS451.js", resourceType: "script", mimeType: undefined, module: true }, "_CgA1WoRv.js": { file: "CgA1WoRv.js", resourceType: "script", mimeType: undefined, module: true }, "_CggtIYAM.js": { file: "CggtIYAM.js", resourceType: "script", mimeType: undefined, module: true }, "_D6QVYUu9.js": { file: "D6QVYUu9.js", resourceType: "script", mimeType: undefined, module: true }, "_DOzvca2k.js": { file: "DOzvca2k.js", resourceType: "script", mimeType: undefined, module: true }, "_DPEFMf5Q.js": { file: "DPEFMf5Q.js", resourceType: "script", mimeType: undefined, module: true }, "_DciMwFJ1.js": { file: "DciMwFJ1.js", resourceType: "script", mimeType: undefined, module: true }, "_Di8lEgbI.js": { file: "Di8lEgbI.js", resourceType: "script", mimeType: undefined, module: true }, "_DjgDzPAI.js": { file: "DjgDzPAI.js", resourceType: "script", mimeType: undefined, module: true }, "_DvPkyAGP.js": { file: "DvPkyAGP.js", resourceType: "script", mimeType: undefined, module: true }, "_Rv0XU_EN.js": { file: "Rv0XU_EN.js", resourceType: "script", mimeType: undefined, module: true }, "_WKlkmUxp.js": { file: "WKlkmUxp.js", resourceType: "script", mimeType: undefined, module: true }, "_X8gN6AN4.js": { file: "X8gN6AN4.js", resourceType: "script", mimeType: undefined, module: true }, "_cWIjF4Ta.js": { file: "cWIjF4Ta.js", resourceType: "script", mimeType: undefined, module: true }, "_jUP2eHkt.js": { file: "jUP2eHkt.js", resourceType: "script", mimeType: undefined, module: true }, "_jmQjJSVB.js": { file: "jmQjJSVB.js", resourceType: "script", mimeType: undefined, module: true }, "_qj2FSERp.js": { file: "qj2FSERp.js", resourceType: "script", mimeType: undefined, module: true } }, resourceCount: 64 }))();
+  client_precomputed = ((h, j, k, m, o, q, u, x, z, A, B, C, D, E, F, G, H, I, J, K, L, N, P, Q, R, T, U, V, W, X) => ({ dependencies: { "_WKlkmUxp.js": { scripts: {}, styles: {}, preload: { "_WKlkmUxp.js": h = { resourceType: "script", module: true, prefetch: true, preload: true, file: "WKlkmUxp.js", name: "_plugin-vue_export-helper" } }, prefetch: {} }, "_DPEFMf5Q.js": { scripts: {}, styles: {}, preload: { "_DPEFMf5Q.js": j = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DPEFMf5Q.js", name: "GUJTEFZK" } }, prefetch: {} }, "_CQJ_2c2w.js": { scripts: {}, styles: {}, preload: { "_CQJ_2c2w.js": k = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CQJ_2c2w.js", name: "YWXUFHC7" } }, prefetch: {} }, "_DciMwFJ1.js": { scripts: {}, styles: {}, preload: { "_DciMwFJ1.js": m = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DciMwFJ1.js", name: "DKTLEL5E" } }, prefetch: {} }, "_qj2FSERp.js": { scripts: {}, styles: {}, preload: { "_qj2FSERp.js": o = { resourceType: "script", module: true, prefetch: true, preload: true, file: "qj2FSERp.js", name: "KHUP5TOH", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/nuxt/dist/app/entry.js": { scripts: { "../../node_modules/nuxt/dist/app/entry.js": u = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Bmfgsjb7.js", name: "entry", src: "../../node_modules/nuxt/dist/app/entry.js", isEntry: true, imports: ["_WKlkmUxp.js", "_DPEFMf5Q.js", "_CQJ_2c2w.js", "_DciMwFJ1.js", "_qj2FSERp.js"], dynamicImports: q = ["../../node_modules/pele/dist/esm/lazy.js", "../../node_modules/nuxt/dist/app/components/error-404.vue", "../../node_modules/nuxt/dist/app/components/error-500.vue"], css: ["entry.CS_D1zTY.css"] } }, styles: { "entry.CS_D1zTY.css": x = { file: "entry.CS_D1zTY.css", resourceType: "style", prefetch: true, preload: true } }, preload: { "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "entry.CS_D1zTY.css": x } }, "../../node_modules/nuxt/dist/app/components/error-404.vue": { scripts: {}, styles: { "error-404.0VRc7TZD.css": z = { file: "error-404.0VRc7TZD.css", resourceType: "style", prefetch: true, preload: true }, "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/nuxt/dist/app/components/error-404.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BU-L6txe.js", name: "error-404", src: "../../node_modules/nuxt/dist/app/components/error-404.vue", isDynamicEntry: true, imports: ["_WKlkmUxp.js", "../../node_modules/nuxt/dist/app/entry.js"], css: ["error-404.0VRc7TZD.css"] }, "error-404.0VRc7TZD.css": z, "_WKlkmUxp.js": h, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "error-404.0VRc7TZD.css": z, "entry.CS_D1zTY.css": x } }, "error-404.0VRc7TZD.css": { scripts: {}, styles: {}, preload: { "error-404.0VRc7TZD.css": z }, prefetch: {} }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { scripts: {}, styles: { "error-500.B6KHwBYu.css": A = { file: "error-500.B6KHwBYu.css", resourceType: "style", prefetch: true, preload: true } }, preload: { "../../node_modules/nuxt/dist/app/components/error-500.vue": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CGiUq1OU.js", name: "error-500", src: "../../node_modules/nuxt/dist/app/components/error-500.vue", isDynamicEntry: true, imports: ["_WKlkmUxp.js"], css: ["error-500.B6KHwBYu.css"] }, "error-500.B6KHwBYu.css": A, "_WKlkmUxp.js": h }, prefetch: { "error-500.B6KHwBYu.css": A } }, "error-500.B6KHwBYu.css": { scripts: {}, styles: {}, preload: { "error-500.B6KHwBYu.css": A }, prefetch: {} }, "entry.CS_D1zTY.css": { scripts: {}, styles: {}, preload: { "entry.CS_D1zTY.css": x }, prefetch: {} }, "_BRacOsTa.js": { scripts: {}, styles: {}, preload: { "_BRacOsTa.js": B = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BRacOsTa.js", name: "IU7WZTP6", imports: ["_CQJ_2c2w.js"] }, "_CQJ_2c2w.js": k }, prefetch: {} }, "_CDgikELR.js": { scripts: {}, styles: {}, preload: { "_CDgikELR.js": C = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CDgikELR.js", name: "D5TW5CPZ", imports: ["_BRacOsTa.js"] }, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k }, prefetch: {} }, "_Bm_zMqIp.js": { scripts: {}, styles: {}, preload: { "_Bm_zMqIp.js": D = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Bm_zMqIp.js", name: "OHJ2EJXK", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DF47FnbQ.js", name: "43YPWK3Q", src: "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": C, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "_jmQjJSVB.js": { scripts: {}, styles: {}, preload: { "_jmQjJSVB.js": E = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jmQjJSVB.js", name: "XLHPVVFU", imports: ["_DPEFMf5Q.js"] }, "_DPEFMf5Q.js": j }, prefetch: {} }, "_Rv0XU_EN.js": { scripts: {}, styles: {}, preload: { "_Rv0XU_EN.js": F = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Rv0XU_EN.js", name: "TR4WJQGX", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DQ7-5EPR.js", name: "45MVAN6X", src: "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": E, "_DPEFMf5Q.js": j, "_Rv0XU_EN.js": F, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m }, prefetch: {} }, "_CggtIYAM.js": { scripts: {}, styles: {}, preload: { "_CggtIYAM.js": G = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CggtIYAM.js", name: "FTXIJQGB" } }, prefetch: {} }, "_D6QVYUu9.js": { scripts: {}, styles: {}, preload: { "_D6QVYUu9.js": H = { resourceType: "script", module: true, prefetch: true, preload: true, file: "D6QVYUu9.js", name: "7WLXJQOR" } }, prefetch: {} }, "_A379Mz0i.js": { scripts: {}, styles: {}, preload: { "_A379Mz0i.js": I = { resourceType: "script", module: true, prefetch: true, preload: true, file: "A379Mz0i.js", name: "YUPSMAUO", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_jUP2eHkt.js": { scripts: {}, styles: {}, preload: { "_jUP2eHkt.js": J = { resourceType: "script", module: true, prefetch: true, preload: true, file: "jUP2eHkt.js", name: "2CHDFZHC" } }, prefetch: {} }, "_Di8lEgbI.js": { scripts: {}, styles: {}, preload: { "_Di8lEgbI.js": K = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Di8lEgbI.js", name: "UWRPUF3N", imports: ["_jUP2eHkt.js", "_qj2FSERp.js"] }, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_DjgDzPAI.js": { scripts: {}, styles: {}, preload: { "_DjgDzPAI.js": L = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DjgDzPAI.js", name: "LLLWOAQD", imports: ["_Di8lEgbI.js"] }, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_DOzvca2k.js": { scripts: {}, styles: {}, preload: { "_DOzvca2k.js": N = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DOzvca2k.js", name: "PDMLSE6I", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_cWIjF4Ta.js": { scripts: {}, styles: {}, preload: { "_cWIjF4Ta.js": P = { resourceType: "script", module: true, prefetch: true, preload: true, file: "cWIjF4Ta.js", name: "NDSCUZ25", imports: ["_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_DvPkyAGP.js": { scripts: {}, styles: {}, preload: { "_DvPkyAGP.js": Q = { resourceType: "script", module: true, prefetch: true, preload: true, file: "DvPkyAGP.js", name: "VSWIZJ7B", imports: ["_qj2FSERp.js"] }, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "_X8gN6AN4.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "_X8gN6AN4.js": R = { resourceType: "script", module: true, prefetch: true, preload: true, file: "X8gN6AN4.js", name: "O3ACPFEJ", imports: ["_CggtIYAM.js", "../../node_modules/nuxt/dist/app/entry.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.CS_D1zTY.css": x } }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BnegQf0o.js", name: "46GJKBLZ", src: "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js", isDynamicEntry: true, imports: ["_X8gN6AN4.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js"] }, "_X8gN6AN4.js": R, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.CS_D1zTY.css": x } }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CFFRi-Hd.js", name: "63WH7YNF", src: "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", isDynamicEntry: true, imports: ["_CggtIYAM.js", "../../node_modules/nuxt/dist/app/entry.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.CS_D1zTY.css": x } }, "_BxrxwxIF.js": { scripts: {}, styles: {}, preload: { "_BxrxwxIF.js": T = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BxrxwxIF.js", name: "SXSLPWUD", imports: ["_DPEFMf5Q.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": j, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "rsGOuYai.js", name: "6DDU7VKX", src: "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "_DOzvca2k.js", "_DvPkyAGP.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": T, "_DPEFMf5Q.js": j, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DOzvca2k.js": N, "_DvPkyAGP.js": Q, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BKHLL3Zy.js", name: "CLQLV5VT", src: "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js", "_Bm_zMqIp.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_Bm_zMqIp.js": D, "_DOzvca2k.js": N, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: { "entry.CS_D1zTY.css": x } }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DtI7bYOl.js", name: "CUSPXG5M", src: "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", isDynamicEntry: true, imports: ["_jmQjJSVB.js", "_Rv0XU_EN.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_jmQjJSVB.js": E, "_DPEFMf5Q.js": j, "_Rv0XU_EN.js": F, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "_Ce_hS451.js": { scripts: {}, styles: {}, preload: { "_Ce_hS451.js": U = { resourceType: "script", module: true, prefetch: true, preload: true, file: "Ce_hS451.js", name: "5THPTBWS" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BlSzXU9S.js", name: "D3L7O4X2", src: "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": U, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D9lvdoJG.js", name: "EGADTWYV", src: "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", isDynamicEntry: true, imports: ["_Rv0XU_EN.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Rv0XU_EN.js": F, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_BRacOsTa.js": B }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DC4zHdLs.js", name: "EOJSJZXM", src: "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Dk48IVMN.js", name: "G2OEIG6X", src: "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "4SFSL1cU.js", name: "GXJ2T77W", src: "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": C, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CJFzCM--.js", name: "HX3UMAK7", src: "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "GWcLNi_-.js", name: "J5J2NR2G", src: "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "_CgA1WoRv.js": { scripts: {}, styles: {}, preload: { "_CgA1WoRv.js": V = { resourceType: "script", module: true, prefetch: true, preload: true, file: "CgA1WoRv.js", name: "RVARI57O" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "pImnSmIV.js", name: "JRCWTJEL", src: "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": V, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CNSF0GFe.js", name: "L74FQTH5", src: "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", isDynamicEntry: true, imports: ["_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_cWIjF4Ta.js": P, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DpUcO8Ea.js", name: "LAV4ZXOS", src: "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", isDynamicEntry: true, imports: ["_DOzvca2k.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DOzvca2k.js": N, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Cuoq_p7c.js", name: "LBIZYCRR", src: "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", isDynamicEntry: true, imports: ["_Bm_zMqIp.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DzaZmTi2.js", name: "LFFXNLRS", src: "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", isDynamicEntry: true, imports: ["../../node_modules/nuxt/dist/app/entry.js"] }, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "entry.CS_D1zTY.css": x } }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "3DH5N-i1.js", name: "LTYQZ5U5", src: "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", isDynamicEntry: true, imports: ["_X8gN6AN4.js"] }, "_X8gN6AN4.js": R, "_CggtIYAM.js": G, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q }, prefetch: { "entry.CS_D1zTY.css": x } }, "_BZmnMkFw.js": { scripts: {}, styles: {}, preload: { "_BZmnMkFw.js": W = { resourceType: "script", module: true, prefetch: true, preload: true, file: "BZmnMkFw.js", name: "G3MDBVQH" } }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "tHiC8OPv.js", name: "NMN3IKWL", src: "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_D6QVYUu9.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DvPkyAGP.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": W, "_D6QVYUu9.js": H, "_A379Mz0i.js": I, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DvPkyAGP.js": Q, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "D-HpbxLB.js", name: "NMUA3R2D", src: "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", isDynamicEntry: true, imports: ["_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_A379Mz0i.js": I, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CVRYe09m.js", name: "NY5A6PPW", src: "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", isDynamicEntry: true, imports: ["_DPEFMf5Q.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DPEFMf5Q.js": j, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Vp8uTWHn.js", name: "OU2GIT2H", src: "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "BzzWOXOp.js", name: "PJ7X32S5", src: "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", isDynamicEntry: true, imports: ["_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "Y5AakHLu.js", name: "RLLQ44NJ", src: "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", isDynamicEntry: true, imports: ["_CDgikELR.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_Di8lEgbI.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CDgikELR.js": C, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_DciMwFJ1.js": m, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B3inPF54.js", name: "S6DWMCK5", src: "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", isDynamicEntry: true, imports: ["_BZmnMkFw.js", "_A379Mz0i.js", "_DjgDzPAI.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BZmnMkFw.js": W, "_A379Mz0i.js": I, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "B46P-L8x.js", name: "STIOTUT7", src: "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", isDynamicEntry: true, imports: ["_DjgDzPAI.js", "_DOzvca2k.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_Di8lEgbI.js", "_jUP2eHkt.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DjgDzPAI.js": L, "_Di8lEgbI.js": K, "_jUP2eHkt.js": J, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DOzvca2k.js": N, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "C0dqctsN.js", name: "WM7NR6YK", src: "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CF6w7KE0.js", name: "WXKV2YEK", src: "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", isDynamicEntry: true, imports: ["_CgA1WoRv.js", "_DPEFMf5Q.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_CgA1WoRv.js": V, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CKms6LnG.js", name: "YNX532HU", src: "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", isDynamicEntry: true, imports: ["_Ce_hS451.js", "_Bm_zMqIp.js", "_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_Ce_hS451.js": U, "_Bm_zMqIp.js": D, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "_DciMwFJ1.js": m, "_BRacOsTa.js": B }, prefetch: {} }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DBHTgall.js", name: "ZFRCZTLK", src: "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", isDynamicEntry: true, imports: ["_BxrxwxIF.js", "../../node_modules/nuxt/dist/app/entry.js", "_DOzvca2k.js", "_cWIjF4Ta.js", "_DciMwFJ1.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_BxrxwxIF.js": T, "_DPEFMf5Q.js": j, "_qj2FSERp.js": o, "_CQJ_2c2w.js": k, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DciMwFJ1.js": m, "_DOzvca2k.js": N, "_cWIjF4Ta.js": P }, prefetch: { "entry.CS_D1zTY.css": x } }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { scripts: {}, styles: {}, preload: { "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "CPCl8y27.js", name: "ZZDR4CN3", src: "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", isDynamicEntry: true, imports: ["_DciMwFJ1.js", "_BRacOsTa.js", "_qj2FSERp.js", "_CQJ_2c2w.js"] }, "_DciMwFJ1.js": m, "_BRacOsTa.js": B, "_CQJ_2c2w.js": k, "_qj2FSERp.js": o }, prefetch: {} }, "../../node_modules/pele/dist/esm/lazy.js": { scripts: {}, styles: { "entry.CS_D1zTY.css": x }, preload: { "../../node_modules/pele/dist/esm/lazy.js": { resourceType: "script", module: true, prefetch: true, preload: true, file: "DqF-Fj-1.js", name: "lazy", src: "../../node_modules/pele/dist/esm/lazy.js", isDynamicEntry: true, imports: ["_CQJ_2c2w.js", "../../node_modules/nuxt/dist/app/entry.js"], dynamicImports: X = ["../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js", "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js", "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js", "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js", "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js", "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js", "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js", "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js", "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js", "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js", "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js", "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js", "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js", "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js", "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js", "../../node_modules/pele/dist/esm/chunks/YNX532HU.js", "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js", "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js", "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js", "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js", "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js", "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js", "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js", "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js", "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js", "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js", "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js", "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js", "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js", "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js", "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js", "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js", "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js"] }, "_CQJ_2c2w.js": k, "../../node_modules/nuxt/dist/app/entry.js": u, "entry.CS_D1zTY.css": x, "_WKlkmUxp.js": h, "_DPEFMf5Q.js": j, "_DciMwFJ1.js": m, "_qj2FSERp.js": o }, prefetch: { "entry.CS_D1zTY.css": x } } }, entrypoints: ["../../node_modules/nuxt/dist/app/entry.js"], modules: { "../../node_modules/nuxt/dist/app/components/error-404.vue": { file: "BU-L6txe.js", resourceType: "script", mimeType: undefined, module: true }, "error-404.0VRc7TZD.css": { file: "error-404.0VRc7TZD.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/components/error-500.vue": { file: "CGiUq1OU.js", resourceType: "script", mimeType: undefined, module: true }, "error-500.B6KHwBYu.css": { file: "error-500.B6KHwBYu.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/nuxt/dist/app/entry.js": { file: "Bmfgsjb7.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: q }, "entry.CS_D1zTY.css": { file: "entry.CS_D1zTY.css", resourceType: "style", mimeType: undefined, module: undefined }, "../../node_modules/pele/dist/esm/chunks/43YPWK3Q.js": { file: "DF47FnbQ.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/45MVAN6X.js": { file: "DQ7-5EPR.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/46GJKBLZ.js": { file: "BnegQf0o.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/63WH7YNF.js": { file: "CFFRi-Hd.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/6DDU7VKX.js": { file: "rsGOuYai.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CLQLV5VT.js": { file: "BKHLL3Zy.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/CUSPXG5M.js": { file: "DtI7bYOl.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/D3L7O4X2.js": { file: "BlSzXU9S.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EGADTWYV.js": { file: "D9lvdoJG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/EOJSJZXM.js": { file: "DC4zHdLs.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/G2OEIG6X.js": { file: "Dk48IVMN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/GXJ2T77W.js": { file: "4SFSL1cU.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/HX3UMAK7.js": { file: "CJFzCM--.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/J5J2NR2G.js": { file: "GWcLNi_-.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/JRCWTJEL.js": { file: "pImnSmIV.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/L74FQTH5.js": { file: "CNSF0GFe.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LAV4ZXOS.js": { file: "DpUcO8Ea.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LBIZYCRR.js": { file: "Cuoq_p7c.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LFFXNLRS.js": { file: "DzaZmTi2.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/LTYQZ5U5.js": { file: "3DH5N-i1.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMN3IKWL.js": { file: "tHiC8OPv.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NMUA3R2D.js": { file: "D-HpbxLB.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/NY5A6PPW.js": { file: "CVRYe09m.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/OU2GIT2H.js": { file: "Vp8uTWHn.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/PJ7X32S5.js": { file: "BzzWOXOp.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/RLLQ44NJ.js": { file: "Y5AakHLu.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/S6DWMCK5.js": { file: "B3inPF54.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/STIOTUT7.js": { file: "B46P-L8x.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WM7NR6YK.js": { file: "C0dqctsN.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/WXKV2YEK.js": { file: "CF6w7KE0.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/YNX532HU.js": { file: "CKms6LnG.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZFRCZTLK.js": { file: "DBHTgall.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/chunks/ZZDR4CN3.js": { file: "CPCl8y27.js", resourceType: "script", mimeType: undefined, module: true }, "../../node_modules/pele/dist/esm/lazy.js": { file: "DqF-Fj-1.js", resourceType: "script", mimeType: undefined, module: true, dynamicImports: X }, "_A379Mz0i.js": { file: "A379Mz0i.js", resourceType: "script", mimeType: undefined, module: true }, "_BRacOsTa.js": { file: "BRacOsTa.js", resourceType: "script", mimeType: undefined, module: true }, "_BZmnMkFw.js": { file: "BZmnMkFw.js", resourceType: "script", mimeType: undefined, module: true }, "_Bm_zMqIp.js": { file: "Bm_zMqIp.js", resourceType: "script", mimeType: undefined, module: true }, "_BxrxwxIF.js": { file: "BxrxwxIF.js", resourceType: "script", mimeType: undefined, module: true }, "_CDgikELR.js": { file: "CDgikELR.js", resourceType: "script", mimeType: undefined, module: true }, "_CQJ_2c2w.js": { file: "CQJ_2c2w.js", resourceType: "script", mimeType: undefined, module: true }, "_Ce_hS451.js": { file: "Ce_hS451.js", resourceType: "script", mimeType: undefined, module: true }, "_CgA1WoRv.js": { file: "CgA1WoRv.js", resourceType: "script", mimeType: undefined, module: true }, "_CggtIYAM.js": { file: "CggtIYAM.js", resourceType: "script", mimeType: undefined, module: true }, "_D6QVYUu9.js": { file: "D6QVYUu9.js", resourceType: "script", mimeType: undefined, module: true }, "_DOzvca2k.js": { file: "DOzvca2k.js", resourceType: "script", mimeType: undefined, module: true }, "_DPEFMf5Q.js": { file: "DPEFMf5Q.js", resourceType: "script", mimeType: undefined, module: true }, "_DciMwFJ1.js": { file: "DciMwFJ1.js", resourceType: "script", mimeType: undefined, module: true }, "_Di8lEgbI.js": { file: "Di8lEgbI.js", resourceType: "script", mimeType: undefined, module: true }, "_DjgDzPAI.js": { file: "DjgDzPAI.js", resourceType: "script", mimeType: undefined, module: true }, "_DvPkyAGP.js": { file: "DvPkyAGP.js", resourceType: "script", mimeType: undefined, module: true }, "_Rv0XU_EN.js": { file: "Rv0XU_EN.js", resourceType: "script", mimeType: undefined, module: true }, "_WKlkmUxp.js": { file: "WKlkmUxp.js", resourceType: "script", mimeType: undefined, module: true }, "_X8gN6AN4.js": { file: "X8gN6AN4.js", resourceType: "script", mimeType: undefined, module: true }, "_cWIjF4Ta.js": { file: "cWIjF4Ta.js", resourceType: "script", mimeType: undefined, module: true }, "_jUP2eHkt.js": { file: "jUP2eHkt.js", resourceType: "script", mimeType: undefined, module: true }, "_jmQjJSVB.js": { file: "jmQjJSVB.js", resourceType: "script", mimeType: undefined, module: true }, "_qj2FSERp.js": { file: "qj2FSERp.js", resourceType: "script", mimeType: undefined, module: true } }, resourceCount: 64 }))();
 });
 
 // reader/.output/server/chunks/build/error-404-styles.CIkI-cSY.mjs
@@ -118193,23 +119346,23 @@ var Button_vue_vue_type_style_index_0_scoped_3df077bb_inline_used_lang_default =
 var init_entry_styles_1_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-2.mjs.mjs
-var TabBar_vue_vue_type_style_index_0_scoped_345f9bcc_inline_used_lang_default = ":is(.tab-link[data-v-345f9bcc],.jump-link[data-v-345f9bcc],.map-trigger[data-v-345f9bcc]):active{color:var(--color-lavender)}@media (hover:hover) and (pointer:fine){:is(.tab-link[data-v-345f9bcc],.jump-link[data-v-345f9bcc],.map-trigger[data-v-345f9bcc]):hover{color:var(--color-lavender)}}.tab-link[aria-current=page][data-v-345f9bcc]{background-color:var(--color-surface0);color:var(--color-blue)}.jump-link[aria-current=location][data-v-345f9bcc]{color:var(--color-blue);text-decoration-line:underline}";
+var FlowBar_vue_vue_type_style_index_0_scoped_bbc43170_inline_used_lang_default = ".bar[data-v-bbc43170]{block-size:var(--bar);container-type:inline-size}.bar-row[data-v-bbc43170]{--gap:var(--spacing-1);--identity-pad:calc(1.5 * var(--spacing-1));--chip-pad:calc(2 * (1px + var(--spacing-1)));--identity-min:calc(min(72px, 24cqi));--row-pad:clamp(var(--identity-pad), 1.5cqi, 5 * var(--spacing-1));--control-max:max(var(--spacing-control), (100cqi - 2 * (var(--identity-min) + var(--row-pad)) - 5 * var(--gap)) / 3);--queue-chip-width:min(var(--queue-slot) + var(--chip-pad), var(--control-max));align-items:center;gap:var(--gap);block-size:100%;padding-inline:var(--row-pad);white-space:nowrap;font-size:var(--text-small);display:flex;position:relative}.identity[data-v-bbc43170]{text-overflow:ellipsis;overflow:hidden}.project[data-v-bbc43170]{max-inline-size:calc(min(15cqi,16ch))}.flow-title[data-v-bbc43170]{max-inline-size:calc(min(27cqi,32ch))}.stage-title[data-v-bbc43170]{max-inline-size:calc(min(24cqi,28ch))}.flow-title[data-v-bbc43170],.stage-title[data-v-bbc43170]{min-inline-size:var(--identity-min);border-inline-start:1px solid var(--color-line);padding-inline-start:var(--identity-pad)}.slots[data-v-bbc43170]{align-items:center;gap:var(--gap);min-inline-size:var(--current-slot);flex:1 0 0;display:flex;overflow:clip}:is(.queue-chip[data-v-bbc43170],.waiting-chip[data-v-bbc43170],.open-count[data-v-bbc43170],.waiting-count[data-v-bbc43170]){padding-inline:var(--spacing-1)}.queue-chip[data-v-bbc43170]{inline-size:var(--queue-chip-width);gap:0}.waiting-chip[data-v-bbc43170]{inline-size:calc(15ch + var(--chip-pad));justify-content:space-between}.open-count[data-v-bbc43170]{inline-size:calc(var(--open-slot) + var(--chip-pad))}.waiting-count[data-v-bbc43170]{inline-size:calc(var(--other-slot) + var(--chip-pad))}.ruler[data-v-bbc43170]{visibility:hidden;pointer-events:none;display:flex;position:absolute;inset-inline-start:0}.ruler[data-v-bbc43170]>*{flex:none}.gap-size[data-v-bbc43170]{inline-size:var(--gap)}.action[data-v-bbc43170]{max-inline-size:var(--control-max)}.action-hint[data-v-bbc43170]{min-inline-size:min(max(2ch,var(--count-slot)),100%);font-variant-numeric:tabular-nums;place-items:center;display:grid}.action-icon[data-v-bbc43170]{display:none}@container (width<520px){.action[data-v-bbc43170]{padding-inline:var(--spacing-1);min-inline-size:min(max(var(--spacing-control),var(--count-slot) + var(--chip-pad)),var(--control-max));grid-template-columns:minmax(0,1fr);place-content:center;place-items:center;gap:0;display:grid}:is(.action-hint[data-v-bbc43170]:has(kbd),.action-label[data-v-bbc43170]){display:none}.action-icon[data-v-bbc43170]{display:block}}";
 var init_entry_styles_2_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-3.mjs.mjs
-var CopyFeedback_vue_vue_type_style_index_0_scoped_fa187c79_inline_used_lang_default = "@media (prefers-reduced-motion:no-preference){.copy-spinner[data-v-fa187c79]{animation:1s linear infinite copy-spin-fa187c79}}@keyframes copy-spin-fa187c79{to{transform:rotate(1turn)}}";
+var QuestionFigure_vue_vue_type_style_index_0_scoped_1f52258a_inline_used_lang_default = ".decision-visual[data-v-1f52258a] :is(.visual,.diagram){cursor:zoom-in;max-block-size:16rem;overflow:auto}.decision-visual[data-v-1f52258a] :is(img,svg,video){-o-object-fit:contain;object-fit:contain;cursor:zoom-in;max-block-size:16rem}.enlarged-visual[data-v-1f52258a] img{inline-size:100%}html:has(.figure-dialog:modal){overflow:hidden}";
 var init_entry_styles_3_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-4.mjs.mjs
-var FlowMasthead_vue_vue_type_style_index_0_scoped_ed8e37d7_inline_used_lang_default = ".theme-button[data-v-ed8e37d7]:active{background-color:var(--color-surface1);color:var(--color-lavender)}@media (hover:hover) and (pointer:fine){.theme-button[data-v-ed8e37d7]:hover{color:var(--color-lavender)}}.theme-button[aria-pressed=true][data-v-ed8e37d7]{border-color:var(--color-blue);color:var(--color-blue)}";
+var QuestionBlock_vue_vue_type_style_index_0_scoped_e81a9f02_inline_used_lang_default = ".question-body[data-v-e81a9f02]{container-type:inline-size}@container (width>=48rem){.with-deciding-figure[data-v-e81a9f02]{grid-template-columns:minmax(0,5fr) minmax(0,4fr)}}";
 var init_entry_styles_4_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-5.mjs.mjs
-var DocumentBody_vue_vue_type_style_index_0_scoped_579d7aa2_inline_used_lang_default = ".procedure-step[data-v-579d7aa2]{grid-template-columns:subgrid}.procedure-step[data-v-579d7aa2]:not(:last-child)>:last-child{padding-block-end:var(--spacing-2)}";
+var DocumentBody_vue_vue_type_style_index_0_scoped_6af404ef_inline_used_lang_default = ".procedure-step[data-v-6af404ef]{grid-template-columns:subgrid}.procedure-step[data-v-6af404ef]:not(:last-child)>:last-child{padding-block-end:var(--spacing-2)}";
 var init_entry_styles_5_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-6.mjs.mjs
-var DemoBody_vue_vue_type_style_index_0_scoped_70fabb9f_inline_used_lang_default = ".demo-control[data-v-70fabb9f]:active{background-color:var(--color-surface1);color:var(--color-lavender)}@media (hover:hover) and (pointer:fine){.demo-control[data-v-70fabb9f]:hover{color:var(--color-lavender)}}.demo-control[aria-disabled=true][data-v-70fabb9f]{background-color:var(--color-base);color:var(--color-overlay0);cursor:not-allowed;border-style:dashed}";
+var DemoBody_vue_vue_type_style_index_0_scoped_7d2f691e_inline_used_lang_default = ".demo-control[data-v-7d2f691e]:active{background-color:var(--color-surface1);color:var(--color-lavender)}@media (hover:hover) and (pointer:fine){.demo-control[data-v-7d2f691e]:hover{color:var(--color-lavender)}}.demo-control[aria-disabled=true][data-v-7d2f691e]{background-color:var(--color-base);color:var(--color-overlay0);cursor:not-allowed;border-style:dashed}";
 var init_entry_styles_6_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-8.mjs.mjs
@@ -118229,20 +119382,28 @@ var ResultTable_vue_vue_type_style_index_0_scoped_957586cd_inline_used_lang_defa
 var init_entry_styles_11_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-12.mjs.mjs
-var ResultComments_vue_vue_type_style_index_0_scoped_fd4f4b6d_inline_used_lang_default = ".confirm-removal[data-v-fd4f4b6d]{border-color:var(--color-red);color:var(--color-red)}";
+var ResultComments_vue_vue_type_style_index_0_scoped_4f7d0722_inline_used_lang_default = ".confirm-removal[data-v-4f7d0722]{border-color:var(--color-red);color:var(--color-red)}";
 var init_entry_styles_12_mjs = () => {};
 
 // reader/.output/server/chunks/build/entry-styles-13.mjs.mjs
-var MapPanel_vue_vue_type_style_index_0_scoped_d801b646_inline_used_lang_default = ".map-control[data-v-d801b646],.map-panel[data-v-d801b646]{border-color:var(--color-surface1)}.map-control[data-v-d801b646]{font-weight:400}.map-control[aria-selected=true][data-v-d801b646]{border-color:var(--color-blue);color:var(--color-blue);background:color-mix(in oklch,var(--color-blue) 8%,var(--color-base))}";
+var CopyFeedback_vue_vue_type_style_index_0_scoped_fa187c79_inline_used_lang_default = "@media (prefers-reduced-motion:no-preference){.copy-spinner[data-v-fa187c79]{animation:1s linear infinite copy-spin-fa187c79}}@keyframes copy-spin-fa187c79{to{transform:rotate(1turn)}}";
 var init_entry_styles_13_mjs = () => {};
 
-// reader/.output/server/chunks/build/entry-styles.8LlKlO1Q.mjs
-var exports_entry_styles_8LlKlO1Q = {};
-__export(exports_entry_styles_8LlKlO1Q, {
-  default: () => entryStyles_8LlKlO1Q
+// reader/.output/server/chunks/build/entry-styles-14.mjs.mjs
+var FlowFooter_vue_vue_type_style_index_0_scoped_b75edc9b_inline_used_lang_default = ".theme-button[data-v-b75edc9b]:active{background-color:var(--color-surface1);color:var(--color-lavender)}@media (hover:hover) and (pointer:fine){.theme-button[data-v-b75edc9b]:hover{color:var(--color-lavender)}}.theme-button[aria-pressed=true][data-v-b75edc9b]{border-color:var(--color-blue);color:var(--color-blue)}";
+var init_entry_styles_14_mjs = () => {};
+
+// reader/.output/server/chunks/build/entry-styles-15.mjs.mjs
+var MapPanel_vue_vue_type_style_index_0_scoped_1cc26fb5_inline_used_lang_default = ".map-control[data-v-1cc26fb5],.map-panel[data-v-1cc26fb5]{border-color:var(--color-surface1)}.map-control[data-v-1cc26fb5]{font-weight:400}.map-control[aria-selected=true][data-v-1cc26fb5]{border-color:var(--color-blue);color:var(--color-blue);background:color-mix(in oklch,var(--color-blue) 8%,var(--color-base))}";
+var init_entry_styles_15_mjs = () => {};
+
+// reader/.output/server/chunks/build/entry-styles.BbfgWLO4.mjs
+var exports_entry_styles_BbfgWLO4 = {};
+__export(exports_entry_styles_BbfgWLO4, {
+  default: () => entryStyles_BbfgWLO4
 });
-var entryStyles_8LlKlO1Q;
-var init_entry_styles_8LlKlO1Q = __esm(() => {
+var entryStyles_BbfgWLO4;
+var init_entry_styles_BbfgWLO4 = __esm(() => {
   init_entry_styles_1_mjs();
   init_entry_styles_2_mjs();
   init_entry_styles_3_mjs();
@@ -118255,34 +119416,38 @@ var init_entry_styles_8LlKlO1Q = __esm(() => {
   init_entry_styles_11_mjs();
   init_entry_styles_12_mjs();
   init_entry_styles_13_mjs();
+  init_entry_styles_14_mjs();
+  init_entry_styles_15_mjs();
   init_server_placeholder();
   init_vue();
-  entryStyles_8LlKlO1Q = [
+  entryStyles_BbfgWLO4 = [
     Button_vue_vue_type_style_index_0_scoped_3df077bb_inline_used_lang_default,
-    TabBar_vue_vue_type_style_index_0_scoped_345f9bcc_inline_used_lang_default,
-    CopyFeedback_vue_vue_type_style_index_0_scoped_fa187c79_inline_used_lang_default,
-    FlowMasthead_vue_vue_type_style_index_0_scoped_ed8e37d7_inline_used_lang_default,
-    DocumentBody_vue_vue_type_style_index_0_scoped_579d7aa2_inline_used_lang_default,
-    DemoBody_vue_vue_type_style_index_0_scoped_70fabb9f_inline_used_lang_default,
+    FlowBar_vue_vue_type_style_index_0_scoped_bbc43170_inline_used_lang_default,
+    QuestionFigure_vue_vue_type_style_index_0_scoped_1f52258a_inline_used_lang_default,
+    QuestionBlock_vue_vue_type_style_index_0_scoped_e81a9f02_inline_used_lang_default,
+    DocumentBody_vue_vue_type_style_index_0_scoped_6af404ef_inline_used_lang_default,
+    DemoBody_vue_vue_type_style_index_0_scoped_7d2f691e_inline_used_lang_default,
     ServerPlaceholder,
     MetricsChart_vue_vue_type_style_index_0_scoped_bdc394f9_inline_used_lang_default,
     MetricsBody_vue_vue_type_style_index_0_scoped_29d20ee9_inline_used_lang_default,
     Select_vue_vue_type_style_index_0_scoped_a6a1fafb_inline_used_lang_default,
     ResultTable_vue_vue_type_style_index_0_scoped_957586cd_inline_used_lang_default,
-    ResultComments_vue_vue_type_style_index_0_scoped_fd4f4b6d_inline_used_lang_default,
-    MapPanel_vue_vue_type_style_index_0_scoped_d801b646_inline_used_lang_default
+    ResultComments_vue_vue_type_style_index_0_scoped_4f7d0722_inline_used_lang_default,
+    CopyFeedback_vue_vue_type_style_index_0_scoped_fa187c79_inline_used_lang_default,
+    FlowFooter_vue_vue_type_style_index_0_scoped_b75edc9b_inline_used_lang_default,
+    MapPanel_vue_vue_type_style_index_0_scoped_1cc26fb5_inline_used_lang_default
   ];
 });
 
-// reader/.output/server/chunks/build/CopyFeedback-styles.Bg45ANky.mjs
-var exports_CopyFeedback_styles_Bg45ANky = {};
-__export(exports_CopyFeedback_styles_Bg45ANky, {
-  default: () => CopyFeedbackStyles_Bg45ANky
+// reader/.output/server/chunks/build/CopyFeedback-styles.ky8NQnw7.mjs
+var exports_CopyFeedback_styles_ky8NQnw7 = {};
+__export(exports_CopyFeedback_styles_ky8NQnw7, {
+  default: () => CopyFeedbackStyles_ky8NQnw7
 });
-var CopyFeedbackStyles_Bg45ANky;
-var init_CopyFeedback_styles_Bg45ANky = __esm(() => {
-  init_entry_styles_3_mjs();
-  CopyFeedbackStyles_Bg45ANky = [
+var CopyFeedbackStyles_ky8NQnw7;
+var init_CopyFeedback_styles_ky8NQnw7 = __esm(() => {
+  init_entry_styles_13_mjs();
+  CopyFeedbackStyles_ky8NQnw7 = [
     CopyFeedback_vue_vue_type_style_index_0_scoped_fa187c79_inline_used_lang_default
   ];
 });
@@ -118296,7 +119461,7 @@ var DemoBodyStyles_CGvpKCw5;
 var init_DemoBody_styles_CGvpKCw5 = __esm(() => {
   init_entry_styles_6_mjs();
   DemoBodyStyles_CGvpKCw5 = [
-    DemoBody_vue_vue_type_style_index_0_scoped_70fabb9f_inline_used_lang_default
+    DemoBody_vue_vue_type_style_index_0_scoped_7d2f691e_inline_used_lang_default
   ];
 });
 
@@ -118309,33 +119474,46 @@ var DocumentBodyStyles_BIlcJbfL;
 var init_DocumentBody_styles_BIlcJbfL = __esm(() => {
   init_entry_styles_5_mjs();
   DocumentBodyStyles_BIlcJbfL = [
-    DocumentBody_vue_vue_type_style_index_0_scoped_579d7aa2_inline_used_lang_default
+    DocumentBody_vue_vue_type_style_index_0_scoped_6af404ef_inline_used_lang_default
   ];
 });
 
-// reader/.output/server/chunks/build/FlowMasthead-styles.DNPCBZ5L.mjs
-var exports_FlowMasthead_styles_DNPCBZ5L = {};
-__export(exports_FlowMasthead_styles_DNPCBZ5L, {
-  default: () => FlowMastheadStyles_DNPCBZ5L
+// reader/.output/server/chunks/build/FlowBar-styles.mv9LoS5r.mjs
+var exports_FlowBar_styles_mv9LoS5r = {};
+__export(exports_FlowBar_styles_mv9LoS5r, {
+  default: () => FlowBarStyles_mv9LoS5r
 });
-var FlowMastheadStyles_DNPCBZ5L;
-var init_FlowMasthead_styles_DNPCBZ5L = __esm(() => {
-  init_entry_styles_4_mjs();
-  FlowMastheadStyles_DNPCBZ5L = [
-    FlowMasthead_vue_vue_type_style_index_0_scoped_ed8e37d7_inline_used_lang_default
+var FlowBarStyles_mv9LoS5r;
+var init_FlowBar_styles_mv9LoS5r = __esm(() => {
+  init_entry_styles_2_mjs();
+  FlowBarStyles_mv9LoS5r = [
+    FlowBar_vue_vue_type_style_index_0_scoped_bbc43170_inline_used_lang_default
   ];
 });
 
-// reader/.output/server/chunks/build/MapPanel-styles.ky8NQnw7.mjs
-var exports_MapPanel_styles_ky8NQnw7 = {};
-__export(exports_MapPanel_styles_ky8NQnw7, {
-  default: () => MapPanelStyles_ky8NQnw7
+// reader/.output/server/chunks/build/FlowFooter-styles.CijkI2qO.mjs
+var exports_FlowFooter_styles_CijkI2qO = {};
+__export(exports_FlowFooter_styles_CijkI2qO, {
+  default: () => FlowFooterStyles_CijkI2qO
 });
-var MapPanelStyles_ky8NQnw7;
-var init_MapPanel_styles_ky8NQnw7 = __esm(() => {
-  init_entry_styles_13_mjs();
-  MapPanelStyles_ky8NQnw7 = [
-    MapPanel_vue_vue_type_style_index_0_scoped_d801b646_inline_used_lang_default
+var FlowFooterStyles_CijkI2qO;
+var init_FlowFooter_styles_CijkI2qO = __esm(() => {
+  init_entry_styles_14_mjs();
+  FlowFooterStyles_CijkI2qO = [
+    FlowFooter_vue_vue_type_style_index_0_scoped_b75edc9b_inline_used_lang_default
+  ];
+});
+
+// reader/.output/server/chunks/build/MapPanel-styles.K8PUkWPX.mjs
+var exports_MapPanel_styles_K8PUkWPX = {};
+__export(exports_MapPanel_styles_K8PUkWPX, {
+  default: () => MapPanelStyles_K8PUkWPX
+});
+var MapPanelStyles_K8PUkWPX;
+var init_MapPanel_styles_K8PUkWPX = __esm(() => {
+  init_entry_styles_15_mjs();
+  MapPanelStyles_K8PUkWPX = [
+    MapPanel_vue_vue_type_style_index_0_scoped_1cc26fb5_inline_used_lang_default
   ];
 });
 
@@ -118365,6 +119543,32 @@ var init_MetricsChart_styles_n4SzW3Mz = __esm(() => {
   ];
 });
 
+// reader/.output/server/chunks/build/QuestionBlock-styles.DNPCBZ5L.mjs
+var exports_QuestionBlock_styles_DNPCBZ5L = {};
+__export(exports_QuestionBlock_styles_DNPCBZ5L, {
+  default: () => QuestionBlockStyles_DNPCBZ5L
+});
+var QuestionBlockStyles_DNPCBZ5L;
+var init_QuestionBlock_styles_DNPCBZ5L = __esm(() => {
+  init_entry_styles_4_mjs();
+  QuestionBlockStyles_DNPCBZ5L = [
+    QuestionBlock_vue_vue_type_style_index_0_scoped_e81a9f02_inline_used_lang_default
+  ];
+});
+
+// reader/.output/server/chunks/build/QuestionFigure-styles.Bg45ANky.mjs
+var exports_QuestionFigure_styles_Bg45ANky = {};
+__export(exports_QuestionFigure_styles_Bg45ANky, {
+  default: () => QuestionFigureStyles_Bg45ANky
+});
+var QuestionFigureStyles_Bg45ANky;
+var init_QuestionFigure_styles_Bg45ANky = __esm(() => {
+  init_entry_styles_3_mjs();
+  QuestionFigureStyles_Bg45ANky = [
+    QuestionFigure_vue_vue_type_style_index_0_scoped_1f52258a_inline_used_lang_default
+  ];
+});
+
 // reader/.output/server/chunks/build/ResultComments-styles.DFH6ddwq.mjs
 var exports_ResultComments_styles_DFH6ddwq = {};
 __export(exports_ResultComments_styles_DFH6ddwq, {
@@ -118374,7 +119578,7 @@ var ResultCommentsStyles_DFH6ddwq;
 var init_ResultComments_styles_DFH6ddwq = __esm(() => {
   init_entry_styles_12_mjs();
   ResultCommentsStyles_DFH6ddwq = [
-    ResultComments_vue_vue_type_style_index_0_scoped_fd4f4b6d_inline_used_lang_default
+    ResultComments_vue_vue_type_style_index_0_scoped_4f7d0722_inline_used_lang_default
   ];
 });
 
@@ -118388,19 +119592,6 @@ var init_ResultTable_styles_DKa0I_PY = __esm(() => {
   init_entry_styles_11_mjs();
   ResultTableStyles_DKa0IPY = [
     ResultTable_vue_vue_type_style_index_0_scoped_957586cd_inline_used_lang_default
-  ];
-});
-
-// reader/.output/server/chunks/build/TabBar-styles.mv9LoS5r.mjs
-var exports_TabBar_styles_mv9LoS5r = {};
-__export(exports_TabBar_styles_mv9LoS5r, {
-  default: () => TabBarStyles_mv9LoS5r
-});
-var TabBarStyles_mv9LoS5r;
-var init_TabBar_styles_mv9LoS5r = __esm(() => {
-  init_entry_styles_2_mjs();
-  TabBarStyles_mv9LoS5r = [
-    TabBar_vue_vue_type_style_index_0_scoped_345f9bcc_inline_used_lang_default
   ];
 });
 
@@ -118441,17 +119632,19 @@ var init_styles = __esm(() => {
   styles = {
     "../../node_modules/nuxt/dist/app/components/error-404.vue": () => Promise.resolve().then(() => (init_error_404_styles_CIkI_cSY(), exports_error_404_styles_CIkI_cSY)).then(interopDefault),
     "../../node_modules/nuxt/dist/app/components/error-500.vue": () => Promise.resolve().then(() => (init_error_500_styles_D3rQecbQ(), exports_error_500_styles_D3rQecbQ)).then(interopDefault),
-    "../../node_modules/nuxt/dist/app/entry.js": () => Promise.resolve().then(() => (init_entry_styles_8LlKlO1Q(), exports_entry_styles_8LlKlO1Q)).then(interopDefault),
-    "components/CopyFeedback.vue": () => Promise.resolve().then(() => (init_CopyFeedback_styles_Bg45ANky(), exports_CopyFeedback_styles_Bg45ANky)).then(interopDefault),
+    "../../node_modules/nuxt/dist/app/entry.js": () => Promise.resolve().then(() => (init_entry_styles_BbfgWLO4(), exports_entry_styles_BbfgWLO4)).then(interopDefault),
+    "components/CopyFeedback.vue": () => Promise.resolve().then(() => (init_CopyFeedback_styles_ky8NQnw7(), exports_CopyFeedback_styles_ky8NQnw7)).then(interopDefault),
     "components/DemoBody.vue": () => Promise.resolve().then(() => (init_DemoBody_styles_CGvpKCw5(), exports_DemoBody_styles_CGvpKCw5)).then(interopDefault),
     "components/DocumentBody.vue": () => Promise.resolve().then(() => (init_DocumentBody_styles_BIlcJbfL(), exports_DocumentBody_styles_BIlcJbfL)).then(interopDefault),
-    "components/FlowMasthead.vue": () => Promise.resolve().then(() => (init_FlowMasthead_styles_DNPCBZ5L(), exports_FlowMasthead_styles_DNPCBZ5L)).then(interopDefault),
-    "components/MapPanel.vue": () => Promise.resolve().then(() => (init_MapPanel_styles_ky8NQnw7(), exports_MapPanel_styles_ky8NQnw7)).then(interopDefault),
+    "components/FlowBar.vue": () => Promise.resolve().then(() => (init_FlowBar_styles_mv9LoS5r(), exports_FlowBar_styles_mv9LoS5r)).then(interopDefault),
+    "components/FlowFooter.vue": () => Promise.resolve().then(() => (init_FlowFooter_styles_CijkI2qO(), exports_FlowFooter_styles_CijkI2qO)).then(interopDefault),
+    "components/MapPanel.vue": () => Promise.resolve().then(() => (init_MapPanel_styles_K8PUkWPX(), exports_MapPanel_styles_K8PUkWPX)).then(interopDefault),
     "components/MetricsBody.vue": () => Promise.resolve().then(() => (init_MetricsBody_styles_BLMqxhf8(), exports_MetricsBody_styles_BLMqxhf8)).then(interopDefault),
     "components/MetricsChart.vue": () => Promise.resolve().then(() => (init_MetricsChart_styles_n4SzW3Mz(), exports_MetricsChart_styles_n4SzW3Mz)).then(interopDefault),
+    "components/QuestionBlock.vue": () => Promise.resolve().then(() => (init_QuestionBlock_styles_DNPCBZ5L(), exports_QuestionBlock_styles_DNPCBZ5L)).then(interopDefault),
+    "components/QuestionFigure.vue": () => Promise.resolve().then(() => (init_QuestionFigure_styles_Bg45ANky(), exports_QuestionFigure_styles_Bg45ANky)).then(interopDefault),
     "components/ResultComments.vue": () => Promise.resolve().then(() => (init_ResultComments_styles_DFH6ddwq(), exports_ResultComments_styles_DFH6ddwq)).then(interopDefault),
     "components/ResultTable.vue": () => Promise.resolve().then(() => (init_ResultTable_styles_DKa0I_PY(), exports_ResultTable_styles_DKa0I_PY)).then(interopDefault),
-    "components/TabBar.vue": () => Promise.resolve().then(() => (init_TabBar_styles_mv9LoS5r(), exports_TabBar_styles_mv9LoS5r)).then(interopDefault),
     "components/ui/Button.vue": () => Promise.resolve().then(() => (init_Button_styles_Omq_Qowo(), exports_Button_styles_Omq_Qowo)).then(interopDefault),
     "components/ui/Select.vue": () => Promise.resolve().then(() => (init_Select_styles_DRGyqLCq(), exports_Select_styles_DRGyqLCq)).then(interopDefault)
   };
@@ -119026,7 +120219,7 @@ var NodeRenderResponse = class {
     _to.shift();
   }
   return [..._from.map(() => ".."), ..._to].join("/");
-}, entryIds, entryFileName = "B1m_juQ7.js", HAS_APP_TELEPORTS, APP_TELEPORT_OPEN_TAG, APP_TELEPORT_CLOSE_TAG, entryPaths, renderer, handler, renderer$1;
+}, entryIds, entryFileName = "Bmfgsjb7.js", HAS_APP_TELEPORTS, APP_TELEPORT_OPEN_TAG, APP_TELEPORT_CLOSE_TAG, entryPaths, renderer, handler, renderer$1;
 var init_renderer = __esm(() => {
   init_nitro();
   init_dist2();

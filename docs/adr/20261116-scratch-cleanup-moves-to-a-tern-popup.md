@@ -18,6 +18,6 @@ This amends [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md
 ## Consequences
 
 - Scratch cleanup needs Tern with the `vstack-clean` plugin linked. Without it, the only way to clean up is to run the cleanup script by hand.
-- The Command checks plugin readiness before it runs `tern open`. Older Tern reports a handled route with exit 1 and `cannot open in a file block`. Current Tern can return exit 0, which the Command accepts only after it observes the expected popup over the caller pane. Exit 0 alone could mean Tern opened a file pane. See the native evidence in [#591](https://github.com/daandden/vstack/issues/591).
+- The Command checks plugin readiness before it runs `tern open --json` with the invoking session as the lease witness. Exit 0 with an empty `blocks` list means the plugin claimed the open. Exit 0 with a file block means Tern opened a file pane instead. The Command reports any other launch result. The plugin shows an error toast when it cannot open the popup.
 - A closed Flow's page can be deleted 15 days after the Flow closes, and a blocked to-tickets batch's record 15 days after its newest file.
 - Amended by [ADR 20261123-scratch-cleanup-offers-one-row-per-omp-session](20261123-scratch-cleanup-offers-one-row-per-omp-session.md). A popup row is one omp session's Scratch in one repo, not one entry, and a delete rebuilds and checks each ticked row before removing any of its entries.

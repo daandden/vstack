@@ -1,5 +1,7 @@
 # Figure captions are short titles, with their source behind a disclosure
 
+> [ADR 20261123-the-flow-page-leads-with-the-open-decision](20261123-the-flow-page-leads-with-the-open-decision.md) caps a question's inline figure beside its options and enlarges it on click. Its caption and description stay with it; its `Source` disclosure moves into the question's closed Sources and context row.
+
 The user chose this in the `flow-diagram-fit-width-d865de` interview on 2026-11-06, in Stage 1's questions 3, 5, 6, 7, 8, and 10. It amends [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md) and [ADR 0050](0050-the-flow-reader-draws-diagrams-from-mermaid-source-with-pele.md) where they describe figure captions. These are accepted design decisions, not a claim that the implementation is complete.
 
 An attachment's `caption` is a title of one line and at most 80 characters. The flow-page script refuses a longer caption, or a caption with a line break, and commits nothing. `caption` stays required, and it stays the accessible name of the image, diagram, video, or artifact viewer. A new optional `description` holds everything else the reader needs to know about the figure. It takes the same plain-text formatting as other text fields: paragraphs, `- ` bullet blocks, code, and links. `origin` stays required.

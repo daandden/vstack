@@ -10,7 +10,7 @@ Supply implement with Ratchet's measured loop for an app's LLM flow. hillclimb o
 
 ## Settle setup in the grill
 
-Read the app's real entry point before the grill closes. Record these five decisions as questions and answers on the vstack run's Flow page through skill://flow-page, with each question's reader needs satisfied before its complete contribution:
+Read the app's real entry point before the grill closes. Record these five decisions as questions and answers on the vstack run's Flow page through skill://flow-page, with a Decision brief and satisfied reader needs in each complete round:
 
 1. The LLM flow and entry point, including what one input carries.
 2. The case input source. Prefer production examples with permission and retention constraints settled, then bug reports, user cases, or synthesis anchored on real examples. Explain that the agreed cases enter git history, including production data they contain.
@@ -51,7 +51,7 @@ Bind `r = ratchet("<eval>")` in Python eval. Every method below is async and ret
 Apply this procedure to `inputs`, `grader`, and `plan`, including every revision and stale approval:
 
 1. Publish the full material as a typed Result in this tune Stage. The inputs table has one row for every case with its complete input, expected answer, tag, and provenance. The grader cards show five complete inputs, outputs, grades, and the grader's reasoning. The plan table covers the fields above. Do not replace review material with file pointers or a sample of the case set.
-2. Prepare a complete round and question with the native labels `Approve`, `Revise`, and `Abort`, without authored option letters. Explain that Revise takes feedback and records no approval, and dismissal is not approval. Declare and fulfill its actual reader needs. Link the question's `results` to every relevant Result entry by ref. Submit new material and the question atomically. The script owns ids, letters, numbering, and reciprocal links.
+2. Prepare a complete round and question with the native labels `Approve`, `Revise`, and `Abort`, without authored option letters. Explain that Revise takes feedback and records no approval, and dismissal is not approval. Write its Decision brief. Use `brief.no_recommendation` because this native approval starts unselected. Declare and fulfill its reader needs. Link the question's `results` to every relevant Result entry by ref. Submit new material and the question atomically. The script owns ids, letters, numbering, and reciprocal links.
 3. Follow flow-page's native approval exception for current-content checks and the host dialog. Read the assigned Q number and title from the receipt's `ask` payload. Call only Ratchet's existing approval interface:
 
    ```python

@@ -7,9 +7,10 @@ export const linkedResults = () => [
   { kind: "result", ref: "cards", shape: "cards", title: "Findings", entries: [{ ref: "saved", title: "Keep saved responses", label: "issue", blocking: true, impact: "Readers lose responses.", action: "Keep them after reconnecting.", evidence: "Local reconnect fixture." }, { ref: "unused", title: "Unrelated finding", label: "note", blocking: false, impact: "No impact.", action: "No change.", evidence: "Control." }] },
 ];
 export const mixedTargets = ["document", "comparison", "metrics", "prototype", "quiz", "cards", "cards/saved"];
-export const linkedQuestion = (results = mixedTargets) => ({
+export const linkedQuestion = (results = mixedTargets, again?: string) => ({
   ref: "decision", title: "Keep saved responses after reconnecting?", description: "Choose whether reconnecting should retain the previously saved response. The local fixture found a lost response; retaining it avoids asking the same decision again.",
+  brief: { unblocks: "Choose what to persist during reconnects.", undo: "Revert the reconnect policy before rollout.", no_recommendation: "The storage budget has not been set.", ...(again ? { asked_again_because: "The first attempt did not get an answer." } : {}) },
   needs: [{ need: "Understand the saved-response decision.", kind: "source-excerpt" }],
   figures: [{ text: "Before reconnect: saved response A\nAfter reconnect: no response", kind: "source-excerpt" }],
-  options: [{ label: "Retain", does: "Keep the response on reconnect.", gains: ["Readers keep their decision."], costs: ["Retained data needs storage."] }, { label: "Discard", does: "Start again on reconnect.", gains: ["No retained storage."], costs: ["Readers must answer again."] }], results,
+  options: [{ label: "Retain", does: "Keep the response on reconnect.", gains: ["Readers keep their decision."], costs: ["Retained data needs storage."] }, { label: "Discard", does: "Start again on reconnect.", gains: ["No retained storage."], costs: ["Readers must answer again."] }], results, ...(again ? { again } : {}),
 });

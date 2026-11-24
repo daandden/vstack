@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
+import { decisionBrief } from "./support/decision-brief.ts";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
-import { ENV } from "./support/fixture.ts";
+import { ENV, git } from "./support/fixture.ts";
+import { jumpButton, stagesButton, useWideReaderFont, waitForReaderLayout } from "./support/reader-layout.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const SETUP = "./node_modules/.bin/playwright-core install --only-shell chromium (CI: the \"Install Chromium\" step in .github/workflows/check-register.yml)";
@@ -15,9 +17,9 @@ const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} 
 const port = socket.port;
 socket.stop(true);
 
-function cli(args: string[], input?: object) {
+function cli(args: string[], input?: object, cwd = root) {
   const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "tabs", "--agent", "main"], {
-    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
+    cwd, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")} exited ${p.exitCode}: ${p.stderr.toString()}`);
@@ -29,9 +31,11 @@ function cli(args: string[], input?: object) {
   return receipt;
 }
 
-const submit = (flow: string, stage: string, items: object[]) => cli(["submit", "--flow", flow, "--stage", stage], { version: 1, items });
-const question = (ref: string, title: string) => ({
+const submit = (flow: string, stage: string, items: object[], cwd = root) => cli(["submit", "--flow", flow, "--stage", stage], { version: 1, items }, cwd);
+const question = (ref: string, title: string, again?: string) => ({
   ref, title, description: `Choose the ${title} route.`, needs: [{ need: `Understand the ${title} consequence.`, kind: "prose" }],
+  brief: decisionBrief(title, { again: again ? "The earlier attempt did not settle this route." : undefined }),
+  ...(again ? { again } : {}),
   options: [{ label: "Keep", does: `${title}: keeps it`, gains: [`${title}: stability`], costs: [`${title}: no new behavior`] }, { label: "Change", does: `${title}: changes it`, gains: [`${title}: new behavior`], costs: [`${title}: work`] }],
 });
 const doc = (ref: string, title: string, sections = 1) => ({ kind: "result", ref, shape: "document", title, sections: Array.from({ length: sections }, (_, i) => ({ heading: `Finding ${i + 1}`, blocks: [{ prose: "One finding." }] })) });
@@ -50,37 +54,273 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const tabs = (page: Page) => page.locator(".bar .tabs a").evaluateAll((as) => as.map((a) => ({ target: a.getAttribute("href")!.slice(1), current: a.getAttribute("aria-current") })));
-const selected = async (page: Page) => (await tabs(page)).find((t) => t.current)?.target;
+const barOf = (page: Page) => page.getByRole("navigation", { name: "Flow navigation", exact: true });
+const selected = (page: Page) => page.locator("main > section[data-tab]:visible").getAttribute("data-tab");
+const shown = (page: Page, id: string) => page.locator(`main > section[id="${id}"]`).waitFor();
+const goViaMap = async (page: Page, id: string) => {
+  await stagesButton(page).click();
+  await page.getByRole("tabpanel", { name: "Stages", exact: true }).locator(`a[href="#${id}"]`).click();
+  await shown(page, id);
+};
 const shownBlocks = (page: Page) => page.locator("[data-block]").evaluateAll((els) => els.filter((el) => el.getClientRects().length).map((el) => (el as HTMLElement).dataset.reading));
-const jumps = (page: Page) => page.locator(".bar .jump-row a").evaluateAll((as) => as.filter((a) => a.getClientRects().length).map((a) => a.getAttribute("href")!.slice(1)));
+const openJump = async (page: Page) => {
+  await page.keyboard.press("g");
+  const panel = page.getByRole("dialog", { name: "Jump", exact: true });
+  await panel.waitFor();
+  return panel;
+};
+const jumpIds = (panel: Awaited<ReturnType<typeof openJump>>) => panel.getByRole("link").evaluateAll(as => as.map(a => a.getAttribute("href")!.slice(1)));
+async function capture(page: Page, name: string, fullPage = false) {
+  const dir = process.env.FLOW_NAV_EVIDENCE;
+  if (!dir) return;
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, `${name}.aria.txt`), await page.locator("body").ariaSnapshot());
+  await page.screenshot({ path: join(dir, `${name}.png`), fullPage });
+}
 const hash = (page: Page) => page.evaluate(() => location.hash.slice(1));
+
+test("a 34-Stage Flow keeps its open queue and identity in one 44px bar", async () => {
+  const title = "Regional rollout for the European production environment and the service catalogue";
+  const work = "Decide the production rollout order for the European availability zones";
+  const project = join(root, "regional-service-catalogue");
+  mkdirSync(project);
+  git(project, "init", "-q");
+  const openStage = (args: string[]) => cli(["open", ...args], undefined, project);
+  const send = (s: { flow: string; stage: string }, items: object[]) => submit(s.flow, s.stage, items, project);
+  const opened = openStage(["--skill", "implement", "--title", title, "--ticket", "571"]);
+  send(opened, [{
+    kind: "wayfinder",
+    tickets: [{ id: "571", title: work, url: "https://tracker.example.test/issues/571", state: "claimed", blockers: [] }],
+  }]);
+  const first = send(opened, [{ kind: "round", now: "The pilot rollout is ready to review.", questions: [question("prior", "Reuse the pilot rollout?")] }]).refs;
+  send(opened, [{
+    kind: "answer", question: first.prior, response: { status: "answered", text: "What if the oldest zone is unavailable?" },
+    reading: { outcome: "concern", unresolved: "Check whether the oldest zone is required." },
+  }]);
+  const open = send(opened, [{
+    kind: "round",
+    now: "The pilot review raised a concern about the oldest availability zone.",
+    questions: [
+      question("retry", "How should the rollout handle an unavailable zone?", first.prior),
+      ...Array.from({ length: 20 }, (_, i) => question(`zone-${i}`, `Keep the fallback for zone ${i + 1}?`)),
+    ],
+  }]).refs;
+  send(opened, [{
+    kind: "answer", question: open["zone-0"], response: { status: "answered", text: "Will the fallback be safe during maintenance?" },
+    reading: { outcome: "concern", unresolved: "Check the maintenance policy." },
+  }]);
+  const other = Array.from({ length: 33 }, (_, i) => {
+    const ticket = i < 4 ? String(572 + i) : i % 2 === 0 ? "577" : undefined;
+    const st = openStage(["--skill", "research", "--flow", opened.flow, "--parent", opened.stage, ...(ticket ? ["--ticket", ticket] : [])]);
+    if (i < 4) send(st, [{ kind: "round", now: `The rollout in zone ${i + 1} needs a dependency decision.`, questions: [question("pending", `Keep the dependency for zone ${i + 1}?`)] }]);
+    if (i >= 5) send(st, [{ kind: "stage", state: "finished" }]);
+    return st;
+  });
+  const page = await browser.newPage({ viewport: { width: 800, height: 768 } });
+  try {
+    await page.goto(`${opened.live.url}#${open.retry}`);
+    await page.locator(`#${open.retry}`).waitFor();
+    const bar = page.getByRole("navigation", { name: "Flow navigation", exact: true });
+    await waitForReaderLayout(page);
+    const overview = bar.getByRole("link", { name: title, exact: true });
+    const current = bar.getByRole("link", { name: /How should the rollout handle an unavailable zone\?.*Concern/ });
+    const stages = stagesButton(page);
+    const jump = jumpButton(page);
+    expect(await overview.getAttribute("href")).toBe("#overview");
+    expect(await bar.getByText("regional-service-catalogue", { exact: true }).isVisible()).toBe(true);
+    expect(await bar.getByText(work, { exact: true }).isVisible()).toBe(true);
+    expect(await current.getAttribute("aria-current")).toBe("location");
+    expect(await current.innerText()).toContain("!");
+    expect(await page.getByText("In your picker", { exact: false }).count()).toBe(0);
+    const stageName = bar.getByText(work, { exact: true });
+    const queueCount = bar.getByRole("button", { name: /\+\d+ open$/ });
+    const waitingCount = bar.getByRole("button", { name: /\+\d+ waiting Stages?$/ });
+    const assertFits = async (target: typeof stages) => {
+      const box = await target.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThan(12);
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(44);
+    };
+    const assertBarFits = async () => {
+      expect(await bar.evaluate(el => el.getBoundingClientRect().height)).toBe(44);
+      for (const target of [overview, current, stages, jump]) await assertFits(target);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    };
+    const assertCount = async (target: typeof queueCount, ids: string[], total: number) => {
+      expect(await target.count(), await bar.ariaSnapshot()).toBe(1);
+      await assertFits(target);
+      const count = (await target.innerText()).match(/\+(\d+)/)?.[1];
+      expect(count).toBeDefined();
+      expect((await target.ariaSnapshot()).match(/\+(\d+)/)?.[1]).toBe(count);
+      const shown = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
+        links.filter(link => ids.includes(link.getAttribute("href")!.slice(1))).length, ids);
+      expect(shown + Number(count)).toBe(total);
+      return count;
+    };
+    const queueIds = Object.values(open) as string[];
+    const waitingIds = other.slice(0, 4).map(st => st.stage as string);
+    await assertBarFits();
+    await assertCount(queueCount, queueIds, 21);
+    await page.emulateMedia({ colorScheme: "dark" });
+    await capture(page, "bar-800-dark");
+    await queueCount.click();
+    const queuePanel = page.getByRole("dialog", { name: "Jump", exact: true });
+    await queuePanel.waitFor();
+    expect(await queuePanel.getByRole("link").count()).toBe(21);
+    await capture(page, "jump-800-dark");
+    await page.keyboard.press("Escape");
+    await queuePanel.waitFor({ state: "hidden" });
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    await waitForReaderLayout(page);
+    await assertBarFits();
+    await capture(page, "bar-800-text-growth");
+    await page.evaluate(() => { document.documentElement.style.removeProperty("font-size"); });
+    await page.setViewportSize({ width: 320, height: 768 });
+    const assertIdentity = async () => {
+      for (const name of [overview, stageName]) {
+        expect((await name.boundingBox())?.width).toBeGreaterThanOrEqual(72);
+      }
+    };
+    await waitForReaderLayout(page);
+    await assertBarFits();
+    await assertIdentity();
+    expect(await assertCount(queueCount, queueIds, 21)).toBe("20");
+    expect(await assertCount(waitingCount, waitingIds, 4)).toBe("4");
+    await queueCount.click();
+    await queuePanel.waitFor();
+    expect(await queuePanel.getByRole("link").count()).toBe(21);
+    await page.keyboard.press("Escape");
+    await queuePanel.waitFor({ state: "hidden" });
+    await waitingCount.click();
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    const mapStages = map.getByRole("tabpanel", { name: "Stages", exact: true });
+    await mapStages.waitFor();
+    expect(await mapStages.getByRole("region", { name: "Waiting for an answer" }).getByRole("link").count()).toBe(5);
+    await capture(page, "map-320-dark");
+    await page.keyboard.press("Escape");
+    await map.waitFor({ state: "hidden" });
+    await page.emulateMedia({ colorScheme: "light" });
+    await capture(page, "bar-320-light");
+
+    const wideFont = await useWideReaderFont(page);
+    for (const width of [800, 360, 320]) {
+      await page.setViewportSize({ width, height: 768 });
+      await waitForReaderLayout(page);
+      await assertBarFits();
+      await assertIdentity();
+      await assertCount(queueCount, queueIds, 21);
+      await assertCount(waitingCount, waitingIds, 4);
+      await queueCount.click();
+      await queuePanel.waitFor();
+      expect(await queuePanel.getByRole("link").count()).toBe(21);
+      await page.keyboard.press("Escape");
+      await queuePanel.waitFor({ state: "hidden" });
+      await waitingCount.click();
+      await mapStages.waitFor();
+      expect(await mapStages.getByRole("region", { name: "Waiting for an answer" }).getByRole("link").count()).toBe(5);
+      await page.keyboard.press("Escape");
+      await map.waitFor({ state: "hidden" });
+    }
+    await wideFont.evaluate(el => { el.parentNode?.removeChild(el); });
+
+    await page.setViewportSize({ width: 2560, height: 1000 });
+    await waitForReaderLayout(page);
+    await assertBarFits();
+    await assertCount(waitingCount, waitingIds, 4);
+    expect(await bar.getByRole("link", { name: /Keep the fallback for zone 1\?.*Concern recorded/ }).innerText()).toContain("!");
+    await capture(page, "bar-2560-light");
+    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    expect(await bar.evaluate(el => el.getBoundingClientRect().top)).toBe(0);
+
+    await page.setViewportSize({ width: 3840, height: 1000 });
+    await waitForReaderLayout(page);
+    const lastWaitingCount = bar.getByRole("button", { name: /\+1 waiting Stage$/ });
+    await lastWaitingCount.waitFor();
+    const shownWaiting = await bar.locator('a[href^="#"]').evaluateAll((links, ids) =>
+      links.filter(link => ids.includes(link.getAttribute("href")!.slice(1))).map(link => link.textContent), other.map(st => st.stage));
+    expect(shownWaiting).toHaveLength(3);
+    expect(shownWaiting.every(label => label?.includes("1"))).toBe(true);
+    expect(await lastWaitingCount.isVisible()).toBe(true);
+  } finally {
+    await page.close();
+  }
+}, 120_000);
+
+test("Map opens on Stages, pins waiting work, and folds finished Stages by ticket", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Separate finished rollout work"]);
+  const start = (ticket?: string) => cli(["open", "--skill", "research", "--flow", opened.flow, ...(ticket ? ["--ticket", ticket] : [])]);
+  const closed = start("501");
+  const closedAgain = cli(["open", "--skill", "implement", "--flow", opened.flow, "--ticket", "501"]);
+  const ticketless = start();
+  const ticketTitle = "Verify rollout readiness";
+  submit(opened.flow, opened.stage, [{
+    kind: "wayfinder",
+    tickets: [{ id: "501", title: ticketTitle, url: "https://tracker.example.test/issues/501", state: "resolved", blockers: [] }],
+  }]);
+  for (const s of [closed, closedAgain, ticketless]) submit(s.flow, s.stage, [{ kind: "stage", state: "finished" }]);
+  const waiting = start("502");
+  submit(waiting.flow, waiting.stage, [{ kind: "round", now: "The pilot route is ready to review.", questions: [question("ask", "Keep the pilot route?")] }]);
+  const page = await browser.newPage();
+  try {
+    await page.goto(`${opened.live.url}#${opened.stage}`);
+    await page.locator(`#${opened.stage}`).waitFor();
+    await page.keyboard.press("m");
+    const map = page.getByRole("dialog", { name: "Map" });
+    await map.waitFor();
+    expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
+    const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
+    const targets = () => pane.getByRole("link").evaluateAll(links => links.map(link => link.getAttribute("href")));
+    expect(await targets()).toEqual([`#${waiting.stage}`, `#${opened.stage}`]);
+    expect(await pane.getByText("In progress · 1 open", { exact: true }).isVisible()).toBe(true);
+    await pane.getByText("#501 · 2 Stages", { exact: true }).click();
+    await pane.getByText("Ticketless · 1 Stage", { exact: true }).click();
+    expect(await targets()).toEqual([waiting.stage, opened.stage, closed.stage, closedAgain.stage, ticketless.stage].map(id => `#${id}`));
+    const recorded = cli(["show", "--flow", opened.flow]).stages as { id: string; label: string }[];
+    for (const { stage } of [closed, closedAgain]) {
+      const label = recorded.find(item => item.id === stage)!.label;
+      const row = pane.getByRole("link", { name: `${label} · ${ticketTitle}`, exact: true });
+      expect(await row.getAttribute("href", { timeout: 2500 })).toBe(`#${stage}`);
+    }
+    await pane.locator(`a[href="#${closedAgain.stage}"]`).click();
+    await map.waitFor({ state: "hidden" });
+    expect(await hash(page)).toBe(closedAgain.stage);
+    expect(await page.locator(`#${closedAgain.stage}`).evaluate(el => document.activeElement === el)).toBe(true);
+  } finally {
+    await page.close();
+  }
+}, 120_000);
 
 test("Stage tabs show each Stage's own content in first-publication order under a sticky header", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Reading by Stage"]);
   const first = submit(a.flow, a.stage, [
     { kind: "background", title: "Why tabs", summary: "Context.", sections: [{ heading: "Today", body: "One page." }], sources: ["GLOSSARY.md"] },
-    { kind: "round", questions: [question("q1", "Keep the first choice?")] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "Keep the first choice?")] },
   ]);
   submit(a.flow, a.stage, [{ kind: "answer", question: first.refs.q1, response: { status: "answered", picks: ["A"] } }]);
   const b = cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]);
   const research = submit(b.flow, b.stage, [doc("doc", "Research findings", 20)]);
-  const second = submit(a.flow, a.stage, [{ kind: "round", questions: [question("q2", "Keep the second choice?")] }]);
+  const second = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q2", "Keep the second choice?")] }]);
   const stageA = a.stage, stageB = b.stage;
   const background = (cli(["show", "--flow", a.flow]).reading.publications as { id: string; kind: string }[]).find((p) => p.kind === "background")!.id;
 
   const context = await browser.newContext({ viewport: { width: 1280, height: 700 } });
   try {
     const page = await context.newPage();
-    await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
-    expect((await tabs(page)).map((t) => t.target)).toEqual(["overview", stageA, stageB]);
+    await page.goto(`${a.live.url}#${stageA}`);
+    await shown(page, stageA);
     expect(await selected(page)).toBe(stageA);
-    expect(await shownBlocks(page)).toEqual([background, first.refs.q1, second.refs.q2]);
-    expect(await jumps(page)).toEqual([background, first.refs.q1, second.refs.q2]);
+    const fragments = [background, first.refs.q1, second.refs.q2];
+    const bodies = page.locator(fragments.map(id => `#${id}`).join(", "));
+    expect(await bodies.evaluateAll(els => els.map(el => el.id))).toEqual(fragments);
+    const stageJump = await openJump(page);
+    expect(await jumpIds(stageJump)).toEqual([background, first.refs.q1, second.refs.q2]);
+    await page.keyboard.press("Escape");
+    await stageJump.waitFor({ state: "hidden" });
 
     await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
-    const bar = await page.locator(".bar").evaluate((el) => el.getBoundingClientRect().top);
+    const bar = await barOf(page).evaluate((el) => el.getBoundingClientRect().top);
     expect(bar).toBe(0);
 
     await page.keyboard.press("l");
@@ -95,15 +335,34 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     await page.keyboard.press("h");
     expect(await selected(page)).toBe("overview");
 
-    const overviewStops: string[] = [];
-    for (let i = 0; i < 3; i++) {
+    const overviewIndex = await openJump(page);
+    await overviewIndex.getByRole("link", { name: "Open decisions", exact: true }).click();
+    await overviewIndex.waitFor({ state: "hidden" });
+    for (const name of ["Progress", "Changed since your last visit", "All Stages", "Topics"]) {
       await page.keyboard.press("j");
-      overviewStops.push(await hash(page));
+      expect(await page.locator("#overview summary:focus").innerText()).toBe(name);
     }
-    expect(overviewStops).toEqual(await jumps(page));
-    expect(await page.locator(".bar .jump-row a[aria-current]").getAttribute("href")).toBe(`#${overviewStops[2]}`);
+    const overviewJump = await openJump(page);
+    expect(await overviewJump.getByRole("link").allTextContents()).toEqual([
+      "Open decisions", "Progress", "Observations", "Changed since your last visit", "All Stages", "Topics",
+    ]);
+    expect(await overviewJump.locator("a[aria-current]").innerText()).toBe("Topics");
+    const jumpClose = overviewJump.getByRole("button", { name: "Close", exact: true });
+    for (const [start, bound, name] of [["j", "k", "Open decisions"], ["k", "j", "Topics"]] as const) {
+      await jumpClose.focus();
+      await page.keyboard.press(start);
+      const link = overviewJump.getByRole("link", { name, exact: true });
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+      await page.keyboard.press(bound);
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+    }
+    await overviewJump.getByRole("link", { name: "Observations", exact: true }).click();
+    await overviewJump.waitFor({ state: "hidden" });
+    await page.getByRole("region", { name: "Read-only observations", exact: true }).waitFor();
+    expect(await hash(page)).toBe("observations");
 
-    const clearance = () => page.evaluate((id) => document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom, research.refs.doc);
+    const clearance = () => barOf(page).evaluate((bar, id) =>
+      document.getElementById(id)!.getBoundingClientRect().top - bar.getBoundingClientRect().bottom, research.refs.doc);
     await page.goto(`${a.live.url}#${research.refs.doc}`);
     await page.locator(`#${research.refs.doc}`).waitFor();
     expect(await selected(page)).toBe(stageB);
@@ -121,8 +380,7 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     }
     for (let i = 0; i < 3; i++) {
       await page.reload();
-      await page.locator(".bar .tabs").waitFor();
-      await Bun.sleep(200);
+      await page.locator(`#${research.refs.doc}`).waitFor();
       expect(await selected(page)).toBe(stageB);
       expect(await clearance()).toBeGreaterThanOrEqual(0);
     }
@@ -141,40 +399,44 @@ test("Stage tabs show each Stage's own content in first-publication order under 
   }
 }, 120_000);
 
-test("Jump labels identify Assumed subjects and each published attempt without moving their destinations", async () => {
+test("Jump lists the latest attempts, one Assumed-picks entry, and exact reading destinations", async () => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Long decision history"]);
-  const subjects = [
-    "Keep [`captured evidence`](https://example.test/evidence)",
-    "Preserve Đặng Thị Ngọc Hân's review notes",
-    "Retain the deployment configuration for the European production environment",
-    "Retain the deployment configuration for the European staging environment",
-    ...Array.from({ length: 8 }, (_, i) => `Keep the recorded compatibility decision for service ${i + 1}`),
-  ];
+  const assumed = (ref: string, decision: string) => ({ kind: "assumed", ref, decision, pick: "Keep the existing choice", why: "The agreed behavior stays unchanged." });
   const first = submit(opened.flow, opened.stage, [
-    ...subjects.map((decision, i) => ({ kind: "assumed", ref: `choice-${i}`, decision, pick: "Keep the existing choice", why: "The agreed behavior stays unchanged." })),
-    doc("long", "Decision evidence", 30),
-    { kind: "round", questions: [question("original", "Keep the deployment route?"), question("single", "Keep the fallback?")] },
+    { kind: "background", ref: "context", title: "Deployment context", summary: "Context.", sections: [{ heading: "Today", body: "One route." }], sources: ["GLOSSARY.md"] },
+    assumed("first-pick", "Keep captured evidence"),
+    assumed("second-pick", "Preserve Đặng Thị Ngọc Hân's review notes"),
+    doc("long", "Decision [`evidence`](https://example.test/evidence)", 30),
+    assumed("third-pick", "Retain the European production environment"),
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("original", "Keep the deployment route?"), question("cross", "Keep the fallback?")] },
+  ]).refs;
+  const second = submit(opened.flow, opened.stage, [{ kind: "round", now: "The deployment route remains undecided.", questions: [question("retry", "Revisit the deployment route?", first.original)] }]).refs;
+  submit(opened.flow, opened.stage, [
+    { kind: "answer", question: second.retry, response: { status: "answered", picks: ["A"] } },
+    { kind: "stage", state: "finished", retire: [{ question: first.cross, reason: "Continue in a later Stage." }] },
   ]);
-  const second = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Keep the deployment route?"), again: first.refs.original }] }]);
-  const third = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Keep the deployment route?"), again: second.refs.retry }] }]);
-  const fourth = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Revisit the original deployment route?"), again: first.refs.original }] }]);
-  const attempts: string[] = [first.refs.original, second.refs.retry, third.refs.retry, fourth.refs.retry];
-  const expectedIds: string[] = [...subjects.map((_, i) => first.refs[`choice-${i}`]), first.refs.long, first.refs.original, first.refs.single, ...attempts.slice(1)];
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const later = cli(["open", "--flow", opened.flow, "--skill", "research", "--parent", opened.stage]);
+  const third = submit(later.flow, later.stage, [{ kind: "round", now: "The deployment route is settled and the fallback still needs a decision.", questions: [question("retry", "Revisit the fallback?", first.cross)] }]).refs;
+  const page = await browser.newPage({ viewport: { width: 800, height: 900 } });
   try {
-    const page = await context.newPage();
-    await page.goto(`${opened.live.url}#${opened.stage}`);
-    await page.locator(".bar .jump-row").waitFor();
-    expect(await jumps(page)).toEqual(expectedIds);
-    expect(await shownBlocks(page)).toEqual(expectedIds);
-    const row = page.locator(".bar .jump-row");
-    const firstJump = row.getByRole("link", { name: "Assumed: Keep captured evidence", exact: true });
-    expect(await firstJump.getAttribute("href")).toBe(`#${first.refs["choice-0"]}`);
-    expect(await firstJump.locator("code").innerText({ timeout: 2000 })).toBe("captured evidence");
-    expect(await firstJump.getByRole("link").count()).toBe(0);
+    await page.goto(`${opened.live.url}#${first.long}`);
+    await page.locator(`#${first.long}`).waitFor();
+    const jump = page.getByRole("dialog", { name: "Jump" });
+    const trigger = jumpButton(page);
+    expect(await jump.isVisible()).toBe(false);
+    await page.keyboard.press("g");
+    await jump.waitFor({ timeout: 3000 });
+    const links = jump.getByRole("link");
+    expect(await links.evaluateAll(as => as.map(a => a.getAttribute("href")))).toEqual(
+      [first.context, `${first["first-pick"]}-batch`, first.long, second.retry].map(id => `#${id}`),
+    );
+    expect(await jump.getByRole("link", { name: /Revisit the deployment route.*Your pick: A/ }).isVisible()).toBe(true);
+    expect(await jump.getByRole("link", { name: "Decision evidence", exact: true }).getAttribute("aria-current")).toBe("location");
+    const formatted = jump.getByRole("link", { name: "Decision evidence", exact: true });
+    expect(await formatted.locator("code").innerText()).toBe("evidence");
+    expect(await formatted.locator("a").count()).toBe(0);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    const shortJump = row.getByRole("link", { name: "Q2", exact: true });
-    for (const link of [firstJump, shortJump]) {
+    for (const link of [formatted, jump.getByRole("link", { name: "Assumed picks", exact: true })]) {
       const { height, padding } = await link.evaluate(el => {
         const { paddingInlineStart, paddingInlineEnd } = getComputedStyle(el);
         return { height: el.getBoundingClientRect().height, padding: [paddingInlineStart, paddingInlineEnd] };
@@ -182,52 +444,114 @@ test("Jump labels identify Assumed subjects and each published attempt without m
       expect(height, `Hit height of ${await link.textContent()}`).toBeGreaterThanOrEqual(28);
       expect(padding).toEqual(["8px", "8px"]);
     }
-    const gap = await firstJump.locator("code").evaluate(code => {
+    const gap = await formatted.locator("code").evaluate(code => {
       const prose = code.previousSibling as Text;
       const range = document.createRange();
       range.setStart(prose, 0);
       range.setEnd(prose, prose.data.trimEnd().length);
       return code.getBoundingClientRect().left - range.getBoundingClientRect().right;
     });
-    expect(gap, "Rendered space between Keep and the inline code").toBeGreaterThan(1);
-    for (let i = 1; i < subjects.length; i++) {
-      expect(await row.locator(`a[href="#${first.refs[`choice-${i}`]}"]`).innerText()).toBe(`Assumed: ${subjects[i]}`);
-    }
-    expect(await shortJump.innerText()).toBe("Q2");
-    for (const [i, id] of attempts.entries()) {
-      const link = row.getByRole("link", { name: `Q1 (attempt ${i + 1})`, exact: true });
-      expect(await link.getAttribute("href")).toBe(`#${id}`);
-      await link.click();
-      expect(await hash(page)).toBe(id);
-      expect(await selected(page)).toBe(opened.stage);
-      expect(await row.locator("a[aria-current]").getAttribute("href")).toBe(`#${id}`);
-      expect(await page.locator(`#${id}`).evaluate((el) => el.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(-1);
-    }
-    await firstJump.press("Enter");
-    expect(await hash(page)).toBe(first.refs["choice-0"]);
-    await page.keyboard.press("j");
-    expect(await hash(page)).toBe(first.refs["choice-1"]);
-    await page.keyboard.press("k");
-    expect(await hash(page)).toBe(first.refs["choice-0"]);
-    await page.keyboard.press("m");
-    await page.getByRole("dialog", { name: "Map" }).waitFor();
+    expect(gap, "Rendered space between Decision and the inline code").toBeGreaterThan(1);
+    await jump.getByRole("link", { name: "Assumed picks", exact: true }).click();
+    await jump.waitFor({ state: "hidden" });
+    expect(await hash(page)).toBe(`${first["first-pick"]}-batch`);
+    expect(await page.getByRole("heading", { name: "Keep captured evidence", exact: true }).isVisible()).toBe(true);
+    await trigger.click();
     await page.keyboard.press("Escape");
-    expect(await page.getByRole("dialog", { name: "Map" }).isVisible()).toBe(false);
-    expect(await hash(page)).toBe(first.refs["choice-0"]);
-    for (const width of [320, 2560]) {
-      await page.setViewportSize({ width, height: 900 });
-      expect(await row.isVisible()).toBe(true);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    }
-    await page.setViewportSize({ width: 320, height: 900 });
-    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-    await page.emulateMedia({ colorScheme: "dark" });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    expect(await jumps(page)).toEqual(expectedIds);
+    await jump.waitFor({ state: "hidden" });
+    expect(await trigger.evaluate(el => el === document.activeElement)).toBe(true);
+    await page.goto(`${opened.live.url}#${first.cross}`);
+    await page.locator(`#${first.cross}`).waitFor();
+    await page.locator(`#${first.cross}`).locator(`a[href="#${third.retry}"]`).first().click();
+    await page.locator(`#${third.retry}`).waitFor();
+    await trigger.click();
+    expect(await jump.getByRole("link", { name: /Revisit the fallback.*Open/ }).getAttribute("href")).toBe(`#${third.retry}`);
   } finally {
-    await context.close();
+    await page.close();
   }
 }, 120_000);
+
+test("a fresh bare link opens the Flow's current decision queue before choosing a Stage", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Production failover decisions"]);
+  const first = submit(opened.flow, opened.stage, [{ kind: "round", now: "The initial failover review is ready.", questions: [
+    question("prior", "Keep the existing failover?"),
+    question("settled", "Keep the release freeze?"),
+  ] }]).refs;
+  submit(opened.flow, opened.stage, [
+    { kind: "answer", question: first.prior, response: { status: "answered", text: "What if the replica is stale?" }, reading: { outcome: "concern", unresolved: "Check replica lag." } },
+    { kind: "answer", question: first.settled, response: { status: "answered", picks: ["A"] } },
+  ]);
+  const next = submit(opened.flow, opened.stage, [{ kind: "round", now: "Replica lag crossed the failover threshold.", questions: [
+    question("retry", "Change the failover threshold?", first.prior),
+    question("reply", "Keep the replica alert?"),
+    question("fresh", "Add the [follow-up report](https://example.com/report) for `AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion`?"),
+  ] }]).refs;
+  submit(opened.flow, opened.stage, [{ kind: "answer", question: next.reply, response: { status: "answered", text: "Who receives the alert?" }, reading: { outcome: "question", unresolved: "Name the on-call team." } }]);
+  const research = cli(["open", "--flow", opened.flow, "--skill", "research", "--parent", opened.stage]);
+  const second = submit(research.flow, research.stage, [{ kind: "round", now: "The retention review needs an owner.", questions: [
+    question("retention", "Assign the retention review?"),
+  ] }]).refs;
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  try {
+    await page.goto(opened.live.url);
+    const decisions = page.getByRole("region", { name: "Open decisions", exact: true });
+    await decisions.waitFor({ timeout: 3000 });
+    expect(await selected(page)).toBe("overview");
+    expect(await hash(page)).toBe("");
+    const groups = decisions.getByRole("list");
+    expect(await groups.count()).toBe(2);
+    const targets = (group: ReturnType<typeof groups.nth>) =>
+      group.getByRole("link").evaluateAll(links => links.map(link => link.getAttribute("href")));
+    expect(await targets(groups.nth(0))).toEqual([`#${second.retention}`]);
+    expect(await targets(groups.nth(1))).toEqual([next.retry, next.reply, next.fresh].map(id => `#${id}`));
+    expect(await groups.nth(0).getByText("The retention review needs an owner.", { exact: true }).isVisible()).toBe(true);
+    const [retry, reply, fresh] = await groups.nth(1).getByRole("listitem").all();
+    expect(await retry!.getByText("Replica lag crossed the failover threshold.", { exact: true }).isVisible()).toBe(true);
+    expect(await retry!.getByText("Concern", { exact: true }).isVisible()).toBe(true);
+    expect(await reply!.getByText("Question, not settled", { exact: true }).isVisible()).toBe(true);
+    expect(await fresh!.getByText("Open", { exact: true }).isVisible()).toBe(true);
+    const report = fresh!.getByRole("link", { name: "Add the follow-up report for AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion?", exact: true });
+    expect(await report.count()).toBe(1);
+    expect(await report.getAttribute("href")).toBe(`#${next.fresh}`);
+    expect(await report.locator("code").textContent()).toBe("AvailabilityZoneRecoveryConfigurationWithDelayedReplicaPromotion");
+    const time = retry!.locator("time[datetime]");
+    expect(await time.innerText()).toMatch(/just now|\bago$/);
+    expect(Date.parse((await time.getAttribute("datetime"))!)).toBeGreaterThan(0);
+    await capture(page, "overview-decisions-1280", true);
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.emulateMedia({ colorScheme: "dark" });
+    const wideFont = await useWideReaderFont(page);
+    await waitForReaderLayout(page);
+    const waitingCount = barOf(page).getByRole("button", { name: /\+2 waiting Stages$/ });
+    await waitingCount.waitFor();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await waitingCount.click();
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    const mapStages = map.getByRole("tabpanel", { name: "Stages", exact: true });
+    await mapStages.waitFor();
+    expect(await mapStages.getByRole("region", { name: "Waiting for an answer" }).getByRole("link").count()).toBe(2);
+    await page.keyboard.press("Escape");
+    await map.waitFor({ state: "hidden" });
+    await capture(page, "overview-decisions-320-dark", true);
+    await wideFont.evaluate(el => { el.parentNode?.removeChild(el); });
+    await retry!.getByRole("link", { name: "Change the failover threshold?", exact: true }).click();
+    await page.locator(`#${next.retry}`).waitFor();
+    expect(await selected(page)).toBe(opened.stage);
+    expect(await hash(page)).toBe(next.retry);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(next.reply);
+    await page.goBack();
+    await decisions.waitFor();
+    expect(await hash(page)).toBe("");
+    await page.goto(`${opened.live.url}#${research.stage}`);
+    await shown(page, research.stage);
+    await page.goto(`${opened.live.url}#${first.prior}`);
+    await page.locator(`#${first.prior}-fold[open]`).waitFor();
+    expect(await selected(page)).toBe(opened.stage);
+  } finally {
+    await page.close();
+  }
+}, 30_000);
 
 test("with no open question the page opens on Overview", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Nothing open"]);
@@ -236,18 +560,21 @@ test("with no open question the page opens on Overview", async () => {
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await barOf(page).waitFor();
     expect(await selected(page)).toBe("overview");
     expect(await page.locator("#overview").isVisible()).toBe(true);
-    const row = page.getByRole("navigation", { name: "In this tab" });
-    for (const name of ["Progress", "Observations", "Stages"]) {
-      expect(await row.getByRole("link", { name, exact: true }).isVisible()).toBe(true);
+    expect(await page.getByText("No open decisions.", { exact: true }).isVisible()).toBe(true);
+    await page.keyboard.press("g");
+    const jump = page.getByRole("dialog", { name: "Jump", exact: true });
+    await jump.waitFor();
+    for (const name of ["Progress", "Observations", "All Stages"]) {
+      expect(await jump.getByRole("link", { name, exact: true }).isVisible()).toBe(true);
     }
-    const stages = row.getByRole("link", { name: "Stages", exact: true });
-    expect(await stages.getAttribute("href", { timeout: 2000 })).toBe("#overview-stages");
-    await stages.click();
-    await stages.and(row.locator('[aria-current="location"]')).waitFor({ timeout: 2000 });
-    expect(await hash(page)).toBe("overview-stages");
+    await jump.getByRole("link", { name: "All Stages", exact: true }).click();
+    await jump.waitFor({ state: "hidden" });
+    expect(await hash(page)).toBe("overview:stages-row");
+    await page.keyboard.press("g");
+    expect(await jump.getByRole("link", { name: "All Stages", exact: true }).getAttribute("aria-current")).toBe("location");
   } finally {
     await context.close();
   }
@@ -271,7 +598,7 @@ test("old migrated tab fragments open their Stage's tab", async () => {
     for (const fragment of ["tab-stage-second", "stage-second", "tab-second"]) {
       await page.goto(`${migrated.live.url}#${fragment}`);
       await page.reload();
-      await page.locator(".bar .tabs").waitFor();
+      await shown(page, "second");
       expect(await selected(page)).toBe("second");
     }
   } finally {
@@ -282,13 +609,13 @@ test("old migrated tab fragments open their Stage's tab", async () => {
 test("n and k keep their place at the end of a Stage tab that cannot scroll its last block to the top", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Tab end"]);
   const long = doc("long", "Long findings", 12);
-  const round = submit(a.flow, a.stage, [long, { kind: "round", questions: [question("q1", "Keep the first choice?"), question("q2", "Keep the second choice?")] }]);
+  const round = submit(a.flow, a.stage, [long, { kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "Keep the first choice?"), question("q2", "Keep the second choice?")] }]);
   const { q1, q2 } = round.refs;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.goto(`${a.live.url}#${a.stage}`);
+    await shown(page, a.stage);
     const visits: string[] = [];
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press("n");
@@ -306,22 +633,21 @@ test("n and k keep their place at the end of a Stage tab that cannot scroll its 
   }
 }, 120_000);
 
-test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and l", async () => {
+test("n stays in the Focused Stage and wraps after Map links, fragments, h, and l", async () => {
   const a = cli(["open", "--skill", "wayfinder", "--ticket", "410", "--title", "Parallel tickets"]);
-  const first = submit(a.flow, a.stage, [{ kind: "round", questions: [question("q1", "First route?"), question("q2", "Second route?")] }]).refs;
+  const first = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "First route?"), question("q2", "Second route?")] }]).refs;
   const b = cli(["open", "--skill", "wayfinder", "--ticket", "411", "--flow", a.flow]);
-  const second = submit(b.flow, b.stage, [{ kind: "round", questions: [question("q1", "Newer first route?"), question("q2", "Newer second route?")] }]).refs;
+  const second = submit(b.flow, b.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q1", "Newer first route?"), question("q2", "Newer second route?")] }]).refs;
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
     const cdp = await context.newCDPSession(page);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-    await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await page.goto(`${a.live.url}#${b.stage}`);
+    await shown(page, b.stage);
     expect(await selected(page)).toBe(b.stage);
 
-    await page.locator(`.bar .tabs a[href="#${a.stage}"]`).click();
-    await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", a.stage);
+    await goViaMap(page, a.stage);
     const visits: string[] = [];
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press("n");
@@ -346,7 +672,7 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
     expect(await hash(page)).toBe(second.q1);
 
     await page.evaluate((id) => { location.hash = `#${id}`; }, first.q2);
-    await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", a.stage);
+    await shown(page, a.stage);
     await page.keyboard.press("n");
     expect(await hash(page)).toBe(first.q1);
 
@@ -360,7 +686,7 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
     expect(await hash(page)).toBe(second.q1);
 
     for (let i = 0; i < 100; i++) {
-      await page.locator(`.bar .jump-row a[href="#${second.q1}"]`).click();
+      await barOf(page).locator(`a[href="#${second.q1}"]`).click();
       await page.keyboard.press("n");
       expect(await hash(page)).toBe(second.q2);
       expect(await selected(page)).toBe(b.stage);
@@ -370,10 +696,10 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
     }
 
     await page.keyboard.press("n");
-    await page.locator(`.bar .jump-row a[href="#${second.q2}"]`).click();
+    await barOf(page).locator(`a[href="#${second.q2}"]`).click();
     await repaint();
     expect(await hash(page)).toBe(second.q2);
-    await page.locator(`.bar .jump-row a[href="#${second.q1}"]`).click();
+    await barOf(page).locator(`a[href="#${second.q1}"]`).click();
     await repaint();
     await page.keyboard.press("n");
     expect(await hash(page)).toBe(second.q2);
@@ -384,10 +710,10 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
 
 test("n stays put and explains when the Focused Stage has no open questions", async () => {
   const a = cli(["open", "--skill", "wayfinder", "--title", "Settled ticket"]);
-  const settled = submit(a.flow, a.stage, [doc("doc", "Settled findings"), { kind: "round", questions: [question("q", "Settled route?")] }]).refs;
+  const settled = submit(a.flow, a.stage, [doc("doc", "Settled findings"), { kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Settled route?")] }]).refs;
   submit(a.flow, a.stage, [{ kind: "answer", question: settled.q, response: { status: "answered", picks: ["A"] } }]);
   const b = cli(["open", "--skill", "wayfinder", "--flow", a.flow]);
-  submit(b.flow, b.stage, [{ kind: "round", questions: [question("q", "Other ticket route?")] }]);
+  submit(b.flow, b.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Other ticket route?")] }]);
   const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
   try {
     const page = await context.newPage();
@@ -405,20 +731,20 @@ test("n stays put and explains when the Focused Stage has no open questions", as
 
 test("Overview and Topics use Flow-wide n order while Stage tabs keep the existing eligibility rules", async () => {
   const a = cli(["open", "--skill", "wayfinder", "--title", "Eligible ticket questions"]);
-  const first = submit(a.flow, a.stage, [{ kind: "round", questions: [
+  const first = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [
     question("open", "First open route?"), question("settled", "Settled route?"), question("stale", "Earlier route?"),
   ] }]).refs;
   const again = submit(a.flow, a.stage, [
     { kind: "answer", question: first.settled, response: { status: "answered", picks: ["A"] } },
-    { kind: "round", questions: [{ ...question("again", "Revised route?"), again: first.stale }] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("again", "Revised route?", first.stale)] },
   ]).refs.again;
   const b = cli(["open", "--skill", "wayfinder", "--flow", a.flow]);
   const newest = submit(b.flow, b.stage, [
     { kind: "topic", title: "Navigation context", summary: "Parallel tickets.", body: "Each ticket has its own Stage.", sources: ["GLOSSARY.md"] },
-    { kind: "round", questions: [question("q", "Newest route?")] },
+    { kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Newest route?")] },
   ]).refs.q;
   const finished = cli(["open", "--skill", "research", "--flow", a.flow]);
-  const retired = submit(finished.flow, finished.stage, [{ kind: "round", questions: [question("q", "Deferred route?")] }]).refs.q;
+  const retired = submit(finished.flow, finished.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("q", "Deferred route?")] }]).refs.q;
   submit(finished.flow, finished.stage, [
     { kind: "close", decisions: [{ question: retired, text: "Deferred until another ticket." }] },
     { kind: "stage", state: "finished", retire: [{ question: retired, reason: "Deferred until another ticket." }] },
@@ -426,9 +752,8 @@ test("Overview and Topics use Flow-wide n order while Stage tabs keep the existi
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
-    await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
-    expect(await selected(page)).toBe(b.stage);
+    await page.goto(`${a.live.url}#${b.stage}`);
+    await shown(page, b.stage);
     for (const tab of ["overview", "topics"]) {
       await page.goto(`${a.live.url}#${tab}`);
       await page.reload();
@@ -441,8 +766,9 @@ test("Overview and Topics use Flow-wide n order while Stage tabs keep the existi
     for (const tab of ["overview", "topics"]) {
       await page.goto(`${a.live.url}#${newest}`);
       await page.locator(`#${newest}`).waitFor();
-      await page.locator(`.bar .tabs a[href="#${tab}"]`).click();
-      await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", tab);
+      if (tab === "overview") await barOf(page).getByRole("link", { name: "Eligible ticket questions", exact: true }).click();
+      else await goViaMap(page, tab);
+      await shown(page, tab);
       await page.keyboard.press("n");
       expect(await hash(page)).toBe(first.open);
     }
@@ -465,30 +791,30 @@ test("Overview and Topics use Flow-wide n order while Stage tabs keep the existi
   }
 }, 120_000);
 
-test("at 360px the tab row wraps without page overflow and fragment targets land below the header", async () => {
+test("at 360px the bar stays one row without page overflow and fragments clear it", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Many Stages"]);
   let last = a;
   for (const skill of ["research", "to-spec", "to-tickets", "code-review", "maintain-app-verification", "open-pr", "babysit"]) {
     last = cli(["open", "--skill", skill, "--flow", a.flow, "--parent", a.stage]);
     submit(last.flow, last.stage, [doc("doc", `${skill} findings`)]);
   }
-  const many = submit(last.flow, last.stage, [doc("long", "Long findings", 20), { kind: "round", questions: Array.from({ length: 16 }, (_, i) => question(`q${i}`, `Ship part ${i + 1}?`)) }]).refs;
+  const many = submit(last.flow, last.stage, [doc("long", "Long findings", 20), { kind: "round", now: "The routing options are ready for review.", questions: Array.from({ length: 16 }, (_, i) => question(`q${i}`, `Ship part ${i + 1}?`)) }]).refs;
   const target = many.long;
   const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
   try {
     const page = await context.newPage();
     await page.goto(`${a.live.url}#${target}`);
     await page.locator(`#${target}`).waitFor();
-    const geometry = await page.evaluate((id) => {
-      const row = document.querySelector(".bar .tabs")!.getBoundingClientRect();
-      const tab = document.querySelector(".bar .tabs a")!.getBoundingClientRect();
+    const bar = barOf(page);
+    const geometry = await bar.evaluate((el, id) => {
+      const row = el.getBoundingClientRect();
       return {
-        wrapped: row.height > tab.height * 1.5,
+        height: row.height,
         overflow: document.documentElement.scrollWidth - innerWidth,
-        below: document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom,
+        below: document.getElementById(id)!.getBoundingClientRect().top - row.bottom,
       };
     }, target);
-    expect(geometry.wrapped).toBe(true);
+    expect(geometry.height).toBe(44);
     expect(geometry.overflow).toBeLessThanOrEqual(0);
     expect(geometry.below).toBeGreaterThanOrEqual(0);
 
@@ -496,7 +822,8 @@ test("at 360px the tab row wraps without page overflow and fragment targets land
     await page.locator("#overview").waitFor();
     await page.evaluate((id) => { location.hash = `#${id}`; }, target);
     await Bun.sleep(200);
-    expect(await page.evaluate((id) => document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom, target)).toBeGreaterThanOrEqual(0);
+    expect(await bar.evaluate((el, id) =>
+      document.getElementById(id)!.getBoundingClientRect().top - el.getBoundingClientRect().bottom, target)).toBeGreaterThanOrEqual(0);
   } finally {
     await context.close();
   }
@@ -504,7 +831,7 @@ test("at 360px the tab row wraps without page overflow and fragment targets land
 
 test("Map keys select Stages without moving page tabs, arrows pan, and dismissal restores page navigation", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Map keyboard controls"]);
-  const pending = submit(a.flow, a.stage, [{ kind: "round", questions: [question("map-q", "Keep the map controls?")] }]);
+  const pending = submit(a.flow, a.stage, [{ kind: "round", now: "The routing options are ready for review.", questions: [question("map-q", "Keep the map controls?")] }]);
   const children = Array.from({ length: 24 }, () => cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]));
   const grandchild = cli(["open", "--skill", "prototype", "--flow", a.flow, "--parent", children[0].stage]);
   submit(a.flow, grandchild.stage, [{ kind: "stage", state: "finished" }]);
@@ -512,7 +839,7 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await barOf(page).waitFor();
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     const pageTab = await selected(page);
     const initialHash = await hash(page);
@@ -524,35 +851,39 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     }
     await page.keyboard.press("m");
     await map.waitFor();
-    expect(await map.getByRole("tab", { name: "Matt flow path", exact: true }).getAttribute("aria-selected")).toBe("true");
-    await page.keyboard.press("l");
     expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
-    const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
-    const cards = pane.getByRole("list", { name: "Stage cards" });
-    const stageLinks = cards.getByRole("link");
-    const expectedStages = [a, children[0], grandchild, ...children.slice(1)];
-    expect(await stageLinks.evaluateAll(links => links.map(link => link.getAttribute("href")))).toEqual(
-      expectedStages.map(stage => `#${stage.stage}`),
-    );
+    const stageLinks = map.getByRole("tabpanel", { name: "Stages", exact: true }).getByRole("link");
+    expect(await stageLinks.count()).toBe(25);
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
-    const items = cards.getByRole("listitem");
-    expect(await items.nth(0).innerText()).toContain("In progress · 1 open");
-    expect(await items.nth(2).innerText()).toContain("Finished · 0 open");
-    for (const i of [1, ...children.slice(1).map((_, i) => i + 3)]) {
-      expect(await items.nth(i).innerText()).toContain("In progress · 0 open");
+    expect(await map.getByRole("region", { name: "Waiting for an answer" }).getByText("In progress · 1 open", { exact: true }).isVisible()).toBe(true);
+    expect(await map.getByRole("region", { name: "No open questions" }).getByRole("link").count()).toBe(24);
+    for (const [i, child] of children.entries()) {
+      const link = stageLinks.nth(i + 1);
+      expect(await link.getAttribute("href")).toBe(`#${child.stage}`);
+      expect(await link.getAttribute("aria-description")).toBe("Parent Stage: Grill me");
     }
-    const edges = pane.locator("path[data-parent][data-child]");
-    await edges.first().waitFor({ state: "attached", timeout: 3000 });
-    expect(await edges.evaluateAll(paths => paths.map(path => [
-      path.getAttribute("data-parent"), path.getAttribute("data-child"),
-    ].join(" -> ")).sort())).toEqual([
-      ...children.map(child => `${a.stage} -> ${child.stage}`),
-      `${children[0].stage} -> ${grandchild.stage}`,
-    ].sort());
+    const finished = map.getByRole("region", { name: "Finished", exact: true });
+    await finished.getByText("Ticketless · 1 Stage", { exact: true }).click();
+    const finishedLink = finished.getByRole("link");
+    expect(await finishedLink.getAttribute("href")).toBe(`#${grandchild.stage}`);
+    expect(await finishedLink.getAttribute("aria-description")).toBe("Parent Stage: Research");
+    expect(await finished.getByText("Finished · 0 open", { exact: true }).isVisible()).toBe(true);
+    await finished.getByText("Ticketless · 1 Stage", { exact: true }).click();
+    await stageLinks.first().focus();
     await page.keyboard.press("j");
     expect(await stageLinks.nth(1).evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("k");
     expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
+    const close = map.getByRole("button", { name: "Close", exact: true });
+    for (const [start, bound, link] of [["j", "k", stageLinks.first()], ["k", "j", finished.getByText("Ticketless · 1 Stage", { exact: true })]] as const) {
+      await close.focus();
+      await page.keyboard.press(start);
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+      await page.keyboard.press(bound);
+      expect(await link.evaluate(el => document.activeElement === el)).toBe(true);
+    }
+    await stageLinks.first().focus();
+    const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
     await page.keyboard.press("ArrowDown");
     const panned = await pane.evaluate((el) => el.scrollTop);
     expect(panned).toBeGreaterThan(0);
@@ -566,18 +897,18 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
     expect(await map.getByRole("tab", { name: "Matt flow path", exact: true }).getAttribute("aria-selected")).toBe("true");
     await page.keyboard.press("Escape");
     await map.waitFor({ state: "hidden" });
-    const stagesButton = page.getByRole("button", { name: "Stages m", exact: true });
-    await stagesButton.click();
+    const trigger = stagesButton(page);
+    await trigger.click();
     await map.waitFor();
     expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
     await page.keyboard.press("j");
     await page.keyboard.press("Enter");
     await map.waitFor({ state: "hidden" });
-    await page.locator(`.bar .tabs a[href="#${children[0].stage}"][aria-current="page"]`).waitFor();
-    await stagesButton.click();
+    await shown(page, children[0].stage);
+    await trigger.click();
     await map.getByRole("button", { name: "Close", exact: true }).click();
     await map.waitFor({ state: "hidden" });
-    expect(await stagesButton.evaluate((el) => el === document.activeElement)).toBe(true);
+    expect(await trigger.evaluate((el) => el === document.activeElement)).toBe(true);
     await page.keyboard.press("m");
     await map.waitFor();
     await page.mouse.click(1, 1);
@@ -598,7 +929,7 @@ test("Escape returns focus to the Stages Map trigger after keyboard opening", as
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    const trigger = page.getByRole("button", { name: "Stages m", exact: true });
+    const trigger = stagesButton(page);
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     expect(await trigger.getAttribute("aria-haspopup")).toBe("dialog");
     for (const openWith of ["m", "Enter"] as const) {
@@ -615,14 +946,14 @@ test("Escape returns focus to the Stages Map trigger after keyboard opening", as
   }
 }, 120_000);
 
-test("a queued Map close does not take focus back from the Overview tab", async () => {
+test("a queued Map close does not take focus back from the Flow title link", async () => {
   const a = cli(["open", "--skill", "research", "--title", "Map focus after dismissal"]);
   const context = await browser.newContext();
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    const nav = page.getByRole("navigation", { name: "Flow tabs", exact: true });
-    const overview = nav.getByRole("link", { name: "Overview", exact: true });
+    const nav = barOf(page);
+    const overview = nav.locator('a[href="#overview"]');
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     await nav.waitFor();
     expect(await page.evaluate(() => document.activeElement === document.body)).toBe(true);
@@ -647,14 +978,14 @@ test("Map stays open when m reopens it before the previous native close event", 
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    const stagesButton = page.getByRole("button", { name: "Stages m", exact: true });
+    const trigger = stagesButton(page);
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     for (const reopenBeforeCloseEvent of [true, false]) {
-      await stagesButton.click();
+      await trigger.click();
       await map.waitFor();
-      const state = await map.evaluate(async (el, rapid) => {
+      const opener = await trigger.elementHandle();
+      const state = await map.evaluate(async (el, { rapid, opener }) => {
         const dialog = el as HTMLDialogElement;
-        const opener = document.querySelector<HTMLButtonElement>(".bar button[aria-haspopup='dialog']")!;
         const closed = new Promise<boolean>((resolve) => dialog.addEventListener("close", (e) => resolve(e.isTrusted), { once: true }));
         dialog.querySelector<HTMLButtonElement>("header button")!.click();
         await Promise.resolve();
@@ -668,7 +999,7 @@ test("Map stays open when m reopens it before the previous native close event", 
         const nativeClose = await closed;
         await new Promise(requestAnimationFrame);
         return { dismissed, openerRestored, reopened, nativeClose, stayedOpen: dialog.open, focusInside: dialog.contains(document.activeElement) };
-      }, reopenBeforeCloseEvent);
+      }, { rapid: reopenBeforeCloseEvent, opener });
       expect(state).toEqual({ dismissed: true, openerRestored: true, reopened: true, nativeClose: true, stayedOpen: true, focusInside: true });
       await page.keyboard.press("Escape");
       await map.waitFor({ state: "hidden" });
@@ -684,7 +1015,7 @@ test("Map shortcuts ignore editable controls and modified keys", async () => {
   try {
     const page = await context.newPage();
     await page.goto(a.live.url);
-    await page.locator(".bar .tabs").waitFor();
+    await barOf(page).waitFor();
     const map = page.getByRole("dialog", { name: "Map", exact: true });
     for (const inside of [false, true]) {
       if (inside) {
@@ -700,7 +1031,7 @@ test("Map shortcuts ignore editable controls and modified keys", async () => {
           el.focus();
         }, { tag, inside });
         const before = page.url();
-        for (const key of ["m", "h", "l", "j", "k", "n", "t", "ArrowDown", "ArrowRight"]) await page.keyboard.press(key);
+        for (const key of ["m", "g", "h", "l", "j", "k", "n", "t", "ArrowDown", "ArrowRight"]) await page.keyboard.press(key);
         expect(await map.isVisible()).toBe(inside);
         expect(page.url()).toBe(before);
         expect(await page.locator("#typing-probe").evaluate((el) => el === document.activeElement)).toBe(true);

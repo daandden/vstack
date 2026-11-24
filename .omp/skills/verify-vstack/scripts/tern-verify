@@ -58,8 +58,10 @@ open_cards() {
 }
 
 close_cards() {
-	xy=$(ctl tree '.mdl-x' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] / 2) \(.[1] + .[3] / 2)" else "" end')
-	[ -n "$xy" ] || xy=$(ctl tree '.tn-signin-card' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] - 22) \(.[1] + 26)" else "" end')
+	xy=$(ctl tree '.tn-signin-card .mdl-x' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] / 2) \(.[1] + .[3] / 2)" else "" end')
+	if [ -z "$xy" ] && [ "$(ctl tree '.tn-signin-card' | jq -r '.count')" = 0 ]; then
+		xy=$(ctl tree '.mdl-x' | jq -r 'if .count > 0 then .nodes[0].rect | "\(.[0] + .[2] / 2) \(.[1] + .[3] / 2)" else "" end')
+	fi
 	[ -z "$xy" ] || ctl click $xy >/dev/null
 }
 

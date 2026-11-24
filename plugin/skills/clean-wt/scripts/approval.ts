@@ -13,6 +13,7 @@ type InspectedTarget = {
   readonly action: Recommendation;
 };
 type ApprovalQuestion = Pick<Question, "title" | "description" | "needs"> & {
+  brief: Required<Pick<NonNullable<Question["brief"]>, "unblocks" | "undo" | "no_recommendation">>;
   ref: string;
   results?: string[];
   multi: true;
@@ -23,7 +24,7 @@ export type ApprovalChoice = { letter: string; label: string; path: string; fing
 type ApprovalRound = {
   question_ref: string;
   mapping: ApprovalChoice[];
-  contribution: { version: 1; items: [{ kind: "round"; questions: [ApprovalQuestion] }] };
+  contribution: { version: 1; items: [{ kind: "round"; now: string; questions: [ApprovalQuestion] }] };
 };
 export type ApprovalPlan = { version: 1; rounds: ApprovalRound[] };
 
@@ -104,6 +105,11 @@ function plan(targets: InspectedTarget[]): ApprovalPlan {
         ref: `cleanup-approval-${number}`,
         title: `Which checkouts may be removed from "${groupName}" (batch ${number})?`,
         description: "Select only the checkouts you want removed. Unselected checkouts stay. Recommendations do not authorize removal. Removal still requires the safety checks to pass.",
+        brief: {
+          unblocks: "Run the final safety checks and remove only the checkouts you select.",
+          undo: "Removal discards uncommitted changes and cannot be undone.",
+          no_recommendation: "Each checkout has its own recommendation. Nothing is selected because removal needs your explicit choice.",
+        },
         needs: [{ need: "Compare the verdicts and recommendations to decide which checkouts to remove.", kind: "prose" }],
         multi: true,
         options: mapping.map(({ label }) => ({
@@ -114,7 +120,11 @@ function plan(targets: InspectedTarget[]): ApprovalPlan {
         })),
       };
       rounds.push({
-        contribution: { version: 1, items: [{ kind: "round", questions: [question] }] },
+        contribution: { version: 1, items: [{
+          kind: "round",
+          now: `Inspection found ${mapping.length} unused ${mapping.length === 1 ? "checkout" : "checkouts"} with uncommitted changes in this "${groupName}" batch.`,
+          questions: [question],
+        }] },
         question_ref: question.ref,
         mapping,
       });

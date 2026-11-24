@@ -62,7 +62,7 @@
       "id": "unreadable",
       "expected": "negative",
       "basis": "Historical reviewed capture: both labels exist in captured bytes, but a 6986px-wide diagram shrinks to about 1216 CSS px, with its labels about 2.8 CSS px high. Judge displayed evidence, not source zoom.",
-      "expected_scope": "The historical reviewed capture, not every later rendering of this unchanged source.",
+      "expected_scope": "The historical reviewed capture, not later renderings.",
       "current_reader_review": {
         "question": "Q24",
         "answer": "B",

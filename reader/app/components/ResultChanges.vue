@@ -40,7 +40,7 @@ const changes = computed(() => difference(content(earlier.value), content(props.
 
 <template>
   <section :id="`${r.id}-changes`" class="grid min-w-0 gap-1.5 text-small" :aria-label="`Changes to ${r.title}`">
-    <details class="open:grid open:gap-2.5">
+    <details :id="`${r.anchor}-compare`" class="open:grid open:gap-2.5">
       <summary>Compare revisions</summary>
       <div :id="anchor(earlier)" class="grid gap-2.5">
       <div class="grid max-w-full justify-items-start gap-1">
