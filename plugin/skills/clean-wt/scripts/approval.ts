@@ -61,6 +61,9 @@ function readTargets(value: unknown): InspectedTarget[] {
     if (paths.has(path)) throw new Error(`${at}.checkout.path duplicates another target: ${path}`);
     paths.add(path);
     if (typeof checkout.kind !== "string" || !["ovnfs", "linked-worktree", "standalone-clone", "task-isolation", "orphaned-worktree"].includes(checkout.kind)) throw new Error(`${at}.checkout.kind is protected or unsupported`);
+    if (checkout.outcome === "vanished" || checkout.outcome === "replaced" || checkout.outcome === "inspection failed") {
+      throw new Error(`${at}.checkout has a protected ${checkout.outcome} outcome`);
+    }
     if (checkout.verdict !== "unused" || checkout.state !== "dirty" || checkout.automatic !== false) throw new Error(`${at}.checkout must be unused, dirty, and nonautomatic`);
     empty(checkout.owners, `${at}.checkout.owners`);
     empty(checkout.reasons, `${at}.checkout.reasons`);

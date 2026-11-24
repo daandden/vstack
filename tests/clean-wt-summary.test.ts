@@ -154,6 +154,33 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   expect(accounting.checkouts.find(({ discovery }: any) => discovery.path === p("gone-unverified")).verification.observation.ovnfs_listed).toBeNull();
 });
 
+test("discovery churn and inspection failures are neither verified kept nor removed", () => {
+  const f = fixture();
+  const vanished = checkout(join(f.root, "vanished"), { outcome: "vanished", verdict: "uncertain" });
+  const replaced = checkout(join(f.root, "replaced"), { outcome: "replaced", verdict: "uncertain" });
+  const failed = checkout(join(f.root, "failed"), {
+    outcome: "inspection failed", verdict: "uncertain", failure: { stage: "layout", error: "PRIVATE error" },
+  });
+  const checkouts = [vanished, replaced, failed];
+  const inventory = { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) };
+  const verification = {
+    inventory: { exit_code: 0, file: f.save("verify-inventory.json", { checkouts: [checkout(replaced.path), checkout(failed.path)], evidence_gaps: [] }) },
+    observations: [
+      { path: vanished.path, disk: "absent", git_registered: false },
+      { path: replaced.path, disk: "present" },
+      { path: failed.path, disk: "present" },
+    ],
+  };
+  f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup discovery fixture"]);
+  const contribution = f.render({ version: 1, phase: "finished", inventory, verification });
+  const [result] = contribution.items;
+  expect(result.summary).toBe("0 removed · 0 needs your pick · 0 skipped · 0 kept · 1 vanished · 1 replaced · 1 inspection failed");
+  expect(result.sections.map(({ heading }: { heading: string }) => heading)).toEqual(["Vanished", "Replaced", "Inspection failed"]);
+  expect(JSON.stringify(contribution)).not.toContain("PRIVATE error");
+  f.publish(contribution);
+  expect(f.accounting().checkouts.map(({ discovery }: { discovery: unknown }) => discovery)).toEqual(checkouts);
+});
+
 test("guarded skips still count once when final verification cannot confirm presence or ownership", () => {
   const f = fixture();
   const targets = ["confirmed", "missing", "uncertain"].map((name) => ({

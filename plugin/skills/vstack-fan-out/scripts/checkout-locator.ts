@@ -134,8 +134,8 @@ const realpath = (path: string) => {
 };
 
 export function ompWorktreeListing(base: string): { ok: boolean; reason?: string; paths: Set<string>; parentRepos: Map<string, string> } {
-  const r = Bun.spawnSync(["omp", "worktree", "list", "--json"], { env: { ...process.env, OMP_WORKTREE_DIR: base }, stdout: "pipe", stderr: "pipe" });
   try {
+    const r = Bun.spawnSync(["omp", "worktree", "list", "--json"], { env: { ...process.env, OMP_WORKTREE_DIR: base }, stdout: "pipe", stderr: "pipe" });
     if (r.exitCode !== 0) throw new Error(r.stderr.toString().trim() || `exit ${r.exitCode}`);
     const entries: unknown = JSON.parse(r.stdout.toString());
     if (!Array.isArray(entries) || !entries.every((e) => typeof e?.path === "string")) throw new Error("unrecognized output");
@@ -186,13 +186,14 @@ export interface CheckoutLocation {
   entry: string;
   kind: "worktree" | "task-isolation" | "standalone-clone" | "excluded";
   gaps: string[];
+  layoutError?: unknown;
 }
 
 export function checkoutLocations(path: string): CheckoutLocation[] | undefined {
-  const git = lstat(join(path, ".git"));
+  const git = stat(join(path, ".git"));
   if (git?.isFile()) return [{ path, entry: path, kind: "worktree", gaps: [] }];
-  const mounts = TASK_MOUNTS.filter((m) => lstat(join(path, m))?.isDirectory());
-  if (lstat(join(path, TASK_MARKER)) || mounts.length > 0) {
+  const mounts = TASK_MOUNTS.filter((m) => stat(join(path, m))?.isDirectory());
+  if (stat(join(path, TASK_MARKER)) || mounts.length > 0) {
     const multiMount = mounts.length > 1 ? `${path} holds both m and merged, and removing one would delete the other; check both before removing the sandbox by hand` : undefined;
     const known = new Set([...TASK_MOUNTS, TASK_MARKER, RETAINED_BACKEND]);
     const artifacts = readdirSync(path).filter((name) => !known.has(name));
@@ -208,22 +209,22 @@ export function scanCheckoutLocations(base: string, listing: { ok: boolean; reas
   const out: CheckoutLocation[] = [];
   if (listing.ok) {
     for (const path of [...listing.paths].sort()) {
-      const exclude = (reason: string) => out.push({ path, entry: path, kind: "excluded", gaps: [reason] });
+      const exclude = (reason: string, layoutError?: unknown) => out.push({ path, entry: path, kind: "excluded", gaps: [reason], layoutError });
       const depth = path.startsWith(base + sep) ? path.slice(base.length + 1).split(sep).length : 0;
       if (depth < 1 || depth > 2) {
         exclude(`native omp entry is outside the supported cleanup base or layout: ${path}`);
         continue;
       }
-      if (!lstat(path)?.isDirectory()) {
-        exclude(`native omp entry directory is missing or not a directory: ${path}`);
-        continue;
-      }
       try {
+        if (!lstatSync(path).isDirectory()) {
+          exclude(`native omp entry is not a directory: ${path}`);
+          continue;
+        }
         const locations = checkoutLocations(path);
         if (locations?.length) out.push(...locations);
         else exclude(`native omp entry has no supported checkout layout; retain its metadata and contents: ${path}`);
       } catch (error) {
-        exclude(`cannot inspect native omp entry layout: ${path}: ${(error as Error).message}`);
+        exclude(`cannot inspect native omp entry layout: ${path}: ${String(error)}`, error);
       }
     }
     return out;
@@ -252,6 +253,15 @@ export function checkoutEntry(path: string, base: string, listing: { ok: boolean
   return lstat(join(path, ".git")) ? entry : undefined;
 }
 
+export function checkoutInstance(path: string): string {
+  const dir = lstatSync(path);
+  const git = lstatSync(join(path, ".git"));
+  if (!dir.isDirectory() || (!git.isFile() && !git.isDirectory()) || !dir.ino || !git.ino) {
+    throw new Error(`cannot establish checkout identity: ${path}`);
+  }
+  return `${dir.dev}:${dir.ino}:${dir.birthtimeMs}:${git.dev}:${git.ino}:${git.birthtimeMs}`;
+}
+
 export interface OvnfsCleanupLocation {
   path: string;
   entry: string;
@@ -268,19 +278,23 @@ export function cleanupOvnfsLocations(
   sourcePaths: Set<string>,
 ): OvnfsCleanupLocation[] {
   const records = new Map<string, { file: string; gap?: string }>();
-  if (lstat(base)?.isDirectory()) {
-    for (const name of readdirSync(base)) {
-      const file = join(base, name, ".omp-ovnfs-checkout.json");
-      if (!lstat(file)?.isFile()) continue;
-      try {
+  let recordsGap: string | undefined;
+  try {
+    if (stat(base)?.isDirectory()) {
+      for (const entry of readdirSync(base, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const file = join(base, entry.name, ".omp-ovnfs-checkout.json");
+        if (!stat(file)?.isFile()) continue;
         const value = JSON.parse(readFileSync(file, "utf8"));
-        if (typeof value.checkout !== "string") continue;
+        if (typeof value.checkout !== "string") throw new Error(`invalid ovnfs run record: ${file}`);
         const gap = typeof value.command !== "string" || !value.command ? `invalid ovnfs run record: ${file}` : undefined;
         records.set(value.checkout, { file, gap });
-      } catch {}
+      }
     }
+  } catch (error) {
+    recordsGap = `cannot read shared ovnfs run records: ${String(error)}`;
   }
-  const known = new Set([...sourcePaths].map(canonical));
+  const known = new Set(sourcePaths);
   let changed: boolean;
   do {
     changed = false;
@@ -301,6 +315,7 @@ export function cleanupOvnfsLocations(
         ...(!checkout.name.startsWith("omp-") ? [`ovnfs checkout is outside omp cleanup scope; retain named and verifier checkouts: ${checkout.name}`] : []),
         ...(!belongs ? [`cannot establish ovnfs checkout origin: ${checkout.source}`] : []),
         ...(!lstat(checkout.path)?.isDirectory() ? [`ovnfs checkout directory is missing: ${checkout.path}`] : []),
+        ...(recordsGap ? [recordsGap] : []),
         ...(record?.gap ? [record.gap] : []),
       ],
     };

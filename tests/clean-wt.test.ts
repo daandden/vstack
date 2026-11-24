@@ -219,6 +219,151 @@ test("tracked and non-ignored untracked build paths still block automatic cleanu
   expect(readFileSync(join(path, "build"), "utf8")).toBe("untracked\n");
 });
 
+function gitDuring(cwd: string, condition: string, action: string) {
+  writeExecutable(join(dir, "bin", "git"), "sh", `
+if [ "$PWD" = ${JSON.stringify(cwd)} ] && ${condition} && [ ! -f ${JSON.stringify(join(dir, "git-triggered"))} ]; then
+  : > ${JSON.stringify(join(dir, "git-triggered"))}
+  ${action}
+fi
+exec "$FAKE_GIT" "$@"
+`);
+}
+
+test.each(["linked", "ovnfs"])("inventory accounts for a %s checkout deleted during a sibling inspection", (kind) => {
+  const survivor = linkedWorktree("wt-a");
+  const removed = kind === "linked" ? linkedWorktree("wt-z") : ovnfsCheckout("omp-gone");
+  const later = join(base, "late");
+  const state = JSON.stringify(join(ovnfsRoot, "checkouts.json"));
+  const prior = inventory();
+  rmSync(join(ovnfsRoot, "calls.jsonl"));
+  writeExecutable(join(dir, "bin", "omp"), "sh", `
+if [ "$1 $2 $3" = "worktree list --json" ]; then echo list >> ${JSON.stringify(join(dir, "omp-calls"))}; fi
+exec bun ${JSON.stringify(FAKE_OMP)} "$@"
+`);
+  gitDuring(survivor, '[ "$1" = status ]', `
+    ${kind === "linked" ? `"$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree remove ${JSON.stringify(removed)}` :
+      `/bin/rm -r ${JSON.stringify(removed)}; echo '[]' > ${state}`}
+    /bin/mkdir ${JSON.stringify(later)}
+`);
+  const r = cleanWt(["inventory", "--progress"]);
+  expect(r.code).toBe(0);
+  const report = Object.fromEntries(r.json.checkouts.map((record: Checkout) => [record.path, record]));
+  expect(Object.keys(report)).toEqual([survivor, removed]);
+  expect(report[survivor]).toEqual(prior[survivor]);
+  expect(report[removed]).toMatchObject({
+    outcome: "vanished", verdict: "uncertain", automatic: false, fingerprint: "",
+    failure: { stage: kind === "linked" ? "layout" : "inspection", error: expect.stringContaining("ENOENT") },
+  });
+  expect(r.stderr.split("\n").filter(Boolean).map((line) => JSON.parse(line))).toContainEqual(
+    expect.objectContaining({ phase: "checkout", stage: "vanished", path: removed }),
+  );
+  expect(readFileSync(join(dir, "omp-calls"), "utf8").trim().split("\n")).toHaveLength(2);
+  expect(readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").filter((line) => JSON.parse(line).args.includes("ls"))).toHaveLength(2);
+  expect(existsSync(removed)).toBe(false);
+  expect(existsSync(survivor)).toBe(true);
+  expect(existsSync(later)).toBe(true);
+});
+
+test.each(["linked", "ovnfs"])("inventory distinguishes a known %s replacement at the listed path", (kind) => {
+  const survivor = linkedWorktree("wt-a");
+  const replaced = kind === "linked" ? linkedWorktree("wt-z") : ovnfsCheckout("omp-reused");
+  const before = inventory()[replaced];
+  expect(before.automatic).toBe(true);
+  gitDuring(survivor, '[ "$1" = status ]', kind === "linked"
+    ? `"$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree remove ${JSON.stringify(replaced)}
+      "$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree add -q ${JSON.stringify(replaced)} wt/wt-z`
+    : `/bin/mv ${JSON.stringify(replaced)} ${JSON.stringify(join(dir, "previous"))}
+      "$FAKE_GIT" clone -q --no-hardlinks "$FAKE_OMP_PARENT" ${JSON.stringify(replaced)}`);
+  const r = cleanWt(["inventory", "--progress"]);
+  expect(r.code).toBe(0);
+  expect(r.json.checkouts).toEqual([
+    expect.objectContaining({ path: survivor, outcome: "inspected", automatic: true }),
+    expect.objectContaining({ path: replaced, outcome: "replaced", verdict: "uncertain", automatic: false, fingerprint: "" }),
+  ]);
+  expect(r.stderr).not.toContain("confirm absence");
+  expect(existsSync(replaced)).toBe(true);
+  const removal = remove("--approve", replaced, `${replaced}=${before.fingerprint}`);
+  expect(removal.removed).toEqual([]);
+  expect(removal.skipped).toEqual([{ path: replaced, reason: "it changed since the inventory" }]);
+  expect(existsSync(replaced)).toBe(true);
+});
+
+test("inventory protects a listed ovnfs path whose initial instance could not be observed", () => {
+  const survivor = linkedWorktree("wt-a");
+  const path = ovnfsCheckout("omp-invisible");
+  const hidden = join(dir, "hidden");
+  renameSync(path, hidden);
+  gitDuring(survivor, '[ "$1" = status ]', `/bin/mv ${JSON.stringify(hidden)} ${JSON.stringify(path)}`);
+  const r = cleanWt(["inventory", "--progress"]);
+  expect(r.code).toBe(0);
+  expect(r.json.checkouts[1]).toMatchObject({ path, verdict: "uncertain", automatic: false, fingerprint: "" });
+  expect(r.json.checkouts[1].outcome).not.toBe("vanished");
+  expect(r.json.checkouts[1].outcome).not.toBe("replaced");
+  expect(r.stderr).toContain("confirm absence");
+  expect(existsSync(path)).toBe(true);
+});
+
+test.each(["git file", "disk", "listing"])("inventory does not infer absence from a missing %s alone", (missing) => {
+  const survivor = linkedWorktree("wt-a");
+  const path = missing === "git file" ? linkedWorktree("wt-z") : ovnfsCheckout("omp-gone");
+  const removeGit = `/bin/rm ${JSON.stringify(join(path, ".git"))}`;
+  gitDuring(survivor, '[ "$1" = status ]', missing === "git file" ? removeGit :
+    missing === "disk" ? `/bin/rm -r ${JSON.stringify(path)}` :
+      `${removeGit}; echo '[]' > ${JSON.stringify(join(ovnfsRoot, "checkouts.json"))}`);
+  const r = cleanWt(["inventory", "--progress"]);
+  expect(r.code).toBe(0);
+  expect(r.json.checkouts[1]).toMatchObject({
+    path, outcome: "inspection failed", fingerprint: "", automatic: false, verdict: "uncertain",
+    failure: { stage: missing === "git file" ? "layout" : "inspection", error: expect.stringMatching(/ENOENT|not a git repository/) },
+  });
+  expect(r.stderr).toContain("confirm absence");
+  const refused = cleanWt(["remove", `${path}=${r.json.checkouts[1].fingerprint}`]);
+  expect(refused.code).toBe(2);
+  expect(refused.stderr).toContain("is not <path>=<fingerprint>");
+  expect(existsSync(path)).toBe(missing !== "disk");
+});
+
+test("inventory reports missing Git without mistaking it for a missing checkout", () => {
+  const path = linkedWorktree("wt-a");
+  const bins = join(dir, "bin");
+  symlinkSync(process.execPath, join(bins, "bun"));
+  if (process.platform === "darwin") symlinkSync(Bun.which("lsof")!, join(bins, "lsof"));
+  const r = cleanWt(["inventory", "--progress"], { PATH: bins });
+  expect(r.code).toBe(0);
+  expect(r.json.checkouts).toEqual([expect.objectContaining({
+    path, outcome: "inspection failed", fingerprint: "", automatic: false, verdict: "uncertain",
+    failure: { stage: "source resolution", error: expect.stringMatching(/ENOENT|not found/) },
+  })]);
+  expect(r.stderr).toContain("confirm absence");
+  expect(existsSync(path)).toBe(true);
+});
+
+test("inventory accounts for failed source resolution and protects all dependents without affecting other checkouts", () => {
+  const unrelated = linkedWorktree("wt-a");
+  const broken = join(dir, "broken-source");
+  git(dir, "clone", "-q", repo, broken);
+  const first = ovnfsCheckout("omp-first", broken);
+  const second = ovnfsCheckout("omp-second", first);
+  writeExecutable(join(dir, "bin", "git"), "sh", `
+if [ "$PWD" = ${JSON.stringify(broken)} ] && [ "$1" = rev-parse ]; then
+  echo 'fixture source evidence failure' >&2
+  exit 71
+fi
+exec "$FAKE_GIT" "$@"
+`);
+  const r = cleanWt(["inventory", "--progress"]);
+  expect(r.code).toBe(0);
+  expect(r.json.checkouts).toEqual([
+    expect.objectContaining({ path: unrelated, outcome: "inspected", automatic: true }),
+    ...[first, second].map((path) => expect.objectContaining({
+      path, outcome: "inspection failed", verdict: "uncertain", automatic: false, fingerprint: "",
+      failure: { stage: "source resolution", error: expect.stringContaining("fixture source evidence failure") },
+    })),
+  ]);
+  expect(r.stderr).toContain("confirm absence");
+  expect([first, second, unrelated].every(existsSync)).toBe(true);
+});
+
 test("machine-wide inventory resolves two repositories equally from Git and non-Git directories", () => {
   const first = linkedWorktree("wt-first");
   const other = join(dir, "other");
@@ -559,12 +704,74 @@ test("dirty work is removed only with --approve, and unique history is never rem
   expect(git(repo, "rev-parse", "--verify", "refs/heads/wt/wt-dirty")).toMatch(/^[0-9a-f]{40}$/);
 }, 30000);
 
-test("remove refuses an argument that names no checkout, before it removes anything", () => {
+test("remove refuses a present path that names no checkout, before it removes anything", () => {
   const path = linkedWorktree("wt-a");
   const c = inventory()[path];
-  const r = cleanWt(["remove", `${path}=${c.fingerprint}`, `${join(base, "nope")}=${c.fingerprint}`]);
+  const unknown = join(base, "not-a-checkout");
+  mkdirSync(unknown);
+  const r = cleanWt(["remove", `${path}=${c.fingerprint}`, `${unknown}=${c.fingerprint}`]);
   expect(r.code).toBe(2);
   expect(r.stderr).toContain("is not a checkout");
+  expect(existsSync(path)).toBe(true);
+});
+
+test.each(["linked", "ovnfs"])("remove skips a vanished %s target and continues the validated batch", (kind) => {
+  const survivor = linkedWorktree("wt-a");
+  const gone = kind === "linked" ? linkedWorktree("wt-z") : ovnfsCheckout("omp-gone");
+  const prior = inventory();
+  if (kind === "linked") git(repo, "worktree", "remove", gone);
+  else {
+    rmSync(gone, { recursive: true });
+    writeFileSync(join(ovnfsRoot, "checkouts.json"), "[]");
+  }
+  const targets = [`${gone}=${prior[gone].fingerprint}`, `${survivor}=${prior[survivor].fingerprint}`];
+  const unmatched = cleanWt(["remove", "--approve", join(base, "unmatched"), ...targets]);
+  expect(unmatched.code).toBe(2);
+  expect(unmatched.stderr).toContain("names no checkout in this removal");
+  expect(existsSync(survivor)).toBe(true);
+  const malformed = cleanWt(["remove", ...targets, `=${prior[gone].fingerprint}`]);
+  expect(malformed.code).toBe(2);
+  expect(malformed.stderr).toContain("is not <path>=<fingerprint>");
+  expect(existsSync(survivor)).toBe(true);
+
+  const result = cleanWt(["remove", "--progress", ...targets]);
+  expect(result.code).toBe(0);
+  expect(result.json).toEqual({
+    skipped: [{ path: gone, reason: expect.stringContaining("vanished") }],
+    removed: [{ path: survivor, method: "git worktree remove" }],
+    failed: [],
+  });
+  expect(result.stderr).toContain('"stage":"skipped"');
+  expect(existsSync(gone)).toBe(false);
+  expect(existsSync(survivor)).toBe(false);
+  expect(git(repo, "branch", "--list", "wt/wt-a")).toContain("wt/wt-a");
+});
+
+test.each(["vanished", "replaced", "inspection failed"])("the approval planner refuses a %s discovery outcome", (outcome) => {
+  const path = linkedWorktree("wt-a");
+  writeFileSync(join(path, "draft.txt"), "draft");
+  const checkout = inventory()[path];
+  const target = {
+    checkout: { ...checkout, outcome }, repository: "fixture", verdict: "Uncommitted draft",
+    contents: [{ category: "source", detail: "draft.txt" }], integration: { gap: "No integrated copy" },
+    classification: "unique unfinished work", risk: "Loses the draft", recommendation: { action: "keep", reason: "Only copy" },
+  };
+  const r = Bun.spawnSync([process.execPath, join(dirname(SCRIPT), "approval.ts"), "-"], {
+    cwd: repo, stdin: Buffer.from(JSON.stringify({ version: 1, targets: [target] })), stdout: "pipe", stderr: "pipe",
+  });
+  expect(r.exitCode).not.toBe(0);
+  expect(r.stdout.toString()).toBe("");
+  expect(r.stderr.toString()).toContain(outcome);
+  expect(readFileSync(join(path, "draft.txt"), "utf8")).toBe("draft");
+});
+
+test("inventory exits nonzero when two memberships claim the same checkout path", () => {
+  const path = linkedWorktree("wt-a");
+  writeFileSync(join(ovnfsRoot, "checkouts.json"), JSON.stringify([{ path, name: "omp-same-path", source: repo }]));
+  const r = cleanWt(["inventory"]);
+  expect(r.code).not.toBe(0);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toContain("duplicate checkout path");
   expect(existsSync(path)).toBe(true);
 });
 

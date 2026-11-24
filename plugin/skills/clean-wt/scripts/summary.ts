@@ -7,6 +7,7 @@ type CommandOutput = { exit_code: number | null; file: string };
 type Checkout = {
   path: string;
   kind: string;
+  outcome?: string;
   verdict: string;
   state: string;
   automatic?: boolean;
@@ -52,6 +53,9 @@ const HEADINGS = {
   automaticSkip: "Automatic removal skipped",
   notInvestigated: "Not investigated",
   unverified: "Outcome not verified",
+  vanished: "Vanished",
+  replaced: "Replaced",
+  inspectionFailed: "Inspection failed",
   notAttempted: "Kept, no removal attempted",
 } as const;
 type Group = keyof typeof HEADINGS;
@@ -214,6 +218,9 @@ function keptVerification({ inventory, observation }: CheckoutRecord["verificati
 
 function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pick<Records, "phase" | "stop">, verificationStatus: VerificationStatus, pending?: string): Outcome {
   const { investigation, offer, removals, verification } = record;
+  if (record.discovery.outcome === "vanished") return { group: "vanished", reason: "Absent from the confirmation listings and disk" };
+  if (record.discovery.outcome === "replaced") return { group: "replaced", reason: "A different checkout occupied the path during discovery" };
+  if (record.discovery.outcome === "inspection failed") return { group: "inspectionFailed", reason: "Discovery inspection did not finish" };
   const attempt = removals.findLast(({ status }) => status === "removed") ?? removals.at(-1);
   if (attempt?.status === "removed") {
     const reason = phase === "finished" ? removalVerification(record, current, verificationStatus) : undefined;
@@ -318,7 +325,8 @@ function render(records: Records, directory: string, revises?: string) {
     const outcome = classify(record, current, records, verificationStatus, pending.get(path)?.label);
     const { group, reason, verificationGap } = outcome;
     if (group === "needsPick") actionable.add(path);
-    else if (group === "uncertain" || ((group === "unverified" || group === "ownershipChanged") && isUnsafe(current))) {
+    else if (group === "uncertain" || group === "vanished" || group === "replaced" || group === "inspectionFailed"
+      || ((group === "unverified" || group === "ownershipChanged") && isUnsafe(current))) {
       const reasons = counts.get(group) ?? new Map<string, number>();
       reasons.set(reason, (reasons.get(reason) ?? 0) + 1);
       counts.set(group, reasons);
@@ -364,7 +372,12 @@ function render(records: Records, directory: string, revises?: string) {
   else if (!sections.length) sections.push({ heading: "Inventory", blocks: [{ prose: "No checkouts were found." }] });
   const removed = lines.get("removed")?.length ?? 0;
   const skipped = (lines.get("pickedSkip")?.length ?? 0) + (lines.get("automaticSkip")?.length ?? 0);
-  return { checkouts, contribution: contribution(`${removed} removed · ${actionable.size} needs your pick · ${skipped} skipped · ${kept} kept`) };
+  const summary = [`${removed} removed`, `${actionable.size} needs your pick`, `${skipped} skipped`, `${kept} kept`];
+  for (const [group, label] of [["vanished", "vanished"], ["replaced", "replaced"], ["inspectionFailed", "inspection failed"]] as const) {
+    const count = counts.get(group)?.values().next().value;
+    if (count) summary.push(`${count} ${label}`);
+  }
+  return { checkouts, contribution: contribution(summary.join(FIELD_SEPARATOR)) };
 }
 
 function linkedRound(file: string, ref: string, resultId: string) {
