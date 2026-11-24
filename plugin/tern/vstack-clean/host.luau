@@ -6,8 +6,9 @@ local SHELL = if tern.runtime.os == "macos" then "/bin/zsh" else (tern.getenv("S
 
 local KIND_TONES = { "accent", "info", "user" }
 
-local function run_clean(args, done)
-	local argv = { SHELL, "-lc", 'exec bun "$@"', "vstack-clean", CLEAN }
+local function run_clean(state, args, done)
+	local argv = { SHELL, "-lc", 'exec bun "$@"', "vstack-clean", CLEAN,
+		"--home", state.home, "--omp-home", state.home, "--witness", state.witness, "--older-than", state.age }
 	for _, arg in args do
 		table.insert(argv, arg)
 	end
@@ -40,32 +41,6 @@ local function ttl_seconds(age)
 	local n, unit = string.match(age, "^(%d+)([hdw]?)$")
 	n = tonumber(n) or 15
 	return n * (if unit == "h" then 3600 elseif unit == "w" then 604800 else 86400)
-end
-
--- Seconds since the Unix epoch of an ISO 8601 time in UTC (`Z`) or with an offset, as clean.ts and Flow state
--- write them. The day count is Howard Hinnant's days_from_civil.
-local function epoch_seconds(iso)
-	local y, mo, d, h, mi, s, zone = string.match(iso, "^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)[%.%d]*(.*)$")
-	y, mo = tonumber(y), tonumber(mo)
-	if mo <= 2 then
-		y -= 1
-	end
-	local era = y // 400
-	local yoe = y - era * 400
-	local doy = (153 * ((mo + 9) % 12) + 2) // 5 + tonumber(d) - 1
-	local days = era * 146097 + yoe * 365 + yoe // 4 - yoe // 100 + doy - 719468
-	local seconds = days * 86400 + tonumber(h) * 3600 + tonumber(mi) * 60 + tonumber(s)
-	local sign, oh, om = string.match(zone, "^([+-])(%d%d):?(%d%d)$")
-	if sign then
-		local offset = tonumber(oh) * 3600 + tonumber(om) * 60
-		seconds -= if sign == "+" then offset else -offset
-	end
-	return seconds
-end
-
--- A closed Flow ages from its close, every other entry from its newest file, as clean.ts measures them.
-local function age_seconds(entry, now)
-	return now - epoch_seconds(entry.closed or entry.newest_mtime)
 end
 
 local function age_tone(state, seconds)
@@ -109,15 +84,12 @@ end
 
 local function load(state)
 	state.phase = "loading"
-	state.ticked, state.cursor = {}, 1
-	run_clean({ "--home", state.home, "--older-than", state.age }, function(listing, err)
+	state.entries, state.ticked, state.cursor = {}, {}, 1
+	run_clean(state, {}, function(listing, err)
 		if err then
 			state.phase, state.error = "error", err
 		else
-			local entries, now = listing.entries, os.time()
-			for _, entry in entries do
-				entry.age_seconds = age_seconds(entry, now)
-			end
+			local entries = listing.rows
 			table.sort(entries, function(a, b)
 				if a.age_seconds ~= b.age_seconds then
 					return a.age_seconds > b.age_seconds
@@ -125,6 +97,7 @@ local function load(state)
 				return a.size > b.size
 			end)
 			state.entries, state.kept = entries, listing.kept
+			state.withheld = listing.withheld
 			state.total, state.largest = 0, 0
 			for _, entry in entries do
 				state.total += entry.size
@@ -138,24 +111,18 @@ end
 
 local function delete(state)
 	local rows, total = ticked_rows(state)
-	local args = { "--home", state.home, "--older-than", state.age, "--delete" }
-	local by_path = {}
+	local args = { "--delete" }
 	for _, entry in rows do
-		table.insert(args, entry.path)
-		by_path[entry.path] = entry
+		table.insert(args, entry.snapshot)
 	end
+	state.ticked = {}
 	state.phase = "deleting"
 	state.pending = { count = #rows, size = total }
-	run_clean(args, function(result, err)
+	run_clean(state, args, function(result, err)
 		if err then
-			state.phase, state.error = "error", err .. "\nSome entries may already be deleted."
+			state.phase, state.error = "interrupted", err
 		else
-			local freed = 0
-			for _, path in result.deleted do
-				freed += if by_path[path] then by_path[path].size else 0
-			end
-			state.phase = "done"
-			state.outcome = { deleted = result.deleted, skipped = result.skipped, freed = freed, by_path = by_path }
+			state.phase, state.outcome = "done", result
 		end
 		rerender(state)
 	end)
@@ -192,7 +159,7 @@ local function list_stats(state)
 	local oldest = state.entries[1]
 	return ui.stats({
 		{ label = "Expired", value = tostring(#state.entries), sub = human(state.total) .. " on disk" },
-		{ label = "Kept", value = tostring(state.kept or 0), sub = "Newer, or an open Flow" },
+		{ label = "Kept", value = tostring(state.kept or 0), sub = "Too new or protected" },
 		{
 			label = "Oldest", value = oldest.age_days .. " d", sub = oldest.repo_key,
 			tone = "warning",
@@ -210,7 +177,7 @@ local function entries_table(state)
 		{ id = "mark", head = "" },
 		{ id = "project", head = "Project", truncate = "end", priority = 1 },
 		{ id = "kind", head = "Kind", priority = 2 },
-		{ id = "entry", head = "Entry", grow = 1, truncate = "middle", mono = true, priority = 3 },
+		{ id = "entry", head = "Run or record", grow = 1, truncate = "end", priority = 3 },
 		{ id = "age", head = "Age", align = "end", mono = true, priority = 2 },
 		{ id = "share", head = "", priority = 1 },
 		{ id = "size", head = "Size", align = "end", mono = true, priority = 3 },
@@ -220,14 +187,14 @@ local function entries_table(state)
 		local ticked = state.ticked[i] == true
 		table.insert(rows, {
 			id = tostring(i),
-			title = entry.path,
+			title = entry.label,
 			cells = {
 				if ticked
 					then { text = "", icon = "check", tone = "accent", title = "Ticked" }
 					else { text = "", icon = "fill-none", tone = "muted", title = "Not ticked" },
 				entry.repo_key,
 				{ badge = { text = entry.kind, tone = kind_tone(entry.kind) } },
-				entry.entry,
+				entry.label,
 				{ text = entry.age_days .. " d", dot = age_tone(state, entry.age_seconds) },
 				{ meter = { value = if state.largest > 0 then entry.size / state.largest else 0, tone = "accent" } },
 				human(entry.size),
@@ -251,14 +218,14 @@ local function confirm_layer(state)
 	for _, entry in rows do
 		table.insert(items, {
 			icon = "trash", tone = "error",
-			label = ui.span(entry.entry, "mono"),
+			label = entry.label,
 			detail = entry.repo_key .. " / " .. entry.kind,
 			value = human(entry.size),
 		})
 	end
 	return ui.node("overlay", {
 		key = "confirm",
-		head = string.format("Delete %s, %s?", plural(#rows, "entry", "entries"), human(total)),
+		head = string.format("Delete %s, %s?", plural(#rows, "row", "rows"), human(total)),
 		meta = "This cannot be undone.",
 		icon = "warning",
 		tone = "error",
@@ -267,7 +234,7 @@ local function confirm_layer(state)
 		modal = true,
 	}, {
 		ui.list(items),
-		ui.text(ui.span("Each entry is checked against " .. state.age .. " again before it is deleted.", "muted")),
+		ui.text(ui.span("Cleanup checks each row again before deleting it.", "muted")),
 		with(ui.row({
 			ui.button("Back", { keys = { "Backspace" }, actions = { click = "back" } }),
 			ui.button("Delete", { variant = "danger", icon = "trash", keys = { "Enter" }, actions = { click = "confirm" } }),
@@ -277,66 +244,95 @@ end
 
 local function outcome_view(state)
 	local outcome = state.outcome
-	local items = {}
-	local function label(path)
-		local entry = outcome.by_path[path]
-		if entry then
-			return ui.span(entry.entry, "mono"), entry.repo_key .. " / " .. entry.kind, entry
+	local items, freed = {}, 0
+	local function item(row, icon, tone, value)
+		table.insert(items, { icon = icon, tone = tone, label = row.label, detail = row.repo_key .. " / " .. row.kind, value = value })
+	end
+	local function failure(entry)
+		table.insert(items, { icon = "error", tone = "error", label = entry.reason, detail = entry.path, title = entry.path })
+	end
+	for _, row in outcome.deleted do
+		freed += row.freed
+		item(row, "check", "success", human(row.freed))
+	end
+	for _, row in outcome.skipped do
+		item(row, "warning", "warning", row.reason)
+	end
+	for _, row in outcome.partial do
+		freed += row.freed
+		item(row, "warning", "warning", "Partly deleted · " .. human(row.freed))
+		for _, entry in row.failed_entries do
+			failure(entry)
 		end
-		return ui.path(path), nil, nil
 	end
-	for _, path in outcome.deleted do
-		local text, detail, entry = label(path)
-		table.insert(items, {
-			icon = "check", tone = "success", label = text, detail = detail,
-			value = if entry then human(entry.size) else nil,
-		})
-	end
-	for _, skip in outcome.skipped do
-		local text, detail = label(skip.path)
-		table.insert(items, { icon = "warning", tone = "warning", label = text, detail = detail, value = ui.span(skip.reason, "warning") })
+	for _, entry in outcome.maintenance_errors do
+		failure(entry)
 	end
 	return ui.col({
 		ui.stats({
 			{ label = "Deleted", value = tostring(#outcome.deleted), tone = if #outcome.deleted > 0 then "success" else nil },
-			{ label = "Freed", value = human(outcome.freed) },
+			{ label = "Freed", value = human(freed) },
 			{ label = "Skipped", value = tostring(#outcome.skipped), tone = if #outcome.skipped > 0 then "warning" else nil },
+			{ label = "Partly deleted", value = tostring(#outcome.partial), tone = if #outcome.partial > 0 then "warning" else nil },
 		}),
-		ui.text(ui.span(string.format("Deleted %s, freed %s. Skipped %d.",
-			plural(#outcome.deleted, "entry", "entries"), human(outcome.freed), #outcome.skipped), "strong")),
+		ui.text(ui.span(string.format("Deleted %s, freed %s. Skipped %d. Partly deleted %d.",
+			plural(#outcome.deleted, "row", "rows"), human(freed), #outcome.skipped, #outcome.partial), "strong")),
 		ui.list(items),
 	})
+end
+
+local function withheld_banner(state)
+	if #state.withheld == 0 then
+		return nil
+	end
+	local items, count = {}, 0
+	for _, issue in state.withheld do
+		count += issue.count
+		table.insert(items, { label = issue.reason, value = plural(issue.count, "row", "rows") })
+	end
+	return ui.card(plural(count, "row", "rows") .. " withheld", { ui.list(items) }, { tone = "warning", icon = "warning" })
 end
 
 local function main_view(state)
 	if state.phase == "loading" then
 		return ui.col({ ui.progress(nil, "Reading Scratch older than " .. state.age .. "…") })
-	elseif state.phase == "error" then
+	elseif state.phase == "error" or state.phase == "interrupted" then
+		local interrupted = state.phase == "interrupted"
+		local details = { ui.code(state.error) }
+		if interrupted then
+			table.insert(details, ui.text("Some rows may already be deleted. List again to select and confirm remaining rows."))
+		end
+		table.insert(details, ui.button(if interrupted then "List again" else "Retry", { icon = "refresh", size = "sm", actions = { click = "retry" } }))
 		return ui.col({
-			ui.card("Scratch cleanup failed", {
-				ui.code(state.error),
-				ui.button("Retry", { icon = "refresh", size = "sm", actions = { click = "retry" } }),
-			}, { tone = "error", icon = "error" }),
+			ui.card(if interrupted then "Delete did not finish" else "Scratch cleanup failed", details, { tone = "error", icon = "error" }),
 		})
 	elseif state.phase == "empty" then
+		local withheld = withheld_banner(state)
+		if withheld then
+			return ui.col({ withheld, ui.text(plural(state.kept or 0, "row", "rows") .. " kept. No rows offered.") })
+		end
 		return ui.col({
 			ui.card("Scratch is clean", {
-				ui.text(ui.span("No expired Scratch entries. Nothing to delete.", "muted")),
+				ui.text(ui.span("No expired Scratch rows. Nothing to delete.", "muted")),
 			}, {
 				tone = "success", icon = "check",
-				meta = string.format("%s kept, none older than %s", plural(state.kept or 0, "entry", "entries"), state.age),
+				meta = string.format("%s kept, none older than %s", plural(state.kept or 0, "row", "rows"), state.age),
 			}),
 		})
 	elseif state.phase == "deleting" then
 		return ui.col({
-			list_stats(state),
 			ui.progress(nil, string.format("Deleting %s, %s…",
-				plural(state.pending.count, "entry", "entries"), human(state.pending.size))),
+				plural(state.pending.count, "row", "rows"), human(state.pending.size))),
 		})
 	elseif state.phase == "done" then
 		return outcome_view(state)
 	end
-	return ui.col({ list_stats(state), entries_table(state), hints() })
+	local content = { list_stats(state), entries_table(state), hints() }
+	local withheld = withheld_banner(state)
+	if withheld then
+		table.insert(content, 1, withheld)
+	end
+	return ui.col(content)
 end
 
 local function close_button()
@@ -361,7 +357,7 @@ local function dock_view(state)
 			ui.button(if #rows == #state.entries then "Clear all" else "Select all", { keys = { "a" }, actions = { click = "select_all" } }),
 			ui.button(string.format("Delete %d", #rows), {
 				variant = "danger", icon = "trash", keys = { "d" }, actions = { click = "delete" },
-				disabled = if #rows == 0 then "Tick at least one entry" else nil,
+				disabled = if #rows == 0 then "Tick at least one row" else nil,
 			}),
 		})
 	elseif state.phase == "confirm" then
@@ -383,7 +379,7 @@ local function act(state, action, cx)
 		delete(state)
 	elseif state.phase == "confirm" and action == "back" then
 		state.phase = "list"
-	elseif state.phase == "error" and action == "retry" then
+	elseif (state.phase == "error" or state.phase == "interrupted") and action == "retry" then
 		load(state)
 	end
 end
@@ -391,7 +387,7 @@ end
 tern.block.define("popup", {
 	init = function(cx, args, _saved)
 		local state = {
-			cx = cx, home = args[1], age = args[2] or "15d",
+			cx = cx, home = args[1], age = args[2] or "15d", witness = args[3] or "",
 			phase = "loading", entries = {}, ticked = {}, cursor = 1,
 		}
 		load(state)

@@ -3,11 +3,11 @@ name: research
 description: Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent.
 ---
 
-Check enrollment through `skill://flow-page`'s "Stage entry/exit line" before any Flow discovery or creation. Resolve the vstack root and project Scratch dir once, or use the caller's supplied paths.
+Check enrollment through `skill://flow-page`'s "Stage entry/exit line" before any Flow discovery or creation. Resolve the vstack root once, or use the caller's supplied root.
 
 Give the research worker a fresh context window containing the research question and relevant context pointers.
 
-Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): research the question through the job below and save the canonical file in the named checkout, the vstack root, the Scratch dir. Return its path, cited findings, and limitations to this caller for delivery. Do not wait; keep working. If it cannot be spawned, stop: report the research as not started.
+Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): research the question through the job below and save the canonical file in the named checkout, the vstack root. Return its path, cited findings, and limitations to this caller for delivery. Do not wait; keep working. If it cannot be spawned, stop: report the research as not started.
 
 Its job:
 

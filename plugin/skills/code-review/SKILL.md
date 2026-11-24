@@ -26,7 +26,7 @@ Otherwise, when the user supplies a PR as a number or URL, pin it through these 
 1. Read `code-host.md` under the vstack root: `docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. For a CLI config, require a usable `read-pr` command row, not `unsupported`. For an MCP config, read the named server's current tool list, descriptions, and parameter schemas. Select its tool for `read-pr` by what it does and the arguments it accepts, using the recorded project facts. No operation row is needed. If discovery fails, the server is unreachable, or no tool can read the PR, stop and name the server and the failure or missing capability. Tell the user to connect that server or update setup. Never guess the host from the remote or use `ask` for a fixed point available through that host.
 2. Read the PR through that `read-pr` command or selected tool. Use the config's project facts to interpret the response. The fixed point is the target ref's latest commit, the base SHA. The reviewed commit is the source ref's latest commit, the head SHA.
 3. Fetch both exact commits from the repo and remote that the config names. For an MCP config, follow its project facts for fetching the PR's base and head, including a fork's head; do not assume GitHub or GitLab refs. For the GitHub and GitLab CLI configs, fetch the target branch and the PR head ref: `refs/pull/<n>/head` on GitHub, `refs/merge-requests/<n>/head` on GitLab. A fork's head need not be a branch on that remote. Make sure that both full SHAs resolve with `git rev-parse --verify <sha>^{commit}`. If the fetch facts or either commit are unavailable, stop and report the gap rather than reviewing a substitute.
-4. Open one detached checkout at the head SHA through the `skill://vstack-worktree` script, with purpose `code-review-<first 12 characters of the head SHA>` and a record in this run's Scratch entry. Use the returned `path` and keep the record for cleanup. Only when the backend is `omp-wt` and `cloned` is false, go on with tracked files only, because reviewers only read files. Leave the user's working tree, index, and current branch unchanged.
+4. Open one detached checkout at the head SHA through the `skill://vstack-worktree` script, with purpose `code-review-<first 12 characters of the head SHA>` and a record in this run's entry inside the marked `code-review` session folder from `skill://vstack-tmp`. Use the returned `path` and keep the record for cleanup. Only when the backend is `omp-wt` and `cloned` is false, go on with tracked files only, because reviewers only read files. Leave the user's working tree, index, and current branch unchanged.
 5. When the run ends, also when it stops early, remove this checkout through the script's `remove --record <record.json>` command.
 
 Otherwise use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, ask for the fixed point through `ask` under flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow.
@@ -90,13 +90,13 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 The axes that run are Standards, Spec unless step 2 found no spec, and Blast radius only when a step-1 trigger fired within a run. An explicit "skip blast radius" or "skip safety" skips Blast radius even within a run.
 
-When Blast radius runs, read `skill://vstack-tmp` and resolve the project Scratch dir once with its path script and no argument. Pass that absolute project dir, never the `blast-radius/` kind dir. A child uses the supplied dir without running the script. If this reviewer is itself a child, reuse the Scratch dir from its prompt.
+When Blast radius runs, carry the project Scratch dir and session id through `skill://vstack-fan-out`.
 
 With two or three axes, use this Fan-out line. With only Standards, use the single-subagent line below.
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per axis that runs. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: publish the affected axes as blocked through step 5 and report code-review as not run.
+Fan-out (skill://vstack-fan-out): parts: one per axis that runs. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the vstack root, the Scratch dir and session id. Wait for every result. If they cannot start, stop: publish the affected axes as blocked through step 5 and report code-review as not run.
 
 Issue the reviewer calls together in the foreground and aggregate every returned report.
 
@@ -126,7 +126,7 @@ The Blast radius reviewer prompt must include:
 - Every trigger that fired.
 - The run fact from step 1: "A user-started Matt run exists." A child runs Blast radius only when its parent's brief states this fact.
 - The brief: "Run `skill://blast-radius` on this diff and skip its step 6. Return its hand-back in under 400 words, plus the proof script and its output."
-- The supplied Scratch dir, with a distinct run entry under `blast-radius/`.
+- The project Scratch dir and session id, and a distinct run entry in the marked `blast-radius` session folder.
 
 ### 5. Show the report, then ask
 

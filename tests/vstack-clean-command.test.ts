@@ -12,7 +12,8 @@ const READY = {
     { id: "vstack-clean", status: "ready", window: true, blocks: [{ id: "popup" }] },
   ],
 };
-const trigger = (pane: string, age: string) => `${HOME}/.vstack/clean-popup/${pane}/${age}`;
+const WITNESS = "019abcde-1234-7abc-8def-000000000001";
+const trigger = (pane: string, age: string) => `${HOME}/.vstack/clean-popup/${pane}/${age}/${WITNESS}`;
 const ok = (value: unknown): Exec => ({ stdout: JSON.stringify(value), stderr: "", code: 0, killed: false });
 const handled = (_path: string): Exec => ok({ blocks: [], discarded: false });
 
@@ -32,6 +33,7 @@ afterEach(() => {
 function host(options: { plugins?: Exec; open?: (path: string) => Exec; hasUI?: boolean } = {}) {
   return fakeHost({
     hasUI: options.hasUI ?? true,
+    sessionId: WITNESS,
     exec: async (_command, args) => {
       if (args[0] === "plugin") return options.plugins ?? ok(READY);
       if (args[0] === "open" && args[1] === "--json") return (options.open ?? handled)(args[2]!);
@@ -41,7 +43,7 @@ function host(options: { plugins?: Exec; open?: (path: string) => Exec; hasUI?: 
 }
 const notes = (h: ReturnType<typeof host>) => h.uiCalls.filter(call => call.method === "notify").map(call => ({ text: call.args[0] as string, level: call.args[1] }));
 
-test("inside Tern with the plugin ready, the Command opens the popup over its pane with the 15-day default and nothing else", async () => {
+test("the Command opens the popup with its pane, age, omp home, and session witness, then returns", async () => {
   const h = host();
   await h.callCommand("vstack-clean");
   expect(h.execCalls).toEqual([
@@ -103,6 +105,7 @@ test("a plugin list that fails is reported and no open is tried", async () => {
 
 test.each([
   ["an unclaimed open that opened a file block", (_path: string): Exec => ok({ blocks: [6481105649732], discarded: false })],
+  ["the legacy handled-route error", (path: string): Exec => ({ stdout: "", stderr: `tern open: ${path} cannot open in a file block\n`, code: 1, killed: false })],
   ["another tern open error", (_path: string): Exec => ({ stdout: "", stderr: "tern open: no window\n", code: 1, killed: false })],
   ["a crash", (_path: string): Exec => ({ stdout: "", stderr: "", code: 2, killed: false })],
 ])("%s after a ready preflight is reported as a launch failure", async (_case, open) => {

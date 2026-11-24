@@ -1,6 +1,6 @@
 # Landing evidence
 
-The implementer or non-maintain review fixer saves one JSON evidence record per attempt outside its Isolated clone, under the run's Scratch entry. Return its absolute path as the evidence reference. Save it even when no proof can be reused: the Merger gets the scoped check plan from this record, not from the passing proof or the landing subject.
+The implementer or non-maintain review fixer saves one JSON evidence record per attempt outside its Isolated clone, under the run's entry inside the marked `implement-spec` session folder. Return its absolute path as the evidence reference. Save it even when no proof can be reused: the Merger gets the scoped check plan from this record, not from the passing proof or the landing subject.
 
 ## Scoped check plan
 

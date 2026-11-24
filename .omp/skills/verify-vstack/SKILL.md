@@ -127,7 +127,7 @@ Set the working directory with the bash tool's `cwd` parameter, not with `cd`. O
 
 ## Evidence
 
-1. Resolve the Scratch dir through `skill://vstack-tmp`, or use the Scratch dir from the parent prompt. Set `VERIFY_RUN_DIR=<Scratch dir>/verify/vstack-<run-id>`, where `<run-id>` is a new `date +%Y%m%d-%H%M%S` value plus the feature ID. Make it with `mkdir -p`.
+1. Open the marked `verify` session folder through `skill://vstack-tmp`. In a subagent, use the explicit mode with the project dir and session id from your brief. Set `VERIFY_RUN_DIR` to `vstack-<run-id>/` inside the folder. Use a new `date +%Y%m%d-%H%M%S` value plus the feature ID as the run id. Make the entry with `mkdir -p`.
 2. Keep proof and notes at the top level of `VERIFY_RUN_DIR`. Keep throwaway app data in `$VERIFY_RUN_DIR/data/`: the omp home, the link to the temp working directory, and Scratch homes for the CLIs.
 3. A drive writes its proof to `$VERIFY_RUN_DIR/<drive>/`: `summary.json`, `rpc.jsonl` (every frame omp wrote), `rpc.err`, `model-requests.jsonl` (every request the model got), `ui-responses.jsonl` (every dialog answer it sent, when there was a dialog), and `link.txt`. Read your proof out of these files with `jq`.
 4. Prove the action and the state after it. For a tool, that is the `tool_execution_end` frame and a later `get_state` value or file. For a skill command, that is the text the model received in `model-requests.jsonl`. For a CLI, that is the stdout, the exit code, and a separate listing of the files it changed. For a dry run, list the files before and after and show that nothing changed. Do not trust the word "dry".
@@ -153,7 +153,7 @@ Step `cleanup`: Do all three items below.
    bash "$SKILL_DIR/scripts/cleanup.sh" "$VERIFY_RUN_DIR"
    ```
 
-   It stops only the processes in `$VERIFY_RUN_DIR/data/pids` whose working directory is still this run's temp project dir. Then it deletes the temp dir that `data/outside` links to, and `$VERIFY_RUN_DIR/data/`. It refuses a dir that is not under `~/.vstack/tmp/<repo-key>/verify/`. It prints what it kept.
+   It stops only the processes in `$VERIFY_RUN_DIR/data/pids` whose working directory is still this run's temp project dir. Then it deletes the temp dir that `data/outside` links to, and `$VERIFY_RUN_DIR/data/`. It refuses a dir that is not under `~/.vstack/tmp/<repo-key>/verify/<session-id>/`. It prints what it kept.
 3. Make sure that the proof files and `notes.md` from Evidence are still at their paths.
 
 Never stop a process because of its name. Never delete the run dir itself. The `/vstack-clean` Command removes old run dirs later.

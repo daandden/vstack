@@ -32,7 +32,7 @@ bun scripts/vstack-maintain.ts check --rename <artifact>=<new artifact>
 bun scripts/vstack-maintain.ts check --remove <artifact>
 ```
 
-`plan`, `merge`, and `check` make no branch or worktree and write nothing in a checkout. They can fetch into the external Upstream cache. `plan` writes one Scratch entry of kind `maintain` and prints its plan.json path, even when no Pin moves. Keep that path for `merge` and `check` in this session. All commands accept `--root <checkout>`, `--upstreams <cache>`, and `--remote <url>`. `plan` and `gates` also accept `--scratch <dir>`, the absolute Scratch dir for their entry. Without it, the entry goes under the Scratch dir that the checkout's own `.git` names. `-h` prints usage. JSON failures exit 2. The `--scratch` dir and the external cache must not be inside a checkout.
+`plan`, `merge`, and `check` make no branch or worktree and write nothing in a checkout. They can fetch into the external Upstream cache. `plan` writes one Scratch entry of kind `maintain` and prints its plan.json path, even when no Pin moves. Keep that path for `merge` and `check` in this session. All commands accept `--root <checkout>`, `--upstreams <cache>`, and `--remote <url>`. `plan` and `gates` also accept `--scratch <dir>`, the absolute Scratch dir for their entry. Without it, the script resolves the project's Scratch dir. `plan` and `gates` write under the marked `maintain` session folder, using `PI_SESSION_ID` unless `--session-id` supplies the parent id with `--scratch`. `-h` prints usage. JSON failures exit 2. The `--scratch` dir and the external cache must not be inside a checkout.
 
 The plan classifies unchanged, changed, moved, removed, and new rows. It groups rows that share an artifact and diffs each held row from its own `held_at` and `held_path`, not the global old Pin. Both Upstream sides of adapt and merge rows already contain the ordered House style replacements (ADR 0008). Judgment rules still need an agent.
 
@@ -69,7 +69,7 @@ Draft every Update and Hand edit in one isolated `vstack-worker`. The installed 
 
 The parent tracks each drafting and review-fix-wave worker through skill://vstack-fan-out/WORKER-LIFECYCLE.md. After its accepted patch lands and no question, conflict, or follow-up needs it, release the settled worker and record the observed outcome. On gate failure, a changed plan, an unavailable notice, a failed apply, or any early return, preserve useful unapplied drafts and diagnostics outside the clone before deciding release. Keep exact held and retry patches in stable Scratch copies. Running or still-needed workers stay retained with concrete reasons. Each fresh fix wave or retry has its own lifecycle entry; the drafting worker never releases itself.
 
-Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, the vstack root, the Scratch dir and session id. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
 Read the worker's patch path from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.`, as skill://implement/END-STATE.md step 6b does. Never derive a path from an agent id. Read the patch. Apply it on implement's branch in the main checkout with `git apply -- "<patchPath>"`. A worker that returns without passing `gates` lands nothing. Report its failing stage and evidence path.
 
@@ -77,7 +77,7 @@ For each wave of review fixes, as implement's END-STATE.md step 5 defines them, 
 
 ### Drafting brief
 
-Write only in your clone and under the Scratch dir. Never commit. Run every command from your clone's root, not from a checkout path in this brief. Pass `--scratch <Scratch dir>` to every `plan` and `gates` run. Your clone has its own `.git`, so the default Scratch entry is outside the Scratch dir. Run `gates` last. Return only after `gates` passes, with each stage name and its `ok` value. If a failure remains after your fixes, return the failing stage and its evidence path.
+Write only in your clone and in the marked `maintain` session folder. Open that folder in explicit subagent mode through `skill://vstack-tmp` before saving manual evidence. Never commit. Run every command from your clone's root. Pass `--scratch <project Scratch dir> --session-id <parent session id>` to every `plan` and `gates` run. Run `gates` last. Return only after `gates` passes, with each stage name and its `ok` value. If a failure remains after your fixes, return the failing stage and its evidence path.
 
 Run `bun install --frozen-lockfile` in your clone before the maintainer commands.
 
@@ -91,7 +91,7 @@ For a removal or rename, change every caller in your clone. Each changed adopt c
 
 #### One decisions file
 
-Store the file outside your clone, under `<Scratch dir>/maintain/`. It can contain Update rows, Hand edit targets, and Upstream drops together:
+Store the file outside your clone, inside the marked `maintain` session folder. It can contain Update rows, Hand edit targets, and Upstream drops together:
 
 ```json
 {
@@ -146,4 +146,4 @@ Use these criteria in the existing pass, not a second review or a separate closi
 - Subagent: inspect targets and the skills they call for concurrent subagents outside a Fan-out line, unnamed or non-vstack roles, and Flow-bound user questions that bypass flow-page's "Every ask in a Flow" contract, including CLI publication and separate answer recording. Preserve genuinely unbound `ask` and the native approval exception in `skill://flow-page`.
 - Update Fan-out: review every changed Upstream item, adopt included, and every caller, including callers whose own Upstream text stayed unchanged. Follow calls across skills. Check the Session model rule (ADR 0004), roles, and asking wording. Check that every step with two or more parts uses the Fan-out line, and that every single-subagent line ends with a stop or skip clause from skill://vstack-fan-out's FORMS.md, so that no caller does a subagent's work itself. Check each accepted row's hunks against the final text so no Upstream change is lost. Return reviewed paths, findings with file and line, evidence, proposed fixes, and open questions without asking. Review coverage that is missing is not a clean result.
 
-When implement delegates these criteria, use code-review's Fan-out line and reviewer briefs. Pass the resolved vstack root, target and caller paths, code-review's result from any earlier review, and Scratch path. implement handles findings in its review step and owns every later commit and publication action.
+When implement delegates these criteria, use code-review's Fan-out line and reviewer briefs. Pass the resolved vstack root, target and caller paths, code-review's result from any earlier review, and the project Scratch dir and session id when the reviewer writes Scratch. implement handles findings in its review step and owns every later commit and publication action.

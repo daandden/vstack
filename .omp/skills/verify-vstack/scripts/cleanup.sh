@@ -7,8 +7,8 @@ set -euo pipefail
 if [ $# -ne 1 ]; then echo "usage: cleanup.sh <run dir>" >&2; exit 2; fi
 RUN=$(builtin cd "$1" && pwd)
 case "$RUN" in
-  "$HOME"/.vstack/tmp/*/verify/vstack-*) ;;
-  *) echo "cleanup.sh: $RUN is not a run dir under ~/.vstack/tmp/<repo-key>/verify/" >&2; exit 2 ;;
+  "$HOME"/.vstack/tmp/*/verify/????????-????-????-????-????????????/vstack-*) ;;
+  *) echo "cleanup.sh: $RUN is not a run dir under ~/.vstack/tmp/<repo-key>/verify/<session-id>/" >&2; exit 2 ;;
 esac
 OUTSIDE=$(readlink "$RUN/data/outside" 2>/dev/null || true)
 if [ -f "$RUN/data/pids" ]; then

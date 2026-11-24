@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Protect Scratch cleanup against folder replacement, stale live-session archive evidence, and unreadable inventory. Keep labels from readable compressed archives."
+  ]
+}

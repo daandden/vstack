@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -8,6 +8,7 @@ import { futureDatabase, legacyBackup, legacyBinding, legacyBytes, legacyCompani
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-sqlite-")));
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
+const cleanup = join(import.meta.dir, "../plugin/skills/vstack-tmp/scripts/clean.ts");
 let serial = 0;
 const hosts: { home: string; cwd: string; port: number }[] = [];
 function world() {
@@ -28,6 +29,20 @@ async function cli(w: ReturnType<typeof world>, args: string[], input?: unknown,
   return { code, stdout, stderr, json: stdout ? JSON.parse(stdout) : undefined };
 }
 function ok(run: Awaited<ReturnType<typeof cli>>) { expect(run.stderr).toBe(""); expect(run.code).toBe(0); return run.json; }
+function clean(w: ReturnType<typeof world>, at: string, folder: string) {
+  const args = [process.execPath, cleanup, "--home", w.home, "--now", new Date(Date.parse(at) + 16 * 86400000).toISOString()];
+  const opts = { env: ENV, stdout: "pipe", stderr: "pipe" } as const;
+  const listing = Bun.spawnSync(args, opts);
+  expect(listing.stderr.toString()).toBe("");
+  expect(listing.exitCode).toBe(0);
+  const row = JSON.parse(listing.stdout.toString()).rows.find((row: { path: string }) => row.path === folder);
+  expect(row?.snapshot).toEqual(expect.any(String));
+  const result = Bun.spawnSync([...args, "--delete", row.snapshot], opts);
+  expect(result.stderr.toString()).toBe("");
+  expect(result.exitCode).toBe(0);
+  return JSON.parse(result.stdout.toString());
+}
+
 afterAll(async () => {
   for (const w of hosts) await cli({ ...w, scratch: "" }, ["host", "stop"], undefined, "fixture-session", w.port);
   rmSync(root, { recursive: true, force: true });
@@ -43,6 +58,29 @@ test("validate refuses pending JSON import without creating storage and a later 
   expect(storageSnapshot(w.home, w.cwd)).toBeUndefined();
   expect(legacyBytes(fixture.source)).toEqual(original);
   expect(ok(await cli(w, ["show", "--flow", fixture.state.flow.id])).revision).toBe(1);
+});
+
+test("cleanup lists closed legacy Flows without importing JSON or changing storage", () => {
+  const w = world(), opened = legacyFlowFixture(w.home, w.cwd);
+  const closedAt = "2025-05-15T12:00:00.000Z";
+  const id = "closed-legacy-flow";
+  legacyFlow(w.home, w.cwd, id, {
+    ...opened.state, flow: { ...opened.state.flow, id }, lifecycle: [{ event: "closed", time: closedAt }],
+  });
+  const inventory = (dir: string): unknown[] => readdirSync(dir).sort().map(name => {
+    const path = join(dir, name), st = lstatSync(path);
+    return [path, st.mtimeMs, st.ctimeMs, st.isDirectory() ? inventory(path) : readFileSync(path).toString("base64")];
+  });
+  const before = inventory(w.home);
+  const run = Bun.spawnSync([process.execPath, cleanup, "--home", w.home, "--now", "2025-06-15T12:00:00.000Z"],
+    { env: ENV, stdout: "pipe", stderr: "pipe" });
+  expect(run.stderr.toString()).toBe("");
+  expect(run.exitCode).toBe(0);
+  expect(inventory(w.home)).toEqual(before);
+  expect(JSON.parse(run.stdout.toString())).toMatchObject({
+    rows: [expect.objectContaining({ kind: "flow", path: join(w.scratch, "flow", id), closed: closedAt, snapshot: expect.any(String) })],
+    kept: 1,
+  });
 });
 
 test("validate refuses a pending schema migration without changing the database", async () => {
@@ -219,9 +257,7 @@ test("JSON imports preserve bindings, aliases, comments, learning, and observati
   expect(observed.git.provenance.checkout).toBe(w.cwd);
   ok(await cli(w, ["submit", "--flow", id, "--stage", "stage-1"], { version: 1, items: [{ kind: "stage", state: "finished" }] }));
   const closed = ok(await cli(w, ["close", "--flow", id]));
-  const cleaned = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/vstack-tmp/scripts/clean.ts"), "--home", w.home, "--now", new Date(Date.parse(closed.closed) + 16 * 86400000).toISOString(), "--delete", folder], { env: ENV, stdout: "pipe", stderr: "pipe" });
-  expect(cleaned.exitCode).toBe(0);
-  expect(JSON.parse(cleaned.stdout.toString()).deleted).toEqual([folder]);
+  expect(clean(w, closed.closed, folder).deleted).toMatchObject([{ removed: [folder] }]);
   expect(existsSync(folder)).toBe(false);
   expect(ok(await cli(w, ["bound"])).binding).toBeNull();
   expect((await cli(w, ["find", "folder:earlier-folder"])).stderr).toContain("no content any more");
@@ -272,8 +308,9 @@ test("a refused database deletion keeps the Flow and its captured bytes readable
   const snapshot = ok(await cli(w, ["show", "--flow", opened.flow]));
   refuseFlowDeletion(w.home, opened.flow);
   const folder = storedFolder(w.home, opened.flow), asset = join(folder, snapshot.attachments[0].file);
-  const clean = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/vstack-tmp/scripts/clean.ts"), "--home", w.home, "--now", new Date(Date.parse(closed.closed) + 16 * 86400000).toISOString(), "--delete", folder], { env: ENV, stdout: "pipe", stderr: "pipe" });
-  expect(clean.exitCode).toBe(1);
+  const outcome = clean(w, closed.closed, folder);
+  expect(outcome.deleted).toEqual([]);
+  expect(outcome.partial).toMatchObject([{ removed: [], failed_entries: [{ path: folder, reason: expect.any(String) }] }]);
   expect(ok(await cli(w, ["show", "--flow", opened.flow])).revision).toBe(closed.revision);
   expect(readFileSync(asset, "utf8")).toBe("captured proof");
 });

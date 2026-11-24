@@ -5,7 +5,7 @@ argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save it under Scratch, not the current workspace: run `bun "$(realpath skill://vstack-tmp/scripts/path.ts)" handoff` with the bash tool from inside the repo, and write `<ts>-<slug>.md` in the dir it prints, where `<ts>` is the current time as `YYYYMMDD-HHMMSS` and `<slug>` names the next session's focus in a few lowercase words joined by hyphens. Print the file's absolute path at the end of your reply.
+Write a handoff document so a fresh agent can continue the work. Open the marked `handoff` session folder through `skill://vstack-tmp`. Save `<ts>-<slug>.md` inside it. Use `YYYYMMDD-HHMMSS` for the timestamp and a few lowercase, hyphen-separated words for the slug. Print the absolute path at the end of your reply.
 
 Include a "suggested skills" section in the document, naming each skill the next agent should load as a `skill://<name>` reference.
 

@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
 import { checkoutEntry, checkoutLocations, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
+import { readSessionLeases, sessionLeaseName, sessionOwnersDir } from "../../vstack-tmp/scripts/session-leases.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -76,8 +77,9 @@ const realpath = (p: string) => {
 
 const requestedBase = resolve(values.base ?? defaultCheckoutBase(0));
 const base = realpath(requestedBase) || requestedBase;
-const ownersDir = resolve(values["session-owners"] ?? join(homedir(), ".omp", "run", "session-owners"));
-const sessionRoots = (values.sessions ?? [join(process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".omp", "agent"), "sessions")]).map((p) => resolve(p));
+const home = homedir();
+const ownersDir = values["session-owners"] === undefined ? sessionOwnersDir(home) : resolve(values["session-owners"]);
+const sessionRoots = (values.sessions ?? [join(process.env.PI_CODING_AGENT_DIR ?? join(home, ".omp", "agent"), "sessions")]).map((p) => resolve(p));
 const inside = (p: string, dir: string) => p === dir || p.startsWith(dir + sep);
 
 
@@ -177,19 +179,6 @@ function discoverHolderSessions(pids: number[]): SessionHeader[] {
   return readSessions();
 }
 
-/** The lock path of omp's session lease for an id: plain ids name the file, other ids are hashed first. */
-function leasePath(id: string): string {
-  const name = /^[A-Za-z0-9_-]{1,128}$/.test(id) ? id : `h-${Bun.hash.wyhash(id).toString(16).padStart(16, "0")}`;
-  return `${resolve(ownersDir, name)}.lock`;
-}
-
-/** omp's Linux file lock binds an abstract Unix socket named after two xxHash64 hashes of the lock path. */
-function abstractLockName(lockPath: string): string {
-  const high = Bun.hash.xxHash64(lockPath, 0x4f4d502d4c4f434bn).toString(16).padStart(16, "0");
-  const low = Bun.hash.xxHash64(lockPath, 0x50492d46494c454cn).toString(16).padStart(16, "0");
-  return `omp-file-lock-${high}${low}`;
-}
-
 interface Leases {
   ok: boolean;
   reason?: string;
@@ -197,43 +186,6 @@ interface Leases {
   /** Held lease names, with their holder pid, that no readable session header names. Linux leases cannot be listed, so this stays empty there. */
   unknown: Map<string, number | null>;
 }
-
-function heldLeases(ids: string[], native: ReturnType<typeof run> | undefined): Leases {
-  const held = new Map<string, number | null>();
-  const unknown = new Map<string, number | null>();
-  if (process.platform === "linux") {
-    let table: string;
-    try {
-      table = readFileSync("/proc/net/unix", "utf8");
-    } catch (e) {
-      return { ok: false, reason: `cannot read /proc/net/unix: ${(e as Error).message}`, held, unknown };
-    }
-    const bound = new Set<string>();
-    for (const line of table.split("\n")) {
-      const name = line.trim().split(/\s+/)[7];
-      if (name?.startsWith("@")) bound.add(name.slice(1));
-    }
-    for (const id of ids) if (bound.has(abstractLockName(leasePath(id)))) held.set(id, null);
-    return { ok: true, held, unknown };
-  }
-  if (process.platform === "win32") return { ok: false, reason: "omp's session leases are named mutexes on Windows, which this script cannot read", held, unknown };
-  const r = native!;
-  if (r.code !== 0 && r.code !== 1) return { ok: false, reason: `lsof failed on ${ownersDir}: ${r.err.trim() || `exit ${r.code}`}`, held, unknown };
-  const wanted = new Map(ids.map((id) => [leasePath(id), id]));
-  let pid: number | null = null;
-  let descriptor = "";
-  for (const line of r.out.split("\n")) {
-    if (line.startsWith("p")) { pid = Number(line.slice(1)); descriptor = ""; }
-    else if (line.startsWith("f")) descriptor = line.slice(1);
-    else if (line.startsWith("n") && descriptor !== "cwd" && dirname(line.slice(1)) === ownersDir && line.endsWith(".lock")) {
-      const id = wanted.get(line.slice(1));
-      if (id !== undefined) held.set(id, pid);
-      else unknown.set(basename(line.slice(1), ".lock"), pid);
-    }
-  }
-  return { ok: true, held, unknown };
-}
-
 
 const ownSession = process.env.PI_SESSION_ID;
 let sessionHeaders: SessionHeader[] = [];
@@ -268,7 +220,10 @@ function gatherEvidence() {
   const native = process.platform === "linux" || process.platform === "win32"
     ? undefined
     : run(["lsof", "-d", "cwd", "+d", ownersDir, "-Fpcfn"]);
-  leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])], native);
+  const observed = readSessionLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])], ownSession, home, { ownersDir, nativeScan: native });
+  const held = new Map<string, number | null>();
+  for (const [id, lease] of observed.sessions) if (lease.state === "held") held.set(id, lease.pid);
+  leases = { ok: !observed.scanError, reason: observed.scanError, held, unknown: observed.unnamed.holders };
   const buf = Buffer.alloc(1 << 16);
   sessionHeaders = sessionHeaders.flatMap((header) => {
     if (!leases.held.has(header.id)) return [header];
@@ -281,7 +236,7 @@ function gatherEvidence() {
   const holders = [...new Set([...leases.unknown.values(), ...[...leases.held].filter(([id]) => !known.has(id)).map(([, pid]) => pid)])].filter((p): p is number => p !== null);
   if (holders.length > 0) {
     for (const h of discoverHolderSessions(holders)) {
-      const name = basename(leasePath(h.id), ".lock");
+      const name = sessionLeaseName(h.id);
       if (known.has(h.id) || (!leases.held.has(h.id) && !leases.unknown.has(name))) continue;
       known.add(h.id);
       sessionHeaders.push(h);

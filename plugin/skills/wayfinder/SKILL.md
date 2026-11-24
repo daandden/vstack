@@ -169,7 +169,7 @@ The user may run unblocked tickets in parallel, so expect other sessions to be e
 
 Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user; they return open questions for the parent to put through `ask` on the ticket's Stage. An unanswered question that prevents a cited answer leaves the ticket open. The parent records each runner's result on that ticket's Stage, not the parent's last active Stage.
 
-Resolve the mode and absolute vstack root once using the project's vstack config. Read its tracker and domain docs. Pass that root unchanged to every child; children never resolve the git common dir again. If a child writes Scratch, also resolve and pass the project's Scratch dir through skill://vstack-tmp. Use distinct names for each ticket's findings.
+Resolve the mode and absolute vstack root once using the project's vstack config. Read its tracker and domain docs. Pass that root unchanged to every child; children never resolve the git common dir again. Open the marked `wayfinder` session folder through `skill://vstack-tmp` for any landing checkout record. The research runners write findings in the clone or the vstack root, not in Scratch. Use distinct names for each ticket's findings.
 
 Before either path below, check `task.isolation.enabled`. If it is off, stop and point at `/skill:setup-vstack`.
 

@@ -18,7 +18,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line" for a critique run. The coo
 
 ### 1. Get the critique
 
-Spawn one `vstack-comment-critic` via `task` (`agent: "vstack-comment-critic"`): critique the scoped files or diff in the named tree and return its report, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the critique needs a fresh context. Report prune-comments as not run.
+Spawn one `vstack-comment-critic` via `task` (`agent: "vstack-comment-critic"`): critique the scoped files or diff in the named tree and return its report, the vstack root. Wait for its result. If it cannot be spawned, stop: the critique needs a fresh context. Report prune-comments as not run.
 
 Pass the scope without restating the critic's rules.
 

@@ -1,15 +1,76 @@
-// Layout: <home>/.vstack/tmp/<repo-key>/<kind>/<entry>.
-
 import { createHash } from "node:crypto";
-import { closeSync, fstatSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { closeSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
+import { dlopen } from "bun:ffi";
 
 /** The key for Scratch made outside any git repo. */
 export const GLOBAL_KEY = "_global";
 
 /** A kind is one lowercase path segment, such as `explain` or `blast-radius`. */
 export const KIND = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export const TICKETS_KIND = "to-tickets";
+export const SESSION_MARK = ".vstack-scratch-session";
+
+export function isScratchSessionId(id: string | undefined): id is string {
+  return id?.length === 36 && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id);
+}
+
+export function readScratchSession(path: string, entry = lstatSync(path, { throwIfNoEntry: false })): string | undefined {
+  if (!entry?.isDirectory()) return undefined;
+  const id = basename(path);
+  if (!isScratchSessionId(id)) return undefined;
+  const mark = join(path, SESSION_MARK);
+  const stat = lstatSync(mark, { throwIfNoEntry: false });
+  if (stat?.isFile() && stat.size === id.length + 1 && readFileSync(mark, "utf8") === `${id}\n`) return id;
+}
+
+function publishScratchSession(source: string, target: string): boolean {
+  if (process.platform === "darwin") {
+    const RENAME_EXCL = 4;
+    const lib = dlopen("/usr/lib/libSystem.dylib", { renamex_np: { args: ["ptr", "ptr", "u32"], returns: "i32" } });
+    try {
+      return lib.symbols.renamex_np(Buffer.from(`${source}\0`), Buffer.from(`${target}\0`), RENAME_EXCL) === 0;
+    } finally { lib.close(); }
+  }
+  if (process.platform === "linux") {
+    const AT_FDCWD = -100, RENAME_NOREPLACE = 1;
+    const lib = dlopen("libc.so.6", { renameat2: { args: ["i32", "ptr", "i32", "ptr", "u32"], returns: "i32" } });
+    try {
+      return lib.symbols.renameat2(AT_FDCWD, Buffer.from(`${source}\0`), AT_FDCWD, Buffer.from(`${target}\0`), RENAME_NOREPLACE) === 0;
+    } finally { lib.close(); }
+  }
+  if (process.platform === "win32") {
+    const lib = dlopen("kernel32.dll", { MoveFileW: { args: ["ptr", "ptr"], returns: "i32" } });
+    try {
+      return lib.symbols.MoveFileW(Buffer.from(`${source}\0`, "utf16le"), Buffer.from(`${target}\0`, "utf16le")) !== 0;
+    } finally { lib.close(); }
+  }
+  throw new Error(`Cannot publish a Scratch session folder without atomic no-replace rename on ${process.platform}`);
+}
+
+/** Return the session folder, or undefined when an existing entry has no valid mark. */
+export function createScratchSession(scratchDir: string, kind: string, id: string): string | undefined {
+  if (!KIND.test(kind) || !isScratchSessionId(id)) throw new Error("Invalid Scratch kind or session id");
+  const parent = join(scratchDir, kind);
+  const dir = join(parent, id);
+  const existing = lstatSync(dir, { throwIfNoEntry: false });
+  if (existing) return readScratchSession(dir, existing) === id ? dir : undefined;
+  mkdirSync(parent, { recursive: true });
+  const pending = mkdtempSync(join(parent, ".vstack-scratch-"));
+  let published = false;
+  try {
+    writeFileSync(join(pending, SESSION_MARK), `${id}\n`, { flag: "wx" });
+    published = publishScratchSession(pending, dir);
+    if (published) return dir;
+    const winner = lstatSync(dir, { throwIfNoEntry: false });
+    if (!winner) throw new Error(`Could not publish Scratch session folder without replacing an existing entry: ${dir}`);
+    return readScratchSession(dir, winner) === id ? dir : undefined;
+  } finally {
+    if (!published) rmSync(pending, { recursive: true, force: true });
+  }
+}
 
 /** `<home>/.vstack/tmp`, the only directory clean.ts deletes in. */
 export const scratchRoot = (home: string): string => join(home, ".vstack", "tmp");
