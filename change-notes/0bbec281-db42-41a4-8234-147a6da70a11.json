@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Read live sessions' archives again when they change during the Scratch cleanup search, so one active session no longer withholds every old Scratch row.",
+    "Recheck every live session's archive before deleting each Scratch row, so a mention written while an earlier row is deleted keeps the next row."
+  ]
+}
