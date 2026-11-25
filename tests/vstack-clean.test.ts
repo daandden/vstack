@@ -486,6 +486,42 @@ test.skipIf(process.platform === "win32")("delete keeps old Scratch that a live 
   }
 });
 
+test.skipIf(process.platform === "win32")("delete keeps a row whose session takes its lease while a live archive is reread", async () => {
+  const holders = [await holdSessionLease(WITNESS, { home })];
+  try {
+    const old = file("shop/verify/old.md", "keep", 30);
+    const live = `${archive(WITNESS, "2026-10-10", "Live witness", 20)}.jsonl`;
+    archive(SESSION, "2026-10-11", "Owner", 5, old);
+    const args = ["--home", home, ...leaseArgs()];
+    const selection = clean(...args).json.rows[0].snapshot;
+    const release = join(dir, "release-reread");
+    const deletion = Bun.spawn([process.execPath, "--preload", CLEAN_FAULT, CLEAN, ...args, "--delete", selection], {
+      cwd: dir, stdout: "pipe", stderr: "pipe", env: {
+        ...ENV, CLEAN_FAULT: "pause-reread", CLEAN_FAULT_PATH: live, CLEAN_RELEASE: release,
+        CLEAN_LATE_ARCHIVE: live, CLEAN_LATE_PATH: "unrelated live output",
+      },
+    });
+    const stderr = deletion.stderr.getReader();
+    try {
+      const paused = await stderr.read();
+      expect(new TextDecoder().decode(paused.value)).toBe("Archive reread paused\n");
+      holders.push(await holdSessionLease(SESSION, { home }));
+    } finally {
+      writeFileSync(release, "");
+      await deletion.exited;
+      stderr.releaseLock();
+    }
+
+    expect(deletion.exitCode).toBe(0);
+    expect(JSON.parse(await new Response(deletion.stdout).text())).toMatchObject({
+      deleted: [], partial: [], skipped: [{ name: SESSION, reason: "Session holds a lease" }],
+    });
+    expect(readFileSync(old, "utf8")).toBe("keep");
+  } finally {
+    await stopSessionLeaseHolders(holders);
+  }
+});
+
 test.skipIf(process.platform === "win32")("keeps the title of an attributed session with a compressed archive", async () => {
   const witness = await holdSessionLease(WITNESS, { home });
   try {

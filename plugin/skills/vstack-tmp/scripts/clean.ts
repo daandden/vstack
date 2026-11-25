@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { removeEntry } from "../../flow-page/scripts/files.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
 import { compactFlowDatabase, deleteFlowEntry } from "../../flow-page/scripts/store.ts";
-import { buildRows, DAY, flowStatus, readDeleteEvidence, recheckRowLeases, refreshDeleteEvidence, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
+import { buildRows, DAY, flowStatus, readDeleteEvidence, recheckRowLeases, settleDeleteEvidence, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
 import { isScratchSessionId, scratchRoot, TICKETS_KIND } from "./scratch.ts";
 import { sessionTitles } from "./session-archives.ts";
 
@@ -90,6 +90,36 @@ function display([repo_key, kind, name]: RowKey, titles: Map<string, string>, ro
     ...(kind === "flow" || kind === TICKETS_KIND ? { path: row?.members[0]?.path } : {}) };
 }
 
+const RECHECK_ROUNDS = 3;
+async function recheckedRow(key: RowKey, members: string, newest: string): Promise<{ row?: Row; reason?: string }> {
+  for (let round = 0; ; round++) {
+    try {
+      await settleDeleteEvidence(ctx, key, evidence);
+    } catch (error) {
+      return { reason: `Cannot recheck session leases: ${(error as Error).message}` };
+    }
+    let row: Row | undefined;
+    let selectionError: string | undefined;
+    try {
+      checkAncestors(root);
+      const rebuilt = await buildRows(ctx, { key, ...evidence });
+      [row] = rebuilt.rows;
+      selectionError = rebuilt.selectionError;
+    } catch (error) {
+      return { reason: (error as Error).message };
+    }
+    const reason = !row ? selectionError ?? "Row is missing"
+      : row.status.state !== "offered" ? row.status.reason
+      : membersHash(row) !== members ? row.flow ? "Flow identity changed" : "Row members changed or were replaced"
+      : !row.flow && newestHash(row) !== newest ? "Newest file or its time changed"
+      : undefined;
+    if (!row || reason) return { row, reason: reason ?? "Row is missing" };
+    const status = recheckRowLeases(ctx, row, evidence);
+    if (status.state === "changed" && round < RECHECK_ROUNDS) continue;
+    return status.state === "offered" ? { row } : { row, reason: status.reason };
+  }
+}
+
 // Resolves once stdout has taken every byte, so a following process.exit cannot cut a piped listing at the pipe buffer.
 const print = (v: unknown) => new Promise<void>((done, fail) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`, (e) => (e ? fail(e) : done())));
 
@@ -135,39 +165,12 @@ for (const [_, key, scope, members, newest] of targets) {
     skipped.push({ ...display(key, titles), reason: "Snapshot home or age does not match" });
     continue;
   }
-  let fresh: Awaited<ReturnType<typeof refreshDeleteEvidence>>;
-  try {
-    fresh = await refreshDeleteEvidence(ctx, key, evidence);
-  } catch (error) {
-    skipped.push({ ...display(key, titles), reason: `Cannot recheck session leases: ${(error as Error).message}` });
-    continue;
-  }
-  let row: Row | undefined;
-  let selectionError: string | undefined;
-  try {
-    checkAncestors(root);
-    const rebuilt = await buildRows(ctx, { key, ...evidence });
-    [row] = rebuilt.rows;
-    selectionError = rebuilt.selectionError;
-  } catch (error) {
-    skipped.push({ ...display(key, titles), reason: (error as Error).message });
+  const { row, reason } = await recheckedRow(key, members, newest);
+  if (!row || reason) {
+    skipped.push({ ...display(key, titles, row), reason: reason ?? "Row is missing" });
     continue;
   }
   const shown = display(key, titles, row);
-  const reason = !row ? selectionError ?? "Row is missing"
-    : row.status.state !== "offered" ? row.status.reason
-    : membersHash(row) !== members ? row.flow ? "Flow identity changed" : "Row members changed or were replaced"
-    : !row.flow && newestHash(row) !== newest ? "Newest file or its time changed"
-    : undefined;
-  if (!row || reason) {
-    skipped.push({ ...shown, reason: reason ?? "Row is missing" });
-    continue;
-  }
-  const leaseStatus = recheckRowLeases(row, fresh);
-  if (leaseStatus.state !== "offered") {
-    skipped.push({ ...shown, reason: leaseStatus.reason });
-    continue;
-  }
 
   const removed: string[] = [];
   const failed_entries: Failure[] = [];

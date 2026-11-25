@@ -9,8 +9,9 @@ type IsHeld = (id: string) => boolean;
 type ArchiveStamps = Map<string, Map<string, string>>;
 type HeldChange = { path: string; id?: string; record?: string };
 type ArchiveSearch = {
-  links: Map<string, ArchiveLink>; titles: Map<string, string>;
-  heldArchiveError?: string; settleHeldArchives?: (isHeld: IsHeld) => Promise<string | undefined>;
+  links: Map<string, ArchiveLink>; titles: Map<string, string>; heldArchiveError?: string;
+  settleHeldArchives?: (isHeld: IsHeld) => Promise<string | undefined>;
+  changedHeldArchive?: (isHeld: IsHeld) => string | undefined;
 };
 
 const archiveSuffix = /\.jsonl(?:\.gz)?$/;
@@ -294,6 +295,7 @@ export async function searchSessionArchives(
   }
   linkPaths();
   let settleHeldArchives: ArchiveSearch["settleHeldArchives"];
+  let changedHeldArchive: ArchiveSearch["changedHeldArchive"];
   let heldArchiveError: string | undefined;
   if (isHeld && buckets && watched) {
     const rootStamp = fingerprint(rootStat);
@@ -328,11 +330,12 @@ export async function searchSessionArchives(
       return failure;
     }
     settleHeldArchives = settle;
+    changedHeldArchive = held => heldChanges(archiveRoot, rootStamp, buckets, watched, held).next().value?.path;
     heldArchiveError = await settle(isHeld);
   }
   return {
     links, titles: new Map([...titles].map(([id, value]) => [id, value.title])),
-    settleHeldArchives,
+    settleHeldArchives, changedHeldArchive,
     ...(heldArchiveError ? { heldArchiveError } : {}),
   };
 }

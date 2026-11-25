@@ -268,21 +268,31 @@ function rowLeaseStatus(row: OrdinaryRow, leases: ReturnType<typeof readSessionL
   return unavailable === undefined ? offered : withheld(unavailable);
 }
 
-/** Reads current leases and rereads changed archives of live sessions, so the row rebuilt next sees their latest mentions. */
-export async function refreshDeleteEvidence(ctx: CleanupContext, key: RowKey, evidence: DeleteEvidence): Promise<LeaseSnapshot | undefined> {
-  if (key[1] !== "session" && key[1] !== "folder") return undefined;
-  const fresh = captureSessionLeases(ctx.witness, ctx.ompHome);
+/** Rereads changed archives of live sessions, so the row rebuilt next sees their latest mentions. */
+export async function settleDeleteEvidence(ctx: CleanupContext, key: RowKey, evidence: DeleteEvidence) {
+  if (key[1] !== "session" && key[1] !== "folder") return;
+  const current = captureSessionLeases(ctx.witness, ctx.ompHome);
   const { archives, leases: early } = evidence;
   if (archives.settleHeldArchives) {
-    archives.heldArchiveError = await archives.settleHeldArchives(id => fresh.isHeld(id) || !!early?.isHeld(id));
+    archives.heldArchiveError = await archives.settleHeldArchives(id => current.isHeld(id) || !!early?.isHeld(id));
   }
-  return fresh;
 }
 
-export function recheckRowLeases(row: OrdinaryRow, fresh: LeaseSnapshot | undefined): RowStatus {
+/** Reads leases right before removal; `changed` means a live archive changed after the settle, so the row needs a rebuild. */
+export function recheckRowLeases(ctx: CleanupContext, row: OrdinaryRow, evidence: DeleteEvidence): RowStatus | { state: "changed"; reason: string } {
   const [, kind, id] = row.key;
-  if (!fresh || kind !== "session" && kind !== "folder") return offered;
-  return rowLeaseStatus(row, fresh.read(kind === "session" ? row.linkedSessions ?? [id] : []));
+  if (kind !== "session" && kind !== "folder") return offered;
+  try {
+    const final = captureSessionLeases(ctx.witness, ctx.ompHome);
+    const status = rowLeaseStatus(row, final.read(kind === "session" ? row.linkedSessions ?? [id] : []));
+    if (status.state !== "offered" || !row.hasLegacy) return status;
+    const { archives, leases: early } = evidence;
+    if (!early || !archives.changedHeldArchive) return withheld("Session archive freshness is unavailable");
+    const changed = archives.changedHeldArchive(session => final.isHeld(session) || early.isHeld(session));
+    return changed ? { state: "changed", reason: `Held session archive kept changing during the recheck: ${changed}` } : offered;
+  } catch (error) {
+    return withheld(`Cannot recheck session leases: ${errorMessage(error)}`);
+  }
 }
 
 export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey } & DeleteEvidence): Promise<BuiltRows> {
