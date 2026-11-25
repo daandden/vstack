@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Load the vstack extension on omp 19.2: read ask form controls with parseHTML as omp's own ask parser does, and draw the Flow panel as a pi-tui card with the native role vstack.flow-panel."
+  ]
+}
