@@ -248,6 +248,10 @@ _Avoid_: architecture gate, complexity score
 The agreed visual account of a change's architecture, including responsibilities, interactions, relevant guarantees, constraints, and trade-offs.
 _Avoid_: code scaffold, implementation plan
 
+**Design baseline**:
+The OpenPencil .fig file that one change agreed on, identified by its recorded SHA-256. implement and Verify build and check against it, while the live design document can keep changing.
+_Avoid_: design handoff, mockup, PNG export
+
 **Blast radius**:
 The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.
 _Avoid_: Safety (for this axis), safety review
