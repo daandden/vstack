@@ -36,7 +36,10 @@ writeFileSync(join(evidence, "roles.mmd"), source);
 const file = join(evidence, "submit.json");
 const now = "The renderer captured the group diagram and the seven-role source.";
 const question = { title: "Which order path needs attention?", description: "Disposable fixture, not a real user decision.", needs: [{ need: "Follow the group and child roles.", kind: "context-diagram" }], options: [{ label: "Review", does: "Inspect the group.", gains: ["Visible scope"], costs: ["Time"] }, { label: "Continue", does: "Keep the child meanings.", gains: ["Consistency"], costs: ["No new selection"] }] };
-const brief = { unblocks: "Choose which path to inspect.", undo: "Return to either captured figure.", no_recommendation: "The fixture compares how both figures render." };
+const brief = {
+  unblocks: "Choose which path to inspect.", undo: "Return to either captured figure.", no_recommendation: "The fixture compares how both figures render.",
+  ask_reason: "explicit-decision-required", evidence_checked: "The renderer produced both source figures. This fixture exercises their display beside a published question.",
+};
 writeFileSync(file, JSON.stringify({ version: 1, items: [
   { kind: "attachment", ref: "order", type: "svg", caption: "Disposable proof of group focus and child roles", origin: "Actual renderer CLI output", path: svg },
   { kind: "attachment", ref: "roles", type: "mermaid", caption: "Disposable seven-role source figure", origin: "Retained seven-role Mermaid fixture", path: mermaid, focus: ["cart"] },

@@ -600,12 +600,16 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
          "sections": [{"heading": "Context", "blocks": [{"prose": "Fixture evidence, not a real user decision."}]}]},
         {"kind": "round", "now": "The disposable fixture is ready for the first picker.", "questions": [
             {"ref": "pick", "title": "Pick fixture paths", "description": "Full authored context retained on Flow.", "multi": True,
-             "brief": {"unblocks": "Record the selected fixture paths.", "undo": "Run the disposable fixture again.", "no_recommendation": "Selecting either path exercises the same picker behavior."},
+             "brief": {"unblocks": "Record the selected fixture paths.", "undo": "Run the disposable fixture again.",
+                       "no_recommendation": "Selecting either path exercises the same picker behavior.",
+                       "ask_reason": "explicit-decision-required", "evidence_checked": "The fixture has two options and needs an observed picker response."},
              "needs": [{"need": "Compare fixture tradeoffs.", "kind": "prose"}],
              "options": [{"label": "Alpha", "does": "Use Alpha.", "gains": ["First fixture"], "costs": ["Fixture only"]},
                          {"label": "Beta", "does": "Use Beta.", "gains": ["Second fixture"], "costs": ["Fixture only"]}]},
             {"ref": "words", "title": "Describe the fixture concern", "description": "Preserve Other words without inventing consent.",
-             "brief": {"unblocks": "Verify how the session retains your note.", "undo": "Use a new test session to enter a different note.", "no_recommendation": "The concern is supplied by the test driver."},
+             "brief": {"unblocks": "Verify how the session retains your note.", "undo": "Use a new test session to enter a different note.",
+                       "no_recommendation": "The concern is supplied by the test driver.",
+                       "ask_reason": "explicit-decision-required", "evidence_checked": "The response fixture leaves this control unselected to test words without a pick."},
              "needs": [{"need": "Explain the fixture concern.", "kind": "prose"}],
              "options": [{"label": "Proceed", "does": "Continue.", "gains": ["Progress"], "costs": ["Unresolved concern"]},
                          {"label": "Pause", "does": "Wait.", "gains": ["Review"], "costs": ["Delay"]}]}]}]}
@@ -636,7 +640,9 @@ stageRuntime(coherentRuntime(), runtimePackages(), process.argv[1]);
         contribution["items"][1]["questions"] = [{
             "ref": "approval", "title": "Approve fixture inputs?",
             "description": "The complete input set is one disposable case with id fixture. This is UI proof, not tuning approval.",
-            "brief": {"unblocks": "Drive the native Ratchet approval gate.", "undo": "Recreate the disposable approval run.", "no_recommendation": "The fixture leaves the native gate unselected."},
+            "brief": {"unblocks": "Drive the native Ratchet approval gate.", "undo": "Recreate the disposable approval run.",
+                      "no_recommendation": "The fixture leaves the native gate unselected.",
+                      "ask_reason": "explicit-decision-required", "evidence_checked": "The linked table has the single input case. The native approval gate needs an observed response."},
             "needs": [{"need": "Review the complete disposable input set.", "kind": "prose"}],
             "results": ["fixture/input"],
             "options": [

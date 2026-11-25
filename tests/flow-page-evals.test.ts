@@ -18,7 +18,7 @@ function fixture() {
   const question = {
     title: "Where does the update appear?",
     description: "Compare the publication positions.",
-    brief: { unblocks: "Implement update placement.", undo: "Restore the existing reading order.", no_recommendation: "Both placements preserve the update." },
+    brief: { unblocks: "Implement update placement.", undo: "Restore the existing reading order.", no_recommendation: "Both placements preserve the update.", ask_reason: "taste", evidence_checked: "The ordering proof shows both placements preserve the recorded update." },
     needs: [{ need: "Locate the later update", kind: "prose" }],
     options: [{ label: "Later position", does: "Adds a link to the updated record.", gains: ["Chronology"], costs: ["One more entry"] }],
   };

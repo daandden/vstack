@@ -196,7 +196,7 @@ test("contribution discovery covers nested questions, readings, closes, Stage st
   expect(round.required).toEqual(["kind", "now", "questions"]);
   const question = round.fields.questions.items;
   expect(question.required).toEqual(["title", "description", "brief", "needs", "options"]);
-  expect(question.fields.brief.required).toEqual(["unblocks", "undo"]);
+  expect(question.fields.brief.required).toEqual(["unblocks", "undo", "ask_reason", "evidence_checked"]);
   expect(question.fields.brief.fields.no_recommendation.selection).toContain("no option has recommended");
   expect(question.fields.brief.fields.asked_again_because.selection).toContain("again is set");
   const option = question.fields.options.items;

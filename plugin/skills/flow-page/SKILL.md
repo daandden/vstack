@@ -135,7 +135,7 @@ Read the semantic rules for the kind you are about to publish:
 - Before Comparison or Metrics, also read [Comparison and Metrics fields](references/comparison-metrics.md).
 - Before a prototype demo, runnable-artifact Result, or Quiz, also read [Interactive Result fields](references/interactive-results.md).
 - Before capturing attachments, canonical file revisions, question/Background figures, option previews, or real HTML/app/terminal artifacts, read [Captured attachments](references/attachments.md). Capture actual redacted evidence and preserve canonical deliverables.
-- Before every new or re-asked question, read [Reader needs and Visual kinds](references/reader-needs.md). Write its Decision brief, declare and satisfy its reader needs, and publish the complete round atomically with its visuals.
+- Before every new or re-asked question, apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) and read [Reader needs and Visual kinds](references/reader-needs.md). Write the reason and evidence checked in its Decision brief. Declare and satisfy its reader needs, and publish the complete round atomically with its visuals.
 
 
 ## The receipt

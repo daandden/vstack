@@ -1176,6 +1176,7 @@ originals:
   - plugin/tern/vstack-clean
   - plugin/rules/vstack-dependencies.md
   - plugin/agents/vstack-merger.md
+  - plugin/rules/vstack-settle-or-ask.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
