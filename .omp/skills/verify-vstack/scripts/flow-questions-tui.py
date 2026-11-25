@@ -492,7 +492,7 @@ def run_case(args, checkout, run, native, stack):
         port = free.getsockname()[1]
         env["VSTACK_FLOW_PORT"] = str(port)
     versions = {}
-    pins = {"omp": "omp/19.1.1", **({"tern": "tern 0.9.32"} if args.tern else {})}
+    pins = {"omp": "omp/19.2.1", **({"tern": "tern 0.9.35"} if args.tern else {})}
     for binary, pin in pins.items():
         versions[binary] = subprocess.check_output([binary, "--version"], env=env, text=True, timeout=10).strip()
         assert versions[binary].split(" (")[0] == pin, versions
