@@ -15,6 +15,8 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Use `skill://grilling` for
 3. For a large or contested design, run `skill://compare-attempts` with kind `reply` without asking whether to run it. Give the runners the grounded problem and constraints at the same sketch level. Apply no runner patch. Keep the comparison's Results on the Flow, with no tracker write. Bring the returned synthesis to the design question. If the comparison stops, keep the affected decision open and report why.
 4. Put the recommended direction, trade-offs, and necessary visuals in the design question with its Decision brief. Use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract, even when only one shape is viable. Record the user's explicit agreement through grilling's answer rules. If a constraint changes, revise the affected sketches and carry forward the earlier answer and rationale.
 
+For a correction to a sketch or published visual, follow the [Settle-or-ask rule's correction path](../../rules/vstack-settle-or-ask.md#decisions-the-agent-settles) and skill://grilling's Result and Assumed pick procedure. A corrected depiction of an agreed shape needs no new architecture question. An outstanding design question still needs explicit agreement. If the correction changes a consequential choice, agree the changed choice explicitly before dependent work.
+
 See ADR 20261123-every-grill-sketches-two-shapes-and-contested-designs-run-compare-attempts and ADR 0053.
 
 ## Record the agreement

@@ -95,6 +95,8 @@ Put the switcher in a single shared component so both sub-shapes can reuse it. L
 
 In a Flow, publish the actual route as a `runtime: "local-app"` artifact on a prototype Result, with its launch command, source revision, and `?variant=` keys. Keep the app and backend real. If the runtime is absent or iframe embedding is blocked, state that limitation and keep the external launch path. In a Flow, capture a standalone HTML variant's complete bundle for the isolated viewer instead. Present the app URL without opening it automatically. Present Flow links only through flow-page's "Every ask in a Flow" contract.
 
+For feedback on a shown variant, apply the [Settle-or-ask rule's correction path](../../rules/vstack-settle-or-ask.md#decisions-the-agent-settles). Show the revised variant through the same handover. A correction does not select a winner for step 6.
+
 ### 6. Capture the answer and clean up
 
 Once a variant has won, capture the answer (which variant and why), then capture the prototype the way the [SKILL](SKILL.md) describes. Fold the winner into the real code and move the rest onto the throwaway branch, not into main:

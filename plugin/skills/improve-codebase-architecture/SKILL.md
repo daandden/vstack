@@ -77,6 +77,8 @@ If Design It Twice stops at its Fan-out stop clause, or screening drops every de
 
 Use `skill://grilling`'s interviewing procedure to walk the decision tree with the user, starting from the design question, then constraints, dependencies, hidden implementation, and surviving tests. Record a no-candidate or no-pick outcome without implying authorization.
 
+For feedback on a before-and-after figure, usage example, or design, follow [grilling's correction path](../grilling/SKILL.md#settle-or-ask). A correction to a candidate does not select it or settle a pending design choice.
+
 Side effects happen inline as decisions crystallize. Run the `skill://domain-modeling` skill to keep the domain model current as you go:
 
 - Naming a deepened module after a concept not in `GLOSSARY.md`? Add the term to `GLOSSARY.md`. Create the file lazily if it doesn't exist.

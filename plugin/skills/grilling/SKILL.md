@@ -31,6 +31,8 @@ Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One 
 
 Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to each frontier decision. Record each Assumed pick with its reason. A note, Other text, or pushback can reopen a named pick even when the same response settles a different decision.
 
+When the user corrects a design or visual you showed, use the shared rule's correction path. In a Flow, show the revised work through skill://flow-page's Result procedure and publish the `assumed` item with the instruction as its basis. In chat, show the revision and list the Assumed pick with its reason. If the remaining choice needs `ask`, put only that choice in the next question. Preserve any separately required answer. A correction in a note or composer message does not answer an open picker.
+
 ## Each round in a Flow
 
 1. Prepare the newly settled `assumed` items followed by one complete `round` for the remaining questions. Each carries its Decision brief and any required visuals. If the whole frontier is settled without questions, submit only the Assumed items and recompute the frontier.
