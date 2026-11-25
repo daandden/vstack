@@ -14,7 +14,11 @@ Select commands from the project's existing interfaces. Keep full suites, E2E ru
 
 ## Checked source
 
-Before a check that may supply passing proof, identify the Git tree of the worktree it will check. Capture that worktree with a fresh temporary index in Scratch. Seed the temporary index with the real index's tree (`git write-tree` then `git read-tree` with `GIT_INDEX_FILE` set only for the latter). From the repository root, run `git add -A -- .` and `git write-tree` with `GIT_INDEX_FILE` set to the temporary index. If `runtime_inputs` is nonempty, add one `:(top,exclude,literal)<path>` pathspec to `git add -A` for each input, after verifying that none overlaps tracked source or a patch path. This captures source edits, deletions, and nonignored new source files without treating declared untracked dependencies as staged source. It leaves the real index alone. Use the same capture for the Merger's disposable check view.
+Before a check that may supply passing proof, identify the Git tree of the worktree it will check. Capture that worktree with a fresh temporary index in Scratch. Seed the temporary index with the real index's tree (`git write-tree` then `git read-tree` with `GIT_INDEX_FILE` set only for the latter).
+
+From the repository root, verify that no path in `runtime_inputs` overlaps tracked source or a patch path. Run `git check-ignore -q -- ./<path>` for each input. If it exits 0, omit that input from the pathspecs: `git add -A` already skips ignored files. If it exits 1, append `:(top,exclude,literal)<path>` to the `git add` command below. For any other exit code, stop the capture and report the error.
+
+Run `git add -A -- .` with the resulting exclusion pathspecs, then `git write-tree`. Set `GIT_INDEX_FILE` to the temporary index for both commands. This captures source edits, deletions, and nonignored new source files without treating declared untracked dependencies as staged source. It leaves the real index alone. Use the same capture for the Merger's disposable check view.
 
 Use the following source checks in worker proof and in the Merger's fallback view. Apply them before and after each command. A matching tree ID is necessary, but does not by itself show which source the command used.
 

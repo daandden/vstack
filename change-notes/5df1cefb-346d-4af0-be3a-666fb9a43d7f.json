@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Skip already-ignored runtime inputs when constructing landing evidence exclusion pathspecs."
+  ]
+}
