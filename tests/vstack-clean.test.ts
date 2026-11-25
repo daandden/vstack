@@ -68,7 +68,11 @@ function marked(repo: string, kind: string, id = SESSION) {
 }
 
 function archive(id: string, start: string, title: string, activity: number, ...mentions: string[]) {
-  const base = join(home, ".omp", "agent", "sessions", "project", `${start}_${id}`);
+  return archiveIn("project", id, start, title, activity, ...mentions);
+}
+
+function archiveIn(bucket: string, id: string, start: string, title: string, activity: number, ...mentions: string[]) {
+  const base = join(home, ".omp", "agent", "sessions", bucket, `${start}_${id}`);
   mkdirSync(dirname(base), { recursive: true });
   writeFileSync(`${base}.jsonl`, [
     { type: "title", title },
@@ -319,7 +323,7 @@ test.skipIf(process.platform === "win32")("delete skips a row when its fresh lea
   }
 });
 
-test.skipIf(process.platform === "win32")("delete withholds old Scratch when a held archive changes after its read", async () => {
+test.skipIf(process.platform === "win32")("delete keeps old Scratch that a held archive mentions after its read", async () => {
   const witness = await holdSessionLease(WITNESS, { home });
   try {
     const old = file("shop/verify/old.md", "keep", 30);
@@ -337,7 +341,7 @@ test.skipIf(process.platform === "win32")("delete withholds old Scratch when a h
     expect(result.code).toBe(0);
     expect(result.json).toMatchObject({
       deleted: [{ name: ANOTHER }], partial: [],
-      skipped: [{ name: SESSION, reason: expect.stringContaining("Held session archive changed during the search") }],
+      skipped: [{ name: SESSION, reason: "A session linked by the archive holds a lease" }],
     });
     expect(readFileSync(old, "utf8")).toBe("keep");
     expect(existsSync(markedFile)).toBe(false);
@@ -346,7 +350,27 @@ test.skipIf(process.platform === "win32")("delete withholds old Scratch when a h
   }
 });
 
-test.skipIf(process.platform === "win32")("delete withholds old Scratch mentioned after a newly held archive was read", async () => {
+test.skipIf(process.platform === "win32")("delete removes old Scratch when a held archive changes without mentioning it", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const old = file("shop/verify/old.md", "delete", 30);
+    const live = `${archive(WITNESS, "2026-10-10", "Live witness", 20)}.jsonl`;
+    const owner = `${archive(SESSION, "2026-10-11", "Owner", 5, old)}.jsonl`;
+    const args = ["--home", home, ...leaseArgs()];
+    const selection = clean(...args).json.rows[0].snapshot;
+    const result = runClean([...args, "--delete", selection], "late-archive-mention", owner,
+      { CLEAN_LATE_ARCHIVE: live, CLEAN_LATE_PATH: "unrelated live output" });
+
+    expect(readFileSync(live, "utf8")).toContain("unrelated live output");
+    expect(result.code).toBe(0);
+    expect(result.json).toMatchObject({ deleted: [{ name: SESSION }], partial: [], skipped: [] });
+    expect(existsSync(old)).toBe(false);
+  } finally {
+    await stopSessionLeaseHolders([witness]);
+  }
+});
+
+test.skipIf(process.platform === "win32")("delete skips old Scratch that a session missing from the first lease read mentions during the search", async () => {
   const holders = [await holdSessionLease(WITNESS, { home })];
   try {
     const old = file("shop/verify/old.md", "keep", 30);
@@ -378,12 +402,87 @@ test.skipIf(process.platform === "win32")("delete withholds old Scratch mentione
     expect(deletion.exitCode).toBe(0);
     expect(JSON.parse(await new Response(deletion.stdout).text())).toMatchObject({
       deleted: [{ name: markedId }], partial: [],
-      skipped: [{ name: SESSION, reason: expect.stringContaining(newlyHeld) }],
+      skipped: [{ name: SESSION, reason: "Row is missing" }],
     });
     expect(readFileSync(old, "utf8")).toBe("keep");
     expect(existsSync(markedFile)).toBe(false);
   } finally {
     await stopSessionLeaseHolders(holders);
+  }
+});
+
+test.skipIf(process.platform === "win32")("delete skips old Scratch mentioned in a new archive folder by a session missing from the first lease read", async () => {
+  const holders = [await holdSessionLease(WITNESS, { home })];
+  try {
+    const old = file("shop/verify/old.md", "keep", 30);
+    const owner = `${archive(SESSION, "2026-10-11", "Old Scratch owner", 5, old)}.jsonl`;
+    const args = ["--home", home, ...leaseArgs()];
+    const selection = clean(...args).json.rows.find((row: { name: string }) => row.name === SESSION).snapshot;
+    const release = join(dir, "release-archive");
+    const deletion = Bun.spawn([process.execPath, "--preload", CLEAN_FAULT, CLEAN, ...args, "--delete", selection], {
+      cwd: dir, env: { ...ENV, CLEAN_FAULT: "pause-archive", CLEAN_FAULT_PATH: owner, CLEAN_RELEASE: release },
+      stdout: "pipe", stderr: "pipe",
+    });
+    const stderr = deletion.stderr.getReader();
+    try {
+      const paused = await stderr.read();
+      expect(new TextDecoder().decode(paused.value)).toBe("Scratch archive read paused\n");
+      archiveIn("late", WITNESS, "2026-10-12", "Live witness", 0, "live output");
+      archiveIn("late", ANOTHER, "2026-10-12", "Newly live", 0, old);
+      holders.push(await holdSessionLease(ANOTHER, { home }));
+    } finally {
+      writeFileSync(release, "");
+      await deletion.exited;
+      stderr.releaseLock();
+    }
+
+    expect(deletion.exitCode).toBe(0);
+    expect(JSON.parse(await new Response(deletion.stdout).text())).toMatchObject({
+      deleted: [], partial: [], skipped: [{ name: SESSION, reason: "Row is missing" }],
+    });
+    expect(readFileSync(old, "utf8")).toBe("keep");
+  } finally {
+    await stopSessionLeaseHolders(holders);
+  }
+});
+
+test.skipIf(process.platform === "win32")("delete keeps old Scratch that a live session mentions while the preceding row is removed", async () => {
+  const witness = await holdSessionLease(WITNESS, { home });
+  try {
+    const old = file("shop/verify/old.md", "keep", 30);
+    marked("shop", "verify", ANOTHER);
+    const first = file(`shop/verify/${ANOTHER}/report.txt`, "delete", 30);
+    const live = `${archive(WITNESS, "2026-10-10", "Live witness", 20)}.jsonl`;
+    archive(SESSION, "2026-10-11", "Owner", 5, old);
+    const args = ["--home", home, ...leaseArgs()];
+    const { rows } = clean(...args).json;
+    const selections = [ANOTHER, SESSION].map(id => rows.find((row: { name: string }) => row.name === id).snapshot);
+    const release = join(dir, "release-removal");
+    const deletion = Bun.spawn([process.execPath, "--preload", CLEAN_FAULT, CLEAN, ...args, "--delete", ...selections], {
+      cwd: dir, env: { ...ENV, CLEAN_FAULT: "pause-remove", CLEAN_FAULT_PATH: first, CLEAN_RELEASE: release },
+      stdout: "pipe", stderr: "pipe",
+    });
+    const stderr = deletion.stderr.getReader();
+    try {
+      const paused = await stderr.read();
+      expect(new TextDecoder().decode(paused.value)).toBe("Scratch removal paused\n");
+      appendFileSync(live, `${JSON.stringify({ type: "message", text: old })}\n`);
+      utimesSync(live, daysAgo(20), daysAgo(20));
+    } finally {
+      writeFileSync(release, "");
+      await deletion.exited;
+      stderr.releaseLock();
+    }
+
+    expect(deletion.exitCode).toBe(0);
+    expect(JSON.parse(await new Response(deletion.stdout).text())).toMatchObject({
+      deleted: [{ name: ANOTHER }], partial: [],
+      skipped: [{ name: SESSION, reason: "A session linked by the archive holds a lease" }],
+    });
+    expect(existsSync(first)).toBe(false);
+    expect(readFileSync(old, "utf8")).toBe("keep");
+  } finally {
+    await stopSessionLeaseHolders([witness]);
   }
 });
 

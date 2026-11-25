@@ -7,12 +7,14 @@ import { isScratchSessionId } from "./scratch.ts";
 type ArchiveLink = { owner: string; sessions: string[] };
 type IsHeld = (id: string) => boolean;
 type ArchiveStamps = Map<string, Map<string, string>>;
+type HeldChange = { path: string; id?: string; record?: string };
 type ArchiveSearch = {
   links: Map<string, ArchiveLink>; titles: Map<string, string>;
-  heldArchiveError?: string; changedHeldArchive?: (isHeld: IsHeld) => string | undefined;
+  heldArchiveError?: string; settleHeldArchives?: (isHeld: IsHeld) => Promise<string | undefined>;
 };
 
 const archiveSuffix = /\.jsonl(?:\.gz)?$/;
+const HELD_RESCAN_ROUNDS = 5;
 const artifactSuffix = /\.(?:jsonl|log)(?:\.gz)?$/;
 const startBoundary = /[\s"'`([{<=:]/;
 const tokenEnd = /[\s"'`]/;
@@ -175,13 +177,13 @@ function archiveSessionId(name: string) {
   return stem.at(-37) === "_" && isScratchSessionId(id) ? id : undefined;
 }
 
-function changedHeldArchive(root: string, rootStamp: string, buckets: Map<string, string>, watched: ArchiveStamps, isHeld: IsHeld) {
-  function unscannedArchive(bucket: string) {
+function* heldChanges(root: string, rootStamp: string, buckets: Map<string, string>, watched: ArchiveStamps, isHeld: IsHeld): Generator<HeldChange> {
+  function* unscannedArchives(bucket: string): Generator<HeldChange> {
     for (const entry of readdirSync(bucket, { withFileTypes: true })) {
       const id = archiveSessionId(entry.name);
       if (!id || !isHeld(id) || !entry.isDirectory() && !entry.isSymbolicLink() && !archiveSuffix.test(entry.name)) continue;
       const archive = join(bucket, entry.name);
-      if (!watched.get(id)?.has(archive)) return archive;
+      if (!watched.get(id)?.has(archive)) yield { path: archive, id, record: archive };
     }
   }
   let checking = root;
@@ -189,27 +191,30 @@ function changedHeldArchive(root: string, rootStamp: string, buckets: Map<string
     if (fingerprint(realDirectory(root)) !== rootStamp) {
       for (const slug of readdirSync(root, { withFileTypes: true })) {
         checking = join(root, slug.name);
-        if (slug.isSymbolicLink()) return checking;
+        if (slug.isSymbolicLink()) {
+          yield { path: checking };
+          return;
+        }
         if (!slug.isDirectory() || buckets.has(checking)) continue;
-        const changed = unscannedArchive(checking);
-        if (changed) return changed;
+        yield* unscannedArchives(checking);
       }
     }
     for (const [bucket, stamp] of buckets) {
       checking = bucket;
-      if (fingerprint(realDirectory(bucket)) === stamp) continue;
-      const changed = unscannedArchive(bucket);
-      if (changed) return changed;
+      if (fingerprint(realDirectory(bucket)) !== stamp) yield* unscannedArchives(bucket);
     }
     for (const [id, archive] of watched) {
       if (!isHeld(id)) continue;
       for (const [path, stamp] of archive) {
         checking = path;
-        if (fingerprint(lstatSync(path, { bigint: true })) !== stamp) return path;
+        if (fingerprint(lstatSync(path, { bigint: true })) !== stamp) {
+          yield { path, id };
+          break;
+        }
       }
     }
   } catch {
-    return checking;
+    yield { path: checking };
   }
 }
 
@@ -228,7 +233,7 @@ export async function searchSessionArchives(
 ): Promise<ArchiveSearch> {
   const scanPaths = pathScanner(root, entries);
   const buffer = Buffer.allocUnsafe(1024 * 1024);
-  const sessions = new Map<string, { activity?: bigint; paths: Set<string> }>();
+  const sessions = new Map<string, { activity?: bigint; paths: Set<string>; records: Set<string> }>();
   const titles = new Map<string, { title: string; activity: bigint }>();
   const omp = join(home, ".omp");
   const agent = join(omp, "agent");
@@ -238,6 +243,30 @@ export async function searchSessionArchives(
   const rootStat = realDirectory(archiveRoot);
   const watched: ArchiveStamps | undefined = isHeld && new Map();
   const buckets = isHeld && new Map<string, string>();
+  async function scanRecord(id: string, path: string, record: { isDirectory(): boolean; isSymbolicLink(): boolean }) {
+    let session = sessions.get(id);
+    if (!session) sessions.set(id, session = { paths: new Set(), records: new Set() });
+    const current = session;
+    let stamps = watched?.get(id);
+    if (watched && !stamps) watched.set(id, stamps = new Map());
+    const scan = async (file: string, main = false) => {
+      try {
+        const { stat, title } = await readArchive(file, buffer, line => scanPaths(line, current.paths), main ? id : undefined);
+        if (stamps) stamps.set(file, fingerprint(stat));
+        const activity = stat.mtimeNs;
+        if (current.activity === undefined || activity > current.activity) current.activity = activity;
+        const prior = titles.get(id);
+        if (title && (!prior || activity > prior.activity)) titles.set(id, { title, activity });
+      } catch (error) {
+        throw new Error(`Cannot read archive ${file}: ${(error as Error).message}`, { cause: error });
+      }
+    };
+    if (archiveSuffix.test(path)) await scan(path, true);
+    else if (record.isDirectory()) await scanArtifacts(path, scan, stamps);
+    else if (record.isSymbolicLink()) throw new Error(`Linked archive directory: ${path}`);
+    else return;
+    current.records.add(path);
+  }
   for (const slug of readdirSync(archiveRoot, { withFileTypes: true })) {
     const bucket = join(archiveRoot, slug.name);
     if (slug.isSymbolicLink()) throw new Error(`Linked archive directory: ${bucket}`);
@@ -245,52 +274,66 @@ export async function searchSessionArchives(
     if (buckets) buckets.set(bucket, fingerprint(realDirectory(bucket)));
     for (const record of readdirSync(bucket, { withFileTypes: true })) {
       const id = archiveSessionId(record.name);
-      if (!id) continue;
-      const path = join(bucket, record.name);
-      let session = sessions.get(id);
-      if (!session) sessions.set(id, session = { paths: new Set() });
-      const current = session;
-      let stamps = watched?.get(id);
-      if (watched && !stamps) watched.set(id, stamps = new Map());
-      const scan = async (file: string, main = false) => {
-        try {
-          const { stat, title } = await readArchive(file, buffer, line => scanPaths(line, current.paths), main ? id : undefined);
-          if (stamps) stamps.set(file, fingerprint(stat));
-          const activity = stat.mtimeNs;
-          if (current.activity === undefined || activity > current.activity) current.activity = activity;
-          const prior = titles.get(id);
-          if (title && (!prior || activity > prior.activity)) titles.set(id, { title, activity });
-        } catch (error) {
-          throw new Error(`Cannot read archive ${file}: ${(error as Error).message}`, { cause: error });
-        }
-      };
-      if (archiveSuffix.test(record.name)) await scan(path, true);
-      else if (record.isDirectory()) await scanArtifacts(path, scan, stamps);
-      else if (record.isSymbolicLink()) throw new Error(`Linked archive directory: ${path}`);
+      if (id) await scanRecord(id, join(bucket, record.name), record);
     }
   }
   const links = new Map<string, ArchiveLink>();
-  for (const [id, session] of sessions) {
-    for (const path of session.paths) {
-      const link = links.get(path);
-      if (!link) links.set(path, { owner: id, sessions: [id] });
-      else {
-        link.sessions.push(id);
-        const prior = sessions.get(link.owner)!.activity!;
-        if (session.activity! > prior || session.activity === prior && id < link.owner) link.owner = id;
+  function linkPaths() {
+    links.clear();
+    for (const [id, session] of sessions) {
+      for (const path of session.paths) {
+        const link = links.get(path);
+        if (!link) links.set(path, { owner: id, sessions: [id] });
+        else {
+          link.sessions.push(id);
+          const prior = sessions.get(link.owner)!.activity!;
+          if (session.activity! > prior || session.activity === prior && id < link.owner) link.owner = id;
+        }
       }
     }
   }
-  let checkHeldArchives: ArchiveSearch["changedHeldArchive"];
-  if (buckets && watched) {
+  linkPaths();
+  let settleHeldArchives: ArchiveSearch["settleHeldArchives"];
+  let heldArchiveError: string | undefined;
+  if (isHeld && buckets && watched) {
     const rootStamp = fingerprint(rootStat);
-    checkHeldArchives = held => changedHeldArchive(archiveRoot, rootStamp, buckets, watched, held);
+    let failure: string | undefined;
+    async function settle(held: IsHeld) {
+      for (let round = 0; !failure; round++) {
+        const changed = [...heldChanges(archiveRoot, rootStamp, buckets!, watched!, held)];
+        if (!changed.length) return;
+        const unreadable = changed.find(change => !change.id);
+        if (unreadable) failure = `Held session archive changed and could not be read again: ${unreadable.path}`;
+        else if (round === HELD_RESCAN_ROUNDS) failure = `Held session archive kept changing: ${changed[0].path}`;
+        else {
+          const rescans = new Map<string, string[]>();
+          for (const { id, record } of changed) {
+            const records = rescans.get(id!) ?? [...sessions.get(id!)?.records ?? []];
+            if (record && !records.includes(record)) records.push(record);
+            rescans.set(id!, records);
+          }
+          try {
+            for (const [id, records] of rescans) {
+              sessions.delete(id);
+              titles.delete(id);
+              watched!.set(id, new Map());
+              for (const record of records) await scanRecord(id, record, lstatSync(record));
+            }
+          } catch (error) {
+            failure = `Held session archive changed and could not be read again: ${(error as Error).message}`;
+          }
+          linkPaths();
+        }
+      }
+      return failure;
+    }
+    settleHeldArchives = settle;
+    heldArchiveError = await settle(isHeld);
   }
-  const changed = isHeld && checkHeldArchives?.(isHeld);
   return {
     links, titles: new Map([...titles].map(([id, value]) => [id, value.title])),
-    changedHeldArchive: checkHeldArchives,
-    ...(changed ? { heldArchiveError: `Held session archive changed during the search: ${changed}` } : {}),
+    settleHeldArchives,
+    ...(heldArchiveError ? { heldArchiveError } : {}),
   };
 }
 

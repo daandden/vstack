@@ -24,7 +24,8 @@ type OrdinaryEntry = { path: string; kind: string; ancestor: string } & (
   { protection: RowStatus } | { session: string } | { directory: boolean }
 );
 type ArchiveEvidence = { paths: Map<string, boolean>; error?: string } & Partial<Awaited<ReturnType<typeof searchSessionArchives>>>;
-type DeleteEvidence = { archives: ArchiveEvidence; leases?: ReturnType<typeof captureSessionLeases> };
+type LeaseSnapshot = ReturnType<typeof captureSessionLeases>;
+type DeleteEvidence = { archives: ArchiveEvidence; leases?: LeaseSnapshot };
 type BuiltRows = { rows: Row[]; inventoryIssues: string[]; selectionError?: string; archiveTitles?: Map<string, string> };
 type InventoryIssue = { kind?: string; reason: string };
 type ProjectInventory = {
@@ -267,21 +268,21 @@ function rowLeaseStatus(row: OrdinaryRow, leases: ReturnType<typeof readSessionL
   return unavailable === undefined ? offered : withheld(unavailable);
 }
 
-export function recheckRowLeases(ctx: CleanupContext, row: OrdinaryRow, evidence: DeleteEvidence): RowStatus {
-  const [, kind, id] = row.key;
-  if (kind !== "session" && kind !== "folder") return offered;
-  const sessions = kind === "session" ? row.linkedSessions ?? [id] : [];
-  try {
-    const fresh = captureSessionLeases(ctx.witness, ctx.ompHome);
-    const status = rowLeaseStatus(row, fresh.read(sessions));
-    if (status.state !== "offered" || !row.hasLegacy) return status;
-    const early = evidence.leases, compareArchives = evidence.archives.changedHeldArchive;
-    if (!early || !compareArchives) return withheld("Session archive freshness is unavailable");
-    const changed = compareArchives(session => fresh.isHeld(session) && !early.isHeld(session));
-    return changed ? withheld(`Newly held session archive changed since the search or could not be checked: ${changed}`) : offered;
-  } catch (error) {
-    return withheld(`Cannot recheck session leases: ${errorMessage(error)}`);
+/** Reads current leases and rereads changed archives of live sessions, so the row rebuilt next sees their latest mentions. */
+export async function refreshDeleteEvidence(ctx: CleanupContext, key: RowKey, evidence: DeleteEvidence): Promise<LeaseSnapshot | undefined> {
+  if (key[1] !== "session" && key[1] !== "folder") return undefined;
+  const fresh = captureSessionLeases(ctx.witness, ctx.ompHome);
+  const { archives, leases: early } = evidence;
+  if (archives.settleHeldArchives) {
+    archives.heldArchiveError = await archives.settleHeldArchives(id => fresh.isHeld(id) || !!early?.isHeld(id));
   }
+  return fresh;
+}
+
+export function recheckRowLeases(row: OrdinaryRow, fresh: LeaseSnapshot | undefined): RowStatus {
+  const [, kind, id] = row.key;
+  if (!fresh || kind !== "session" && kind !== "folder") return offered;
+  return rowLeaseStatus(row, fresh.read(kind === "session" ? row.linkedSessions ?? [id] : []));
 }
 
 export async function buildRows(ctx: CleanupContext, selection?: { key: RowKey } & DeleteEvidence): Promise<BuiltRows> {

@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { removeEntry } from "../../flow-page/scripts/files.ts";
 import { prepareStorage } from "../../flow-page/scripts/live.ts";
 import { compactFlowDatabase, deleteFlowEntry } from "../../flow-page/scripts/store.ts";
-import { buildRows, DAY, flowStatus, readDeleteEvidence, recheckRowLeases, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
+import { buildRows, DAY, flowStatus, readDeleteEvidence, recheckRowLeases, refreshDeleteEvidence, type CleanupContext, type Row, type RowKey } from "./cleanup-rows.ts";
 import { isScratchSessionId, scratchRoot, TICKETS_KIND } from "./scratch.ts";
 import { sessionTitles } from "./session-archives.ts";
 
@@ -135,6 +135,13 @@ for (const [_, key, scope, members, newest] of targets) {
     skipped.push({ ...display(key, titles), reason: "Snapshot home or age does not match" });
     continue;
   }
+  let fresh: Awaited<ReturnType<typeof refreshDeleteEvidence>>;
+  try {
+    fresh = await refreshDeleteEvidence(ctx, key, evidence);
+  } catch (error) {
+    skipped.push({ ...display(key, titles), reason: `Cannot recheck session leases: ${(error as Error).message}` });
+    continue;
+  }
   let row: Row | undefined;
   let selectionError: string | undefined;
   try {
@@ -156,7 +163,7 @@ for (const [_, key, scope, members, newest] of targets) {
     skipped.push({ ...shown, reason: reason ?? "Row is missing" });
     continue;
   }
-  const leaseStatus = recheckRowLeases(ctx, row, evidence);
+  const leaseStatus = recheckRowLeases(row, fresh);
   if (leaseStatus.state !== "offered") {
     skipped.push({ ...shown, reason: leaseStatus.reason });
     continue;
