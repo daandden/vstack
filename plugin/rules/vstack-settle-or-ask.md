@@ -30,7 +30,7 @@ Use a reason only when it applies. A reason permits a question. It does not requ
 - `spending`: It spends money or quota, or uses a Costly seam.
 - `not-user-owned`: It posts on or changes something the user does not own.
 - `waiver-or-reversal`: It waives proof or acceptance, or reverses an earlier out-of-scope decision.
-- `user-only-fact`: Only the user has the access, observation, or intent. Use this for a found defect whose cause you cannot establish.
+- `user-only-fact`: Only the user has the access, observation, or intent. For an unknown defect cause, name the fact the user can supply and the investigation that left it missing.
 - `explicit-decision-required`: The user names an Assumed pick to reopen or asks to decide, or a decision record requires explicit agreement.
 
 For a new or re-asked Flow question, state the reason in `brief.ask_reason` and the actual evidence checked in `brief.evidence_checked`. Name what you checked and what it established or left open. The CLI checks the fields, not your judgment.
@@ -38,7 +38,7 @@ For a new or re-asked Flow question, state the reason in `brief.ask_reason` and 
 ## Decisions the agent settles
 
 - Decide behavior-preserving review refactors and cleanup case by case. Record each decision and reason on the review Result.
-- Fix a found defect that blocks proof or the End state in a separate commit in the run's PR. Use a failing test first when there is a cheap test. File a nonblocking defect on the project's own tracker. Use `ask` if the fix changes product behavior or a spec, or if the cause remains unknown. Report what happened.
+- Fix a reproducible found defect that blocks proof or the End state when the repair is in scope. Put the repair in a separate commit on the run's branch, in the same PR if the authorized End state opens one. Use a failing test first when there is a cheap test. File a nonblocking defect on the project's own tracker. Use `ask` before changing product behavior, changing a spec, or reversing an earlier out-of-scope decision. If the cause remains unknown after investigation, use `ask` only for a specific fact the user can supply or a decision they own. Otherwise report the blocker and its evidence without a question.
 - Release the run's own settled worker clones only through the supported route after its lifecycle checks pass. Keep any clone the route cannot release. Close tickets whose acceptance criteria are met. Report the releases, retained clones, and closures.
 - Apply an exact correction and show the result without a second approval. If the correction leaves a choice open, apply this test to that choice.
 - Reuse approval for retries of the same Costly seam use within the approved allowance. Ask before exceeding the allowance.

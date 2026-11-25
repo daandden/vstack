@@ -42,8 +42,12 @@ Publish each slice's red and green commands, observed outcomes, and captured pro
 
 Run typechecking regularly, single test files regularly, and the full test suite once at the end.
 
+When you find a defect the change did not cause, follow [Found defects](END-STATE.md#found-defects). The implementer owns an in-scope blocking repair. Keep its hunks separate for step 6. If an Addon requires an isolated drafting worker, keep that route for the repair.
+
 After all tickets and independent slices are finished, run shared step 3b, then step 4. Run shared step 5 once over the whole completed diff, before step 6 (Matt's order). Commit only accepted, checked work in step 6. Run step 6b on the committed head, then step 7 once for the invocation, up to the settled or capped End state.
 
 ## Reply
 
 Report the requested and reached End state, commits, PR URLs and observed status, development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, and every skipped step or blocker. Do not claim a PR, readiness, merge, or End state that the chain did not observe.
+
+Include the [found-defect outcomes](END-STATE.md#found-defects) from the run record, even if the run stopped before step 7.
