@@ -130,6 +130,12 @@ The Blast radius reviewer prompt must include:
 
 ### 5. Show the report, then ask
 
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to each finding before publishing the report. Decide findings the evidence settles, such as a documented-standard breach, a missing spec requirement, a confirmed risk, or a cleared claim.
+
+Decide behavior-preserving refactors and cleanup case by case. Trace who owns each helper, which callers need it to change together, and what checks support the change. An exact duplicate can justify extraction when both copies implement one rule. Keep even identical copies separate when sharing would couple independent owners. Preserve public contracts, scope, proof, and acceptance criteria.
+
+If resolving a finding would change behavior or a public contract, or choose product behavior the spec leaves open, apply the shared test to that choice rather than treating it as cleanup. Use one question per finding when a reason to ask applies and the choice needs the user's decision. If no question qualifies, publish no round and open no picker.
+
 In a Flow, publish through `skill://flow-page` before asking about findings. Submit one `review` Result with all three `axes` and its authoritative `entries`. The renderer derives one summary table at the start of the Stage and links each finding to its full card. Do not author a second summary table or a separate report page.
 
 - Each axis names `standards`, `spec`, or `blast-radius`, and has a `status`: `findings` when it completed with findings, `clean` when it completed without findings, `skipped` when deliberately not run or not triggered, `unavailable` when its source or provider could not be read, or `blocked` when a prerequisite prevented completion. Every status except `findings` needs a `reason`. A blocked axis may retain findings already established, but its reason must name the uncompleted work. Never use `clean` for an axis that did not run.
@@ -137,9 +143,11 @@ In a Flow, publish through `skill://flow-page` before asking about findings. Sub
 - Blast radius risks use the same finding cards. Keep the confirmed or unproven proof level in the `label`, the consequence in `impact`, the proposed change and missing proof in `action`, and the proof script, command, and observed output in `evidence`. Publish the safety fact and cleared checks as a separate `ledger` Result. Do not repeat risks in that ledger. A clean Blast radius axis may still have a safety fact and cleared checks, but has no fabricated finding card.
 - When a trigger fires outside a run, use Blast radius `skipped`, with a reason naming the triggers, stating that no proof ran, and recommending `/skill:code-review`. A missing spec is `skipped` only when the user says none exists. A source that cannot be read is `unavailable`. If reviewers cannot start, publish the affected axes as `blocked` with the launch failure before stopping.
 
-Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing.
+Keep every finding visible, including findings you decide need no change. Put the decision and reason in the card's `action` and set `blocking` to match. Record a claim's decision in its `status` and `consequence` without overstating its proof. For a settled disposition, name the finding by title and ref in its Assumed pick. Tell the user they can reopen a decision by naming the finding in a note or message. Reopen only that pick under the shared rule.
 
-In a Flow, prepare the round's `now` and each question's Decision `brief` using `skill://flow-page/references/reader-needs.md`. Include `asked_again_because` on re-asks. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Deliver the complete round and record answers through flow-page's "Every ask in a Flow" contract.
+In a Flow, prepare the round's `now` and each question's Decision `brief` using `skill://flow-page/references/reader-needs.md`. Include `brief.ask_reason` and `brief.evidence_checked` for every new or re-asked question, and `asked_again_because` on re-asks. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Deliver the complete round and record answers through flow-page's "Every ask in a Flow" contract. Outside a Flow, use plain `ask` with the same decision context in chat.
+
+Settling a draft finding does not authorize posting. Follow the [posting rule](../../rules/vstack-posting.md) before posting on a PR or issue the user does not own, even when no finding needs a question.
 
 In a Flow, use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
 
