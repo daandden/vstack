@@ -174,14 +174,14 @@ Published main's release notes through 9.0.4 remain intact. The architecture fea
 
 ## Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
+`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`, `ui-sdk`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin
 ```
 
-`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement, CSS, and UI selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
+`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
@@ -212,6 +212,12 @@ The Update moves pstack to `0b46ec399d55f2829e88822998f53b84944837d3` and emil t
 `interrogate` is an answer-only Utility skill, not a review axis or End state step. It uses three isolated Session-model adversaries by default, independently reruns findings, merges shared root causes, reports dropped counts, and applies no fix. Failed starts or missing isolation stop its review; only started failures drop out, with at least two substantive candidates required. Existing review and final Verifier ownership remains unchanged.
 
 Selection-only trigger evals across the twelve UI descriptions and interrogate, and live Addon judge checks, remain optional Costly seam tests requiring explicit approval. Unrun evals leave selection overlap unproven without blocking the mechanical Update gates. Do not infer native instruction following from a load smoke.
+
+### UI SDK Upstream
+
+The `ui-sdk` Upstream is `vercel-labs/ui`. Its commit Pin tracks `packages/core/skills`, with only `packages/core/skills/ui-sdk` registered as an item. Row `ui-sdk/ui-sdk` adapts the skill as the visible [ui-sdk Utility skill](../plugin/skills/ui-sdk/SKILL.md), with its Apache-2.0 license. It loads by description or by `/skill:ui-sdk` and has no Addon catalog key.
+
+The skill uses the installed package docs for API facts. It keeps the agent bridge and its agent test for every UI SDK interface. The running workflow owns all other test seams and proof. See the [UI SDK ADR](adr/20261126-web-fullstack-recommends-ui-sdk-and-the-reader-keeps-reka-for-now.md) for the adaptation decision and the [frontend guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md#native-utility-discovery) for loadability proof.
 
 ### Web stack Utility
 

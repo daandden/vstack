@@ -1146,6 +1146,15 @@ items:
     artifacts:
       - plugin/skills/session
     reason: Its design-correction signals join session's single pass. Session's asks and implement routing replace its DESIGN.md writes.
+  - id: ui-sdk/ui-sdk
+    upstream: ui-sdk
+    kind: skill
+    path: packages/core/skills/ui-sdk
+    tree: 581e3510d850dccfab8dc9b82ab10a7b8f019a1e
+    disposition: adapt
+    artifacts:
+      - plugin/skills/ui-sdk
+    reason: Keep the agent bridge and its interface test while implement and Verify own general test seams and proof, per ADR 20261126-web-fullstack-recommends-ui-sdk-and-the-reader-keeps-reka-for-now (#618).
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -1209,3 +1218,4 @@ utility:
   - plugin/skills/choreograph
   - plugin/skills/gestures
   - plugin/skills/web-fullstack
+  - plugin/skills/ui-sdk

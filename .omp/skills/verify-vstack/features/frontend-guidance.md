@@ -10,6 +10,7 @@ The twelve Emil-derived Utility skills expose UI guidance through their visible 
 - `frontend-review`: a fresh native code-review and its delegated Standards reviewer block an observed motion defect while preserving a supported browser-specific exception.
 - `frontend-source`: public register and maintenance commands account for every discovered source item and retain adapted classification through future-source planning.
 - `frontend-distribution`: a real package contains the MIT notice and excludes rejected source skills.
+- `frontend-utility-discovery`: a fresh omp session lists `ui-sdk` by description and command, outside the Addon catalog.
 - [Content robustness](frontend-robustness.md) adds realistic adverse-data, collection-boundary, and narrow-container proof through the same native and browser interfaces.
 - `frontend-motion`: [motion construction and diagnosis](frontend-motion.md) cover native main and worker edits, measured stutter, interruption, reduced motion, and a browser-qualified clip-path reveal.
 - `frontend-mobile`: the [mobile-web recipe](frontend-mobile.md) exercises Apple-derived interaction judgment and touch, viewport, safe-area, hover, and input behavior through the existing main and worker paths.
@@ -98,7 +99,26 @@ npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$
 
 Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, `write-swift`, `ask-emil`, or `learn-taste` entered the archive. The taste contribution belongs in the packaged `session`. Vstack's existing `prototype` must still ship. Compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
+Inspect `skills/ui-sdk/SKILL.md` and its companion references in the same archive. Compare `skills/ui-sdk/LICENSE` byte for byte with the root `LICENSE` at the `ui-sdk` commit Pin. This is the Apache-2.0 license, not one of the Emil MIT notices.
+
 Step `frontend-guidance-gates`: Run applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all twelve UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; improve-animations/AUDIT.md and PLAN-TEMPLATE.md; and choreograph/RECIPES.md. Include animation-performance, find-animation-opportunities, remove-animations, and gestures in the inventory. Interrogate must also be listed and command-visible, without an Addon catalog key. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native or browser prerequisite stays unavailable or unmet even when mechanical gates pass.
+
+### Native Utility discovery
+
+Step `frontend-guidance-utility-discovery`: Run the existing offline [plugin load gate](plugin-load.md). Use the checkout under test and retain the native responses as well as the summary:
+
+```sh
+bash "$SKILL_DIR/scripts/load.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+SMOKE_DIR="$(readlink "$VERIFY_RUN_DIR/data/outside")/load"
+cp "$SMOKE_DIR/rpc.jsonl" "$VERIFY_RUN_DIR/utility-discovery-rpc.jsonl"
+cp "$SMOKE_DIR/skills.json" "$VERIFY_RUN_DIR/utility-discovery-skills.json"
+jq -r 'select(.id == "s" and .type == "response") | .data.systemPrompt[]' "$SMOKE_DIR/rpc.jsonl" > "$VERIFY_RUN_DIR/utility-discovery-prompt.txt"
+jq -e '.questions | has("ui-sdk") | not' "$CHECKOUT/addon-questions.json"
+```
+
+In the native prompt's `<skills>` section, require `ui-sdk` with a nonempty description. In `plugin-load-summary.json`, require `ui-sdk` in `listedSkills` and `skillCommands`, not in `hiddenSkills`. The command comes from the native `get_available_commands` response. In `utility-discovery-skills.json`, resolve the `ui-sdk` entry's `filePath` to `$CHECKOUT/plugin/skills/ui-sdk/SKILL.md` before Cleanup. The catalog check must return `true`. Retain these observations.
+
+This inventory proves loadability, not description-driven selection or instruction following in a real session.
 
 ## Gotchas
 
