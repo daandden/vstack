@@ -41,7 +41,7 @@ A refused or failed remote step stops the deploy. Report completed, failed, refu
 
 Get the intended account name and ID from the user or existing local project configuration. Confirm that target before any Cloudflare command, including read-only `wrangler whoami`. If the account is unknown, stop with that open question. Do not discover accounts remotely to fill the question.
 
-Once the account and the read-only identity lookup are in scope, run `wrangler whoami --json` to verify access. Do not print tokens. If authentication is absent, separately confirm `wrangler login`, explaining that it authorizes Wrangler through the user's browser. The user completes login. Repeat the identity lookup and require membership in the approved account. A mismatch stops work.
+After the account confirmation, run `wrangler whoami --json` to verify access. Do not print tokens. If authentication is absent, separately confirm `wrangler login`, explaining that it authorizes Wrangler through the user's browser. The user completes login. Repeat the identity lookup and require membership in the approved account. A mismatch stops work.
 
 Pin `account_id` in the project's Wrangler configuration or `CLOUDFLARE_ACCOUNT_ID` for every remote command. Resolve conflicting local or environment account settings before continuing. Read the production Worker name and live origin from the selected target's config. Ask only if a material target choice remains. For `workers.dev`, use the verified account subdomain, not the account name or ID. The origin is `https://<worker-name>.<account-subdomain>.workers.dev`. Use an existing selected custom-domain origin instead when applicable. Domain provisioning is outside this procedure.
 

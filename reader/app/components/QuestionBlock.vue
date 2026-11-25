@@ -131,7 +131,7 @@ const lines = computed(() => {
         </div>
         <div v-if="q.brief.evidence_checked">
           <dt>Evidence checked</dt>
-          <dd>{{ q.brief.evidence_checked }}</dd>
+          <dd v-html="inline(q.brief.evidence_checked)" />
         </div>
         <div v-if="q.brief.asked_again_because">
           <dt>Asked again because</dt>

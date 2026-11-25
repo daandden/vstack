@@ -41,11 +41,11 @@ When the user corrects a design or visual you showed, use the shared rule's corr
    - Preserve cancellations, timeouts, empty and headless responses, including any automatic picks, as non-consent. Their decisions remain open.
    - An explicit pick settles its decision. A note beside a pick does not undo it; reply to the note in a Document Result or open a new frontier question when needed.
    - Words with no pick that plainly settle the decision get a resolved reading with its decision and basis, and `maps_to` only when they match an option. Preserve the user's words without inventing a pick or asking a settled decision again.
-   - A question, concern, or ambiguous note gets its corresponding unresolved reading. Reply in a Document Result and ask the still-open part next round with `again` naming the earlier question. Explain what remains open in the Decision brief. Code preserves the earlier answer and Q number.
+   - A question, concern, or ambiguous note gets its corresponding unresolved reading. Preserve the raw response and the reading separately. Reply in a Document Result and apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before any `again` round. Record what the evidence settles as Assumed. Ask only about what the evidence leaves open and the test still permits. Use `again` to link that question to the earlier attempt. Explain what remains open in the Decision brief. The earlier answer and Q number stay intact.
 
-   Recompute the frontier from explicit picks and resolved readings only.
+   Recompute the frontier from explicit picks, resolved readings, and Assumed picks that still stand.
 
-Outside a Flow, present newly settled decisions and the full context for the remaining frontier in chat, then use one plain `ask` for the round. Preserve the user's words and distinguish explicit picks, resolved readings, and unresolved concerns as above, without page records. Recompute the frontier from explicit picks and resolved readings only.
+Outside a Flow, present newly settled decisions and the full context for the remaining frontier in chat, then use one plain `ask` for the round. Preserve the user's words and distinguish explicit picks, resolved readings, and unresolved concerns as above, without page records. Apply the same test before asking again. Recompute the frontier from explicit picks, resolved readings, and Assumed picks that still stand.
 
 ## Close
 

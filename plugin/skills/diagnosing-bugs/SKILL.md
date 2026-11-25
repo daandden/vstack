@@ -107,7 +107,7 @@ Each hypothesis must be **falsifiable**: state the prediction it makes.
 
 If you cannot state the prediction, the hypothesis is a vibe: discard or sharpen it.
 
-**Show the ranked list to the user before testing**, with one question-tool round: test in this order (recommended), or re-rank. They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. If the question times out or the picker is unavailable, proceed with your own ranking and say the user has not confirmed it.
+Run the probes in the order the evidence supports. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before interrupting the investigation. Use `ask` only for a material fact or choice the evidence leaves open and the user can resolve.
 
 ## Phase 4: Instrument
 

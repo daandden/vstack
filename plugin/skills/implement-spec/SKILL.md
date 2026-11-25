@@ -96,9 +96,11 @@ For a blocking repair, assign the affected ticket's implementation owner a separ
 
 Use the step 5 Merger with that local work item as the ticket-mode landing subject. It lands one repair commit through the same branch, scope, and exact-tree proof guards. Record the repair SHA with the defect, not as a completed ticket or closing reference. Hold affected tickets and proof until the repair lands. Recheck the affected work on the repaired tip through the existing landing and proof routes. Preserve held patches and evidence under the worker lifecycle contract.
 
+If a blocking found defect prevented a worker from returning a usable patch because baseline proof failed, record that ticket as held for the repair. Once the separate repair commit lands, put the held ticket back on the frontier once for a fresh attempt on the repaired integration tip. Pass the repair SHA and baseline evidence in its brief. Carry forward its attempt and retry counts without resetting any existing retry limit.
+
 #### Ticket landings
 
-Take the patch path only from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` Keep the worker call schemaless so the auto-delivered completion or the result of `handle.wait()` includes the notice. A failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
+Take the patch path only from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` Keep the worker call schemaless so the auto-delivered completion or the result of `handle.wait()` includes the notice. Except for a ticket held for a blocking baseline repair under [Found defects](#found-defects), a failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
 
 Record returned seam picks in this Stage under skill://tdd's seam rule. Route Costly seam approval questions by END-STATE.md's "Question timing", recording each unrun test and its proof gap.
 
@@ -126,9 +128,9 @@ Update the ticket's task only after its integration commit lands with no open ga
 
 If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency.
 
-After each merge, held patch, or answered question, recompute the frontier. A ticket is ready when every blocker is complete or was closed before this run. Pick each newly ready ticket's seams as step 1 says. Then run the step 4 line at once for the newly ready tickets.
+After each merge, repair landing, held patch, or answered question, recompute the frontier. A ticket is ready when every blocker is complete or was closed before this run. Pick each newly ready ticket's seams as step 1 says. Then run the step 4 line at once for the newly ready tickets.
 
-A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second gating question. Only the two once-only returns in step 5 put a ticket back. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered gating question with its held patch, or an open blocker.
+A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second gating question. Only the once-only returns in step 5 put a ticket back, including the return after a blocking baseline repair. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered gating question with its held patch, or an open blocker.
 
 ### 7. Review
 

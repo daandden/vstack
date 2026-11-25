@@ -9,7 +9,7 @@ The user picked the shared rule with its check, the five kinds below, and the na
 The agent now settles these kinds, which skills asked about before:
 
 - code-review decides behavior-preserving refactor and cleanup findings and shows each decision with its reason on the review Result.
-- A run that finds a defect its change did not cause fixes it in the run's PR as its own commit when it blocks the run's proof or End state, and files it on the project's own tracker when it does not. It still asks when the fix would change product behavior or a spec, or when it cannot find the cause.
+- A run fixes a defect it did not cause when the defect reproduces on the baseline, blocks proof or the End state, and has an in-scope repair. The repair is a separate commit on the run's branch. It goes in the run's PR only when the authorized End state opens one. The run files a nonblocking defect on the project's own tracker. It still asks when the fix would change product behavior, change a spec, or reverse an earlier out-of-scope decision. If the cause remains unknown after investigation, it asks only for a specific user-only fact or a decision the user owns. Otherwise it reports the blocker with its evidence.
 - A run releases its own settled worker clones through the supported route and closes tickets whose criteria are met. When supported release fails, it keeps the clone and reports it.
 - An exact correction from the user is applied and shown without a second approval. An approval for a Costly seam covers retries of the same use within the approved allowance.
 - setup-vstack records a value that discovery determined without conflict and asks only on a conflict.

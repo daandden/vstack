@@ -48,6 +48,8 @@ When you find a defect the change did not cause, follow [Found defects](END-STAT
 
 After all tickets and independent slices are finished, run shared step 3b, then step 4. Run shared step 5 once over the whole completed diff, before step 6 (Matt's order). Commit only accepted, checked work in step 6. Run step 6b on the committed head, then step 7 once for the invocation, up to the settled or capped End state.
 
+If the tracker closes work through PRs, pass each ticket whose acceptance criteria are proved to open-pr in shared step 7 as a closing reference. At End state commit, those tickets stay open. When delivery stops, read the tracker state back before reporting any ticket as closed. If the tracker does not confirm closure, report the observed status or the reason readback failed under [Close-out](END-STATE.md#close-out).
+
 ## Reply
 
 Report the requested and reached End state, commits, PR URLs and observed status, development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, and every skipped step or blocker. Do not claim a PR, readiness, merge, or End state that the chain did not observe.

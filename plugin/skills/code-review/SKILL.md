@@ -58,7 +58,9 @@ Read the tracker workflow from the vstack configuration above. Look for the orig
 1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, or tracker keys such as Jira `MY_PROJ-12`), fetched with their full body and comments through that workflow. For an MCP tracker, read the named server's current tool list, descriptions, and parameter schemas. Select the issue and comment read tools using the recorded project facts and original issue key, without per-operation config rows or assumed tool names. If discovery fails, the server is unreachable, or a needed capability is missing, name the server and gap in Spec's chat line, then try the next source. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 2. A path the user passed as an argument.
 3. A file under `docs/`, `specs/`, or `.scratch/` matching the branch or feature. In Private mode search `<vstack root>/artifacts/` instead of `.scratch/` too.
-4. If nothing is found, apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). Use the fixed-point question route only when the user can identify a missing source that matters to the review. If the evidence establishes there is no spec, skip Spec and report `no spec available`. If no source can be established, report Spec as unavailable, not reviewed.
+4. If there is no readable source, apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). Use the fixed-point question route only when the user can identify a missing source that matters to the review.
+
+Record Spec as `skipped` when the evidence establishes that no spec exists, including when the user says there is none. Record it as `unavailable` when an identified source cannot be read or no source could be identified. Give the reason in either case.
 
 ### 3. Identify the standards sources
 
@@ -88,7 +90,7 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 ### 4. Run the reviewers
 
-The axes that run are Standards, Spec unless step 2 found no spec, and Blast radius only when a step-1 trigger fired within a run. An explicit "skip blast radius" or "skip safety" skips Blast radius even within a run.
+Run Standards. Run Spec only with a readable source from step 2. Run Blast radius only when a step-1 trigger fired within a run. An explicit "skip blast radius" or "skip safety" skips Blast radius even within a run.
 
 When Blast radius runs, carry the project Scratch dir and session id through `skill://vstack-fan-out`.
 
@@ -117,8 +119,6 @@ The Spec reviewer prompt must include:
 - The path or fetched contents of the spec.
 - The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Give each finding a short title, a label such as `issue` or `suggestion`, whether it blocks the merge, its impact, the suggested change, and its evidence, in that order. Open the impact with what a user or caller sees, such as 'When you run X, Y happens instead of Z', then state the decision the user faces. The impact describes behavior only and names no file path; the file and line go in the evidence, for whoever fixes it. Say whether the spec settles the change, or why it needs the user's judgement, such as a spec line that reads two ways. Under 400 words."
 
-If no spec applies, skip the Spec reviewer and record the reason in the review's Spec axis. An unidentified or unreadable source is unavailable, not a clean review.
-
 The Blast radius reviewer prompt must include:
 
 - The pinned diff command, named untracked paths and contents, and commit list.
@@ -141,7 +141,7 @@ In a Flow, publish through `skill://flow-page` before asking about findings. Sub
 - Each axis names `standards`, `spec`, or `blast-radius`, and has a `status`: `findings` when it completed with findings, `clean` when it completed without findings, `skipped` when deliberately not run or not triggered, `unavailable` when its source or provider could not be read, or `blocked` when a prerequisite prevented completion. Every status except `findings` needs a `reason`. A blocked axis may retain findings already established, but its reason must name the uncompleted work. Never use `clean` for an axis that did not run.
 - Each finding is one entry with a local `ref` such as `std-1`, its `axis`, `title`, `label`, `blocking`, `impact`, `location`, `action`, and `evidence`. `location` gives the source file and line, or the named interface when no source line is known. Keep each reviewer's order within its axis. The impact opens with what a user or caller sees. The script assigns the entry's id and links, including after a focused correction.
 - Blast radius risks use the same finding cards. Keep the confirmed or unproven proof level in the `label`, the consequence in `impact`, the proposed change and missing proof in `action`, and the proof script, command, and observed output in `evidence`. Publish the safety fact and cleared checks as a separate `ledger` Result. Do not repeat risks in that ledger. A clean Blast radius axis may still have a safety fact and cleared checks, but has no fabricated finding card.
-- When a trigger fires outside a run, use Blast radius `skipped`, with a reason naming the triggers, stating that no proof ran, and recommending `/skill:code-review`. A missing spec is `skipped` only when the user says none exists. A source that cannot be read is `unavailable`. If reviewers cannot start, publish the affected axes as `blocked` with the launch failure before stopping.
+- When a trigger fires outside a run, use Blast radius `skipped`, with a reason naming the triggers, stating that no proof ran, and recommending `/skill:code-review`. If reviewers cannot start, publish the affected axes as `blocked` with the launch failure before stopping.
 
 Keep every finding visible, including findings you decide need no change. Put the decision and reason in the card's `action` and set `blocking` to match. Record a claim's decision in its `status` and `consequence` without overstating its proof. For a settled disposition, name the finding by title and ref in its Assumed pick. Tell the user they can reopen a decision by naming the finding in a note or message. Reopen only that pick under the shared rule.
 
