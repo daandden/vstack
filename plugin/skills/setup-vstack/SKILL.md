@@ -16,9 +16,9 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 
 The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills or global rules.
 
-This is a prompt-driven skill with helper scripts. It runs entirely in chat, whatever the caller's context or the user's request for a page. Explore, present what you found, settle each choice through plain `ask`, then write.
+Run entirely in chat. Do not create or join a Flow, even when the caller supplies one or the user asks for a page. Before offering a question, apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). State each Assumed pick and what established it in chat. Use plain `ask` for choices that still need the user.
 
-Write every question's context in chat before the picker. A timed-out answer is not the user's. Re-ask a gate once. If the second attempt times out, stop without acting and say why. Unavailable questioning grants no approval.
+Before opening the picker, state what you checked and why the question remains. A timed-out answer is not the user's. Re-ask a gate once. If the second attempt times out, stop without acting and say why. Unavailable questioning grants no approval.
 
 Show helper output in chat: machine lines verbatim, the Migration plan and apply report, the commit receipt, each Check result, and every helper refusal or failure with its exit code and message as printed. Redact credentials. Never show Private MCP values. Save no helper-output files to Scratch.
 
@@ -102,7 +102,7 @@ When `mode` is null, call `ask` with one question and two options:
 
 Look at the repo to understand its starting state. Read whatever exists; do not assume:
 
-- `git remote -v` and `.git/config`: does a remote point at GitHub, GitLab, Bitbucket, or another host, and at which repo?
+- `git remote -v`, the branch's upstream, and the relevant entries from `git config`: which project holds this repo and its PRs? Ignore `ovnfs/` checkout remotes. Compare host and project rather than fetch and push URL spellings.
 - `.github/workflows/`, `.gitlab-ci.yml`, and `Jenkinsfile` at the repo root: these CI signals guide the separate CI service recommendation.
 - The MCP servers this session reaches (tools named `mcp__<server>_<tool>`, top-level or under `xd://`), when the remote is not GitHub or GitLab. A server for the Code host is a likely tool for it.
 - `CLAUDE.md` and `AGENTS.md` at the repo root, and the `## vstack` block in one of them.
@@ -115,7 +115,7 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 
 ### 5. Present findings and settle each section
 
-Summarize what is present and what is missing. Then take the missing-file sections in order, one round through `ask` per section. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
+Summarize what is present and what is missing. Take the needed sections in order. Carry discovery into each section's draft and ask only the remaining questions. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
 
 MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Show the draft in step 6.
 
@@ -123,7 +123,7 @@ Section A, issue tracker.
 
 > Explainer: The issue tracker is where issues live for this repo. Skills like to-tickets, triage, and to-spec read from it and write to it. They need to know whether to call `gh issue create`, write a markdown file, or follow some other workflow you describe. Pick the place where you actually track work for this repo.
 
-Recommend GitHub when a remote points at GitHub, GitLab when a remote points at GitLab (`gitlab.com` or a self-hosted host), and local markdown otherwise. The question's options:
+Use the tracker when project evidence establishes where this repo's issues live. Read existing tracker references or local ticket files in `.scratch/` rather than inferring the tracker from the Code host alone. If the tracker is still unresolved, use a remote on GitHub or GitLab as a recommendation, not a confirmed tracker. With no such remote, recommend local markdown. With competing recommendations, recommend none. Offer these options:
 
 - GitHub: issues live in the repo's GitHub Issues (uses the `gh` CLI).
 - GitLab: issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI).
@@ -132,7 +132,7 @@ Recommend GitHub when a remote points at GitHub, GitLab when a remote points at 
 
 The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by default. Leave it off and do not raise it. A user who wants external PRs in the triage queue can change the flag in the file later.
 
-A GitHub or GitLab tracker needs a reachable repo. If no remote points at the chosen host, collect the repo URL through `ask` and settle the required initialization or remote change before making it. Run `gh repo view` or `glab repo view` from this checkout and require it to print the chosen project before continuing. If it cannot, stop and report the missing access or configuration.
+For a GitHub or GitLab tracker, use the project URL from discovery. If it is still missing, collect it through `ask`. Settle any required initialization or remote change through `ask` before making it. Run `gh repo view` or `glab repo view` against the chosen project and require it to print that project before continuing. If it cannot, stop and report the missing access or configuration.
 
 For Other with an MCP server, follow MCP discovery. Draft `issue-tracker.md` with the tracker and one pin, Check.
 
@@ -146,23 +146,27 @@ Section B, Code host.
 
 > Explainer: The Code host is the service that holds this repo's remote and its PRs. implement's PR chain (open-pr, babysit, ship), code-review, blast-radius, why, and session run every PR operation through `code-host.md`. A repo without it can only commit, and code-review and blast-radius cannot review a PR. The Code host is a separate choice from the issue tracker. For example, a Bitbucket repo can track its issues in Jira.
 
-Recommend GitHub when a remote points at `github.com`, GitLab when a remote points at GitLab (`gitlab.com` or a self-hosted host), and no option otherwise. The question's options:
+Use the only project remote as the Code host candidate unless discovery points elsewhere for PRs. When several plausible remotes remain, show their host and repo in chat and use `ask` to settle which one holds this repo's PRs.
+
+When discovery leaves the host or its tool unresolved, ask only for the missing choice. Use these options when the host is unknown:
 
 - GitHub: PRs live on GitHub (uses the `gh` CLI).
 - GitLab: merge requests live on GitLab (uses the `glab` CLI).
 - Other (Bitbucket Cloud, Bitbucket Data Center, and so on): the user names, through the picker's custom answer, the MCP server or CLI that is already set up for this project.
 
+For GitHub or GitLab, verify the project with `gh repo view` or `glab repo view` against that exact project. Reuse a matching read from Section A. If the lookup fails, report the gap and leave this section incomplete. When discovery settled the host and repo, record them as an Assumed pick and use the matching template or tool.
+
 For Other with a CLI, read its `--help` output for each command group. Write one command row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the arguments it needs. Write `unsupported` when no command matches. Draft a read-only Check command from that help too. Never name a command that the help does not show.
 
 For Other with an MCP server, follow MCP discovery. Draft `code-host.md` with the host and one pin, Check. Its project facts are the repo, the review reference in commit titles, and how to obtain and fetch the PR's exact base and head commits, including a fork's head. Bitbucket uses Other; there is no Bitbucket template.
 
-Section B's round carries a second question, the project's default End state, with the options commit, merge-ready, and shipped. Recommend shipped in Standard mode and commit in Private mode.
+Ask for the project's default End state even when the Code host is an Assumed pick. Offer commit, merge-ready, and shipped. Recommend shipped in Standard mode and commit in Private mode.
 
 > Explainer: implement, implement-spec, and hillclimb take this End state, with no question, when your words and the ticket name none. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped also merges it into the default branch.
 
 Add the answer to the drafted `code-host.md`'s facts list, beside Host and Repo, as the line `- Default End state: <commit|merge-ready|shipped>`. The line is the same in the CLI shape and the MCP short shape. When `code-host.md` already exists and `missing_default_end_state` is true, ask this question alone and draft the existing file with only that line added. If Section C's cutover also revises `code-host.md`, add the line to that draft.
 
-Then ask the project's Landing method in its own round, because its options depend on the Code host answer. Run the drafted `merge-methods` operation once: its command row, or the read-only tool that MCP discovery matches to it for an MCP Code host. Offer each Landing method that it allows now, with the Code host's own name, as the template's `merge-methods` row describes. On GitHub, recommend `merge` when it is allowed, because GitHub can refuse to rebase a PR branch that the chain updated by merging the default branch in (ADR 0060). On another host, recommend the allowed method that lands without squash, such as the GitLab project's `merge_method`. Recommend nothing when the method to recommend is not allowed. If `merge-methods` is unsupported or fails, name the gap and skip this question. The line stays out, ship keeps squash first, and a later re-run asks again.
+Then ask for the project's Landing method in its own round. Run the drafted `merge-methods` operation once: its command row, or the read-only tool that MCP discovery matches to it for an MCP Code host. Offer each Landing method that it allows now, with the Code host's own name, as the template's `merge-methods` row describes. Discovery establishes the allowed methods, not the user's landing history choice. On GitHub, recommend `merge` when it is allowed, because GitHub can refuse to rebase a PR branch that the chain updated by merging the default branch in (ADR 0060). On another host, recommend the allowed method that lands without squash, such as the GitLab project's `merge_method`. Recommend nothing when the method to recommend is not allowed. If `merge-methods` is unsupported or fails, name the gap and skip this question. The line stays out, ship keeps squash first, and a later re-run asks again.
 
 > Explainer: ship lands each PR with this method. Squash puts one commit on the default branch. A rebase puts each of the PR's commits there with new SHAs. A merge commit keeps the PR's commits and adds one commit that joins them.
 
@@ -181,7 +185,9 @@ Show both complete drafts together in chat in step 6 before writing either file.
 
 If the existing `code-host.md` has no CI rows, use the normal CI choices below. Still include an MCP Code host's short-shape draft in the same write set. A CLI Code host with no CI rows stays unchanged.
 
-Recommend from the CI signals found in step 4, not from the remote or the Code host. Exactly one signal gives a recommendation: `.github/workflows/` means GitHub Actions, `.gitlab-ci.yml` means GitLab CI, and `Jenkinsfile` means Other. With none or several, recommend nothing. The question's options:
+Use the CI signals from step 4 to identify the service, independently of the Code host. When the workflow files or current project configuration establish the CI service and project, use those values. A `.github/workflows/` workflow can establish GitHub Actions, `.gitlab-ci.yml` can establish GitLab CI, and a `Jenkinsfile` can identify Jenkins without establishing its server or job. If the service remains unresolved, ask which one runs this repo's checks. Recommend a service only when discovery gives one signal. If the service is known, ask only for the missing choice, such as the configured Jenkins tool or job folder.
+
+When the service is unresolved, offer these options:
 
 - GitHub Actions: builds and checks run on GitHub Actions, using the `gh` CLI.
 - GitLab CI: builds and checks run on GitLab CI, using the `glab` CLI.
@@ -196,11 +202,13 @@ For Other with an MCP server, follow MCP discovery. Draft `ci.md` with the CI se
 
 `ci-logs`, `set-secret`, and `set-variable` stay unpinned. The project facts include values such as the Jenkins URL and job folder. A folder is not a substitute for the failed check's build link. Jenkins uses Other; there is no Jenkins template.
 
-Section D, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one round containing one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+Section D, triage labels. Run this section whenever `triage-labels.md` is missing. Check the settled tracker's label names and project conventions before choosing a mapping. For GitHub or GitLab, use the current CLI help to list every page of labels for that exact project. For other trackers, read the available label or status vocabulary and project conventions. For local markdown, inspect existing ticket status lines. Report any unavailable inventory. A failed or partial listing is not evidence that a tracker has no competing labels.
 
-For GitHub or GitLab, include creation of missing configured triage labels in this section's choice. After that choice, create only the labels the tracker lacks with `gh label create` or `glab label create`. Use their current help for the arguments. Report a failed creation rather than claiming the labels exist.
+When discovery finds no competing names for a role, take its canonical name from the [triage label template](./triage-labels.md) and record the resulting mapping and its basis as an Assumed pick. When an existing convention competes with a canonical label, show the conflict and use plain `ask` for that role's mapping only. For example, ask whether `needs-triage` should use `bug:triage` or the canonical name. Keep the other roles settled. When the mapping cannot be established, leave the section incomplete.
 
-Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
+For GitHub or GitLab, say which configured labels setup will create. After settling the mapping, use `gh label create` or `glab label create` only for labels the selected project is known to lack. Use current CLI help for the arguments. Leave existing labels unchanged. Report a failed creation rather than claiming the label exists.
+
+Section E, domain docs. Use the existing glossary layout when it establishes the choice. With no existing layout or monorepo signal, record the single-context default as an Assumed pick: one `GLOSSARY.md` plus `docs/adr/` at the repo root. When monorepo signals leave the layout unresolved, use `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
 ### 6. Show the drafts
 
