@@ -1283,13 +1283,13 @@ async function removeAll() {
         if (result.code !== 0) throw new Error(result.err.trim() || result.out.trim() || `ovnfs rm exit ${result.code}`);
         const after = ovnfsListing();
         if (!after.ok || after.checkouts.some((checkout) => checkout.name === c.ovnfs!.name || checkout.path === c.path)) throw new Error("ovnfs removal could not be verified");
-        if (lstat(c.entry)) {
+        if (!missingPath(c.entry)) {
           progress("remove", { stage: "waiting for mounted directory disappearance", path: c.path });
           const deadline = performance.now() + 65_000;
-          while (lstat(c.entry)) {
-            if (performance.now() >= deadline) throw new Error("ovnfs removed the checkout, but its mounted directory is still visible after 65 seconds; inspect the path without repeating removal");
+          do {
+            if (performance.now() >= deadline) throw new Error("ovnfs reported removal, but its mounted directory's absence could not be verified after 65 seconds; inspect the path without repeating removal");
             Bun.sleepSync(50);
-          }
+          } while (!missingPath(c.entry));
           const visible = ovnfsListing();
           if (!visible.ok || visible.checkouts.some((checkout) => checkout.name === c.ovnfs!.name || checkout.path === c.path)) throw new Error("ovnfs removal identity changed while waiting for its mounted directory");
         }

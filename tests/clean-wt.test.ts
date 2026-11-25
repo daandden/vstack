@@ -1962,6 +1962,43 @@ test("ovnfs removal waits for mounted directory visibility without repeating del
     .toEqual([["--json", "rm", "--force", "--sticky-snapshots", name]]);
 }, 30000);
 
+test("approved ovnfs removal waits through stale mount errors for ENOENT", () => {
+  const name = "omp-stale-mount";
+  const path = ovnfsCheckout(name);
+  writeFileSync(join(path, "draft.txt"), "approved dirty work\n");
+  const c = comparedCheckout(path);
+  expect(c).toMatchObject({ automatic: false, state: "dirty" });
+  const preload = join(dir, "stale-mount.ts");
+  const probes = join(dir, "mount-probes.txt");
+  writeFileSync(preload, `
+import { mock } from "bun:test";
+import * as fs from "node:fs";
+const actual = fs.lstatSync;
+let stale = 2;
+mock.module("node:fs", () => ({
+  ...fs, lstatSync(file, ...args) {
+    try {
+      return actual(file, ...args);
+    } catch (error) {
+      if (file === ${JSON.stringify(path)} && error.code === "ENOENT") {
+        const code = stale-- > 0 ? "ESTALE" : "ENOENT";
+        fs.appendFileSync(${JSON.stringify(probes)}, code + "\\n");
+        if (code === "ESTALE") throw Object.assign(new Error("stale file handle"), { code });
+      }
+      throw error;
+    }
+  },
+}));
+`);
+  const out = cleanWt(["remove", "--approve", path, `${path}=${c.fingerprint}`], {}, repo, ["--preload", preload]);
+  expect(out.code).toBe(0);
+  expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  expect(readFileSync(probes, "utf8").split("\n").slice(0, 3)).toEqual(["ESTALE", "ESTALE", "ENOENT"]);
+  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  expect(calls.filter(call => call.args.includes("rm")).map(call => call.args))
+    .toEqual([["--json", "rm", "--force", "--sticky-snapshots", name]]);
+});
+
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
   const path = ovnfsCheckout("omp-configured-123");
   const configured = join(dir, "configured-ovnfs");
