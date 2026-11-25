@@ -5,6 +5,7 @@
 ## Sub-features
 
 - `cwt-inventory` `inventory` prints `base`, `evidence_gaps`, and one record per checkout. Git-dirty records have `outcome: "contents deferred"`, no usable fingerprint, and Git-reported changes. Targeted inventory supplies the fingerprint for removal of dirty work.
+- `cwt-disposable-ignored` the script skips byte reads and fingerprinting for listed generated paths only when Git reports them as ignored. Tracked edits, non-ignored untracked files, and unlisted ignored files still get the usual content checks.
 - `cwt-session` from a session with a held lease, `evidence_gaps` is `[]` and an unowned clean checkout is `unused`. Without a held lease, the gap names the lease and the checkout is `uncertain`.
 - `cwt-remove-clean` `remove <path>=<fingerprint>` removes an unused clean linked worktree with `git worktree remove` and keeps its branch.
 - `cwt-skip-stale` a fingerprint that no longer matches skips the checkout with `it changed since the inventory`.
@@ -31,9 +32,19 @@
 
 Preconditions:
 
-- The baseline from `README.md`, and Doctor before the drive.
+- The baseline from `README.md`. Run Doctor before each fresh drive.
 - The script reads the running session's lease, so every drive here uses `--session`, except the one that proves the missing lease.
 - Throwaway repo and base: `F="$VERIFY_RUN_DIR/data/cwt"` and `B="$F/wt"`. Never point `--base` at the real omp worktree base. The base does not restrict ovnfs discovery. Remove only this run's explicitly named disposable targets, and preserve unrelated inventory records.
+- Start an owned ovnfs daemon for the removal and lease drives. The throwaway HOME's default `admin.sock` path can exceed the macOS Unix socket limit. Set `SCRATCH_DIR` to the project's Scratch dir from Verify Evidence. Put the daemon directories directly under `$SCRATCH_DIR/verify/`, outside the run entry:
+
+  ```sh
+  O=$(mktemp -d "$SCRATCH_DIR/verify/cwt.XXXXXX")
+  ovnfs --state "$O/s" --mount "$O/m" start
+  ovnfs --state "$O/s" --mount "$O/m" status
+  ovnfs --state "$O/s" --mount "$O/m" --json ls
+  ```
+
+  Save the start, status, and listing output in `$VERIFY_RUN_DIR`. Require status to show the daemon PID from `start`, state at `$O/s`, mount at `$O/m`, and the socket at `$O/s/admin.sock`. Require an empty checkout listing. Stop before driving if the namespace is not isolated.
 
 Step `clean-wt-fixture`: Build the fixture. `g` passes a throwaway identity to git:
 
@@ -48,7 +59,7 @@ g "$F/repo" worktree add -q --detach "$B/wt-unique" && g "$B/wt-unique" commit -
 The stub model plays the agent. Each `{"tool":"bash"}` reply runs one command in the disposable source repository. Write the replies with `jq` so paths expand before the drive. `fp` reads a clean checkout's discovery fingerprint. `target_fp` prepares source facts and reads the dirty checkout's targeted fingerprint when the tool runs.
 
 ```sh
-CW="bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts"
+CW="OVNFS_STATE='$O/s' OVNFS_MOUNT='$O/m' bun '$CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts'"
 fp() { echo "\$($CW inventory --base $B | jq -r '.checkouts[] | select(.path==\"$B/$1\") | .fingerprint')"; }
 target_fp() {
   local facts="$VERIFY_RUN_DIR/data/cwt-source-facts.json"
@@ -73,7 +84,17 @@ Step `clean-wt-remove`: Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKO
 
 Step `clean-wt-remove-after`: Then prove the state outside the session. Save `git -C "$F/repo" worktree list --porcelain | grep '^worktree'`, `git -C "$F/repo" branch --list`, and `ls "$B"` as `$VERIFY_RUN_DIR/clean-wt-remove-after.txt`. Only `repo` and `wt-unique` remain registered, `clean-br` and `dirty-br` still exist, and `$B` holds only `wt-unique`.
 
-Step `clean-wt-session-lease`: Session lease. Make a second base `F2="$VERIFY_RUN_DIR/data/fixture"` with one clean linked worktree at `$F2/wt/wt-clean`. Write `[{"tool":"bash","args":{"command":"bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts inventory --base $F2/wt","cwd":"$F2/repo"}},{"text":"done"}]` with the variables expanded to `$VERIFY_RUN_DIR/clean-wt-replies.json`. Drive `'{"type":"prompt","message":"/skill:clean-wt"}'` with `--session --replies "$VERIFY_RUN_DIR/clean-wt-replies.json" --name clean-wt-session`. The `tool_execution_end` text holds `evidence_gaps: []`, and wt-clean is `unused`. Drive it again without `--session`, as `--name clean-wt-no-session`. `evidence_gaps` then names the missing running-session lease and wt-clean is `uncertain`.
+Step `clean-wt-session-lease`: Make a second fixture under `F2="$VERIFY_RUN_DIR/data/fixture"` with one clean linked worktree at `$F2/wt/wt-clean`. Use the same `CW` and isolated daemon:
+
+```sh
+git init -q "$F2/repo" && g "$F2/repo" commit -q --allow-empty -m init
+g "$F2/repo" worktree add -q -b lease-br "$F2/wt/wt-clean"
+jq -n --arg cwd "$F2/repo" --arg inv "$CW inventory --base $F2/wt" \
+  '[{tool:"bash",args:{command:$inv,cwd:$cwd}},{text:"done"}]' \
+  > "$VERIFY_RUN_DIR/clean-wt-replies.json"
+```
+
+Run the same `/skill:clean-wt` prompt with `--session --replies "$VERIFY_RUN_DIR/clean-wt-replies.json" --name clean-wt-session`. The `tool_execution_end` text holds `evidence_gaps: []`, and `wt-clean` is `unused`. Run Doctor again before driving the same prompt and replies without `--session`, as `--name clean-wt-no-session`. The inventory names the missing running-session lease as its only evidence gap, and `wt-clean` is `uncertain`.
 
 ## Drive phased integration
 
@@ -153,6 +174,8 @@ Use disposable fixture repositories and native executable stand-ins for these CL
 
 Step `clean-wt-discovery-coverage`: Run `bun test --timeout 30000 tests/clean-wt.test.ts tests/checkout-locator-cleanup.test.ts`. Inspect the named external saved-session, native exclusion, global Git and non-Git inventory, delayed native-directory visibility, and mid-run ownership cases. Owned and uncertain targets remain, excluded entries have protection reasons, and snapshots survive delayed completion. A native checkout replaced during listing has no usable fingerprint and survives an attempted removal. A reused ovnfs name is reported as `replaced` without adding the new path. A vanished unrelated Git registration does not block a checkout whose source is known. No real checkout is a fixture.
 
+Also require the listed ignored content, Git-dirty discovery deferral, and tracked or non-ignored build-path cases to pass. Listed ignored dependencies and nested build outputs contribute zero content reads. Editing them does not invalidate the discovery fingerprint or block automatic removal. The separate `.env` control, tracked edits, and non-ignored untracked files stay protected.
+
 In the omp and ovnfs lister-exit tests, each lister writes its row, replaces the checkout, then exits. Discovery reports `replaced` with no usable fingerprint. Confirm that `remove` rejects the discovery fingerprint and leaves the replacement on disk. If the same swap happens during removal's fresh listing, removal skips the target even when the replacement matches the supplied fingerprint.
 
 In `verification distinguishes a replacement between discovery and verification`, confirm that a listed replacement and a checkout with missing discovery identity do not match the saved instance. The unchanged checkout matches.
@@ -220,6 +243,16 @@ This journey uses the real model, real investigators, the ordinary omp picker, a
 
    Require the counts before the outcome lists, one Result id across revisions, no stale pending rows at the end, and no evidence attachments or process notes. Compare the final summary with the actual verification, Scratch files, and disk, Git, and ovnfs after-state. Capture command and session records and the final chat reply.
 5. Step `clean-wt-summary-live-cleanup`: Preserve logs and native session records outside `data/`. Close only the fixture Flow and browser tab. Stop the owned Flow host with `host stop --home "$F/flow-home"`, and stop ovnfs with the same explicit fresh `--state` and `--mount` as launch. Confirm both owned processes exited. Keep failure evidence. Never stop the shared host or daemon.
+
+## Cleanup for removal and lease drives
+
+On success or failure, stop only the owned daemon before the shared Verify Cleanup:
+
+```sh
+ovnfs --state "$O/s" --mount "$O/m" stop
+```
+
+Save the stop output in `$VERIFY_RUN_DIR`. Confirm that the recorded daemon PID and admin socket are gone. Only then remove the temporary directory `$O` and run [Verify Cleanup](../SKILL.md#cleanup).
 
 ## Gotchas
 

@@ -147,13 +147,13 @@ The model stub stands at the model-provider boundary. Scratch identity uses name
 Step `cleanup`: Do all three items below.
 
 1. Close every browser tab this run opened, by the name you gave it: `await browser.tab("<name>").close()`.
-2. Run the cleanup script:
+2. Stop any disposable services named by the feature's Cleanup, then run the cleanup script:
 
    ```sh
    bash "$SKILL_DIR/scripts/cleanup.sh" "$VERIFY_RUN_DIR"
    ```
 
-   It stops only the processes in `$VERIFY_RUN_DIR/data/pids` whose working directory is still this run's temp project dir. Then it deletes the temp dir that `data/outside` links to, and `$VERIFY_RUN_DIR/data/`. It refuses a dir that is not under `~/.vstack/tmp/<repo-key>/verify/`. It prints what it kept.
+   It stops only the processes in `$VERIFY_RUN_DIR/data/pids` whose working directory is still this run's temp project dir. Then it deletes the temp dir that `data/outside` links to and deletes `$VERIFY_RUN_DIR/data/`. It accepts a `vstack-*` run entry directly in `~/.vstack/tmp/<repo-key>/verify/` or in a marked session folder directly inside `verify/`. It prints what it kept.
 3. Make sure that the proof files and `notes.md` from Evidence are still at their paths.
 
 Never stop a process because of its name. Never delete the run dir itself. The `/vstack-clean` Command removes old run dirs later.
