@@ -1,4 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
+import { parseHtmlForm } from "@oh-my-pi/pi-coding-agent/tools/html-form/parse";
 import { decisionBrief } from "./support/decision-brief.ts";
 import { mkdirSync, mkdtempSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -172,12 +173,19 @@ function panelUI(h: ReturnType<typeof fakeHost>) {
   const widgets: { key: string; content: any; options: any }[] = [];
   h.ctx.ui.setWidget = (key: string, content: any, options?: any) => { widgets.push({ key, content, options }); };
   h.ctx.ui.custom = async () => { throw new Error("The Flow panel opens no custom dialog"); };
-  const panel = () => {
+  type Tree = { kind: string; role?: string; head?: string; text?: string; children: Tree[] };
+  const describe = (node: any): Tree => ({ kind: node.kind, ...node.props(), children: node.children().map(describe) });
+  const tree = () => {
     const last = widgets.at(-1);
-    return last?.content ? (last.content({}, {}).render(120) as string[]).join("\n") : undefined;
+    return last?.content ? describe(last.content({}, {})) : undefined;
+  };
+  const texts = (node: Tree): string[] => [node.head, node.text, ...node.children.flatMap(texts)].filter((text): text is string => text !== undefined);
+  const panel = () => {
+    const root = tree();
+    return root && texts(root).join("\n");
   };
   const shown = () => widgets.filter(widget => widget.content !== undefined).length;
-  return { widgets, panel, shown };
+  return { widgets, tree, panel, shown };
 }
 
 function holdLookups(h: ReturnType<typeof fakeHost>) {
@@ -394,7 +402,7 @@ test("a renamed Flow control is refused before omp's synthetic start can show a 
   expect(ui.panel()).toBeUndefined();
 });
 
-test("a published radio group cannot share its answer key with another logical field", async () => {
+test("the guard counts a published question's fields as omp's own ask parser does", async () => {
   const w = setup(true);
   await w.ok(["open", "--title", "Repeated controls", "--skill", "implement", "--session", "duplicates"]);
   const receipt = await publishQuestions(w, "duplicates", "first");
@@ -402,12 +410,28 @@ test("a published radio group cannot share its answer key with another logical f
   panelUI(h);
   const name = receipt.refs.first;
   const call = (html: string) => h.emit("tool_call", { toolName: "ask", toolCallId: "duplicate", input: { html } });
-  expect(await call(receipt.ask.html)).toEqual([undefined]);
-  for (const type of ["text", "checkbox"]) {
-    const html = receipt.ask.html.replace("</form>", `<input type="${type}" name="${name}" value="extra"></form>`);
-    expect(await call(html)).toEqual([{
-      block: true, reason: expect.stringContaining(`"${name}": more than one field uses this name`),
-    }]);
+  const append = (extra: string) => receipt.ask.html.replace("</form>", `${extra}</form>`);
+  const forms = [
+    receipt.ask.html,
+    append(`<input type="text" name="${name}" value="extra">`),
+    append(`<input type="checkbox" name="${name}" value="extra">`),
+    receipt.ask.html.replace("</legend>", `<input type="text" name="${name}"></legend>`),
+    append(`<fieldset><fieldset><legend><input type="text" name="${name}"></legend></fieldset></fieldset>`),
+    append(`<pre><input type="text" name="${name}"></pre>`),
+    append(`<input type="submit" name="${name}"><INPUT TYPE="RESET" name="${name}">`),
+    append(`<template><input type="text" name="${name}"></template><noscript><select name="${name}"></select></noscript>`),
+    append(`<table><tr><th>Header</th></tr><tr><td><input type="text" name="${name}"></td></tr></table>`),
+    append(`<ul><li><input type="text" name="${name}"></li></ul>`),
+  ];
+  const duplicates = forms.map(html => {
+    const fields = parseHtmlForm(html).fields.map(field => field.name);
+    return new Set(fields).size < fields.length;
+  });
+  expect(duplicates).toEqual([false, true, true, false, true, false, false, false, true, true]);
+  for (const [index, html] of forms.entries()) {
+    expect(await call(html)).toEqual([duplicates[index]
+      ? { block: true, reason: expect.stringContaining(`"${name}": more than one field uses this name`) }
+      : undefined]);
   }
 });
 
@@ -709,9 +733,11 @@ test("a bound ask shows the Flow panel above the composer while it runs, without
   await until(() => lookups.held() === 1);
   lookups.release();
   await until(() => ui.panel() !== undefined);
+  expect(ui.tree()).toEqual({
+    kind: "card", role: "vstack.flow-panel", head: "Flow page",
+    children: [{ kind: "md", text: `<${current.live.url}#${receipt.refs.first}>`, children: [] }],
+  });
   const panel = ui.panel()!;
-  expect(panel).toContain("Flow page");
-  expect(panel).toContain(current.live.url);
   expect(panel).not.toContain("Enter or Esc");
   expect(ui.widgets.filter(widget => widget.content).map(widget => widget.options)).toEqual([{ placement: "aboveEditor" }]);
   await form.close();
