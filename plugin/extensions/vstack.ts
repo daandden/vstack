@@ -4,7 +4,7 @@ import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
 import { toolApprovalScopeToken } from "@oh-my-pi/pi-coding-agent/tools/approval-scope";
 import { jsx } from "@oh-my-pi/pi-tui";
-import { type Element, parseHTML } from "@oh-my-pi/pi-utils/dom";
+import { type Document, type Element, parseHTML } from "@oh-my-pi/pi-utils/dom";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
@@ -62,7 +62,7 @@ const SKIPPED = new Set(["button", "head", "iframe", "link", "meta", "noscript",
 const OPAQUE = new Set(["img", "pre", "svg"]);
 
 /** The controls omp's ask renders as fields, in its order. */
-function fieldControls(form: Element): Element[] {
+function fieldControls(form: Document | Element): Element[] {
   const controls: Element[] = [];
   const ids = new Set(form.querySelectorAll(CONTROLS).map(control => control.id).filter(Boolean));
   const labelFor = new Map<string, Element>();
@@ -108,8 +108,7 @@ function askControlNames(html: unknown): { names: string[]; duplicates: Set<stri
   const hidden = new Set<string>();
   if (typeof html !== "string") return { names: [], duplicates, hidden };
   const { document } = parseHTML(html);
-  const form = document.querySelector("form") ?? document.documentElement;
-  if (!form) return { names: [], duplicates, hidden };
+  const form = document.querySelector("form") ?? document;
   for (const input of form.querySelectorAll("input")) {
     if (input.getAttribute("type")?.toLowerCase() === "hidden") hidden.add(input.getAttribute("name") ?? "");
   }

@@ -422,12 +422,14 @@ test("the guard counts a published question's fields as omp's own ask parser doe
     append(`<template><input type="text" name="${name}"></template><noscript><select name="${name}"></select></noscript>`),
     append(`<table><tr><th>Header</th></tr><tr><td><input type="text" name="${name}"></td></tr></table>`),
     append(`<ul><li><input type="text" name="${name}"></li></ul>`),
+    receipt.ask.html.replace("<form>", "").replace("</form>", "").replace("</legend>", `<input type="text" name="${name}"></legend>`),
+    `<input type="text" name="${name}">`,
   ];
   const duplicates = forms.map(html => {
     const fields = parseHtmlForm(html).fields.map(field => field.name);
     return new Set(fields).size < fields.length;
   });
-  expect(duplicates).toEqual([false, true, true, false, true, false, false, false, true, true]);
+  expect(duplicates).toEqual([false, true, true, false, true, false, false, false, true, true, false, false]);
   for (const [index, html] of forms.entries()) {
     expect(await call(html)).toEqual([duplicates[index]
       ? { block: true, reason: expect.stringContaining(`"${name}": more than one field uses this name`) }
