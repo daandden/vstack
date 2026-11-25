@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { checkoutEntry, checkoutInstance, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
 import { fingerprintKind, makeFingerprint, type Fingerprint } from "./fingerprint.ts";
+import { requireSummaryRecordsVersion } from "./summary-records.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -57,12 +58,19 @@ function progress(phase: string, details: Record<string, unknown>) {
   if (values.progress) process.stderr.write(`${JSON.stringify({ phase, ...details })}\n`);
 }
 
+const DEFAULT_READER_WIDTH = 8;
 const MAX_READER_WIDTH = 32;
 const CONTENT_BUFFER_BYTES = 64 * 1024;
-const configuredWidth = process.env.VSTACK_CLEAN_WT_READER_WIDTH;
-const readerWidth = configuredWidth === undefined ? 8 : Number(configuredWidth);
-if ((configuredWidth !== undefined && !/^[1-9][0-9]*$/.test(configuredWidth)) || readerWidth > MAX_READER_WIDTH) {
-  usage(`VSTACK_CLEAN_WT_READER_WIDTH must be an integer from 1 to ${MAX_READER_WIDTH}`);
+const readerWidth = values.verify !== undefined || values["prepare-source"] ? DEFAULT_READER_WIDTH : configuredReaderWidth();
+
+function configuredReaderWidth(): number {
+  const configured = process.env.VSTACK_CLEAN_WT_READER_WIDTH;
+  if (configured === undefined) return DEFAULT_READER_WIDTH;
+  const width = Number(configured);
+  if (!/^[1-9][0-9]*$/.test(configured) || width > MAX_READER_WIDTH) {
+    usage(`VSTACK_CLEAN_WT_READER_WIDTH must be an integer from 1 to ${MAX_READER_WIDTH}`);
+  }
+  return width;
 }
 
 const contentReads = { files: 0, bytes: 0 };
@@ -90,19 +98,16 @@ function reportReader() {
   });
 }
 
-async function readInOrder<T, R>(items: T[], read: (item: T, slot: number) => Promise<R>): Promise<R[]> {
-  const results = new Array<R>(items.length);
+async function readInOrder<T>(items: T[], read: (item: T, slot: number, index: number) => Promise<void>): Promise<void> {
   let next = 0;
   async function worker(slot: number) {
     while (next < items.length) {
       const index = next++;
-      results[index] = await read(items[index], slot);
+      await read(items[index], slot, index);
     }
   }
-  // Drain every worker before starting another checkout, including after an inspection failure.
   const settled = await Promise.allSettled(Array.from({ length: Math.min(readerWidth, items.length) }, (_, slot) => worker(slot)));
   for (const result of settled) if (result.status === "rejected") throw result.reason;
-  return results;
 }
 
 const lstat = (p: string) => {
@@ -309,69 +314,69 @@ function leaseDetectionGap(): string | undefined {
   return undefined;
 }
 
-function gatherOwnership() {
-  progress("evidence", { stage: "session headers" });
-  sessionHeaders = readSessions();
-  progress("evidence", { stage: "live ownership" });
-  // lsof unions file selections unless -a is supplied, so one scan covers both ownership guards.
-  const native = process.platform === "linux" || process.platform === "win32"
-    ? undefined
-    : run(["lsof", "-d", "cwd", "+d", ownersDir, "-Fpcfn"]);
-  leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])], native);
-  const buf = Buffer.alloc(1 << 16);
-  sessionHeaders = sessionHeaders.flatMap((header) => {
-    if (!leases.held.has(header.id)) return [header];
-    const current = readHeader(header.file, buf);
-    if (current) headersByFile.set(header.file, current);
-    else headersByFile.delete(header.file);
-    return current ? [current] : [];
-  });
-  const known = new Set(sessionHeaders.map((s) => s.id));
-  const holders = [...new Set([...leases.unknown.values(), ...[...leases.held].filter(([id]) => !known.has(id)).map(([, pid]) => pid)])].filter((p): p is number => p !== null);
-  if (holders.length > 0) {
-    for (const h of discoverHolderSessions(holders)) {
-      const name = basename(leasePath(h.id), ".lock");
-      if (known.has(h.id) || (!leases.held.has(h.id) && !leases.unknown.has(name))) continue;
-      known.add(h.id);
-      sessionHeaders.push(h);
-      leases.held.set(h.id, leases.held.get(h.id) ?? leases.unknown.get(name) ?? null);
-      leases.unknown.delete(name);
-    }
-  }
-  cwds = processCwds(native);
-}
-
-function gatherEvidence() {
-  progress("evidence", { stage: "native listing" });
-  listing = ompWorktreeListing(base);
-  let ownershipFailure: string | undefined;
+function gatherOwnership(): string | undefined {
   try {
-    gatherOwnership();
+    progress("evidence", { stage: "session headers" });
+    sessionHeaders = readSessions();
+    progress("evidence", { stage: "live ownership" });
+    // lsof unions file selections unless -a is supplied, so one scan covers both ownership guards.
+    const native = process.platform === "linux" || process.platform === "win32"
+      ? undefined
+      : run(["lsof", "-d", "cwd", "+d", ownersDir, "-Fpcfn"]);
+    leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])], native);
+    const buf = Buffer.alloc(1 << 16);
+    sessionHeaders = sessionHeaders.flatMap((header) => {
+      if (!leases.held.has(header.id)) return [header];
+      const current = readHeader(header.file, buf);
+      if (current) headersByFile.set(header.file, current);
+      else headersByFile.delete(header.file);
+      return current ? [current] : [];
+    });
+    const known = new Set(sessionHeaders.map((s) => s.id));
+    const holders = [...new Set([...leases.unknown.values(), ...[...leases.held].filter(([id]) => !known.has(id)).map(([, pid]) => pid)])].filter((p): p is number => p !== null);
+    if (holders.length > 0) {
+      for (const h of discoverHolderSessions(holders)) {
+        const name = basename(leasePath(h.id), ".lock");
+        if (known.has(h.id) || (!leases.held.has(h.id) && !leases.unknown.has(name))) continue;
+        known.add(h.id);
+        sessionHeaders.push(h);
+        leases.held.set(h.id, leases.held.get(h.id) ?? leases.unknown.get(name) ?? null);
+        leases.unknown.delete(name);
+      }
+    }
+    cwds = processCwds(native);
+    return undefined;
   } catch (error) {
-    ownershipFailure = `cannot establish shared ownership evidence: ${String(error)}`;
     leases = { ok: false, held: new Map(), unknown: new Map() };
     cwds = { ok: false, list: [] };
+    return `cannot establish shared ownership evidence: ${String(error)}`;
   }
+}
+
+function refreshLocalCheckoutEvidence() {
+  progress("evidence", { stage: "native listing" });
+  listing = ompWorktreeListing(base);
+  if (plainInventory) {
+    nativeLocations = scanCheckoutLocations(base, listing);
+    for (const location of nativeLocations) startingInstances.set(location.path, observeInstance(location));
+  }
+  const ownershipFailure = gatherOwnership();
   progress("evidence", { stage: "ovnfs listing" });
   ovnfs = ovnfsListing();
-  nativeLocations = scanCheckoutLocations(base, listing);
+  if (!plainInventory) nativeLocations = scanCheckoutLocations(base, listing);
   const paths = new Set<string>();
   for (const { path } of [...nativeLocations, ...ovnfs.checkouts]) {
     if (paths.has(path)) throw new Error(`cannot account for duplicate checkout path: ${path}`);
     paths.add(path);
   }
   if (plainInventory) {
-    for (const location of nativeLocations) startingInstances.set(location.path, observeInstance(location));
     for (const { path } of ovnfs.checkouts) startingInstances.set(path, observeInstance({ path, kind: "ovnfs" }));
   }
   sources.clear();
   const sourcePaths = new Set<string>();
-  for (const checkout of ovnfs.checkouts) {
-    try {
-      if (sourceRepository(checkout.source)) sourcePaths.add(checkout.source);
-    } catch {
-      // sourceRepository retains the error for each checkout that uses this source.
-    }
+  for (const { source } of ovnfs.checkouts) {
+    const result = sourceResult(source);
+    if (result && !(result instanceof Error)) sourcePaths.add(source);
   }
   ovnfsLocations = cleanupOvnfsLocations(base, ovnfs, sourcePaths);
   evidenceGaps = [ownershipFailure, leaseDetectionGap(), cwds.ok ? undefined : cwds.reason, listing.ok ? undefined : listing.reason, ovnfs.ok ? undefined : ovnfs.reason].filter((g): g is string => !!g);
@@ -397,6 +402,7 @@ interface Checkout {
   entry: string;
   kind: Kind;
   outcome: Outcome;
+  instance_id?: string;
   failure?: Failure;
   verdict: Verdict;
   reasons: string[];
@@ -539,11 +545,17 @@ function sourceOf(path: string, entry: string, kind: Kind, visiting: Set<string>
   if (!objects) return null;
   const commonDir = resolve(join(path, ".git", "objects"), objects, "..");
   if (!lstat(commonDir)?.isDirectory() || inside(commonDir, entry)) return null;
+  const sourceGitDir = realpath(commonDir);
+  if (!sourceGitDir) return null;
   const checkout = [...ovnfs.checkouts, ...nativeLocations].find(({ path }) => {
-    const git = join(path, ".git");
-    const metadata = lstat(git);
-    const gitdir = metadata?.isDirectory() ? git : metadata?.isFile() ? registeredGitDir(path).gitdir : "";
-    return !!gitdir && realpath(gitdir) === realpath(commonDir);
+    try {
+      const git = join(path, ".git");
+      const metadata = lstat(git);
+      const gitdir = metadata?.isDirectory() ? git : metadata?.isFile() ? registeredGitDir(path).gitdir : "";
+      return !!gitdir && realpath(gitdir) === sourceGitDir;
+    } catch {
+      return false;
+    }
   })?.path ?? mainCheckout(commonDir);
   if (!checkout) return null;
   const top = requireGit(run(["git", "rev-parse", "--show-toplevel"], checkout), "rev-parse --show-toplevel").trim();
@@ -553,9 +565,14 @@ function sourceOf(path: string, entry: string, kind: Kind, visiting: Set<string>
 }
 
 function sourceRepository(path: string, visiting = new Set<string>()): Source | null {
+  const result = sourceResult(path, visiting);
+  if (result instanceof Error) throw result;
+  return result;
+}
+
+function sourceResult(path: string, visiting = new Set<string>()): Source | null | Error {
   path = realpath(path) || resolve(path);
   const previous = sources.get(path);
-  if (previous instanceof Error) throw previous;
   if (previous !== undefined) return previous;
   if (visiting.has(path)) return null;
   visiting.add(path);
@@ -566,7 +583,7 @@ function sourceRepository(path: string, visiting = new Set<string>()): Source | 
   } catch (error) {
     const failure = error instanceof Error ? error : new Error(String(error));
     sources.set(path, failure);
-    throw failure;
+    return failure;
   } finally {
     visiting.delete(path);
   }
@@ -759,23 +776,30 @@ async function workState(path: string, ref: string | null): Promise<WorkState> {
   }
   const ignoredPaths = new Set(ignored);
   const paths = [...new Set([...Object.values(changes).flat(), ...ignored, ...hidden])];
-  const entries = await readInOrder(paths, async (rel, slot) => {
+  const evidence = {
+    stamps: new Array<unknown>(paths.length + 2),
+    preservation: new Array<IgnoredPreservation | undefined>(paths.length),
+  };
+  evidence.stamps[0] = stampedStatus;
+  evidence.stamps[1] = flags;
+  await readInOrder(paths, async (rel, slot, index) => {
     const file = join(path, rel);
     const st = lstat(file);
     const content = await contentStamp(file, st, slot);
     const preservation = ignoredPaths.has(rel) ? await compareIgnored(path, ref, rel, st, content, slot) : undefined;
-    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content, preservation] as const : [rel, preservation] as const;
+    evidence.stamps[index + 2] = st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, content, preservation] : [rel, preservation];
+    evidence.preservation[index] = preservation;
   });
-  const stamp: unknown[] = [stampedStatus, flags];
-  for (const entry of entries) {
-    stamp.push(entry);
-    const preservation = entry.length === 2 ? entry[1] : entry[7];
-    if (preservation?.[0] === "unique") changes.ignored_unique.push(entry[0]);
-    else if (preservation?.[0] === "unverified") changes.ignored_unverified.push(entry[0]);
+  for (let index = 0; index < paths.length; index++) {
+    const preservation = evidence.preservation[index];
+    if (!preservation) continue;
+    const [result] = preservation;
+    if (result === "unique") changes.ignored_unique.push(paths[index]);
+    else if (result === "unverified") changes.ignored_unverified.push(paths[index]);
   }
   const listed = Object.values(changes).flat();
   for (const k of Object.keys(changes)) if (changes[k].length === 0) delete changes[k];
-  return { state: hiddenUnknown ? "unknown" : listed.length > 0 ? "dirty" : "clean", changes, stamp };
+  return { state: hiddenUnknown ? "unknown" : listed.length > 0 ? "dirty" : "clean", changes, stamp: evidence.stamps };
 }
 
 interface Tip {
@@ -1019,11 +1043,12 @@ function removeTree(entry: string) {
 type Location = CheckoutLocation | OvnfsCleanupLocation;
 type Instance = { id: string } | { error: unknown };
 
-function observeInstance({ path, kind }: Pick<Location, "path" | "kind">): Instance {
+function observeInstance({ path, kind }: { path: string; kind: Location["kind"] | Kind }): Instance {
   try {
     if (kind === "excluded") {
-      lstatSync(path);
-      return { id: "" };
+      const directory = lstatSync(path);
+      if (!directory.isDirectory() || !directory.ino) throw new Error(`cannot establish checkout identity: ${path}`);
+      return { id: `${directory.dev}:${directory.ino}:${directory.birthtimeMs}` };
     }
     return { id: checkoutInstance(path) };
   } catch (error) {
@@ -1049,7 +1074,7 @@ function verifyInstance(location: Location, before: Instance, checkout: Checkout
   if ("error" in before) return checkout;
   const after = observeInstance(location);
   if ("error" in after) return checkout.failure ? checkout : failedInspection(location, "layout", after.error);
-  if (before.id === after.id) return checkout;
+  if (before.id === after.id) return plainInventory ? { ...checkout, instance_id: before.id } : checkout;
   progress("checkout", { stage: "replaced", path: location.path });
   return protectedLocation(location, "replaced", ["a different checkout instance now occupies the listed path"]);
 }
@@ -1080,7 +1105,7 @@ async function inspectLocatedCheckout(location: Location, instance: string, insp
   const source = kind === "excluded" || (registered?.exists === false && !listing.parentRepos.has(entry))
     ? null : sourceRepository(path);
   const gaps = [
-    ...location.gaps,
+    ...(kind === "ovnfs" ? location.gaps.map(({ message }) => message) : location.gaps),
     ...(kind !== "excluded" && !source ? [`cannot establish source repository for ${path}: missing or unreadable parentRepo, source chain, session ancestry, or Git alternates`] : []),
     ...(dependents.length ? [`source for ovnfs checkouts: ${dependents.map((checkout) => checkout.name).join(", ")}`] : []),
   ];
@@ -1122,11 +1147,19 @@ async function scan(): Promise<Checkout[]> {
   progress("evidence", { stage: "confirm absence" });
   const nativeAfter = ompWorktreeListing(base);
   const ovnfsAfter = ovnfsListing();
-  if (!nativeAfter.ok || !ovnfsAfter.ok) return checkouts;
-  return checkouts.map((checkout) => {
-    if (!checkout.failure || nativeAfter.paths.has(checkout.entry) || nativeAfter.paths.has(checkout.path) ||
-      ovnfsAfter.checkouts.some((candidate) => candidate.path === checkout.path || candidate.name === checkout.ovnfs?.name) ||
-      !missingPath(checkout.path)) return checkout;
+  const pathsByName = new Map(ovnfsAfter.checkouts.map(({ name, path }) => [name, path]));
+  const namesByPath = new Map(ovnfsAfter.checkouts.map(({ name, path }) => [path, name]));
+  return checkouts.map((checkout, i) => {
+    const name = checkout.ovnfs?.name;
+    const currentPath = name && pathsByName.get(name);
+    const currentName = namesByPath.get(checkout.path);
+    if ((currentPath && currentPath !== checkout.path) || (currentName && name && currentName !== name)) {
+      progress("checkout", { stage: "replaced", path: checkout.path });
+      return protectedLocation(locations[i], "replaced", ["a different checkout instance now occupies the listed path or ovnfs name"]);
+    }
+    if (!checkout.failure) return checkout;
+    if (!nativeAfter.ok || !ovnfsAfter.ok || nativeAfter.paths.has(checkout.entry) || nativeAfter.paths.has(checkout.path) ||
+      currentName || currentPath || !missingPath(checkout.path)) return checkout;
     progress("checkout", { stage: "vanished", path: checkout.path });
     return { ...checkout, outcome: "vanished", reasons: ["the checkout is absent from the fresh listings and disk"] };
   });
@@ -1157,6 +1190,15 @@ function print(v: unknown) {
   process.stdout.write(`${JSON.stringify(v, null, 2)}\n`);
 }
 
+function refreshRemoteDefault(path: string): { commonDir: string; fact: RemoteFact } | undefined {
+  try {
+    const source = sourceRepository(path);
+    if (source) return { commonDir: source.commonDir, fact: remoteDefault(source.commonDir) };
+  } catch (error) {
+    progress("evidence", { stage: "remote refresh failed", path, error: String(error) });
+  }
+}
+
 async function removeAll() {
   if (positionals.length < 2) usage("remove needs at least one <path>=<fingerprint>");
   const approved = new Set((values.approve ?? []).map((p) => realpath(p) || resolve(p)));
@@ -1181,7 +1223,7 @@ async function removeAll() {
   const skipped: { path: string; reason: string }[] = [];
   const failed: { path: string; error: string }[] = [];
   for (const t of targets) {
-    gatherEvidence();
+    refreshLocalCheckoutEvidence();
     if (!t.entry) {
       const reason = unavailableTarget(t.path);
       progress("remove", { stage: "skipped", path: t.path, blocker: reason });
@@ -1189,16 +1231,10 @@ async function removeAll() {
       continue;
     }
     let inspection: Inspection = discoveryInspection;
-    let refreshed: { commonDir: string; fact: RemoteFact } | undefined;
+    let refreshed: ReturnType<typeof refreshRemoteDefault>;
     if (t.kind === "targeted") {
-      try {
-        const source = sourceRepository(t.path);
-        if (source) refreshed = { commonDir: source.commonDir, fact: remoteDefault(source.commonDir) };
-      } catch (error) {
-        progress("evidence", { stage: "remote refresh failed", path: t.path, error: String(error) });
-      }
-      // A remote query can outlast ownership or native listing changes.
-      gatherEvidence();
+      refreshed = refreshRemoteDefault(t.path);
+      refreshLocalCheckoutEvidence();
       inspection = {
         kind: "targeted",
         remoteFact: (commonDir) => refreshed?.commonDir === commonDir ? refreshed.fact : "the source repository could not be refreshed before removal",
@@ -1267,13 +1303,14 @@ async function removeAll() {
   return { removed, skipped, failed };
 }
 
-type VerificationTarget = Pick<Checkout, "path" | "entry" | "kind" | "branch" | "branch_ref" | "git_common_dir" | "ovnfs">;
+type VerificationTarget = Pick<Checkout, "path" | "entry" | "kind" | "instance_id" | "branch" | "branch_ref" | "git_common_dir" | "ovnfs">;
 
 function verificationTargets(file: string): VerificationTarget[] {
   try {
     const records = JSON.parse(readFileSync(file, "utf8"));
-    if (records?.version !== 1 || records.inventory?.exit_code !== 0 || typeof records.inventory.file !== "string") {
-      throw new Error("expected version 1 summary records with a successful discovery inventory");
+    requireSummaryRecordsVersion(records?.version);
+    if (records.inventory?.exit_code !== 0 || typeof records.inventory.file !== "string") {
+      throw new Error("expected a successful discovery inventory in summary records");
     }
     const { checkouts } = JSON.parse(readFileSync(resolve(dirname(file), records.inventory.file), "utf8"));
     if (!Array.isArray(checkouts)) throw new Error("expected a discovery checkouts array");
@@ -1327,27 +1364,34 @@ function gitMetadata(commonDir: string, args: string[]): string | null {
   }
 }
 
+function verificationInstance(expected: unknown, before: Instance | undefined, after: Instance | undefined, mappingChanged: boolean) {
+  if (mappingChanged) return "replaced";
+  if (typeof expected !== "string") return "unknown";
+  const first = before && "id" in before ? before.id : undefined;
+  const last = after && "id" in after ? after.id : undefined;
+  if ((first !== undefined && first !== expected) || (last !== undefined && last !== expected)) return "replaced";
+  return first === expected && last === expected ? "same" : "unknown";
+}
+
 function verification(file: string) {
   const targets = verificationTargets(file);
-  const initialDisk = targets.map(({ path, entry }) => ({
-    path: diskDirectory(path), entry: entry === path ? undefined : diskDirectory(entry),
-  }));
+  const initialDisk = targets.map((target) => {
+    const { path, entry } = target;
+    const directory = diskDirectory(path);
+    return {
+      path: directory, entry: entry === path ? undefined : diskDirectory(entry),
+      instance: directory ? observeInstance(target) : undefined,
+    };
+  });
   progress("evidence", { stage: "native listing" });
   const native = ompWorktreeListing(base);
   progress("evidence", { stage: "ovnfs listing" });
   const virtual = ovnfsListing();
-  let ownershipFailure: string | undefined;
-  try {
-    gatherOwnership();
-  } catch (error) {
-    ownershipFailure = `cannot establish shared ownership evidence: ${String(error)}`;
-    leases = { ok: false, held: new Map(), unknown: new Map() };
-    cwds = { ok: false, list: [] };
-  }
+  const ownershipFailure = gatherOwnership();
   const ownership_gaps = [ownershipFailure, leaseDetectionGap(), cwds.ok ? undefined : cwds.reason].filter((g): g is string => !!g);
   const evidence_gaps = [native.ok ? undefined : native.reason, virtual.ok ? undefined : virtual.reason].filter((g): g is string => !!g);
   const virtualPaths = new Map(virtual.checkouts.map((checkout) => [checkout.path, checkout.name]));
-  const virtualNames = new Set(virtual.checkouts.map((checkout) => checkout.name));
+  const virtualNames = new Map(virtual.checkouts.map((checkout) => [checkout.name, checkout.path]));
   const virtualLocations = new Map(virtual.ok && virtual.checkouts.length
     ? cleanupOvnfsLocations(base, virtual, new Set()).map((location) => [location.path, location]) : []);
   const checkouts: Pick<Checkout, "path" | "verdict" | "owners" | "reasons">[] = [];
@@ -1362,8 +1406,7 @@ function verification(file: string) {
       const recordEntry = location?.record ? dirname(location.record) : undefined;
       const task = kind === "task-isolation" ? taskOwner(entry)
         : kind === "ovnfs" && recordEntry && lstat(join(recordEntry, ".omp-isolation-owner.json")) ? taskOwner(recordEntry) : {};
-      const recordGaps = kind === "ovnfs" ? location?.gaps.filter((gap) =>
-        gap.startsWith("cannot read shared ovnfs run records:") || gap.startsWith("invalid ovnfs run record:")) ?? [] : [];
+      const recordGaps = location?.gaps.filter(({ kind }) => kind === "run-record").map(({ message }) => message) ?? [];
       const owners = ownersOf(entry, task.owner ? [task.owner] : [], sessionLinks(entry).sessions);
       const gaps = [...ownership_gaps, ...recordGaps, ...(task.gap ? [task.gap] : [])];
       checkouts.push({ path, owners, ...verdictOf(owners, gaps) });
@@ -1391,9 +1434,15 @@ function verification(file: string) {
   const observations = listed.map(({ path, entry, ...facts }, i) => {
     const pathAfter = diskDirectory(path);
     const entryAfter = entry === path ? undefined : diskDirectory(entry);
+    const target = targets[i];
+    const mounted = virtualPaths.get(path);
+    const named = target.ovnfs && virtualNames.get(target.ovnfs.name);
+    const mappingChanged = target.kind === "ovnfs" &&
+      ((mounted !== undefined && mounted !== target.ovnfs?.name) || (named !== undefined && named !== path));
+    const instance = verificationInstance(target.instance_id, initialDisk[i].instance, pathAfter ? observeInstance(target) : undefined, mappingChanged);
     const changed = diskChanged(initialDisk[i].path, pathAfter) || diskChanged(initialDisk[i].entry, entryAfter);
     return {
-      path, ...facts, disk: diskPresence(pathAfter),
+      path, ...facts, disk: diskPresence(pathAfter), instance,
       ...(entry === path ? {} : { entry_disk: diskPresence(entryAfter) }),
       ...(changed ? { disk_changed: true } : {}),
     };
@@ -1408,7 +1457,7 @@ if (values.verify !== undefined) {
   process.exit(0);
 }
 
-gatherEvidence();
+refreshLocalCheckoutEvidence();
 if (command === "remove") print(await removeAll());
 else if (values["prepare-source"]) {
   const source_facts = [...new Set(values["prepare-source"].map((p) => realpath(p) || resolve(p)))].map((source_git_dir) => {

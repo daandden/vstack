@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import type { ApprovalChoice, ApprovalPlan } from "./approval.ts";
 import { displayField, FIELD_SEPARATOR, shortPath } from "./display.ts";
 import type { Fingerprint } from "./fingerprint.ts";
+import { requireSummaryRecordsVersion, SUMMARY_RECORDS_VERSION } from "./summary-records.ts";
 
 type CommandOutput = { exit_code: number | null; file: string };
 type Checkout = {
@@ -28,6 +29,7 @@ type Observation = {
   disk: "present" | "absent" | "unknown";
   entry_disk?: Observation["disk"];
   disk_changed?: boolean;
+  instance?: "same" | "replaced" | "unknown";
   omp_listed: boolean | null;
   ovnfs_listed: boolean | null;
   git_registered?: boolean | null;
@@ -100,7 +102,7 @@ function rows(heading: string, list: string[]): Section {
 }
 
 type Records = {
-  version: 1;
+  version: typeof SUMMARY_RECORDS_VERSION;
   phase: "running" | "picking" | "finished";
   inventory?: CommandOutput;
   stop?: keyof typeof STOP_MESSAGES;
@@ -222,6 +224,7 @@ function removalVerification(record: CheckoutRecord, target: Checkout, status: V
   if (observed?.disk !== "absent" || (target.kind === "task-isolation" && observed.entry_disk !== "absent")) {
     return "removal reported, but absence from disk was not verified";
   }
+  if (observed.instance === "replaced") return "a different checkout was found at verification";
   if (observed.disk_changed) return "checkout changed on disk during verification";
   if (observed.ovnfs_listed !== false) return "removal reported, but ovnfs absence was not verified";
   if (observed.omp_listed !== false) return "removal reported, but omp absence was not verified";
@@ -234,19 +237,21 @@ function removalVerification(record: CheckoutRecord, target: Checkout, status: V
 function keptVerification({ inventory, observation }: CheckoutRecord["verification"], status: VerificationStatus, kind: string): string | undefined {
   if (status === "not-run") return "verification did not run";
   if (status !== "complete") return "verification did not finish";
+  if (observation?.instance === "replaced") return "a different checkout was found at verification";
   if (!inventory || (kind === "ovnfs" ? observation?.ovnfs_listed : observation?.omp_listed) !== true) {
     return "kept checkout was not listed at verification";
   }
   if (observation?.disk === "absent") return "checkout was absent from disk at verification";
   if (observation?.disk !== "present") return "presence on disk was not verified";
   if (observation.disk_changed) return "checkout changed on disk during verification";
+  if (observation.instance !== "same") return "checkout identity was not verified";
   if (inventory.verdict === "uncertain") return "ownership could not be verified";
 }
 
 function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pick<Records, "phase" | "stop">, verificationStatus: VerificationStatus, pending?: string): Outcome {
   const { investigation, offer, removals, verification } = record;
   if (record.discovery.outcome === "vanished") return { group: "vanished", reason: "Absent from the confirmation listings and disk" };
-  if (record.discovery.outcome === "replaced") return { group: "replaced", reason: "A different checkout occupied the path during discovery" };
+  if (record.discovery.outcome === "replaced") return { group: "replaced", reason: "A different checkout reused the listed path or name during discovery" };
   if (record.discovery.outcome === "inspection failed") return { group: "inspectionFailed", reason: "Discovery inspection did not finish" };
   if (record.discovery.outcome === "contents deferred" && investigation.status !== "complete") {
     return { group: "contentsDeferred", reason: "Discovery deferred content inspection" };
@@ -258,12 +263,7 @@ function classify(record: CheckoutRecord, current: Checkout, { phase, stop }: Pi
   }
   if (attempt?.status === "skipped") {
     const picked = attempt.origin === "picked";
-    let verificationGap: string | undefined;
-    if (phase === "finished") {
-      const gap = keptVerification(verification, verificationStatus, current.kind);
-      if (verification.observation?.disk !== "present") verificationGap = "presence not verified";
-      else if (gap) verificationGap = "ownership not verified";
-    }
+    const verificationGap = phase === "finished" ? keptVerification(verification, verificationStatus, current.kind) : undefined;
     return { group: picked ? "pickedSkip" : "automaticSkip", reason: skipReason(attempt.outcome?.reason, picked), verificationGap };
   }
   if (attempt?.status === "failed") return { group: "failed", reason: "the removal command reported a failure" };
@@ -421,7 +421,8 @@ function main([file, flag, revises, extra, ...rest]: string[]) {
   }
   const directory = resolve(dirname(file));
   const records: Records = JSON.parse(readFileSync(file, "utf8"));
-  if (records.version !== 1 || !["running", "picking", "finished"].includes(records.phase)) throw new Error("summary records require version 1 and a phase");
+  requireSummaryRecordsVersion(records?.version);
+  if (!["running", "picking", "finished"].includes(records.phase)) throw new Error("summary records require a phase");
   const { checkouts, contribution } = render(records, directory, revises);
   writeFileSync(resolve(directory, "checkout-accounting.json"), `${JSON.stringify({ ...records, checkouts }, null, 2)}\n`);
   return contribution;

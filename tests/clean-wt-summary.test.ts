@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -34,8 +34,8 @@ function fixture() {
     expect(flow(["validate", "-"], contribution)).toEqual({ ok: true, diagnostics: [] });
     return flow(["submit", "-"], contribution);
   };
-  const render = (records: unknown, revises?: string) => run(join(CLEAN, "summary.ts"), [
-    save("summary-records.json", records), ...(revises ? ["--revises", revises] : []),
+  const render = (records: Record<string, unknown>, revises?: string) => run(join(CLEAN, "summary.ts"), [
+    save("summary-records.json", { version: 2, ...records }), ...(revises ? ["--revises", revises] : []),
   ]);
   return { root, home, save, run, flow, publish, render, accounting: () => JSON.parse(readFileSync(join(root, "checkout-accounting.json"), "utf8")) };
 }
@@ -47,7 +47,7 @@ test.each([
   const f = fixture();
   writeFileSync(join(f.root, "inventory.stdout"), "truncated JSON, private diagnostics and paths");
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
-  const contribution = f.render({ version: 1, phase: "finished", stop: "inventory", inventory });
+  const contribution = f.render({ phase: "finished", stop: "inventory", inventory });
   const [result] = contribution.items;
   expect(contribution.items).toHaveLength(1);
   expect(result.summary).toBe(message);
@@ -62,8 +62,30 @@ function checkout(path: string, fields: Record<string, unknown> = {}) {
 }
 
 function observed(path: string, facts: Record<string, unknown> = {}) {
-  return { path, disk: "present", omp_listed: true, ovnfs_listed: false, ...facts };
+  return { path, disk: "present", instance: "same", omp_listed: true, ovnfs_listed: false, ...facts };
 }
+
+test("version 1 summary records with confirmed removals are explicitly rejected", () => {
+  const f = fixture();
+  const path = join(f.home, "removed");
+  const save = (file: string, value: unknown) => ({ exit_code: 0, file: f.save(file, value) });
+  const records = f.save("summary-records.json", {
+    version: 1, phase: "finished",
+    inventory: save("inventory.json", { checkouts: [checkout(path, { branch: "draft" })], evidence_gaps: [] }),
+    removals: [{
+      origin: "automatic", targets: [{ path, repository: "example" }],
+      output: save("removed.json", { removed: [{ path, method: "git worktree remove" }], skipped: [], failed: [] }),
+    }],
+    verification: {
+      inventory: save("verify.json", { checkouts: [], evidence_gaps: [] }),
+      observations: [{ path, disk: "absent", git_registered: false, branch_preserved: true }],
+    },
+  });
+  const result = Bun.spawnSync([process.execPath, join(CLEAN, "summary.ts"), records], { cwd: f.root, stdout: "pipe", stderr: "pipe" });
+  expect({ exit: result.exitCode, stdout: result.stdout.toString() }).toEqual({ exit: 2, stdout: "" });
+  expect(result.stderr.toString()).toContain("summary records version 1 is unsupported; expected version 2");
+  expect(existsSync(join(f.root, "checkout-accounting.json"))).toBe(false);
+});
 
 test("a finished summary groups each original checkout once and keeps raw evidence in Scratch", () => {
   const f = fixture();
@@ -115,7 +137,7 @@ test("a finished summary groups each original checkout once and keeps raw eviden
   ] });
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
-    version: 1, phase: "finished", inventory, approval_plan,
+    phase: "finished", inventory, approval_plan,
     offers: [{ question_ref: "cleanup-approval-1", picked: mapped.slice(0, 3).map(({ path }) => path) }],
     investigations: [
       ...mapped.map(({ path, fingerprint }) => ({ path, status: "complete", checkout: { ...checkouts.find((c) => c.path === path), fingerprint } })),
@@ -176,7 +198,7 @@ test("discovery churn and inspection failures are neither verified kept nor remo
     }) },
   };
   f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup discovery fixture"]);
-  const contribution = f.render({ version: 1, phase: "finished", inventory, verification });
+  const contribution = f.render({ phase: "finished", inventory, verification });
   const [result] = contribution.items;
   expect(result.summary).toBe("0 removed · 0 needs your pick · 0 skipped · 0 kept · 1 vanished · 1 replaced · 1 inspection failed");
   expect(result.sections.map(({ heading }: { heading: string }) => heading)).toEqual(["Vanished", "Replaced", "Inspection failed"]);
@@ -193,12 +215,12 @@ test("contents-deferred checkouts count separately until targeted evidence accou
   const command = (file: string, json: unknown) => ({ exit_code: 0, file: f.save(file, json) });
   const inventory = command("inventory.json", { checkouts, evidence_gaps: [] });
   f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup deferred contents fixture"]);
-  const running = f.render({ version: 1, phase: "running", inventory });
+  const running = f.render({ phase: "running", inventory });
   expect(running.items[0].summary).toBe("0 removed · 0 needs your pick · 0 skipped · 0 kept · 3 contents deferred");
   const receipt = f.publish(running);
 
   const finished = f.render({
-    version: 1, phase: "finished", inventory,
+    phase: "finished", inventory,
     investigations: [removed, kept].map(({ path }) => ({
       path, status: "complete", checkout: checkout(path, { outcome: "inspected", fingerprint: `v1:targeted:${"a".repeat(64)}` }),
     })),
@@ -212,8 +234,8 @@ test("contents-deferred checkouts count separately until targeted evidence accou
         evidence_gaps: [],
         observations: [
           { path: removed.path, disk: "absent", omp_listed: false, ovnfs_listed: false, git_registered: false },
-          { path: kept.path, disk: "present", omp_listed: true, ovnfs_listed: false },
-          { path: deferred.path, disk: "present", omp_listed: true, ovnfs_listed: false },
+          observed(kept.path),
+          observed(deferred.path),
         ],
       }),
     },
@@ -231,16 +253,16 @@ test("contents-deferred checkouts count separately until targeted evidence accou
     [discovery, outcome.group])).toEqual([[deferred, "contentsDeferred"], [removed, "removed"], [kept, "notAttempted"]]);
 });
 
-test("guarded skips still count once when final verification cannot confirm presence or ownership", () => {
+test("guarded skips keep their count and report their actual verification gaps", () => {
   const f = fixture();
-  const targets = ["confirmed", "missing", "uncertain"].map((name) => ({
+  const targets = ["confirmed", "missing", "uncertain", "churned"].map((name) => ({
     path: join(f.home, name), repository: "example",
   }));
-  const [confirmed, missing, uncertain] = targets;
+  const [confirmed, missing, uncertain, churned] = targets;
   const checkouts = targets.map(({ path }) => checkout(path));
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
-    version: 1, phase: "finished",
+    phase: "finished",
     inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) },
     removals: [{
       origin: "picked", targets,
@@ -251,18 +273,24 @@ test("guarded skips still count once when final verification cannot confirm pres
     }],
     verification: {
       inventory: { exit_code: 0, file: f.save("verify.json", {
-        evidence_gaps: [], checkouts: [checkout(confirmed.path), checkout(uncertain.path, { verdict: "uncertain" })],
-        observations: [observed(confirmed.path), observed(missing.path, { disk: "absent", omp_listed: false }), observed(uncertain.path)],
+        evidence_gaps: [], checkouts: [checkout(confirmed.path), checkout(uncertain.path, { verdict: "uncertain" }), checkout(churned.path)],
+        observations: [
+          observed(confirmed.path),
+          observed(missing.path, { disk: "absent", omp_listed: false }),
+          observed(uncertain.path),
+          observed(churned.path, { disk_changed: true }),
+        ],
       }) },
     },
   });
   f.publish(contribution);
   expect(contribution.items[0]).toMatchObject({
-    summary: "0 removed · 0 needs your pick · 3 skipped · 0 kept",
+    summary: "0 removed · 0 needs your pick · 4 skipped · 0 kept",
     sections: [{ heading: "Skipped", blocks: [{ list: [
       "~/confirmed · changed since it was investigated",
-      "~/missing · changed since it was investigated · presence not verified",
-      "~/uncertain · changed since it was investigated · ownership not verified",
+      "~/missing · changed since it was investigated · kept checkout was not listed at verification",
+      "~/uncertain · changed since it was investigated · ownership could not be verified",
+      "~/churned · changed since it was investigated · checkout changed on disk during verification",
     ] }] }],
   });
 });
@@ -284,7 +312,6 @@ test("planner labels and order survive whole-summary links as settled pick rows 
   }));
   const plan = f.run(join(CLEAN, "approval.ts"), ["-"], { version: 1, targets });
   const records = {
-    version: 1,
     inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts: targets.map(({ checkout }) => checkout), evidence_gaps: [] }) },
     investigations: targets.map(({ checkout }) => ({ path: checkout.path, status: "complete", checkout })),
     approval_plan: f.save("approval-plan.json", plan),
@@ -342,7 +369,7 @@ test("planner labels and order survive whole-summary links as settled pick rows 
 
   const final = f.render({ ...records, phase: "finished", stop: "removal", offers, removals }, resultId);
   expect(final.items[0].sections).toContainEqual({
-    heading: "Skipped", blocks: [{ list: ["~/draft-1 · changed since it was investigated · presence not verified"] }],
+    heading: "Skipped", blocks: [{ list: ["~/draft-1 · changed since it was investigated · verification did not run"] }],
   });
   expect(final.items[0].sections).toContainEqual({
     heading: "Offered but not picked", blocks: [{ code: "~/draft-2[@notes] · not selected for removal" }],
@@ -365,7 +392,6 @@ test("an early exit preserves inventory classifications without confirming a rep
   const f = fixture();
   const path = join(f.home, "reported-removed");
   const records = {
-    version: 1,
     inventory: { exit_code: 0, file: f.save("inventory.json", { evidence_gaps: [], checkouts: [
       checkout(path, { automatic: true }),
       checkout(join(f.home, "uninvestigated")),
@@ -414,7 +440,7 @@ test("the final summary reports ownership changes and does not confirm unobserve
   ];
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
-    version: 1, phase: "finished", inventory,
+    phase: "finished", inventory,
     verification: { inventory: { exit_code: 0, file: f.save("verify.json", { checkouts: verified, evidence_gaps: [], observations }) } },
   });
   expect(contribution.items[0]).toMatchObject({
@@ -438,6 +464,32 @@ test("the final summary reports ownership changes and does not confirm unobserve
   expect(f.accounting().checkouts.map(({ discovery }: any) => discovery.path)).toEqual(checkouts.map(({ path }) => path));
 });
 
+test("a listed replacement and an unobserved instance are not verified kept", () => {
+  const f = fixture();
+  const replaced = checkout(join(f.home, "replacement"));
+  const unknown = checkout(join(f.home, "no-identity"));
+  const same = checkout(join(f.home, "unchanged"));
+  const checkouts = [replaced, unknown, same];
+  const contribution = f.render({
+    phase: "finished",
+    inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) },
+    verification: { inventory: { exit_code: 0, file: f.save("verify.json", {
+      checkouts, evidence_gaps: [], observations: [
+        observed(replaced.path, { instance: "replaced" }),
+        observed(unknown.path, { instance: "unknown" }),
+        observed(same.path, { instance: "same" }),
+      ],
+    }) } },
+  });
+  expect(contribution.items[0].summary).toBe("0 removed · 0 needs your pick · 0 skipped · 1 kept");
+  expect(contribution.items[0].sections).toContainEqual({
+    heading: "Outcome not verified", blocks: [{ list: [
+      "~/replacement · a different checkout was found at verification",
+      "~/no-identity · checkout identity was not verified",
+    ] }],
+  });
+});
+
 test("an incomplete verification does not confirm a kept outcome even if the path was listed", () => {
   const f = fixture();
   const path = join(f.home, "in-use");
@@ -445,7 +497,7 @@ test("an incomplete verification does not confirm a kept outcome even if the pat
   const inventory = { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) };
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
-    version: 1, phase: "finished", inventory,
+    phase: "finished", inventory,
     verification: {
       inventory: { exit_code: 0, file: f.save("verify.json", { checkouts, evidence_gaps: ["PRIVATE"], observations: [observed(path)] }) },
     },
@@ -468,7 +520,7 @@ test("newly uncertain ownership is not counted as kept even when disk presence i
   }) });
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const contribution = f.render({
-    version: 1, phase: "finished", inventory: inventory("inventory.json", before),
+    phase: "finished", inventory: inventory("inventory.json", before),
     verification: { inventory: { exit_code: 0, file: f.save("verify.json", {
       checkouts: [after], evidence_gaps: [], observations: [observed(path)],
     }) } },
@@ -486,11 +538,11 @@ test("final counts use only the verification command's independent observations"
   const removed = ["removed", "branch-unverified", "late-absence"];
   const kept = ["gained", "uncertain", "vanished", "unlisted"];
   const observation = (name: string, listed: boolean, disk: string, facts = {}) => ({
-    path: p(name), omp_listed: listed, ovnfs_listed: false, disk, ...facts,
+    path: p(name), omp_listed: listed, ovnfs_listed: false, disk, instance: "same", ...facts,
   });
   f.flow(["open", "--skill", "clean-wt", "--title", "Cleanup verification fixture"]);
   const contribution = f.render({
-    version: 1, phase: "finished",
+    phase: "finished",
     inventory: { exit_code: 0, file: f.save("discovery.json", {
       checkouts: [...removed, ...kept].map((name) => checkout(p(name), { branch: "wt/draft" })), evidence_gaps: [],
     }) },
@@ -549,7 +601,7 @@ test("separator characters in checkout fields do not make distinct choices look 
   }));
   const plan = f.run(join(CLEAN, "approval.ts"), ["-"], { version: 1, targets });
   const records = {
-    version: 1, approval_plan: f.save("approval-plan.json", plan),
+    approval_plan: f.save("approval-plan.json", plan),
     inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts: targets.map(({ checkout }) => checkout), evidence_gaps: [] }) },
     investigations: targets.map(({ checkout }) => ({ path: checkout.path, status: "complete", checkout })),
   };
@@ -589,7 +641,6 @@ test("summary outcome rows expose non-printing Unicode in paths and reasons", ()
     unique_history: [{ ref: "refs/heads/draft\u0080\u034f\u202e\u2069\u202f\u{e0001}\ufe0f\ufeff-end" }],
   }));
   const summary = f.render({
-    version: 1,
     phase: "running",
     inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts, evidence_gaps: [] }) },
   });
@@ -611,7 +662,7 @@ test("the summary groups a saved recommendation independently of label wording",
   }];
   f.flow(["open", "--skill", "clean-wt", "--title", "Clean worktrees fixture"]);
   const summary = f.render({
-    version: 1, phase: "picking",
+    phase: "picking",
     approval_plan: f.save("approval-plan.json", { version: 1, rounds }),
     inventory: { exit_code: 0, file: f.save("inventory.json", { checkouts: [draft], evidence_gaps: [] }) },
     investigations: [{ path, checkout: draft, status: "complete" }],

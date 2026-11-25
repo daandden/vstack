@@ -266,7 +266,7 @@ export interface OvnfsCleanupLocation {
   path: string;
   entry: string;
   kind: "ovnfs";
-  gaps: string[];
+  gaps: { kind: "scope" | "origin" | "directory" | "run-record"; message: string }[];
   name: string;
   source: string;
   record?: string;
@@ -308,16 +308,17 @@ export function cleanupOvnfsLocations(
   return listing.checkouts.map((checkout) => {
     const record = records.get(checkout.name);
     const belongs = known.has(checkout.source);
+    const gaps: OvnfsCleanupLocation["gaps"] = [];
+    if (!checkout.name.startsWith("omp-")) gaps.push({
+      kind: "scope", message: `ovnfs checkout is outside omp cleanup scope; retain named and verifier checkouts: ${checkout.name}`,
+    });
+    if (!belongs) gaps.push({ kind: "origin", message: `cannot establish ovnfs checkout origin: ${checkout.source}` });
+    if (!lstat(checkout.path)?.isDirectory()) gaps.push({ kind: "directory", message: `ovnfs checkout directory is missing: ${checkout.path}` });
+    if (recordsGap) gaps.push({ kind: "run-record", message: recordsGap });
+    if (record?.gap) gaps.push({ kind: "run-record", message: record.gap });
     return {
       path: checkout.path, entry: checkout.path, kind: "ovnfs" as const, name: checkout.name,
-      source: checkout.source, record: record?.file,
-      gaps: [
-        ...(!checkout.name.startsWith("omp-") ? [`ovnfs checkout is outside omp cleanup scope; retain named and verifier checkouts: ${checkout.name}`] : []),
-        ...(!belongs ? [`cannot establish ovnfs checkout origin: ${checkout.source}`] : []),
-        ...(!lstat(checkout.path)?.isDirectory() ? [`ovnfs checkout directory is missing: ${checkout.path}`] : []),
-        ...(recordsGap ? [recordsGap] : []),
-        ...(record?.gap ? [record.gap] : []),
-      ],
+      source: checkout.source, record: record?.file, gaps,
     };
   });
 }

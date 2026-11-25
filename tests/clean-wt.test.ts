@@ -84,13 +84,13 @@ function session(id: string, cwd: string, rel = `-${id}/2026-10-21T00-00-00-000Z
   return file;
 }
 
-function cleanWt(args: string[], env: Record<string, string | undefined> = {}, cwd = repo) {
+function cleanWt(args: string[], env: Record<string, string | undefined> = {}, cwd = repo, bunArgs: string[] = []) {
   const merged: Record<string, string> = { ...ENV, PI_SESSION_ID: OWN, PATH: `${join(dir, "bin")}:${ENV.PATH}`, FAKE_OMP_PARENT: repo, FAKE_OVNFS_ROOT: ovnfsRoot, FAKE_GIT: Bun.which("git")! };
   for (const [k, v] of Object.entries(env)) {
     if (v === undefined) delete merged[k];
     else merged[k] = v;
   }
-  const r = Bun.spawnSync(["bun", SCRIPT, ...args, "--base", base, "--sessions", sessions, "--session-owners", owners], {
+  const r = Bun.spawnSync(["bun", ...bunArgs, SCRIPT, ...args, "--base", base, "--sessions", sessions, "--session-owners", owners], {
     cwd,
     env: merged,
     stdout: "pipe",
@@ -137,7 +137,7 @@ function verificationInput(discovered: unknown, investigations: unknown[] = []) 
   const records = join(dir, "summary-records.json");
   writeFileSync(join(dir, "discovery.json"), JSON.stringify(discovered));
   writeFileSync(records, JSON.stringify({
-    version: 1, inventory: { exit_code: 0, file: "discovery.json" }, investigations,
+    version: 2, inventory: { exit_code: 0, file: "discovery.json" }, investigations,
   }));
   return records;
 }
@@ -154,6 +154,52 @@ test("an unused clean linked worktree is listed as unused and clean, with its br
   const c = inventory()[path];
   expect(c).toMatchObject({ entry: path, kind: "linked-worktree", verdict: "unused", state: "clean", branch: "wt/wt-a", reasons: [], owners: [] });
   expect(c.fingerprint).toMatch(/^v1:discovery:[0-9a-f]{64}$/);
+});
+
+test("v1 discovery fingerprint preserves ignored-file entries with and without stat metadata", () => {
+  const date = "2000-01-01T00:00:00Z";
+  const commit = Bun.spawnSync(["git", "commit", "-q", "--amend", "--no-edit", `--date=${date}`], {
+    cwd: repo, env: { ...ENV, GIT_COMMITTER_DATE: date }, stderr: "pipe",
+  });
+  expect(commit.exitCode).toBe(0);
+  const path = linkedWorktree("wt-fingerprint");
+  for (const root of [repo, path]) writeFileSync(join(root, ".env"), "same ignored bytes\n");
+  const gone = join(path, "local-cache", "gone");
+  mkdirSync(dirname(gone));
+  writeFileSync(gone, "gone by inspection\n");
+  writeExecutable(join(dir, "bin", "git"), "sh", `
+if [ "$PWD" = ${JSON.stringify(path)} ] && [ "$1" = status ]; then
+  "$FAKE_GIT" "$@" || exit $?
+  /bin/rm ${JSON.stringify(gone)}
+  exit $?
+fi
+exec "$FAKE_GIT" "$@"
+`);
+  const preload = join(dir, "fingerprint-stats.ts");
+  const fixedStats = {
+    [path]: { dev: 1, ino: 2, birthtimeMs: 3 },
+    [join(path, ".git")]: { dev: 1, ino: 4, birthtimeMs: 5 },
+    [join(path, ".env")]: { ino: 6, mode: 0o100644, mtimeMs: 7, ctimeMs: 8 },
+  };
+  writeFileSync(preload, `
+import { mock } from "bun:test";
+import * as fs from "node:fs";
+const actual = fs.lstatSync;
+const stamps = ${JSON.stringify(fixedStats)};
+mock.module("node:fs", () => ({
+  ...fs, lstatSync(file, ...args) {
+    const stat = actual(file, ...args);
+    return Object.hasOwn(stamps, file) ? Object.assign(stat, stamps[file]) : stat;
+  },
+}));
+`);
+  const result = cleanWt(["inventory"], {}, repo, ["--preload", preload]);
+  expect(result.stderr).toBe("");
+  expect(result.code).toBe(0);
+  expect(result.json.checkouts).toEqual([expect.objectContaining({
+    path, changes: { ignored_unverified: ["local-cache/gone"] },
+  })]);
+  expect(result.json.checkouts[0].fingerprint).toBe("v1:discovery:0d3f3d4b6f6867c30e2d0527865733a9fc7368c71549f89ee2e6eae4d31685f8");
 });
 
 test("listed ignored content is not read and does not stop automatic cleanup even when it changes", () => {
@@ -341,6 +387,53 @@ test.each(["linked", "ovnfs"])("inventory distinguishes a known %s replacement a
   expect(existsSync(replaced)).toBe(true);
 });
 
+test("inventory reports an ovnfs name reused at a different path without adding the replacement", () => {
+  const survivor = linkedWorktree("wt-a");
+  const path = ovnfsCheckout("omp-reused");
+  const replacement = join(ovnfsRoot, "replacement");
+  git(dir, "clone", "-q", "--no-hardlinks", repo, replacement);
+  const state = join(ovnfsRoot, "checkouts.json");
+  const updated = join(dir, "replacement-list.json");
+  const [entry] = JSON.parse(readFileSync(state, "utf8"));
+  writeFileSync(updated, JSON.stringify([{ ...entry, path: replacement }]));
+  gitDuring(survivor, '[ "$1" = status ]', `
+    /bin/mv ${JSON.stringify(path)} ${JSON.stringify(join(dir, "retired-checkout"))}
+    /bin/mv ${JSON.stringify(updated)} ${JSON.stringify(state)}
+  `);
+
+  const report = inventory();
+  expect(Object.keys(report)).toEqual([survivor, path]);
+  expect(report[survivor]).toMatchObject({ outcome: "inspected", automatic: true });
+  expect(report[path]).toMatchObject({ outcome: "replaced", verdict: "uncertain", automatic: false, fingerprint: "" });
+  expect(existsSync(path)).toBe(false);
+  expect(existsSync(replacement)).toBe(true);
+});
+
+test("inventory protects a native checkout replaced during the ovnfs listing", () => {
+  const survivor = linkedWorktree("wt-a");
+  const path = linkedWorktree("wt-recreated");
+  writeExecutable(join(dir, "bin", "ovnfs"), "sh", `
+if [ "$1 $2" = "--json ls" ] && [ ! -f ${JSON.stringify(join(dir, "recreated"))} ]; then
+  "$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree remove ${JSON.stringify(path)} &&
+  "$FAKE_GIT" -C "$FAKE_OMP_PARENT" worktree add -q ${JSON.stringify(path)} wt/wt-recreated || exit 1
+  : > ${JSON.stringify(join(dir, "recreated"))}
+fi
+exec bun ${JSON.stringify(FAKE_OVNFS)} "$@"
+`);
+  const report = inventory();
+  expect(Object.keys(report)).toEqual([survivor, path]);
+  expect(report[survivor]).toMatchObject({ outcome: "inspected", automatic: true });
+  expect(existsSync(join(dir, "recreated"))).toBe(true);
+  expect(existsSync(path)).toBe(true);
+  const removal = cleanWt(["remove", `${path}=${report[path].fingerprint}`]);
+  expect({ present: existsSync(path), exit: removal.code, removed: removal.json?.removed }).toEqual({
+    present: true, exit: 2, removed: undefined,
+  });
+  expect(removal.stderr).toContain("is not <path>=<fingerprint>");
+  expect(report[path]).toMatchObject({ outcome: "replaced", verdict: "uncertain", automatic: false, fingerprint: "" });
+  expect(existsSync(survivor)).toBe(true);
+});
+
 test("inventory protects a listed ovnfs path whose initial instance could not be observed", () => {
   const survivor = linkedWorktree("wt-a");
   const path = ovnfsCheckout("omp-invisible");
@@ -415,6 +508,32 @@ exec "$FAKE_GIT" "$@"
   ]);
   expect(r.stderr).toContain("confirm absence");
   expect([first, second, unrelated].every(existsSync)).toBe(true);
+});
+
+test("a vanished unrelated Git registration does not block a task clone's alternates", () => {
+  const survivor = linkedWorktree("wt-a");
+  const unrelated = linkedWorktree("wt-b");
+  const registration = git(unrelated, "rev-parse", "--absolute-git-dir").trim();
+  const gitFile = join(unrelated, ".git");
+  const entry = taskSandbox("wt-z", { pid: Bun.spawnSync(["true"]).pid, id: "Alternates" });
+  const task = join(entry, "m");
+  gitDuring(survivor, '[ "$1" = status ]', `
+    /bin/mv ${JSON.stringify(registration)} ${JSON.stringify(join(dir, "retired-registration"))}
+    /bin/chmod 000 ${JSON.stringify(gitFile)}
+  `);
+  try {
+    const report = inventory();
+    expect(existsSync(registration)).toBe(false);
+    expect(report[unrelated]).toMatchObject({
+      outcome: "inspection failed", automatic: false, fingerprint: "",
+      failure: { stage: "layout", error: expect.stringContaining("EACCES") },
+    });
+    expect(report[task]).toMatchObject({
+      kind: "task-isolation", outcome: "inspected", automatic: true, source_git_dir: join(repo, ".git"),
+    });
+  } finally {
+    chmodSync(gitFile, 0o644);
+  }
 });
 
 test("machine-wide inventory resolves two repositories equally from Git and non-Git directories", () => {
@@ -567,6 +686,30 @@ test("large ignored trees keep fresh cleanup guards within a bounded content-rea
   console.log(JSON.stringify({ workload: { files_per_tree: fileCount, bytes_per_tree: fileCount * fileBytes }, measured }));
 }, 30000);
 
+test("content-free commands ignore an invalid reader width", () => {
+  const path = linkedWorktree("wt-reader");
+  mkdirSync(join(path, "local-cache"));
+  writeFileSync(join(path, "local-cache", "draft"), "read me\n");
+  const discovered = cleanWt(["inventory"]);
+  expect(discovered.code).toBe(0);
+  const records = verificationInput(discovered.json);
+  git(repo, "remote", "add", "origin", repo);
+  const invalidWidth = { VSTACK_CLEAN_WT_READER_WIDTH: "not-a-width" };
+
+  const verified = cleanWt(["inventory", "--verify", records, "--progress"], invalidWidth);
+  expect(verified.code).toBe(0);
+  expect(verified.json.observations).toEqual([expect.objectContaining({ path, disk: "present", instance: "same" })]);
+  expect(verified.stderr.trim().split("\n").map((line) => JSON.parse(line))).toContainEqual(
+    expect.objectContaining({ phase: "reader", files: 0, bytes: 0 }),
+  );
+  const prepared = cleanWt(["inventory", "--prepare-source", join(repo, ".git")], invalidWidth);
+  expect(prepared.code).toBe(0);
+  expect(prepared.json.source_facts).toEqual([expect.objectContaining({ source_git_dir: join(repo, ".git"), ref: "refs/heads/main" })]);
+  const reading = cleanWt(["inventory"], invalidWidth);
+  expect(reading.code).toBe(2);
+  expect(reading.stderr).toContain("VSTACK_CLEAN_WT_READER_WIDTH must be an integer");
+});
+
 test("verification checks the full branch ref when a tag has the same name", () => {
   const branch = "draft";
   const path = linkedWorktree("wt-branch-tag-collision", branch);
@@ -594,6 +737,27 @@ test("verification checks the full branch ref when a tag has the same name", () 
   expect(verify()).toBe(false);
 });
 
+test("verification distinguishes a replacement between discovery and verification", () => {
+  const path = linkedWorktree("wt-recreated");
+  const unconfirmed = linkedWorktree("wt-no-discovery-identity");
+  const stable = linkedWorktree("wt-unchanged");
+  const discovered = cleanWt(["inventory"]);
+  expect(discovered.code).toBe(0);
+  delete discovered.json.checkouts.find((c: Checkout) => c.path === unconfirmed).instance_id;
+  const records = verificationInput(discovered.json);
+  git(repo, "worktree", "remove", path);
+  git(repo, "worktree", "add", "-q", path, "wt/wt-recreated");
+
+  const result = cleanWt(["inventory", "--verify", records]);
+  expect(result.stderr).toBe("");
+  expect(result.code).toBe(0);
+  expect(result.json.observations).toEqual([
+    expect.objectContaining({ path: unconfirmed, disk: "present", omp_listed: true, instance: "unknown" }),
+    expect.objectContaining({ path, disk: "present", omp_listed: true, git_registered: true, instance: "replaced" }),
+    expect.objectContaining({ path: stable, disk: "present", omp_listed: true, instance: "same" }),
+  ]);
+});
+
 test("verification reports live owners separately from missing ownership proof and cannot authorize removal", async () => {
   const owned = linkedWorktree("wt-gained-owner");
   const uncertain = linkedWorktree("wt-unknown-owner");
@@ -619,6 +783,24 @@ test("verification reports live owners separately from missing ownership proof a
   const events = verified.stderr.trim().split("\n").map((line) => JSON.parse(line));
   expect(events.filter((event) => event.phase === "contents")).toEqual([]);
   expect(events).toContainEqual({ phase: "verification", stage: "complete", files: 0, bytes: 0 });
+});
+
+test("verification uses ovnfs run-record gaps without treating unknown origins as ownership gaps", () => {
+  const invalid = ovnfsCheckout("omp-invalid-run");
+  const valid = ovnfsCheckout("omp-valid-run");
+  const records = verificationInput(cleanWt(["inventory"]).json);
+  const wrapper = join(base, "t-invalid");
+  mkdirSync(wrapper);
+  const record = join(wrapper, ".omp-ovnfs-checkout.json");
+  writeFileSync(record, JSON.stringify({ checkout: "omp-invalid-run" }));
+
+  const result = cleanWt(["inventory", "--verify", records]);
+  expect(result.stderr).toBe("");
+  expect(result.code).toBe(0);
+  expect(result.json.checkouts).toEqual([
+    { path: invalid, verdict: "uncertain", owners: [], reasons: [`invalid ovnfs run record: ${record}`] },
+    { path: valid, verdict: "unused", owners: [], reasons: [] },
+  ]);
 });
 
 test("verification reports disk changes and native listing disagreement without collapsing the facts", () => {
