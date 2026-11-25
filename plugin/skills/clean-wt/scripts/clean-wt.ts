@@ -4,7 +4,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
-import { checkoutEntry, checkoutInstance, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
+import { checkoutEntry, checkoutInstance, cleanupOvnfsLocations, defaultCheckoutBase, listNativeCheckoutsForCleanup, listOvnfsCheckoutsForCleanup, ompWorktreeListing, ovnfsListing, taskMarker, type CheckoutLocation, type ListedCheckoutInstance, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
 import { fingerprintKind, makeFingerprint, type Fingerprint } from "./fingerprint.ts";
 import { requireSummaryRecordsVersion } from "./summary-records.ts";
@@ -299,7 +299,7 @@ let ovnfsLocations: OvnfsCleanupLocation[] = [];
 let nativeLocations: CheckoutLocation[] = [];
 const sources = new Map<string, Source | null | Error>();
 const plainInventory = command === "inventory" && !values.target && !values["prepare-source"] && values.verify === undefined;
-const startingInstances = new Map<string, Instance>();
+let listedInstances = new Map<string, ListedCheckoutInstance>();
 let evidenceGaps: string[] = [];
 
 /** Why the run cannot trust a free lease: it must see its own session's held lease and session file, and every held lease's session. */
@@ -355,22 +355,17 @@ function gatherOwnership(): string | undefined {
 
 function refreshLocalCheckoutEvidence() {
   progress("evidence", { stage: "native listing" });
-  listing = ompWorktreeListing(base);
-  if (plainInventory) {
-    nativeLocations = scanCheckoutLocations(base, listing);
-    for (const location of nativeLocations) startingInstances.set(location.path, observeInstance(location));
-  }
+  const native = listNativeCheckoutsForCleanup(base);
+  listing = native.listing;
+  nativeLocations = native.locations;
+  listedInstances = native.instances;
   const ownershipFailure = gatherOwnership();
   progress("evidence", { stage: "ovnfs listing" });
-  ovnfs = ovnfsListing();
-  if (!plainInventory) nativeLocations = scanCheckoutLocations(base, listing);
-  const paths = new Set<string>();
-  for (const { path } of [...nativeLocations, ...ovnfs.checkouts]) {
-    if (paths.has(path)) throw new Error(`cannot account for duplicate checkout path: ${path}`);
-    paths.add(path);
-  }
-  if (plainInventory) {
-    for (const { path } of ovnfs.checkouts) startingInstances.set(path, observeInstance({ path, kind: "ovnfs" }));
+  const virtual = listOvnfsCheckoutsForCleanup();
+  ovnfs = virtual.listing;
+  for (const [path, instance] of virtual.instances) {
+    if (listedInstances.has(path)) throw new Error(`cannot account for duplicate checkout path: ${path}`);
+    listedInstances.set(path, instance);
   }
   sources.clear();
   const sourcePaths = new Set<string>();
@@ -1058,7 +1053,12 @@ function observeInstance({ path, kind }: { path: string; kind: Location["kind"] 
 
 async function inspectLocation(location: Location, inspection: Inspection): Promise<Checkout> {
   if ("layoutError" in location && location.layoutError) return failedInspection(location, "layout", location.layoutError);
-  const instance = startingInstances.get(location.path) ?? observeInstance(location);
+  const instance = listedInstances.get(location.path);
+  if (instance === "replaced") return replacedCheckout(location);
+  if (!instance) return failedInspection(location, "layout", new Error("checkout identity was not tied to the listing"));
+  if ("error" in instance && location.kind === "excluded" && !missingPath(location.path)) {
+    return protectedLocation(location, "protected", location.gaps);
+  }
   if ("error" in instance) return failedInspection(location, "layout", instance.error);
   let stage: Failure["stage"] = "source resolution";
   let checkout: Checkout;
@@ -1070,11 +1070,16 @@ async function inspectLocation(location: Location, inspection: Inspection): Prom
   return plainInventory ? checkout : verifyInstance(location, instance, checkout);
 }
 
-function verifyInstance(location: Location, before: Instance, checkout: Checkout): Checkout {
-  if ("error" in before) return checkout;
+function verifyInstance(location: Location, before: ListedCheckoutInstance | undefined, checkout: Checkout): Checkout {
+  if (!before || before === "replaced" || "error" in before) return checkout;
   const after = observeInstance(location);
   if ("error" in after) return checkout.failure ? checkout : failedInspection(location, "layout", after.error);
-  if (before.id === after.id) return plainInventory ? { ...checkout, instance_id: before.id } : checkout;
+  return before.id === after.id
+    ? plainInventory ? { ...checkout, instance_id: before.id } : checkout
+    : replacedCheckout(location);
+}
+
+function replacedCheckout(location: Location): Checkout {
   progress("checkout", { stage: "replaced", path: location.path });
   return protectedLocation(location, "replaced", ["a different checkout instance now occupies the listed path"]);
 }
@@ -1086,7 +1091,7 @@ function failedInspection(location: Location, stage: Failure["stage"], error: un
   return protectedLocation(location, "inspection failed", [`${stage}: ${failure.error}`], failure);
 }
 
-function protectedLocation(location: Location, outcome: "replaced" | "inspection failed", reasons: string[], failure?: Failure): Checkout {
+function protectedLocation(location: Location, outcome: "protected" | "replaced" | "inspection failed", reasons: string[], failure?: Failure): Checkout {
   const { path, entry, kind } = location;
   return {
     path, entry, kind: kind === "worktree" ? "linked-worktree" : kind, outcome, failure,
@@ -1141,7 +1146,7 @@ async function scan(): Promise<Checkout[]> {
   const locations = [...nativeLocations, ...ovnfsLocations];
   const inspected = [];
   for (const location of locations) inspected.push(await inspectLocation(location, discoveryInspection));
-  const checkouts = inspected.map((checkout, i) => verifyInstance(locations[i], startingInstances.get(checkout.path)!, checkout));
+  const checkouts = inspected.map((checkout, i) => verifyInstance(locations[i], listedInstances.get(checkout.path), checkout));
   if (!checkouts.some((checkout) => checkout.failure)) return checkouts;
 
   progress("evidence", { stage: "confirm absence" });
@@ -1149,7 +1154,9 @@ async function scan(): Promise<Checkout[]> {
   const ovnfsAfter = ovnfsListing();
   const pathsByName = new Map(ovnfsAfter.checkouts.map(({ name, path }) => [name, path]));
   const namesByPath = new Map(ovnfsAfter.checkouts.map(({ name, path }) => [path, name]));
-  return checkouts.map((checkout, i) => {
+  return checkouts.map((inspectedCheckout, i) => {
+    const location = locations[i];
+    const checkout = verifyInstance(location, listedInstances.get(location.path), inspectedCheckout);
     const name = checkout.ovnfs?.name;
     const currentPath = name && pathsByName.get(name);
     const currentName = namesByPath.get(checkout.path);
@@ -1199,6 +1206,12 @@ function refreshRemoteDefault(path: string): { commonDir: string; fact: RemoteFa
   }
 }
 
+function listedInstanceBlocker(path: string): string | undefined {
+  const instance = listedInstances.get(path);
+  if (instance === "replaced") return "a different checkout instance now occupies the listed path";
+  if (instance && "error" in instance) return String(instance.error);
+}
+
 async function removeAll() {
   if (positionals.length < 2) usage("remove needs at least one <path>=<fingerprint>");
   const approved = new Set((values.approve ?? []).map((p) => realpath(p) || resolve(p)));
@@ -1215,7 +1228,7 @@ async function removeAll() {
     targetPaths.add(path);
     const entry = entryFor(path);
     if (!entry && !missingPath(path)) usage(`${path} is not a checkout under ${base}`);
-    return { path, entry, fingerprint, kind };
+    return { path, entry, fingerprint, kind, listingBlocker: listedInstanceBlocker(path) };
   });
   for (const p of approved) if (!targetPaths.has(p)) usage(`--approve ${p} names no checkout in this removal`);
 
@@ -1224,8 +1237,9 @@ async function removeAll() {
   const failed: { path: string; error: string }[] = [];
   for (const t of targets) {
     refreshLocalCheckoutEvidence();
-    if (!t.entry) {
-      const reason = unavailableTarget(t.path);
+    const blocker = t.listingBlocker ?? listedInstanceBlocker(t.path);
+    if (!t.entry || blocker) {
+      const reason = !t.entry || missingPath(t.path) ? unavailableTarget(t.path, t.entry) : blocker!;
       progress("remove", { stage: "skipped", path: t.path, blocker: reason });
       skipped.push({ path: t.path, reason });
       continue;

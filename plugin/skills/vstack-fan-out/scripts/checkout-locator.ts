@@ -1,4 +1,4 @@
-import { lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync, realpathSync, type Stats } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { resolveOvnfs } from "../../vstack-worktree/scripts/ovnfs.ts";
@@ -53,8 +53,13 @@ export interface OvnfsCheckout {
 }
 
 export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; command?: string; reason?: string } {
+  return readOvnfsListing();
+}
+
+function readOvnfsListing(beforeList?: (binary: string) => void, normalizePath = canonical): ReturnType<typeof ovnfsListing> {
   try {
     const binary = resolveOvnfs();
+    beforeList?.(binary);
     const value = JSON.parse(run([binary, "--json", "ls"]));
     if (!Array.isArray(value?.checkouts) || !value.checkouts.every((entry: OvnfsCheckout) =>
       entry && typeof entry.name === "string" && entry.name.length > 0 &&
@@ -62,7 +67,7 @@ export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; comma
       typeof entry.source === "string" && entry.source.startsWith("/")
     )) throw new Error("invalid ovnfs listing");
     const checkouts: OvnfsCheckout[] = value.checkouts.map((entry: OvnfsCheckout) => ({
-      name: entry.name, path: canonical(entry.path), source: canonical(entry.source),
+      name: entry.name, path: normalizePath(entry.path), source: canonical(entry.source),
     }));
     if (new Set(checkouts.map((entry) => entry.name)).size !== checkouts.length) throw new Error("duplicate ovnfs checkout names");
     return { ok: true, checkouts, command: binary };
@@ -134,6 +139,10 @@ const realpath = (path: string) => {
 };
 
 export function ompWorktreeListing(base: string): { ok: boolean; reason?: string; paths: Set<string>; parentRepos: Map<string, string> } {
+  return readOmpWorktreeListing(base);
+}
+
+function readOmpWorktreeListing(base: string, normalizePath = (path: string) => realpath(path) || resolve(path)): ReturnType<typeof ompWorktreeListing> {
   try {
     const r = Bun.spawnSync(["omp", "worktree", "list", "--json"], { env: { ...process.env, OMP_WORKTREE_DIR: base }, stdout: "pipe", stderr: "pipe" });
     if (r.exitCode !== 0) throw new Error(r.stderr.toString().trim() || `exit ${r.exitCode}`);
@@ -142,7 +151,7 @@ export function ompWorktreeListing(base: string): { ok: boolean; reason?: string
     const paths = new Set<string>();
     const parentRepos = new Map<string, string>();
     for (const entry of entries) {
-      const path = realpath(entry.path) || resolve(entry.path);
+      const path = normalizePath(entry.path);
       paths.add(path);
       if (typeof entry.parentRepo === "string" && entry.parentRepo.startsWith("/")) {
         parentRepos.set(path, realpath(entry.parentRepo) || resolve(entry.parentRepo));
@@ -259,7 +268,115 @@ export function checkoutInstance(path: string): string {
   if (!dir.isDirectory() || (!git.isFile() && !git.isDirectory()) || !dir.ino || !git.ino) {
     throw new Error(`cannot establish checkout identity: ${path}`);
   }
-  return `${dir.dev}:${dir.ino}:${dir.birthtimeMs}:${git.dev}:${git.ino}:${git.birthtimeMs}`;
+  return `${instanceStamp(dir)}:${instanceStamp(git)}`;
+}
+
+type DirectoryInstances = { directory: string; checkout?: string };
+export type ListedCheckoutInstance = { id: string } | { error: unknown } | "replaced";
+
+function childDirectories(path: string): string[] {
+  try {
+    return readdirSync(path, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => join(path, entry.name));
+  } catch {
+    return [];
+  }
+}
+
+function instanceStamp({ dev, ino, birthtimeMs }: Stats): string {
+  return `${dev}:${ino}:${birthtimeMs}`;
+}
+
+function directoryInstance(path: string, dir = lstatSync(path)): string {
+  if (!dir.isDirectory() || !dir.ino) throw new Error(`cannot establish directory identity: ${path}`);
+  return instanceStamp(dir);
+}
+
+function rememberInstance(instances: Map<string, DirectoryInstances>, path: string) {
+  const dir = lstat(path);
+  if (!dir?.isDirectory() || !dir.ino) return;
+  const directory = instanceStamp(dir);
+  const git = lstat(join(path, ".git"));
+  const checkout = git?.ino && (git.isFile() || git.isDirectory()) ? `${directory}:${instanceStamp(git)}` : undefined;
+  instances.set(path, { directory, checkout });
+}
+
+function bindListedInstance(path: string, before: string | undefined, directoryOnly = false): ListedCheckoutInstance {
+  let after: string;
+  try {
+    after = directoryOnly ? directoryInstance(path) : checkoutInstance(path);
+  } catch (error) {
+    return { error };
+  }
+  if (before === undefined) return { error: new Error(`cannot establish checkout identity before listing: ${path}`) };
+  return after === before ? { id: before } : "replaced";
+}
+
+function collectListedInstances<T extends { path: string }>(
+  locations: T[], observe: (location: T) => ListedCheckoutInstance,
+): Map<string, ListedCheckoutInstance> {
+  const instances = new Map<string, ListedCheckoutInstance>();
+  for (const location of locations) {
+    if (instances.has(location.path)) throw new Error(`cannot account for duplicate checkout path: ${location.path}`);
+    instances.set(location.path, observe(location));
+  }
+  return instances;
+}
+
+function listedPaths() {
+  const original = new Map<string, string>();
+  return {
+    original,
+    normalize(path: string) {
+      const absolute = resolve(path);
+      const normalized = realpath(path) || absolute;
+      if (!original.has(normalized)) original.set(normalized, absolute);
+      else if (original.get(normalized) !== absolute) original.set(normalized, "");
+      return normalized;
+    },
+  };
+}
+
+export function listNativeCheckoutsForCleanup(base: string) {
+  const before = new Map<string, DirectoryInstances>();
+  for (const path of childDirectories(base)) {
+    rememberInstance(before, path);
+    for (const child of childDirectories(path)) {
+      rememberInstance(before, child);
+      for (const mount of TASK_MOUNTS) rememberInstance(before, join(child, mount));
+    }
+  }
+  const paths = listedPaths();
+  const listing = readOmpWorktreeListing(base, paths.normalize);
+  const locations = scanCheckoutLocations(base, listing);
+  const instances = collectListedInstances(locations, ({ path, entry, kind }) => {
+    const original = paths.original.get(entry) ?? entry;
+    const observed = original ? before.get(join(original, path.slice(entry.length))) : undefined;
+    const excluded = kind === "excluded";
+    return bindListedInstance(path, excluded ? observed?.directory : observed?.checkout, excluded);
+  });
+  return { listing, locations, instances };
+}
+
+export function listOvnfsCheckoutsForCleanup() {
+  const before = new Map<string, DirectoryInstances>();
+  const paths = listedPaths();
+  const listing = readOvnfsListing((binary) => {
+    try {
+      const { mount } = JSON.parse(run([binary, "--json", "status"]));
+      if (typeof mount !== "string" || !mount.startsWith("/")) return;
+      const root = canonical(mount);
+      for (const path of childDirectories(root)) {
+        rememberInstance(before, path);
+        const observed = before.get(path);
+        if (observed && root !== mount) before.set(join(mount, basename(path)), observed);
+      }
+    } catch {
+      // Listing membership still protects sources when mount identity is unavailable.
+    }
+  }, paths.normalize);
+  const instances = collectListedInstances(listing.checkouts, ({ path }) =>
+    bindListedInstance(path, before.get(paths.original.get(path)!)?.checkout));
+  return { listing, instances };
 }
 
 export interface OvnfsCleanupLocation {

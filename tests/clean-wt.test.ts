@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import type { Subprocess } from "bun";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { writeExecutable } from "./support/executable.ts";
@@ -432,6 +432,54 @@ exec bun ${JSON.stringify(FAKE_OVNFS)} "$@"
   expect(removal.stderr).toContain("is not <path>=<fingerprint>");
   expect(report[path]).toMatchObject({ outcome: "replaced", verdict: "uncertain", automatic: false, fingerprint: "" });
   expect(existsSync(survivor)).toBe(true);
+});
+
+function replaceAfterListing(kind: "omp" | "ovnfs", path: string, replacement: string, skipFirst = false) {
+  const listing = kind === "omp" ? "worktree list --json" : "--json ls";
+  const script = kind === "omp" ? FAKE_OMP : FAKE_OVNFS;
+  const first = join(dir, "first-list");
+  const retired = join(dir, "retired-after-list");
+  writeExecutable(join(dir, "bin", kind), "sh", `
+bun ${JSON.stringify(script)} "$@" || exit $?
+if [ "$*" = ${JSON.stringify(listing)} ] && [ ! -d ${JSON.stringify(retired)} ]; then
+  ${skipFirst ? `if [ ! -f ${JSON.stringify(first)} ]; then : > ${JSON.stringify(first)}; exit 0; fi` : ""}
+  /bin/mv ${JSON.stringify(path)} ${JSON.stringify(retired)} &&
+  /bin/mv ${JSON.stringify(replacement)} ${JSON.stringify(path)} || exit 1
+fi
+`);
+  return retired;
+}
+
+test.each(["omp", "ovnfs"] as const)("discovery cannot authorize removal of a replacement made before the %s lister exits", (kind) => {
+  const path = kind === "omp" ? linkedWorktree("wt-recreated") : ovnfsCheckout("omp-recreated");
+  const replacement = join(dir, "replacement");
+  cpSync(path, replacement, { recursive: true });
+  const retired = replaceAfterListing(kind, path, replacement);
+
+  const checkout = inventory()[path];
+  expect(existsSync(retired)).toBe(true);
+  const result = cleanWt(["remove", `${path}=${checkout.fingerprint}`]);
+  expect({ survives: existsSync(path), code: result.code, removed: result.json?.removed }).toEqual({
+    survives: true, code: 2, removed: undefined,
+  });
+  expect(checkout).toMatchObject({ outcome: "replaced", automatic: false, fingerprint: "" });
+});
+
+test.each(["omp", "ovnfs"] as const)("removal skips a matching fingerprint if the checkout changed during its fresh %s listing", (kind) => {
+  const path = kind === "omp" ? linkedWorktree("wt-recreated") : ovnfsCheckout("omp-recreated");
+  const checkout = inventory()[path];
+  expect(checkout.automatic).toBe(true);
+  const replacement = join(dir, "previously-inventoried");
+  renameSync(path, replacement);
+  cpSync(replacement, path, { recursive: true });
+  const retired = replaceAfterListing(kind, path, replacement, true);
+
+  const result = remove(`${path}=${checkout.fingerprint}`);
+  expect(existsSync(retired)).toBe(true);
+  expect({ survives: existsSync(path), ...result }).toMatchObject({
+    survives: true, removed: [], failed: [],
+    skipped: [{ path, reason: expect.stringContaining("different checkout instance") }],
+  });
 });
 
 test("inventory protects a listed ovnfs path whose initial instance could not be observed", () => {

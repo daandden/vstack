@@ -153,6 +153,8 @@ Use disposable fixture repositories and native executable stand-ins for these CL
 
 Step `clean-wt-discovery-coverage`: Run `bun test --timeout 30000 tests/clean-wt.test.ts tests/checkout-locator-cleanup.test.ts`. Inspect the named external saved-session, native exclusion, global Git and non-Git inventory, delayed native-directory visibility, and mid-run ownership cases. Owned and uncertain targets remain, excluded entries have protection reasons, and snapshots survive delayed completion. A native checkout replaced during listing has no usable fingerprint and survives an attempted removal. A reused ovnfs name is reported as `replaced` without adding the new path. A vanished unrelated Git registration does not block a checkout whose source is known. No real checkout is a fixture.
 
+In the omp and ovnfs lister-exit tests, each lister writes its row, replaces the checkout, then exits. Discovery reports `replaced` with no usable fingerprint. Confirm that `remove` rejects the discovery fingerprint and leaves the replacement on disk. If the same swap happens during removal's fresh listing, removal skips the target even when the replacement matches the supplied fingerprint.
+
 In `verification distinguishes a replacement between discovery and verification`, confirm that a listed replacement and a checkout with missing discovery identity do not match the saved instance. The unchanged checkout matches.
 
 Step `clean-wt-global-source-guard`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'machine-wide inventory|ovnfs origin follows archived sessions|source stays protected by every ovnfs dependent|cyclic or missing origin evidence'`. Retain stdout, stderr, and the exit code. Require these named CLI cases to pass:
