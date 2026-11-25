@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Require a Settle-or-ask reason and evidence in new and re-asked Flow questions, and show both in the Decision brief."
+  ]
+}

@@ -23,10 +23,11 @@ Run real code behind the seam. Replace only system boundaries with stand-ins, lo
 
 Record every pick with what it catches and misses: an `assumed` item in the owning Stage in a Flow, or a line in chat outside one. The user's pushback reopens that seam.
 
-Ask only before writing a test at a Costly seam. Its test reaches a real service beyond localhost, needs a real credential, account, or paid quota, or its test command runs over 180 seconds, measured on the first run or estimated before writing the test. Ask once through `ask` under skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. Reuse an earlier explicit approval for that costly use. In a subagent, return the costly seam as a question to the coordinator.
-Inside implement or implement-spec, END-STATE.md's "Question timing" decides when the Costly seam question is asked.
+A Costly seam reaches a real service beyond localhost, needs a real credential, account, or paid quota, or runs a test command that takes more than 180 seconds. Estimate command duration before writing the test or measure it on the first run. If that run reveals the time limit, stop further use until approved.
 
-Without the user's answer, including timeout, cancellation, headless operation, or an unavailable picker, do not use the Costly seam. Test at the best seam that is not costly, or prove the change another way, and name the gap. A first run that reveals the time limit stops further use until approval.
+Before writing a test at a known Costly seam, state the proposed use and allowance. For retries, apply the [Settle-or-ask rule's Costly seam path](../../rules/vstack-settle-or-ask.md#decisions-the-agent-settles). Keep the approval source, approved use and limits, and consumed attempts in the run record. In each Assumed pick for reuse, cite the earlier approval and say why the retry fits the remaining allowance. If a proof picker was missed, follow its existing recovery and proof steps separately from approval for the test.
+
+When explicit approval does not cover the proposed use, use `ask` through skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. In a subagent, return the question to the coordinator. For implement or implement-spec, follow [Question timing](../implement/END-STATE.md#question-timing). Timeout, cancellation, an empty response, a headless default, and an unavailable picker grant no approval. Without applicable approval, test at the best seam that is not costly or prove the change another way, and name the gap.
 
 A seam that needs a new production interface, such as a port, an adapter, or an export only tests use, is a consequential architecture departure. Follow skill://implement's "Work within the agreement" rule before introducing it.
 

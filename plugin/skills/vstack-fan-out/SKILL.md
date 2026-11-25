@@ -16,7 +16,7 @@ Start one subagent for each part, every part in one batch, and collect the resul
 
 A Fan-out line always fans out. The agent at that step never does a part itself. The user's words do not change this: when the user asks for "sequential", "no fan-out", or "inline", say in one line that vstack always fans out, then run the line as written.
 
-A subagent at its own Fan-out step runs its line the same way. Each subagent returns its open questions in its result. In a Flow-bound run, the top-level agent follows `skill://flow-page`'s "Every ask in a Flow" contract. It publishes the complete round through the Flow CLI, calls `ask`, then records the observed response separately. Genuinely unbound runs retain `ask` with full context in chat.
+A subagent at its own Fan-out step runs its line the same way. Each subagent returns its open questions and evidence in its result. The top-level agent applies the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before delivery. In a Flow it follows `skill://flow-page`'s "Every ask in a Flow" contract. It publishes the complete round through the Flow CLI, calls `ask`, then records the observed response separately. In chat it uses plain `ask` with full context.
 
 ## Account for Isolated clones
 

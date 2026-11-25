@@ -19,6 +19,8 @@ def question(ref, title, labels, *, multi=False):
             "description": f"Compare {labels[0]} and {labels[1]} for this disposable fixture.",
             "brief": {"unblocks": f"Record the submitted value for {ref}.",
                       "undo": f"Use a new session to submit a different value for {ref}.",
+                      "ask_reason": "explicit-decision-required",
+                      "evidence_checked": f"The authored fixture for {ref} provides {labels[0]} and {labels[1]}. The driver checks what the picker returns.",
                       "no_recommendation": f"The driver exercises {ref} without an initial selection."},
             "needs": [{"need": f"See the alternatives for {ref}.", "kind": "prose"}],
             "options": [{"label": label, "does": f"Use {label} for {ref}.",

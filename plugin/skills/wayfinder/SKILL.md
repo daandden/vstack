@@ -80,7 +80,7 @@ A map keeps one Flow page across sessions. Follow `skill://flow-page`'s "Stage e
 
 Each ticket run supplies its ticket id to the central Stage protocol and puts the ticket's name in its Background. Nested result-producing grilling, prototype, and domain-modeling runs follow the same protocol. Interviewing or reference helpers contribute to their producer without an independent run. Never rewrite shared Flow records.
 
-Put every ordinary user question through `ask` on the owning Stage, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to each proposed question. Put remaining questions through `ask` on the owning Stage under `skill://flow-page`'s "Every ask in a Flow", including CLI publication and separate answer recording. In chat, use plain `ask`.
 
 Publish the map's destination, notes, frontier, decisions, fog, and out-of-scope boundaries as Document and table Results, with named tracker links and observed canonical revisions. Preserve the dependency graph as separate Result content: a table lists every ticket and its blockers, and a captured dependency figure shows the graph when produced. The Stage tree describes continuation, never blocking order. Before finishing charting or a ticket Stage, publish its actual resolution, evidence, outstanding questions, and canonical tracker or findings links. Record raw ask responses and separate readings. A headless recommendation, timeout, or cancellation cannot resolve a HITL ticket or authorize tracker writes.
 
@@ -141,7 +141,7 @@ This gate does not trigger for edits of existing issues, resolution comments, cl
 User invokes with a loose idea or resumes an earlier chart.
 
 1. Before interviewing, [look for a saved chart](references/drift-check.md#match-a-chart). Resume a matching pending chart on its existing Stage and skip to step 4. A completed chart returns its saved outcome. A held or ambiguous chart stops here. For new charting, use skill://grilling and skill://domain-modeling to name the destination: the spec, decision, or change this map is for. The destination fixes the scope.
-2. Map the frontier. Grill again, breadth-first this time: range across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. If this surfaces no fog (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop charting and use `ask` on the charting Stage to choose how to proceed.
+2. Map the frontier. Grill breadth-first to find open decisions and the first steps takeable now. If the route is already clear and fits one session, stop charting and report why no map is needed. Use the shared test for any remaining choice about what to do next. Do not add a permission question just to stop charting.
 3. Draft the map and every ticket you can specify now, including their intended blocking relationships. Fill Destination and Notes, leave Decisions-so-far empty, and sketch the remaining fog into Not yet specified.
 4. Run [Before creating issues](#before-creating-issues) on the whole proposal, including on resumption. After the check passes, create the map with the `wayfinder:map` label. Add the map's alias and publish its Result as [The Flow page](#the-flow-page) says.
 5. Create the checked tickets as child issues of the map, then wire blocking edges in a second pass. Write cross-references in that pass with the real issue ids. A placeholder such as `#<n>` can auto-link to an unrelated issue. Wiring sorts tickets into the frontier and the blocked; everything you cannot specify stays in Not yet specified.
@@ -167,7 +167,7 @@ The user may run unblocked tickets in parallel, so expect other sessions to be e
 
 ## Research runners
 
-Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user; they return open questions for the parent to put through `ask` on the ticket's Stage. An unanswered question that prevents a cited answer leaves the ticket open. The parent records each runner's result on that ticket's Stage, not the parent's last active Stage.
+Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user. They return open questions and evidence. The parent applies the shared test and delivers remaining questions on the ticket's Stage. An unanswered question that prevents a cited answer leaves the ticket open. Record the runner's result on that ticket's Stage, not the parent's last active Stage.
 
 Resolve the mode and absolute vstack root once using the project's vstack config. Read its tracker and domain docs. Pass that root unchanged to every child; children never resolve the git common dir again. Open the marked `wayfinder` session folder through `skill://vstack-tmp` for any landing checkout record. The research runners write findings in the clone or the vstack root, not in Scratch. Use distinct names for each ticket's findings.
 

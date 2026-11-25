@@ -57,4 +57,4 @@ The skill infers which structure applies:
 - If only a root `GLOSSARY.md` exists, single context
 - If neither exists, create a root `GLOSSARY.md` lazily when the first term is resolved
 
-When multiple contexts exist, infer which one the topic belongs to. If unclear, use omp's native `ask` with one option per context. Bound questions follow `skill://flow-page`'s "Every ask in a Flow" contract.
+When multiple contexts exist, resolve the term's context from existing terms and its users. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to any remaining choice. If needed, use `ask` with one option per applicable context. Bound questions follow `skill://flow-page`'s "Every ask in a Flow" contract.

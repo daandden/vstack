@@ -135,7 +135,7 @@ Read the semantic rules for the kind you are about to publish:
 - Before Comparison or Metrics, also read [Comparison and Metrics fields](references/comparison-metrics.md).
 - Before a prototype demo, runnable-artifact Result, or Quiz, also read [Interactive Result fields](references/interactive-results.md).
 - Before capturing attachments, canonical file revisions, question/Background figures, option previews, or real HTML/app/terminal artifacts, read [Captured attachments](references/attachments.md). Capture actual redacted evidence and preserve canonical deliverables.
-- Before every new or re-asked question, read [Reader needs and Visual kinds](references/reader-needs.md). Write its Decision brief, declare and satisfy its reader needs, and publish the complete round atomically with its visuals.
+- Before every new or re-asked question, apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) and read [Reader needs and Visual kinds](references/reader-needs.md). Write the reason and evidence checked in its Decision brief. Declare and satisfy its reader needs, and publish the complete round atomically with its visuals.
 
 
 ## The receipt
@@ -190,7 +190,7 @@ If a plain composer message closes the form, keep the question open. Record the 
 Words with no pick need a `reading`, your interpretation, kept apart from the words:
 
 - `{ "outcome": "resolved", "decision", "basis", "maps_to"? }` when the words plainly settle the decision. `decision` is what is now true, `basis` is why the words settle it, and `maps_to` is the letter of the option they match. The page shows the user's words, your reading, and its basis, and records no pick.
-- `{ "outcome": "question" | "concern" | "ambiguous", "unresolved" }` when they ask for information, raise a concern, or leave the choice open. `unresolved` is the part still to decide. Ask that part in the next round with `again`, and reply to the rest on the page.
+- `{ "outcome": "question" | "concern" | "ambiguous", "unresolved" }` when they ask for information, raise a concern, or leave the choice open. `unresolved` is the part still to decide. Record the raw response and its reading separately, then reply on the page and apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before any new round. Record what the evidence settles without another picker. Use `again` only for a question the evidence leaves open and the test still permits.
 
 Only an explicit submitted pick or a resolved reading of submitted words is the user's answer. Everything else keeps the question open until it is asked again or its Stage retires it.
 

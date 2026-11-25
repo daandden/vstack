@@ -8,7 +8,7 @@ Save each later plan JSON unchanged in the run entry from step 2 of SKILL.md, as
 
 ## 1. Ask
 
-Call plain `ask` with one question, "This repo has Matt Pocock config. Migrate it to vstack first?", and the options Migrate first (Recommended) and Set up beside it. Name the Matt files in chat before the picker. On Set up beside it, keep the read-only plan for Done and go back to step 3 of SKILL.md.
+Apply the [Settle-or-ask test](../../../rules/vstack-settle-or-ask.md). Reuse an explicit direction to migrate or set up beside the Matt config. If that choice remains open, name the Matt files in chat and use plain `ask` with Migrate first (Recommended) and Set up beside it. On Set up beside it, keep the read-only plan for Done and go back to step 3 of SKILL.md. This choice does not authorize destructive plan items.
 
 ## 2. Mode
 
@@ -26,7 +26,7 @@ Show every item id, move, diff, manual hit, destructive flag, and notice in one 
 
 - Moves: tracked files move with `git mv`, and untracked files with `mv`. House style rows keep hand edits in config, domain, and rule files.
 - Code host: when the plan moves or copies config and the remote is on `github.com` or `gitlab.com`, a `code-host` item writes `code-host.md` from setup-vstack's template with the repo filled in. A `code-host.md` in the old config or private store moves as a hand edit, and no seed replaces it. For any other remote, the notice says that step 5's Code host section maps it in this run.
-- CI service: Migration does not seed `ci.md`. After application, setup reads state again and asks its CI section in the same run, even when Migration filled the other four config files.
+- CI service: Migration does not seed `ci.md`. After application, setup reads state again and runs the CI section in the same run, even when Migration filled the other four config files.
 - Conflicts: when old and new config or storage both exist, vstack wins. Show the old-versus-new diff of each `old-delete` and `old-store-delete` item, and offer to delete the old copy. Keep no merged copy. Old storage keeps Migration incomplete until the user approves its deletion. If the vstack store has no `config/`, resolve that first: the helper refuses to delete old storage without it.
 - Private move: a `private-move` item is mandatory. It moves the old private store to `<common_dir>/vstack/` for every worktree of this repo, rewrites old paths in it, removes old-store symlinks and their exclude line, and keeps unknown directories. No compatibility link stays, so outside links to old storage break.
 - Report-only paths: checkout-relative `clean-adr report-only paths` entries stay literal. Absolute entries inside the moving private store follow its new location, including config and domain-file renames. Other absolute entries stay unchanged. When no entry needs retargeting, the line keeps its original bytes.

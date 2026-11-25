@@ -11,7 +11,7 @@ Give one applicable choice with a short reason, not a library survey. Start with
 
 For standalone result-producing use, follow skill://flow-page's "Stage entry/exit line". In an enrolled direct run, publish the recommendation or actual setup outcome as Results in that run's Stage and finish it under that contract. Reading this skill as reference-only knowledge under another running owner opens no separate Stage. That owner keeps publication.
 
-Route all clarifications, including a missing task or conflicting package-manager conventions, through skill://flow-page's "Every ask in a Flow" when enrolled. Publish through the CLI before ordinary `ask`, then record the observed response separately. Outside a Flow, give the question's context in chat and use plain `ask`. A worker returns open questions to its coordinator instead of inventing answers. Unanswered or headless recommendations grant no consent or permission to continue.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to clarifications, including task scope and conflicting package-manager conventions. Preserve the explicit confirmations in the Cloudflare deployment procedure. Use `ask` under skill://flow-page's "Every ask in a Flow" when enrolled, with CLI publication and separate response recording, or plain `ask` in chat. A worker returns open questions. An unanswered question or headless recommendation grants no consent.
 
 ## Inspect the target application
 

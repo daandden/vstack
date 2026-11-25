@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Show exact corrections without reapproval and reuse explicit Costly seam approval for retries within its allowance."
+  ]
+}

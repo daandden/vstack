@@ -33,6 +33,8 @@ The popup offers one row per inactive omp session in each project. It uses the n
 
 For a CLI listing, run `bun "$(realpath skill://vstack-tmp/scripts/clean.ts)" --home "$HOME"`. Supply `--witness <session-id>` and, if different from `--home`, `--omp-home <dir>` to verify leases against a running omp session. Without verified lease evidence the script withholds dependent rows. Listing makes no changes to Scratch.
 
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). Keep the explicit deletion selection. Eligibility is not consent.
+
 After the user confirms, pass the selected rows' `snapshot` strings to `--delete` with the same home and age. The script rebuilds each row before its first removal and reports deleted, skipped, and partly deleted rows separately. After an interruption, list again and get fresh confirmation from the user through the popup or through `ask`. In a Flow, follow `skill://flow-page`'s "Every ask in a Flow" contract. An agent never confirms on its own.
 
 ## Subagents

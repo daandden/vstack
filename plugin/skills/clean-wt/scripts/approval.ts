@@ -11,10 +11,11 @@ type InspectedTarget = {
   readonly fingerprint: Fingerprint<"targeted">;
   readonly repository: string;
   readonly verdict: string;
+  readonly integrationGap: boolean;
   readonly action: Recommendation;
 };
 type ApprovalQuestion = Pick<Question, "title" | "description" | "needs"> & {
-  brief: Required<Pick<NonNullable<Question["brief"]>, "unblocks" | "undo" | "no_recommendation">>;
+  brief: Required<Pick<NonNullable<Question["brief"]>, "unblocks" | "undo" | "no_recommendation" | "ask_reason" | "evidence_checked">>;
   ref: string;
   results?: string[];
   multi: true;
@@ -90,7 +91,7 @@ function readTargets(value: unknown): InspectedTarget[] {
     text(target.classification, `${at}.classification`);
     text(target.risk, `${at}.risk`);
     text(recommendation.reason, `${at}.recommendation.reason`);
-    return { path, fingerprint, repository, verdict, action };
+    return { path, fingerprint, repository, verdict, action, integrationGap: "gap" in rawIntegration };
   });
 }
 
@@ -101,7 +102,10 @@ function plan(targets: InspectedTarget[]): ApprovalPlan {
     const groupName = `Agent says ${action}`;
     for (let offset = 0; offset < group.length; offset += 26) {
       const number = rounds.length + 1;
-      const mapping = group.slice(offset, offset + 26).map(({ path, fingerprint, repository, verdict }, i) => {
+      const batch = group.slice(offset, offset + 26);
+      let gaps = 0;
+      const mapping = batch.map(({ path, fingerprint, repository, verdict, integrationGap }, i) => {
+        if (integrationGap) gaps++;
         const label = [shortPath(path), displayField(repository), displayField(verdict), groupName].join(FIELD_SEPARATOR);
         return { letter: String.fromCharCode(65 + i), label, path, fingerprint, recommendation: action };
       });
@@ -113,6 +117,8 @@ function plan(targets: InspectedTarget[]): ApprovalPlan {
           unblocks: "Run the final safety checks and remove only the checkouts you select.",
           undo: "Removal discards uncommitted changes and cannot be undone.",
           no_recommendation: "Each checkout has its own recommendation. Nothing is selected because removal needs your explicit choice.",
+          ask_reason: "irreversible",
+          evidence_checked: `Targeted inventory found no live owner, protection reason, or unique commit history for ${batch.length} dirty ${batch.length === 1 ? "checkout" : "checkouts"}. None qualified for automatic removal. The integration check reported gaps for ${gaps} of them.`,
         },
         needs: [{ need: "Compare the verdicts and recommendations to decide which checkouts to remove.", kind: "prose" }],
         multi: true,

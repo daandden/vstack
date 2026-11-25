@@ -32,7 +32,7 @@ Reword for clarity. Keep cited evidence, labeled inferences, and gaps distinct.
 
 ## Step 4. Keep it conversational
 
-No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natural break and let the person respond. Any optional depth choice goes through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never a prose question. In a one-shot run, deliver the complete explanation without an interaction requirement.
+No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natural break. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to an optional depth choice. Deliver a remaining question through `ask` under `skill://flow-page`'s "Every ask in a Flow" when enrolled, or plain `ask` in chat. In a one-shot run, deliver the complete explanation without an interaction requirement.
 
 ## Step 5. Build the picture on one page
 

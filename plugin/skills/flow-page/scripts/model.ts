@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { parse as parseMermaid } from "pele";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
-import { CODE_ID, collecting, fields, isObj, list, listed, newId, type Obj, REF, refuse, reject, text, texts, validatedMap, VISUAL_KINDS } from "./fields.ts";
+import { ASK_REASONS, type AskReason, CODE_ID, collecting, fields, isObj, list, listed, newId, type Obj, REF, refuse, reject, text, texts, validatedMap, VISUAL_KINDS } from "./fields.ts";
 import { contractDiagnostics, contributionPath, ContributionRefusal, refusalDiagnostic, type Diagnostic } from "./contracts.ts";
 
 export const SCHEMA = 1;
@@ -18,7 +18,7 @@ export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ te
 export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Figure };
 export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
-type DecisionBrief = { unblocks: string; undo: string; asked_again_because?: string; no_recommendation?: string };
+type DecisionBrief = { unblocks: string; undo: string; asked_again_because?: string; no_recommendation?: string; ask_reason?: AskReason; evidence_checked?: string };
 export type Question = {
   id: string; stage: string; round: string; q: number; title: string; description: string; options: Option[];
   multi?: boolean;
@@ -1513,8 +1513,12 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
       return { [a]: text(xo, a, xw), [b]: text(xo, b, xw) };
     });
   const bw = `${where}: brief`;
-  const b = fields(o.brief, bw, ["unblocks", "undo"], ["asked_again_because", "no_recommendation"]);
+  const b = fields(o.brief, bw, ["unblocks", "undo"], ["asked_again_because", "no_recommendation", "ask_reason", "evidence_checked"]);
   const brief: DecisionBrief = { unblocks: text(b, "unblocks", bw), undo: text(b, "undo", bw) };
+  if (typeof b.ask_reason === "string" && Object.hasOwn(ASK_REASONS, b.ask_reason) && typeof b.evidence_checked === "string") {
+    brief.ask_reason = b.ask_reason as AskReason;
+    brief.evidence_checked = b.evidence_checked;
+  }
   if (b.asked_again_because !== undefined) brief.asked_again_because = text(b, "asked_again_because", bw);
   if (b.no_recommendation !== undefined) brief.no_recommendation = text(b, "no_recommendation", bw);
   const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options, needs: readerNeeds(o.needs, where), brief };

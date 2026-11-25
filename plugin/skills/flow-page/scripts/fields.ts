@@ -47,6 +47,18 @@ export const VISUAL_KINDS = {
   prose: "Prose",
 } as const;
 
+export const ASK_REASONS = {
+  taste: "User taste",
+  irreversible: "Cannot be undone",
+  "undecided-by-evidence": "Evidence does not decide",
+  spending: "Spending or a Costly seam",
+  "not-user-owned": "The user does not own the target",
+  "waiver-or-reversal": "Waiver or reversal of a prior decision",
+  "user-only-fact": "Only the user has the fact",
+  "explicit-decision-required": "Explicit decision required",
+} as const;
+export type AskReason = keyof typeof ASK_REASONS;
+
 export type Obj = Record<string, unknown>;
 export const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 export const REF = /^[a-z0-9][a-z0-9-]*$/;

@@ -9,6 +9,8 @@ import { editStoredFlow } from "./support/flow-store.ts";
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const rolloutPlan = "https://example.test/workspaces/platform/projects/decision-brief/rollout/plan/eeasted80785d4ddd8947319460a2b011?variant=reader&show=all";
 const now = `The reader works in both themes. Review the rollout plan at ${rolloutPlan} before changing the order.`;
+const evidence = `The keyboard and pointer walkthroughs passed. Neither the release checklist nor the rollout plan at ${rolloutPlan} specifies the order.`;
+const evidenceWithLink = evidence.replace(rolloutPlan, `[${rolloutPlan}](${rolloutPlan})`);
 
 test("question context, choices, answers and figures keep their compact themed layout", async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-questions-")));
@@ -51,10 +53,10 @@ test("question context, choices, answers and figures keep their compact themed l
       { kind: "topic", ref: "context", title: "Shared context", summary: "A concept used by both questions.", body: "- Read the Background\n- Compare the options", sources: ["ADR 0067"] },
       { kind: "assumed", ref: "assumption", decision: "Keep stored revisions", pick: "Retain the original", why: "No authored record should move." },
       { kind: "round", now, questions: [
-        { ref: "first", title: "Keep the reading path?", description: "Read the context and compare both routes.", brief: { unblocks: "Choose the reading order for the reader release.", undo: "Restore the current order in the next release." }, topics: ["context"], terms: [{ term: "Flow", text: "Related work across Stages." }], today: [{ text: "The host serves the built reader.", source: "reader/ship.ts" }], example: "Read → compare → answer", needs: [{ need: "Follow the current path.", kind: "context-diagram" }], figures: [{ attachment: "path", kind: "context-diagram" }], options: [{ label: "Keep", does: "Retain the path.", gains: ["Familiar reading order"], costs: ["No new route"], recommended: "The path already works." }, { label: "Change", does: "Replace the path.", gains: ["Another route"], costs: ["Relearn the order"] }] },
-        { ref: "second", title: "Read the next question?", description: "Keyboard navigation reaches this question.", brief: { unblocks: "Continue the keyboard walkthrough.", undo: "Return to the first question.", no_recommendation: "Neither order changes the result of this walkthrough." }, needs: [{ need: "Understand the next choice.", kind: "prose" }], options: [{ label: "Continue", does: "Reads the next question.", gains: ["More context"], costs: ["More reading"] }] },
-        { ref: "noted", title: "Where should the cap live?", description: "The number sits in code today.", brief: { unblocks: "Implement the cap in the chosen place.", undo: "Move it back to its original owner.", no_recommendation: "The operator has not said how often the cap changes." }, needs: [{ need: "Compare where the cap lives.", kind: "prose" }], options: [{ label: "Keep in code", does: "Keeps the constant.", gains: ["Reviewed with code"], costs: ["A deploy per change"] }, { label: "Move to config", does: "Reads it from settings.", gains: ["Ops can change it"], costs: ["Config drift"] }] },
-        { ref: "worded", title: "Should the check run on the server?", description: "Only the browser checks today.", brief: { unblocks: "Add the check to the chosen request path.", undo: "Revert the request validation change.", no_recommendation: "The server's lookup budget is not known." }, needs: [{ need: "Compare where the check runs.", kind: "prose" }], options: [{ label: "Server too", does: "The API rejects carts.", gains: ["Cannot be bypassed"], costs: ["One more lookup"] }, { label: "Browser only", does: "Keeps the client check.", gains: ["No API change"], costs: ["A crafted request skips it"] }] },
+        { ref: "first", title: "Keep the reading path?", description: "Read the context and compare both routes.", brief: { unblocks: "Choose the reading order for the reader release.", undo: "Restore the current order in the next release.", ask_reason: "undecided-by-evidence", evidence_checked: evidenceWithLink }, topics: ["context"], terms: [{ term: "Flow", text: "Related work across Stages." }], today: [{ text: "The host serves the built reader.", source: "reader/ship.ts" }], example: "Read → compare → answer", needs: [{ need: "Follow the current path.", kind: "context-diagram" }], figures: [{ attachment: "path", kind: "context-diagram" }], options: [{ label: "Keep", does: "Retain the path.", gains: ["Familiar reading order"], costs: ["No new route"], recommended: "The path already works." }, { label: "Change", does: "Replace the path.", gains: ["Another route"], costs: ["Relearn the order"] }] },
+        { ref: "second", title: "Read the next question?", description: "Keyboard navigation reaches this question.", brief: { unblocks: "Continue the keyboard walkthrough.", undo: "Return to the first question.", no_recommendation: "Neither order changes the result of this walkthrough.", ask_reason: "taste", evidence_checked: "The tab-order test found both routes reachable." }, needs: [{ need: "Understand the next choice.", kind: "prose" }], options: [{ label: "Continue", does: "Reads the next question.", gains: ["More context"], costs: ["More reading"] }] },
+        { ref: "noted", title: "Where should the cap live?", description: "The number sits in code today.", brief: { unblocks: "Implement the cap in the chosen place.", undo: "Move it back to its original owner.", no_recommendation: "The operator has not said how often the cap changes.", ask_reason: "user-only-fact", evidence_checked: "The change log does not list any cap changes outside releases." }, needs: [{ need: "Compare where the cap lives.", kind: "prose" }], options: [{ label: "Keep in code", does: "Keeps the constant.", gains: ["Reviewed with code"], costs: ["A deploy per change"] }, { label: "Move to config", does: "Reads it from settings.", gains: ["Ops can change it"], costs: ["Config drift"] }] },
+        { ref: "worded", title: "Should the check run on the server?", description: "Only the browser checks today.", brief: { unblocks: "Add the check to the chosen request path.", undo: "Revert the request validation change.", no_recommendation: "The server's lookup budget is not known.", ask_reason: "undecided-by-evidence", evidence_checked: "The API tests show the unchecked path. The latency budget does not allocate time for the extra lookup." }, needs: [{ need: "Compare where the check runs.", kind: "prose" }], options: [{ label: "Server too", does: "The API rejects carts.", gains: ["Cannot be bypassed"], costs: ["One more lookup"] }, { label: "Browser only", does: "Keeps the client check.", gains: ["No API change"], costs: ["A crafted request skips it"] }] },
       ] },
     ]);
     cli(["submit"], [
@@ -80,12 +82,15 @@ test("question context, choices, answers and figures keep their compact themed l
     expect(await firstBrief.isVisible()).toBe(true);
     expect(await firstBrief.evaluate(el => el.previousElementSibling?.querySelector("h2")?.textContent)).toContain("Keep the reading path?");
     expect(await firstBrief.getByText(now, { exact: true }).isVisible()).toBe(true);
+    expect(await firstBrief.getByText("Evidence does not decide", { exact: true }).isVisible()).toBe(true);
+    expect(await firstBrief.getByRole("link", { name: rolloutPlan, exact: true }).evaluateAll(links => links.map(link => link.getAttribute("href")))).toEqual([rolloutPlan]);
+    expect(await firstBrief.getByText(evidence, { exact: true }).isVisible()).toBe(true);
     expect(await firstBrief.innerText()).toContain("A. Keep");
     expect(await firstBrief.innerText()).toContain("The path already works.");
     expect(await firstBrief.innerText()).toContain("Choose the reading order for the reader release.");
     expect(await firstBrief.innerText()).toContain("Restore the current order in the next release.");
     const secondBrief = page.locator(`#${published.refs.second}`).getByRole("region", { name: "Decision brief" });
-    expect(await secondBrief.locator("dt").allTextContents()).toEqual(["Now", "No recommendation", "After you answer"]);
+    expect(await secondBrief.locator("dt").allTextContents()).toEqual(["Now", "Reason to ask", "Evidence checked", "No recommendation", "After you answer"]);
     expect(await secondBrief.getByText("Neither order changes the result of this walkthrough.", { exact: true }).isVisible()).toBe(true);
     expect(await question.evaluate((el) => ({ display: getComputedStyle(el).display, gap: getComputedStyle(el).gap }))).toEqual({ display: "grid", gap: "10px" });
     const open = page.locator(`#${published.refs.second}`);
@@ -145,6 +150,7 @@ test("question context, choices, answers and figures keep their compact themed l
     await firstBrief.waitFor();
     expect(await firstBrief.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     expect(await firstBrief.getByText(now, { exact: true }).innerText()).toContain(rolloutPlan);
+    expect(await firstBrief.getByText(evidence, { exact: true }).innerText()).toBe(evidence);
     expect(cli(["show", "--flow", opened.flow]).revision).toBe(published.revision + 1);
     const earlierWords = "Does **checklist coverage** include the audit?\nPlease keep the saved report.";
     cli(["submit"], [{ kind: "answer", question: published.refs.second, response: { status: "answered", text: earlierWords },
@@ -154,7 +160,7 @@ test("question context, choices, answers and figures keep their compact themed l
       { kind: "attachment", ref: "preview", type: "svg", caption: "Release checklist preview", origin: "preview.svg", path: "preview.svg" },
       { kind: "round", now: "The release walkthrough starts next.", questions: [{
         ref: "retry", again: published.refs.second, title: "Continue the walkthrough?", description: "The release walkthrough is ready.",
-        brief: { asked_again_because: retryReason, unblocks: "Proceed to the release checklist.", undo: "Return to the reading path before publishing." },
+        brief: { asked_again_because: retryReason, unblocks: "Proceed to the release checklist.", undo: "Return to the reading path before publishing.", ask_reason: "explicit-decision-required", evidence_checked: "The earlier answer asked about audit coverage without choosing. The updated checklist keeps the signed audit report." },
         needs: [
           { need: "Read the original checklist excerpt.", kind: "source-excerpt" },
           { need: "Follow the path to checklist publication.", kind: "option-diagram" },
@@ -168,7 +174,7 @@ test("question context, choices, answers and figures keep their compact themed l
     await page.goto(`${opened.live.url}#${retry.refs.retry}`);
     const reasked = page.locator(`#${retry.refs.retry}`).getByRole("region", { name: "Decision brief" });
     await reasked.waitFor();
-    expect(await reasked.locator("dt").allTextContents()).toEqual(["Now", "Asked again because", "Recommendation", "After you answer"]);
+    expect(await reasked.locator("dt").allTextContents()).toEqual(["Now", "Reason to ask", "Evidence checked", "Asked again because", "Recommendation", "After you answer"]);
     expect(await reasked.getByText(retryReason, { exact: true }).isVisible()).toBe(true);
     expect(await reasked.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
     const retryQuestion = page.locator(`#${retry.refs.retry}`);
@@ -276,16 +282,26 @@ test("question context, choices, answers and figures keep their compact themed l
 
     const old = cli(["open", "--skill", "grill-me", "--title", "Stored before Decision briefs"]);
     const oldId = "question-1";
+    const oldBriefId = "question-2";
+    const oldBriefLabels = ["Now", "No recommendation", "After you answer"];
     editStoredFlow(home, old.flow, state => {
-      const round = { id: "round-1", stage: old.stage, n: 1, seq: 1, time: state.flow.created };
+      const round = { id: "round-1", stage: old.stage, n: 1, seq: 1, time: state.flow.created, now: "The signoff draft is ready." };
       state.rounds.push(round);
       state.questions.push({
         id: oldId, round: round.id, stage: old.stage, q: 1,
         title: "Keep the stored selection?", description: "This description was stored before Decision briefs.",
         options: [{ label: "A. Keep", does: "Keeps the current reader.", gains: ["Continuity"], costs: ["No new features"], recommended: "The old layout works." }],
       });
-      state.next.round = state.next.question = state.seq = 1;
-      state.reading = { historical: [], publications: [{ id: oldId, kind: "question", stage: old.stage, position: 1, publication: ++state.revision }] };
+      state.questions.push({
+        id: oldBriefId, round: round.id, stage: old.stage, q: 2,
+        title: "Keep the signoff in the draft?", description: "This brief was stored before the Settle-or-ask test.",
+        brief: { unblocks: "Finish the draft.", undo: "Move the signoff back.", no_recommendation: "Either placement works." },
+        options: [{ label: "A. Leave it", does: "Keeps the signoff.", gains: ["Continuity"], costs: ["No new placement"] }],
+      });
+      state.next.round = state.seq = 1;
+      state.next.question = 2;
+      const publication = ++state.revision;
+      state.reading = { historical: [], publications: [oldId, oldBriefId].map((id, index) => ({ id, kind: "question", stage: old.stage, position: index + 1, publication })) };
     });
     const source = join(home, ".vstack", "tmp", "_global", "grilling", "historical-brief-fixture");
     const fixtures = join(import.meta.dir, "fixtures", "flow-page-migrate");
@@ -302,6 +318,7 @@ test("question context, choices, answers and figures keep their compact themed l
 
     for (const record of [
       { flow: old.flow, stage: old.stage, id: oldId, description: "This description was stored before Decision briefs.", choice: "A. Keep", proof: "pre-cutover" },
+      { flow: old.flow, stage: old.stage, id: oldBriefId, description: "This brief was stored before the Settle-or-ask test.", choice: "A. Leave it", proof: "pre-settle-or-ask", briefLabels: oldBriefLabels },
       { flow: migrated.flow, stage: "impl", id: "q-open", description: "Why q-open matters.", choice: "A. First", proof: "migrated" },
     ]) {
       const shown = cli(["show", "--flow", record.flow]);
@@ -309,7 +326,8 @@ test("question context, choices, answers and figures keep their compact themed l
       const question = page.locator(`#${record.id}`);
       expect(await question.getByText(record.description, { exact: true }).isVisible()).toBe(true);
       expect(await question.getByRole("heading", { name: new RegExp(record.choice) }).isVisible()).toBe(true);
-      expect(await question.getByRole("region", { name: "Decision brief" }).count()).toBe(0);
+      const labels = question.getByRole("region", { name: "Decision brief" }).locator("dt");
+      expect(await labels.allTextContents()).toEqual(record.briefLabels ?? []);
       expect(shown.next).toContain(record.id);
       if (proof) {
         await page.screenshot({ path: join(proof, `${record.proof}-320.png`), fullPage: true });
@@ -319,7 +337,7 @@ test("question context, choices, answers and figures keep their compact themed l
         { kind: "answer", question: record.id, response: { status: "answered", picks: ["A"] } },
       ]);
       await question.getByText(`Your pick: ${record.choice}`, { exact: true }).waitFor();
-      expect(await question.getByRole("region", { name: "Decision brief" }).count()).toBe(0);
+      expect(await labels.allTextContents()).toEqual(record.briefLabels ?? []);
     }
   } finally {
     await browser.close();

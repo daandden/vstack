@@ -54,7 +54,9 @@ Pass the note paths to every implementer as context pointers.
 
 ### 3. Use the integration branch
 
-The integration branch is shared step 0b's branch. Keep it checked out in the parent checkout for the whole run. Every merge lands on it as one commit per ticket.
+The integration branch is shared step 0b's branch. Keep it checked out in the Shared checkout for the whole run. Land each ticket as one commit.
+
+A blocking found-defect repair gets its own commit alongside the ticket commits. It does not complete a ticket.
 
 Open no draft PR. Shared step 7 opens the one PR after review and commit.
 
@@ -80,11 +82,25 @@ Record each handle's `agent://<id>` with its ticket and lifecycle entry in the r
 
 Implementer brief: build one ticket in your own clone. Read the spec, the ticket, and the exploration notes through their context pointers. Follow skill://implement's "Work within the agreement" contract using those inputs and their decision-coverage records. Choose coding details within the agreement. If evidence requires a consequential departure, pause affected work and return the governing decision, evidence, affected behavior, viable options with trade-offs and a recommendation, and the missing decision as an open question, with held-work paths. Use skill://tdd to build the ticket and follow its seam rule. Return its required seam records for the coordinator to record in the owning Stage. Return any Costly seam requiring approval as a question classified by END-STATE.md's "Question timing", with each unrun test and its proof gap. Prose-only work states its no-test limit instead of adding guidance-string assertions. Read `skill://implement-spec/LANDING-EVIDENCE.md` before checks. Record the scoped check plan even if passing proof is unavailable. Bind passing proof to the worktree that the checks actually ran on. Run typechecking and the single test files you touch regularly, and the full test suite once at the end. Write product changes at real target paths, so that they enter the patch. Commit nothing, merge nothing, and push nothing. Open the marked `implement-spec` session folder in explicit subagent mode. Save evidence under `<run-id>/<ticket>/` there, in separate directories for separate attempts. Return the ticket, changed paths including both ends of renames, the evidence reference, seam records, red and green evidence, checks with their outcomes, and open questions with their gating classification.
 
+Return any [found defect](skill://implement/END-STATE.md#found-defects) with its reproduction evidence, the proof or End state it blocks, if any, and what repair or decision is needed. Keep repair hunks out of the ticket patch. The coordinator owns tracker writes and assigns blocking repairs.
+
 ### 5. Merge each result
 
 When an implementer completes, take its result in arrival order. Land one patch at a time through the Merger in the Shared checkout.
 
-Take the patch path only from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` Keep the worker call schemaless so the auto-delivered completion or the result of `handle.wait()` includes the notice. A failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
+#### Found defects
+
+Apply [the shared found-defect route](skill://implement/END-STATE.md#found-defects) to findings from implementers, the Merger, review, and the delivery chain. Record every returned defect before handling a failed worker or missing patch. The coordinator files nonblocking defects and routes questions through END-STATE.md's "Question timing".
+
+For a blocking repair, assign the affected ticket's implementation owner a separate isolated repair attempt. If the defect has no ticket owner, assign the same implementer role. Use the step 4 assignment and evidence rules with a local repair work item in place of a tracker ticket. Give it the spec pointer, baseline reproduction, accepted repair scope, and affected proof. Keep its patch and evidence separate from ticket or review-fix hunks. Include any applicable Addon drafting and gate requirements.
+
+Use the step 5 Merger with that local work item as the ticket-mode landing subject. It lands one repair commit through the same branch, scope, and exact-tree proof guards. Record the repair SHA with the defect, not as a completed ticket or closing reference. Hold affected tickets and proof until the repair lands. Recheck the affected work on the repaired tip through the existing landing and proof routes. Preserve held patches and evidence under the worker lifecycle contract.
+
+If a blocking found defect prevented a worker from returning a usable patch because baseline proof failed, record that ticket as held for the repair. Once the separate repair commit lands, put the held ticket back on the frontier once for a fresh attempt on the repaired integration tip. Pass the repair SHA and baseline evidence in its brief. Carry forward its attempt and retry counts without resetting any existing retry limit.
+
+#### Ticket landings
+
+Take the patch path only from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` Keep the worker call schemaless so the auto-delivered completion or the result of `handle.wait()` includes the notice. Except for a ticket held for a blocking baseline repair under [Found defects](#found-defects), a failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
 
 Record returned seam picks in this Stage under skill://tdd's seam rule. Route Costly seam approval questions by END-STATE.md's "Question timing", recording each unrun test and its proof gap.
 
@@ -112,9 +128,9 @@ Update the ticket's task only after its integration commit lands with no open ga
 
 If this changes the **frontier** of available tickets, kick off more **implementer subagents** to work on the new tickets. This allows for maximum concurrency.
 
-After each merge, held patch, or answered question, recompute the frontier. A ticket is ready when every blocker is complete or was closed before this run. Pick each newly ready ticket's seams as step 1 says. Then run the step 4 line at once for the newly ready tickets.
+After each merge, repair landing, held patch, or answered question, recompute the frontier. A ticket is ready when every blocker is complete or was closed before this run. Pick each newly ready ticket's seams as step 1 says. Then run the step 4 line at once for the newly ready tickets.
 
-A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second gating question. Only the two once-only returns in step 5 put a ticket back. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered gating question with its held patch, or an open blocker.
+A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second gating question. Only the once-only returns in step 5 put a ticket back, including the return after a blocking baseline repair. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered gating question with its held patch, or an open blocker.
 
 ### 7. Review
 
@@ -150,16 +166,20 @@ Draft review fixes only in the isolated worker, never directly in the parent che
 
 Update the affected development checks. Then run shared step 6. It commits the review fixes after the ticket commits. Then run shared step 6b on the committed head.
 
-Resolve tickets and the spec only after shared step 6b accepts the Verdict. Resolve each complete ticket the way the issue tracker closes work. The spec is done only when every one of its tickets is complete in this run or was closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open.
+Resolve tickets and the spec only after shared step 6b accepts the Verdict. A ticket must meet its acceptance criteria and be complete under step 5 before resolution. Use the configured tracker close operation without a routine confirmation, as the [Settle-or-ask rule](../../rules/vstack-settle-or-ask.md) says. Read back the tracker state before reporting a ticket or spec closed. Report a failed, unsupported, or unconfirmed closure with its reason. Preserve any required draft-first consent for a comment.
 
-Then run shared step 7 once, up to the settled or capped End state. It opens the one PR, ready for review.
+The spec is done only when every ticket is complete in this run or was closed before it. On a tracker that closes work directly, leave the spec open if any ticket remains open or its closure is unconfirmed. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as closing references instead, and add the spec only when it is done. At End state commit, tickets that close through a PR and their spec stay open.
+
+Then run shared step 7 once, up to the settled or capped End state. At close-out, run step 9 before the shared delivery report.
 
 ### 9. Reconcile worker lifecycles
 
-Reconcile every implementer and review fixer, including failed, held, superseded, and retry attempts, against skill://vstack-fan-out/WORKER-LIFECYCLE.md. Keep running or still-needed workers retained with concrete reasons. For each release, report its observed outcome and before/after status evidence; claim removal only when proven. Keep integration commits, stable held patches, and evidence outside released clones. This final accounting does not defer the earlier per-result and early-return duties.
+Reconcile every implementer and review fixer, including failed, held, superseded, and retry attempts. Apply `skill://vstack-fan-out/WORKER-LIFECYCLE.md` to each. Release eligible workers without a picker and record the outcome and evidence for the [shared close-out report](skill://implement/END-STATE.md#close-out). Keep integration commits, stable held patches, and evidence outside released clones. This final accounting does not defer the earlier per-result and early-return duties.
 
 ## Reply
 
-Report the requested and reached End state, the integration branch, commits read from `git log <base>..<integration branch>` (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. Do not claim a PR, readiness, merge, End state, or closed ticket that the chain did not observe.
+Report the requested and reached End state, the integration branch, commits read from `git log <base>..<integration branch>` (ticket commits, separate repair commits, and any review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. Do not claim a PR, readiness, merge, End state, or closed ticket that the chain did not observe.
 
 Include every worker's identity, role, ticket or review wave, retention reason or release outcome, stable patch paths, and lifecycle evidence. Separate cleanup failures and unverified removal from ticket and delivery outcomes.
+
+Include the [found-defect outcomes](skill://implement/END-STATE.md#found-defects) from the run record, even if the run stopped before shared step 7.

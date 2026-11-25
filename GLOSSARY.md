@@ -312,6 +312,10 @@ _Avoid_: expensive test, heavy seam
 The fixed kinds of decision that the agent settles without asking in a grill, on top of reversible decisions it can cite: behavior-preserving refactors and cleanup, recording a decision the user already made as an ADR, and carrying settled terms into the glossary. Each one is still listed as an Assumed pick.
 _Avoid_: auto decisions, agent-owned list, trust list
 
+**Settle-or-ask test**:
+The shared rule every vstack skill applies before a question reaches the user. The agent settles the decision as an Assumed pick unless a reason to ask applies: it is a matter of taste, a later edit cannot undo it, no fact, ADR, convention, or cheap experiment decides it, it needs the user's consent or a fact only the user has, or the user or a decision record requires the question. The Bookkeeping list names kinds the agent always settles.
+_Avoid_: ask gate, three-part test
+
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
 _Avoid_: control skill, verification skill

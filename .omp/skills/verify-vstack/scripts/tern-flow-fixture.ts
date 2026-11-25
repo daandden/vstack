@@ -56,7 +56,16 @@ if (command === "seed" || command === "other") {
     const records = sessions.map((s, index) => {
       const stage = model.openStage(state, "grill-with-docs", undefined, time);
       const receipt = model.contribute(state, stage.id, { version: 1, items: [
-        { kind: "round", now: "This session is ready to verify Tern following.", questions: [{ ref: "choose", title: `Fixture session ${index + 1}?`, description: "Test data only. No user decision or model prompt.", brief: { unblocks: "Observe the selected fixture option.", undo: "Seed a fresh test session.", no_recommendation: "Both options exercise the same Tern behavior." }, needs: [{ need: "Read this disposable question.", kind: "prose" }], options: ["First", "Second"].map(label => ({ label, does: `Select ${label}.`, gains: ["Exercises following"], costs: ["No real decision"] })) }] },
+        { kind: "round", now: "This session is ready to verify Tern following.", questions: [{
+          ref: "choose", title: `Fixture session ${index + 1}?`, description: "Test data only. No user decision or model prompt.",
+          brief: {
+            unblocks: "Observe the selected fixture option.", undo: "Seed a fresh test session.",
+            no_recommendation: "Both options exercise the same Tern behavior.",
+            ask_reason: "explicit-decision-required", evidence_checked: "The fixture verified distinct sessions in the same project. It needs an open question to check following.",
+          },
+          needs: [{ need: "Read this disposable question.", kind: "prose" }],
+          options: ["First", "Second"].map(label => ({ label, does: `Select ${label}.`, gains: ["Exercises following"], costs: ["No real decision"] })),
+        }] },
         { kind: "result", ref: "lesson", shape: "quiz", title: "Typing fixture", questions: [{ ref: "word", prompt: "Type Flow", answer: { text: ["Flow"] }, explanation: "A learning answer does not settle the picker." }] },
       ] }, time, { capture() { throw new Error("fixture attachments are unsupported"); }, canonical() { throw new Error("fixture canonical files are unsupported"); } });
       return { ...s, flow: id, stage: stage.id, question: receipt.refs.choose, result: receipt.refs.lesson };

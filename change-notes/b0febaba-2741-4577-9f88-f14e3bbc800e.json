@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Record discovered setup values in chat without asking for confirmation, and ask when discovery leaves a choice open."
+  ]
+}

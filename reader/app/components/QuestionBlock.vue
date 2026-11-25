@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ASK_REASONS } from "#flow/fields.ts";
 import type { Attachment, Figure } from "#flow/model.ts";
 import { useReaderState } from "~/composables/reader";
 const { flow } = useReaderState();
@@ -12,6 +13,10 @@ const now = computed(() => {
   return item?.type === "round" ? item.round.now : undefined;
 });
 const recommended = computed(() => props.q.options.find(option => option.recommended !== undefined));
+const askReason = computed(() => {
+  const reason = props.q.brief?.ask_reason;
+  return reason && ASK_REASONS[reason];
+});
 const picks = computed(() => new Set(props.q.answer.picks ?? []));
 const ask = (id: string) => f.value.question.get(id);
 const askedIn = (id: string) => {
@@ -119,6 +124,14 @@ const lines = computed(() => {
         <div>
           <dt>Now</dt>
           <dd v-html="inline(now)" />
+        </div>
+        <div v-if="askReason">
+          <dt>Reason to ask</dt>
+          <dd>{{ askReason }}</dd>
+        </div>
+        <div v-if="q.brief.evidence_checked">
+          <dt>Evidence checked</dt>
+          <dd v-html="inline(q.brief.evidence_checked)" />
         </div>
         <div v-if="q.brief.asked_again_because">
           <dt>Asked again because</dt>

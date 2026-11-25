@@ -28,7 +28,9 @@ function fixture(count: number, names: string[] = []) {
       repository: "example-repo",
       verdict: `Unmerged source changes in checkout ${i + 1}.`,
       contents: [{ category: "source", detail: `remaining.txt contains unmerged work ${i + 1}` }],
-      integration: { gap: `remaining.txt differs from verified remote default for checkout ${i + 1}` },
+      integration: i === 30
+        ? { evidence: "The targeted comparison found the staged change on the remote default, but not the working copy." }
+        : { gap: `remaining.txt differs from verified remote default for checkout ${i + 1}` },
       classification: "unmerged source",
       risk: `Removing checkout ${i + 1} loses its remaining source changes.`,
       recommendation: [0, 13, 29].includes(i)
@@ -127,6 +129,7 @@ test("Flow offers one-line remove batches before keep batches without changing w
     const receipt = JSON.parse(published.stdout);
     const asked = receipt.ask.questions[0];
     expect(asked.multi).toBe(true);
+    expect(receipt.ask.html).not.toContain("Targeted inventory");
     expect(asked).not.toHaveProperty("recommended");
     expect(receipt.ask.html).not.toMatch(/<input[^>]* checked>/);
     expect(asked.options.map(({ label }: any) => label)).toEqual(
@@ -139,6 +142,10 @@ test("Flow offers one-line remove batches before keep batches without changing w
     }).code).toBe(0);
     const shown = JSON.parse(flow(["show", "--flow", flowId], root).stdout);
     const recorded = shown.stages.flatMap((stage: any) => stage.questions).find((question: any) => question.id === asked.id);
+    expect(recorded.brief).toMatchObject({
+      ask_reason: "irreversible",
+      evidence_checked: `Targeted inventory found no live owner, protection reason, or unique commit history for ${round.mapping.length} dirty ${round.mapping.length === 1 ? "checkout" : "checkouts"}. None qualified for automatic removal. The integration check reported gaps for ${roundIndex === 1 ? 1 : round.mapping.length} of them.`,
+    });
     expect(recorded.answer.response).toEqual(response);
     if (roundIndex === 1) {
       expect(recorded.answer.picks).toEqual([`B. ${round.mapping[1].label}`]);
