@@ -11,4 +11,6 @@ Locked restore. When a package recorded in the checkout's lockfile is missing, r
 
 Task-required additions. When the task requires adding a project dependency, install it with the project's package manager in the working checkout without a separate approval question. Include its required peer and type packages, and keep the manifest and lockfile changes with the work. Leave unrelated packages at their locked versions rather than updating them to latest.
 
+Apply the [Settle-or-ask test](vstack-settle-or-ask.md) before offering an install question. The locked restore and task-required addition rules already authorize those operations. Keep explicit approval for other installs.
+
 Other installs. Before `%pip` or `%bun add`, and for every install outside the two project cases, get approval through the `ask` tool. This includes libraries for the agent's own tooling, global installs, and installs into another checkout. The question names the package and the target environment. When bound to a Flow, follow `skill://flow-page`'s "Every ask in a Flow" contract. A subagent returns the install question to its coordinator. Without approval, including a cancelled, timed-out, or empty answer, use the libraries already installed.

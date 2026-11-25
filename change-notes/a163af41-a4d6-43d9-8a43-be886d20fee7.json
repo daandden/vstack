@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Settle behavior-preserving refactor and cleanup findings in code-review without a picker, and show the decision and reason for each finding."
+  ]
+}

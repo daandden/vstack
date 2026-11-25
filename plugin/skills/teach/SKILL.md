@@ -72,11 +72,11 @@ A shared stylesheet is the first component every workspace earns: every generate
 
 Every lesson should be tied into the mission - the reason that the user is interested in learning about the topic.
 
-If the user is unclear about the mission, or the `MISSION.md` is not populated, your first job is to use `ask` to learn why they want to study this topic.
+Read the user's request, `MISSION.md`, and the existing learning records. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to any missing purpose that changes what to teach.
 
 Failing to understand the mission will mean knowledge acquisition is not grounded in real-world goals. Lessons will feel too abstract. You will have no way of judging what the user should do next.
 
-Missions may change as the user develops more skills and knowledge. This is normal - make sure to update the `MISSION.md` and add a learning record to capture the change. Confirm with the user through `ask` before changing the mission.
+When the learner changes the mission, update `MISSION.md` and capture the change in a learning record. Apply the shared test to a goal that remains unclear. Do not treat a proposed mission as the learner's chosen goal.
 
 ## Zone Of Proximal Development
 
@@ -148,12 +148,14 @@ Publish the lesson and reference material as Document Results with ordered secti
 
 Keep the offline lesson deliverable. Open the marked `teach` session folder through `skill://vstack-tmp`. Create a fresh `<topic-slug>-<timestamp>/` entry inside it and number lessons `0001-<dash-case-name>.html`, incrementing for later lessons. Start each lesson or reference export from [templates/teach.html](templates/teach.html). Inline reusable workspace CSS, quiz scripts, and assets, with no CDN or external fonts. Capture each export as a file attachment on its Result, not as a separate report page. Print its absolute path without a Flow link or opening it automatically.
 
-The workspace mission, resources, learning records, notes, references, and asset sources remain durable teaching state. Ask before keeping an export in `./lessons/` or `./reference/`, and copy only after approval. Point workspace links at those durable copies. Publish a new revision of the associated Results with `canonical: { file: "lessons/<name>.html" }` or the reference path after retention. Before approval, the canonical file is the Scratch export. Later edits do not rewrite captured revisions. Scratch and Quiz progress never replace learning records, and a Quiz click never grants retention approval or authorizes real work.
+The workspace mission, resources, learning records, notes, references, and asset sources remain durable teaching state. Keep an export in `./lessons/` or `./reference/` only with the learner's retention approval. Use the question policy below if that approval is missing. Point workspace links at the retained copy and publish a new revision of the Result with its `canonical` file path. Until retention, the canonical file is the Scratch export. Later edits do not rewrite captured revisions. Quiz progress never replaces learning records or authorizes real work.
 
 Draw lesson and reference figures through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context. The out dir is the lesson's Scratch entry, with unique filenames for distinct figures so IDs do not collide. Render each figure with the vstack-figures script and inline the SVG with its embedded style in the offline lesson. Capture each Mermaid source as a `mermaid` attachment for the Document Result, where the reader draws it with Pele. Never substitute hand-drawn figures or raw Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
 ## In-session questions
 
-Every question addressed to the learner during the session goes through `ask` on the bound Stage, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. This covers mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
+Apply the shared test to missing prior knowledge, topic choices, preferences, and export retention. An explicit retention instruction for the exact export already satisfies the retention choice. A quiz answer does not.
 
-A timed-out answer is not the learner's answer. Leave ordinary questions unanswered. For an approval, re-ask once through `ask` with `again`, then stop without acting if it times out again. A subagent returns open questions to its parent. An unavailable or headless run cannot grant approval. Report any recommended choice as an assumption, not the learner's answer.
+Deliver remaining learner questions through `ask` on the bound Stage under skill://flow-page's "Every ask in a Flow", including CLI publication and separate response recording. In chat, use plain `ask`. Quiz feedback and completion use the separate learning-progress contract, including offline attempts.
+
+A timed-out answer is not the learner's answer. Leave ordinary questions unanswered. For an approval, re-ask once through `ask`, with `again` in a Flow. Stop without acting if it times out again. A subagent returns open questions to its parent. An unavailable or headless run cannot grant approval. Report any recommended choice as an assumption, not the learner's answer.

@@ -76,7 +76,7 @@ During triage (Step 1: Gather context), read all files in `.out-of-scope/`. When
 - If there's a possible match, publish the prior rejection and its reason as a Result, then decide which case applies:
 
 - **Confirm**: triage decides the request matches, adds the new issue to the existing file's "Prior requests" list, then comments and closes without asking.
-- **Reconsider**: triage uses `ask` on the item's Flow page to ask the maintainer whether to reverse the earlier rejection. Follow the maintainer's answer as described below.
+- **Reconsider**: an earlier rejection stands unless the maintainer explicitly reverses it. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) and use `ask` on the item's Flow page for that reversal. Follow the answer as described below.
 - **Disagree**: triage decides the issues are related but distinct and proceeds with normal triage without asking.
 
 ## When to write to `.out-of-scope/`

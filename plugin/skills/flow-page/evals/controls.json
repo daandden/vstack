@@ -25,6 +25,8 @@
                 "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
                 "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
                 "brief": {
+                  "ask_reason": "user-only-fact",
+                  "evidence_checked": "The preserved second-round note asks to keep creation order but does not say whether it spans Stages.",
                   "unblocks": "Choose the main reading navigation before implementation.",
                   "undo": "Revise the navigation plan before implementation.",
                   "no_recommendation": "The user has not settled cross-Stage navigation."
@@ -97,6 +99,8 @@
                 "title": "When earlier content is answered or revised, should the update create a new chronological entry?",
                 "description": "Creation order alone does not settle later changes. For example, an earlier question may receive an answer after a research Result has appeared. The original content can stay in its original place in either option; the choice is how readers discover its later answer or revision.",
                 "brief": {
+                  "ask_reason": "undecided-by-evidence",
+                  "evidence_checked": "The confirmed creation-order decision says where new content belongs. It does not cover later answers or revisions.",
                   "unblocks": "Design how readers discover later updates.",
                   "undo": "Change the presentation without moving stored records.",
                   "no_recommendation": "There is no evidence yet about how readers find updates."
@@ -181,6 +185,8 @@
                 "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
                 "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
                 "brief": {
+                  "ask_reason": "user-only-fact",
+                  "evidence_checked": "The preserved second-round note asks to keep creation order but does not say whether it spans Stages.",
                   "unblocks": "Choose the main reading navigation before implementation.",
                   "undo": "Revise the navigation plan before implementation.",
                   "no_recommendation": "The user has not settled cross-Stage navigation."
@@ -243,6 +249,8 @@
                 "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
                 "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
                 "brief": {
+                  "ask_reason": "user-only-fact",
+                  "evidence_checked": "The preserved second-round note asks to keep creation order but does not say whether it spans Stages.",
                   "unblocks": "Choose the main reading navigation before implementation.",
                   "undo": "Revise the navigation plan before implementation.",
                   "no_recommendation": "The user has not settled cross-Stage navigation."
@@ -311,6 +319,8 @@
                 "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
                 "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
                 "brief": {
+                  "ask_reason": "user-only-fact",
+                  "evidence_checked": "The preserved second-round note asks to keep creation order but does not say whether it spans Stages.",
                   "unblocks": "Choose the main reading navigation before implementation.",
                   "undo": "Revise the navigation plan before implementation.",
                   "no_recommendation": "The user has not settled cross-Stage navigation."
@@ -370,6 +380,8 @@
                 "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
                 "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
                 "brief": {
+                  "ask_reason": "user-only-fact",
+                  "evidence_checked": "The preserved second-round note asks to keep creation order but does not say whether it spans Stages.",
                   "unblocks": "Choose the main reading navigation before implementation.",
                   "undo": "Revise the navigation plan before implementation.",
                   "no_recommendation": "The user has not settled cross-Stage navigation."
@@ -428,6 +440,8 @@
                 "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
                 "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
                 "brief": {
+                  "ask_reason": "user-only-fact",
+                  "evidence_checked": "The comparison now shows both paths. The preserved note still does not say whether creation order spans Stages.",
                   "unblocks": "Choose the main reading navigation before implementation.",
                   "undo": "Revise the navigation plan before implementation.",
                   "no_recommendation": "The user has not settled cross-Stage navigation.",

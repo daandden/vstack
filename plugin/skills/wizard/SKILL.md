@@ -29,13 +29,13 @@ Work out every manual step the human must take and every value that gets capture
 - For a migration or transition: the current state, the target state, and the irreversible actions between them.
 - For an env-file destination, establish from the repo's runtime commands and configuration that Bun actually loads that file. Decline env-file writes for Node, generic dotenv, shell sourcing, or an unknown reader. This restriction does not apply to CI-secret or manual-only procedures. [ADR 0075](../../../docs/adr/0075-wizard-env-files-use-bun-literal-semantics.md) records the reader trade-off.
 
-Publish the ordered list of stages and the values each produces with one complete confirmation round with a Decision brief. Follow `skill://flow-page`'s "Every ask in a Flow" contract. The user may add, drop, or reorder stages through Other. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the wizard and say why. Unavailable questioning grants no approval.
+Show the ordered stages and the values each produces. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to the scope and order. Use one complete round for the remaining choices, not an approval of discovered steps. Preserve any separate consent for production actions. The user can add, drop, or reorder stages through Other. A timeout is not the user's answer. Re-ask a required gate once, using `again` in a Flow. If it times out again, stop without writing the affected wizard and say why.
 
 **Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a CI service secret or variable, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
 
 ### 2. Map each stage's journey
 
-For each stage, write the precise path a human follows: which URL to open, what to do there, where a value is shown, which variable it fills: e.g. "Dashboard → Developers → API keys → Reveal test key → copy". Where you don't actually know the current UI or the exact command, say so and ask the user through `ask` or check the docs: never invent steps that may not exist.
+For each stage, write the precise path a human follows: which URL to open, what to do, where the value appears, and which variable it fills. Check current docs for missing commands or dashboard steps. Apply the shared test before using `ask` for an account-specific fact only the user can supply. Never invent a step.
 
 **Done when:** every stage traces to concrete instructions a stranger could follow.
 

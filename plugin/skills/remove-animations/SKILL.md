@@ -49,7 +49,9 @@ For every selected Delete or Reduce, inspect the actual dependency chain and sta
 - Layout. A layout/FLIP effect may hide a shift. If removal exposes a harmful jump, retain the effect and report the layout problem outside this selection.
 - Consumers. Update affected selectors and tests that waited for deleted classes or durations. Inspect imports, shared variants, tokens, wrappers, and all remaining library consumers before removing any code.
 
-Propose dependency removal separately through the owner's approval question. A library becoming unused does not authorize uninstalling it or changing the lockfile. Subagents return that approval question to the top-level owner. Timeouts and headless recommendations do not approve removal.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before raising a dependency-removal question. Reuse any exact authorization already recorded for that removal.
+
+If approval is still needed, propose dependency removal separately through the owner's question. A library becoming unused does not authorize uninstalling it or changing the lockfile. Subagents return the question to the top-level owner. Timeouts and headless recommendations do not approve removal.
 
 ## Apply selected scope and review
 

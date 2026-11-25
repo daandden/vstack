@@ -31,7 +31,7 @@ Use decision-ticket semantics. Do not demand implementation acceptance criteria,
 
 ## Fix, recheck, and record
 
-Apply the shared "Fix and show" steps to coverage misses and contradictions. Fix every map-consistency finding too. For a real conflicting decision or another needed human choice, use `ask` on the owning Stage under skill://flow-page's "Every ask in a Flow" contract. Preserve the observed response separately from its reading. Cancellation, timeout, an empty response, or a headless recommendation settles no choice.
+Apply the shared "Fix and show" steps to coverage misses and contradictions. Fix every map-consistency finding too. Apply the [Settle-or-ask test](../../../rules/vstack-settle-or-ask.md) to any remaining choice. Use `ask` on the owning Stage under skill://flow-page's "Every ask in a Flow" when enrolled, or plain `ask` in chat. Preserve the response separately from its reading. Cancellation, timeout, an empty response, or a headless recommendation settles no choice.
 
 Record the checker identity from the `task` handle or completion, including its originating session when available. Tie the actual review to the exact proposal and tracker evidence it reviewed. Preserve its returned tables and open questions, not a reconstructed approval. For a correction or a relevant change after a usable review, send the revised proposal and the original findings to that same checker through its recorded `agent://` identity. Require its new reply. A saved transcript is evidence of a review, not proof that the checker can receive a follow-up. If the checker is no longer reachable, leave creation blocked rather than substituting another reviewer.
 

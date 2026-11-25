@@ -4,13 +4,13 @@ to-spec, to-tickets, and wayfinder check their draft against what the user decid
 
 ## Collect the decisions
 
-Read the Flow through `flow-page show`. Collect the latest close decisions and unreopened Assumed picks, keeping each decision's provenance and earlier versions available. A pick or resolved reading is a user's decision; a timeout, cancellation, empty or headless response is not. A close does not make its unresolved decisions confirmed. Carry unresolved requirements as open questions or explicit publication limits, never as consent. Cover Assumed picks as visible assumptions, not user answers.
+For a source Flow, use `flow-page show` to collect the latest close decisions and unreopened Assumed picks. Otherwise collect decisions from the conversation and supplied sources. Keep each decision's provenance and earlier versions. A pick or resolved reading is a user's decision. A timeout, cancellation, empty or headless response gives no consent. A close does not confirm its unresolved decisions. Carry open requirements as questions or publication limits. Cover Assumed picks as assumptions, not user answers.
 
 ## Checker brief
 
 The caller passes this brief to the checker with the close decisions, the Assumed picks, the source, and the draft:
 
-Compare the draft with each close decision, each Assumed pick, and each requirement of the source. Return a coverage table with one row per decision, Assumed pick, or requirement. Each row names the part of the draft that covers it, or the miss or contradiction. Mark each Assumed row "Assumed:". Return each conflict between two decisions as an open question. Never ask the user.
+Compare the draft with each close decision, each Assumed pick, and each requirement of the source. Return a coverage table with one row per decision, Assumed pick, or requirement. Each row names the part of the draft that covers it, or the miss or contradiction. Mark each Assumed row "Assumed:". For each potential decision conflict, return the conflicting sources, their provenance, and the affected text to the caller. Never ask the user.
 
 ### Ticket acceptance check
 
@@ -26,8 +26,8 @@ An upstream ticket may own obtaining a still-needed human answer, but assigning 
 
 ## Fix and show
 
-1. Fix every miss and contradiction in the draft.
-2. If the checker returns a conflict between two decisions, put it to the user through `ask` following `skill://flow-page`'s "Every ask in a Flow", preserving the raw answer and separate reading. Fix the draft only to an explicit pick or resolved reading.
+1. Fix omissions and contradictions the sources settle. Use the current decision where its provenance supersedes an earlier answer or Assumed pick. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to any remaining conflict. A checker finding is not itself a question.
+2. For a conflict that still needs a user decision, hold the affected work and put only the unresolved choice to the user. In to-spec, use [Consequential gaps](SKILL.md#consequential-gaps) for a consequential architecture gap. Otherwise use `ask` under skill://flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` in chat. Preserve the raw answer and separate reading. Do not treat a recommendation as a resolution. If the user names an Assumed pick to reopen, follow the shared rule's reopen path for that pick alone.
 3. Submit the coverage table as a table Result on the caller's Stage, with the columns Decision, Covered in, and Found and one row per checker row. Decision names the close decision, Assumed pick, or source requirement, preserving its provenance. Covered in names the part of the draft that covers it after your fixes. Found names the miss or contradiction that you fixed, or "None".
 4. For an implementation-ticket breakdown, fix every acceptance prerequisite finding and recheck the corrected draft with the same independent checker. Publish its acceptance prerequisite table beside the coverage table, retaining the original findings and the fixes. Continue only when every criterion can be satisfied by its own work, evidenced existing inputs, and declared blockers. Keep any human answer still needed explicit.
 

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Route remaining vstack questions through the shared Settle-or-ask test without dropping existing consent."
+  ]
+}

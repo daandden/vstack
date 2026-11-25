@@ -121,6 +121,7 @@ class NativeOutcomes:
         new = question("later", "Which later fixture path should the form record?", ["Continue", "Stop"])
         new["again"] = prior["id"]
         new["brief"]["asked_again_because"] = "The first attempt was cancelled before a decision."
+        new["brief"]["evidence_checked"] = "The first recorded response was a cancellation, so it did not select a path."
         now = "The first attempt's cancellation is recorded."
         later = self.submit("later-publication", [{"kind": "round", "now": now, "questions": [new]}])
         new_id = later["refs"]["later"]

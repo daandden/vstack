@@ -1,4 +1,4 @@
-import { isObj, Refusal, VISUAL_KINDS, type Obj } from "./fields.ts";
+import { ASK_REASONS, isObj, Refusal, VISUAL_KINDS, type Obj } from "./fields.ts";
 
 export type Diagnostic = { code: string; path: string; message: string; allowed?: readonly unknown[] | string };
 export type Contract = {
@@ -17,6 +17,7 @@ export type Contract = {
   select?: (value: Obj) => Contract;
   expected?: string;
   selection?: string;
+  diagnosticPrefix?: string;
   check?: (value: Obj, path: string) => Diagnostic[];
 };
 const string: Contract = { type: "string" };
@@ -119,6 +120,8 @@ resultContracts.table!.check = (value, path) => {
 const decisionBrief = optional({
   unblocks: string,
   undo: string,
+  ask_reason: { ...enumeration(...Object.keys(ASK_REASONS)), diagnosticPrefix: "Settle-or-ask test: " },
+  evidence_checked: { ...string, expected: "non-empty string", diagnosticPrefix: "Settle-or-ask test: " },
 }, {
   asked_again_because: { ...string, selection: "required when again is set; otherwise absent" },
   no_recommendation: { ...string, selection: "required when no option has recommended; otherwise absent" },
@@ -209,7 +212,7 @@ const fieldPath = (path: string, key: string) => /^[A-Za-z_][A-Za-z0-9_]*$/.test
 export function contractDiagnostics(input: unknown): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const visit = (value: unknown, contract: Contract, path: string): void => {
-    const report = (code: string, message: string, allowed?: Diagnostic["allowed"]) => diagnostics.push({ code, path, message, ...(allowed === undefined ? {} : { allowed }) });
+    const report = (code: string, message: string, allowed?: Diagnostic["allowed"]) => diagnostics.push({ code, path, message: (contract.diagnosticPrefix ?? "") + message, ...(allowed === undefined ? {} : { allowed }) });
     if (contract.type === "unknown") return;
     if (contract.select) {
       if (!isObj(value)) {
@@ -257,7 +260,7 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
       if (contract.oneOf && contract.oneOf.filter(key => value[key] !== undefined).length !== 1) report("invalid_union", `must have exactly one of ${contract.oneOf.join(" or ")}`, contract.oneOf);
       for (const key of contract.required!) if (value[key] === undefined) {
         const field = contract.fields![key]!;
-        diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `needs ${key}`, allowed: field.expected ?? field.values ?? field.type });
+        diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `${field.diagnosticPrefix ?? ""}needs ${key}`, allowed: field.expected ?? field.values ?? field.type });
       }
       for (const [key, c] of Object.entries(contract.fields!)) if (value[key] !== undefined) visit(value[key], c, fieldPath(path, key));
       diagnostics.push(...(contract.check?.(value, path) ?? []));

@@ -11,5 +11,6 @@ implement, implement-spec, and hillclimb asked for the End state on every run wh
 ## Consequences
 
 - A project with no default in `code-host.md`, every project set up before this ADR included, still gets today's question, with commit recommended.
+- Amended by [ADR 20261125-every-vstack-question-passes-the-settle-or-ask-test](20261125-every-vstack-question-passes-the-settle-or-ask-test.md). If there is no project default and commit is the only supported End state, the run records the basis and asks nothing.
 - A setup-vstack re-run reports a `code-host.md` that has no default End state, asks only that question, and adds the line after confirmation. Like the CI cutover in [ADR 0034](0034-the-ci-service-is-its-own-config.md), it edits an existing `code-host.md`.
 - A Headless run ignores the project default and takes commit unless its prompt names an End state, so a test run never publishes by default.

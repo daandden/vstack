@@ -16,13 +16,15 @@ Before task-specific items, open the todo list as END-STATE.md says, with the sh
 
 Run shared steps 0a–0b once.
 
-If the user passes a ticket reference, fetch its full body and comments through the configured issue tracker and state its title before starting. Resolve an ambiguous reference through `ask` under flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` otherwise. Load the full instructions for skill://tdd and skill://code-review at their steps below, rather than relying on summaries.
+If the user passes a ticket reference, resolve it through the configured issue tracker. Use project context and parent links to disambiguate it. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to any ambiguity that remains before using `ask` under flow-page's "Every ask in a Flow" when enrolled, or plain `ask` in chat. Fetch the full body and comments and state the title before starting. Load the full instructions for skill://tdd and skill://code-review at their steps below.
 
 ## Work within the agreement
 
 Read the supplied spec and tickets, including their context pointers, testing decisions, and decision-coverage records. Carry their agreed responsibilities, interactions, observable guarantees, constraints, and rationale into each slice. Use the existing inputs; a separate Architecture brief is not a prerequisite. Build sessions select Addons fresh rather than inheriting Addon pointers from those inputs.
 
 Choose signatures, local types, private decomposition, file layout, and ordinary algorithms within that agreement. A parameter adjustment or private helper extraction needs no new architecture approval when it preserves the agreed behavior. Judge consequences, not signatures or visibility: a matching provider interface can still change residency, security, durability, or failure guarantees.
+
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before raising a departure question. Preserve the explicit agreement boundary for an actual consequential departure.
 
 If repository evidence shows that a slice requires a consequential departure from an agreed responsibility, contract, or guarantee, pause the affected work. Record the governing decision, evidence, affected behavior, viable options with trade-offs and a recommendation, and the missing decision as an open question. In a direct run, use ordinary `ask` in the existing Stage under `skill://flow-page`'s "Every ask in a Flow" contract, including CLI publication and separate answer recording. In a subagent, return it to the orchestrator with the held work and evidence paths. Preserve useful partial work, but commit no affected slice and claim no completed delivery while its decision is unresolved.
 
@@ -42,8 +44,14 @@ Publish each slice's red and green commands, observed outcomes, and captured pro
 
 Run typechecking regularly, single test files regularly, and the full test suite once at the end.
 
+When you find a defect the change did not cause, follow [Found defects](END-STATE.md#found-defects). The implementer owns an in-scope blocking repair. Keep its hunks separate for step 6. If an Addon requires an isolated drafting worker, keep that route for the repair.
+
 After all tickets and independent slices are finished, run shared step 3b, then step 4. Run shared step 5 once over the whole completed diff, before step 6 (Matt's order). Commit only accepted, checked work in step 6. Run step 6b on the committed head, then step 7 once for the invocation, up to the settled or capped End state.
+
+If the tracker closes work through PRs, pass each ticket whose acceptance criteria are proved to open-pr in shared step 7 as a closing reference. At End state commit, those tickets stay open. When delivery stops, read the tracker state back before reporting any ticket as closed. If the tracker does not confirm closure, report the observed status or the reason readback failed under [Close-out](END-STATE.md#close-out).
 
 ## Reply
 
 Report the requested and reached End state, commits, PR URLs and observed status, development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, and every skipped step or blocker. Do not claim a PR, readiness, merge, or End state that the chain did not observe.
+
+Include the [found-defect outcomes](END-STATE.md#found-defects) from the run record, even if the run stopped before step 7.

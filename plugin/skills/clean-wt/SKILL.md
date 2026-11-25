@@ -155,6 +155,8 @@ With no checkouts, skip investigation and approval. Run `remove` without `--appr
 
 ## 4. Ask once per bounded batch
 
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before planning a batch. The command already authorizes automatic removals. Preserve the explicit selection for otherwise eligible checkouts whose work would be lost. Asking does not make a protected checkout eligible.
+
 Report protected owners, uncertain records, excluded entries, and unique-history blockers separately. Offer only investigated records with `verdict: "unused"`, `state: "dirty"`, `automatic: false`, no owners or protection reasons, no unique history, and a valid inspected fingerprint.
 
 Save `{version: 1, targets: [...]}` as `investigated-evidence.json` in this run's `clean-wt` Scratch entry. Each target contains `checkout`, the unchanged authoritative targeted inventory record, plus `repository`, `verdict`, `contents`, `integration`, `classification`, `risk`, and `recommendation` from step 3. Run `approval.ts` with that file and save stdout as `approval-plan.json`. A rejected plan grants no permission. Treat an invalid or absent repository or one-line verdict as missing investigation evidence. Repair the investigation evidence, not the inventory's eligibility fields or fingerprint.

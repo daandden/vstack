@@ -18,13 +18,13 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Discover the source Flow b
 
 Read the source Flow's Results and decision provenance, including any Architecture brief, alongside the conversation, source issue and comments, and applicable canonical glossary terms and ADRs. Use the existing agreement rather than starting another architecture interview. A source that already settles the design needs no new Architecture brief, assessment document, or compulsory diagram.
 
-Before dependent synthesis, investigate missing repository facts and distinguish them from an unsettled choice. If proceeding would commit to a new consequential structure, shared contract, or quality trade-off, follow "Consequential gaps" below. Arranging agreed material is not a new fork.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before treating a gap as a question. Recover missing facts and omitted decisions from the sources. Arranging agreed material is not a new choice. Use "Consequential gaps" only if dependent synthesis would commit to an unresolved consequential structure, shared contract, or quality trade-off.
 
 2. Pick and record test seams by skill://tdd's "Seams: where tests go" rule. Carry those records into the spec's Testing decisions.
 
 When the change spans more than one module, draft a capability map before writing the spec, so that you weigh the module split before the spec fixes it. Use skill://codebase-design's vocabulary. Publish the map as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
 
-Combine any question required by tdd's seam rule with any real map fork: two module splits that differ in a way the user would care about. Put those questions together in one round through `ask` under skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. Name each map fork's rows in the question's `results`; code makes the reciprocal links. A map with no fork adds no question. Carry tdd's resulting seam record into Testing decisions.
+Apply the shared test to any real capability-map fork. Combine only the choices that still need an answer with any approval required by tdd's seam rule. Deliver that round through `ask` under skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. Name each fork's rows in the question's `results`; code makes the reciprocal links. Carry tdd's resulting seam record into Testing decisions.
 
 Keep map confirmations within the agreed architecture. If a map fork would change an agreed responsibility or guarantee, treat it as a consequential gap rather than using this round to choose a new architecture.
 
@@ -42,7 +42,7 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close d
 
 Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" says.
 
-Recheck any discovered consequential gap before publication. A drift-check conflict that requires changing the architecture follows "Consequential gaps" rather than becoming a new design interview here.
+Recheck the corrected draft before publication. Route only a consequential architecture gap that survives the drift check to "Consequential gaps".
 
 Then publish the spec to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
@@ -52,15 +52,15 @@ After successful publication, finish the to-spec Stage and end the run. Reply wi
 
 ## Consequential gaps
 
-Expose the evidence, the missing choice, why dependent work needs it, and which synthesis is affected on the current to-spec Stage. Keep settled decisions intact and distinguish them from the gap. Preserve a useful partial draft as explicitly not published, with the affected decision open rather than a recommended design presented as agreement.
+For a consequential architecture gap that survives the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md), show the evidence, the missing choice, why dependent work needs it, and which synthesis is affected. In a Flow, publish this context on the current to-spec Stage. Keep settled decisions intact. Preserve a useful partial draft as explicitly not published, with the affected decision open rather than a recommendation presented as agreement.
 
 Pause affected synthesis and publish no canonical spec that commits to the unresolved choice. A recommendation, Assumed pick, timeout, cancellation, empty response, headless selection, or close cannot supply missing architecture consent.
 
-1. Save the running to-spec Stage and its binding. Read `skill://grill-with-docs` and open `--skill grill-with-docs --flow <flow> --parent <to-spec-stage>` on the same Flow. This is the nested grill's Stage entry, not an extra Stage before its run. Use the receipt's Flow and Stage ids for its contributions and asks.
-2. Publish the gap's evidence and affected synthesis on the nested Stage. Run grill-with-docs inline for that gap, carrying the settled agreement, decision provenance, vstack root, and Scratch dir. Publish and ask its questions through flow-page's "Every ask in a Flow" contract, preserving raw answers and separate readings. Wait while an answer is pending.
-3. Once explicit answers settle every consequential choice needed by the affected synthesis, publish the nested grill's agreement and summary close, then finish its Stage. The nested grill returns to this running to-spec, not to a new to-spec run. Restore the saved binding with `bind --flow <flow> --stage <to-spec-stage>` and resume synthesis from those answers. Keep the drift check before publication.
+1. In a Flow, save the running to-spec Stage and its binding. Open `--skill grill-with-docs --flow <flow> --parent <to-spec-stage>` on the same Flow. This is the nested grill's Stage entry, not an extra Stage before its run. Use the receipt's Flow and Stage ids for its contributions and asks. Outside a Flow, keep the nested grill in chat.
+2. Read `skill://grill-with-docs` and run it inline for the gap. Carry the settled agreement, decision provenance, vstack root, and Scratch dir. Present the gap's evidence and affected synthesis. Keep the grill's required architecture agreement even when one shape is viable. Deliver questions through flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` in chat. Preserve raw answers and separate readings. Wait while an answer is pending.
+3. Once explicit answers settle the architecture gap, record the nested grill's agreement and summary close. In a Flow, finish its Stage and restore the saved binding with `bind --flow <flow> --stage <to-spec-stage>`. Resume this to-spec run from those answers. Keep the drift check before publication.
 
-If evidence or an answer remains unavailable, keep the affected draft explicitly not published and report the actual blocker. Leave recoverable Stages in progress and restore the to-spec binding on return. Resume the existing runs when the blocker clears.
+If evidence or an answer remains unavailable, keep the affected draft explicitly not published and report the actual blocker. In a Flow, leave recoverable Stages in progress and restore the to-spec binding on return. Resume the existing runs when the blocker clears.
 
 ## Spec template
 

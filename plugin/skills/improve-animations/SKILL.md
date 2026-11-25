@@ -43,7 +43,9 @@ Keep additive opportunities separate from defects. Apply the opportunity gate an
 
 ## Selection and hand-off
 
-Publish findings in the current owner's Flow Results and route explicit selection through that owner's existing question round. When Flow-bound, follow skill://flow-page's "Every ask in a Flow" and "Record the raw answer and separate reading" contracts. Outside a Flow, the top-level owner uses `ask`. Subagents return open selection questions. A timeout, cancellation, unavailable picker, recommendation, or headless default is not consent. Until an explicit selection arrives, leave all findings unselected and application source unchanged.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before proposing a selection round. Reuse the owner's exact authorized scope. Keep the explicit selection boundary for changes outside that scope.
+
+Publish findings in the current owner's Results. If selection still needs a question, use the owner's existing round under skill://flow-page's "Every ask in a Flow" and "Record the raw answer and separate reading" when enrolled, or plain `ask` in chat. Subagents return selection questions to the owner. Timeout, cancellation, an unavailable picker, a recommendation, or a headless default grants no consent. Leave unselected findings out of the implementation scope.
 
 After selection, record only the selected requirements using the companion's fields in the owner's existing spec, ticket, or hand-off location. Include source revision, exact target values where needed, repo exemplars, scope exclusions, dependency constraints, and observable completion checks. Never introduce `plans/README.md`, independent status tracking, execute dispatch, or automatic top-ranked implementation.
 

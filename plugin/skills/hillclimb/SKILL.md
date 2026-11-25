@@ -10,7 +10,7 @@ Own the metric and the experiment's integrity. One hypothesis, one measurement, 
 
 ## Start
 
-The grill settles one metric, its unit, the direction that counts as better, the target, and a checkable stop predicate. The predicate pairs the target with a minimum attempt count. Use supplied numbers and ask about each missing decision before the grill closes. Pass this contract to implement. implement runs the loop without more questions about these decisions.
+The grill settles one metric, its unit, the direction that counts as better, the target, and a checkable stop predicate. The predicate pairs the target with a minimum attempt count. Reuse supplied values and apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to missing choices. Pass this contract to implement. implement runs the loop without repeating settled questions.
 
 implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, project Scratch dir, and Scratch session id. Open the marked `hillclimb` session folder through `skill://vstack-tmp`. Fix the absolute path of `attempts.tsv` inside this run's entry, beside its evidence, and keep it for the whole loop. Every worker uses the Session model unless the user overrides it.
 
