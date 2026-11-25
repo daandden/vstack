@@ -164,13 +164,15 @@ Draft review fixes only in the isolated worker, never directly in the parent che
 
 Update the affected development checks. Then run shared step 6. It commits the review fixes after the ticket commits. Then run shared step 6b on the committed head.
 
-Resolve tickets and the spec only after shared step 6b accepts the Verdict. Resolve each complete ticket the way the issue tracker closes work. The spec is done only when every one of its tickets is complete in this run or was closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open.
+Resolve tickets and the spec only after shared step 6b accepts the Verdict. A ticket must meet its acceptance criteria and be complete under step 5 before resolution. Use the configured tracker close operation without a routine confirmation, as the [Settle-or-ask rule](../../rules/vstack-settle-or-ask.md) says. Read back the tracker state before reporting a ticket or spec closed. Report a failed, unsupported, or unconfirmed closure with its reason. Preserve any required draft-first consent for a comment.
 
-Then run shared step 7 once, up to the settled or capped End state. It opens the one PR, ready for review.
+The spec is done only when every ticket is complete in this run or was closed before it. On a tracker that closes work directly, leave the spec open if any ticket remains open or its closure is unconfirmed. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as closing references instead, and add the spec only when it is done. At End state commit, tickets that close through a PR and their spec stay open.
+
+Then run shared step 7 once, up to the settled or capped End state. At close-out, run step 9 before the shared delivery report.
 
 ### 9. Reconcile worker lifecycles
 
-Reconcile every implementer and review fixer, including failed, held, superseded, and retry attempts, against skill://vstack-fan-out/WORKER-LIFECYCLE.md. Keep running or still-needed workers retained with concrete reasons. For each release, report its observed outcome and before/after status evidence; claim removal only when proven. Keep integration commits, stable held patches, and evidence outside released clones. This final accounting does not defer the earlier per-result and early-return duties.
+Reconcile every implementer and review fixer, including failed, held, superseded, and retry attempts. Apply `skill://vstack-fan-out/WORKER-LIFECYCLE.md` to each. Release eligible workers without a picker and record the outcome and evidence for the [shared close-out report](skill://implement/END-STATE.md#close-out). Keep integration commits, stable held patches, and evidence outside released clones. This final accounting does not defer the earlier per-result and early-return duties.
 
 ## Reply
 

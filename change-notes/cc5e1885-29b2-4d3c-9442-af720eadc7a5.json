@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Release eligible worker clones and close proved tickets without a routine confirmation, and report verified releases, retained clones, and tracker closures separately."
+  ]
+}

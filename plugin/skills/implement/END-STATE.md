@@ -4,13 +4,13 @@ implement, implement-spec, and hillclimb read this file before work. Reuse these
 
 ## Question timing
 
-When a question arises, the run's agent classifies it as gating if its answer can change the committed patch, its proof, or the End state. Resolve gating questions before advancing the affected work. Verifier open questions and CI-failure waivers remain gating.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before classifying a question. A question is gating if its answer can change the committed patch, its proof, or the End state. Resolve gating questions before advancing the affected work. Verifier open questions and CI-failure waivers remain gating.
 
-Hold non-gating questions in the run record and continue delivery, including through chained skills. Examples include approval to post an optional external report or to clean up a disposable resource. Keep the resource until its held cleanup question is answered. Holding a question grants no approval for its action.
+Hold non-gating questions in the run record and continue delivery, including through chained skills. Holding a question grants no approval for its action. Routine release of the run's eligible workers and closure of proved tickets under the configured tracker rules are [close-out actions](#close-out), not held questions.
 
 A Costly seam test optional for the requested End state has a non-gating approval question, held until that End state is reached or the run stops at a blocker. If the test is required to establish proof for the End state, its approval question is gating, so claim neither that proof nor the End state without it. Never run the test without explicit approval, and record each unrun test and its proof gap.
 
-Ask every held question after reaching the effective End state or when the run stops at a blocker. Use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract, including CLI publication and separate answer recording. Preserve unanswered questions and their pending actions in the run record and reply.
+At close-out, apply the Settle-or-ask rule again to the held list. Use `ask` only for a question that still needs an answer. When enrolled, follow `skill://flow-page`'s "Every ask in a Flow" contract, including CLI publication and separate answer recording. In chat, use plain `ask`. Preserve unanswered questions and their pending actions in the run record and reply.
 
 ## Found defects
 
@@ -182,16 +182,24 @@ Publish `reached: "merge-ready"` only after both current-head readiness and acce
 
 Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Pass step 0b's branch guard against the reported branch before running `git merge <remote>/<target>`, because the merge can commit automatically. Resolve each conflict once. Resolve a mechanical conflict yourself against the ticket and spec. If a conflicting hunk chooses between two behaviors, for example when both sides change the same rule, run `git merge --abort` and ask the user which behavior to keep through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Then merge again and apply the answer. In a worker, return the question to the parent instead. Without the user's answer, leave the merge aborted and record a blocker. Reconcile the reported caller drift, and pass the same guard before an explicit merge commit. Record the resulting commit through step 0b's post-commit check. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the recorded local branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Blast radius findings.
 
-At either stop, ask the held non-gating questions under [Question timing](#question-timing) before finishing the caller's Stage.
+## Close-out
+
+Run close-out when delivery stops at the effective End state or a blocker. Route remaining held questions through [Question timing](#question-timing).
+
+Before the final report, reconcile every Isolated clone the run owns through `skill://vstack-fan-out/WORKER-LIFECYCLE.md`. implement-spec runs local step 9 for its implementers and review fixers. Release eligible workers through omp without a new confirmation. Keep any surviving clone if the supported operation is unavailable or fails. If the lifecycle check cannot verify removal, report it as retained and `not verified`, never released. For an expired job row, preserve the failure and report the host prerequisite named in the lifecycle contract. Do not delete clone files directly or act on another run's checkouts.
+
+Follow the caller's completion and configured tracker rules without a routine confirmation for closing proved tickets. Missing required proof leaves a ticket open. Preserve `plugin/rules/vstack-posting.md` for draft-first posting where required and the existing consent check for deleting unrecoverable work.
 
 When the run stops, at the effective End state, at commit, or at a blocker, publish a table Result on the caller's Stage with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for unticketed work. Add a row for step 6 review fixes and for each step 6b Verifier repair commit:
 
 - Ticket: the ticket's number and short title, a short name for the work, "Review fixes", or "Verifier repair".
-- Status: the outcome that the caller's reply gives, such as resolved, closing through the PR, committed, or open with its reason.
+- Status: `closed` only when the tracker confirms closure, `closing through the PR` when closure still depends on the PR, or the actual open or committed outcome with its reason.
 - Commit: the short SHA of its commit, or `none` with where its changes wait, such as a held patch path or the working tree.
 - Proof: red and green evidence paths and the accepted Verdict with its Verifier identity, patch id, and evidence paths, or the reason proof is missing.
 
 Add one row per found defect. Use its disposition for Status, the repair SHA or `none` for Commit, and the proof paths, read-back issue link, or unresolved evidence for Proof. Count a found-defect repair only once if it is also a step 6b repair.
+
+List worker outcomes separately in the close-out report and reply. For a verified release, give the worker identity, the observed release result, and the before and after evidence. For a retained worker, give its identity, why it stayed, and the preserved work and evidence paths. For an unsupported or failed release or unverified absence, include the diagnostic and any saved status. Worker retention is not a ticket closure or proof outcome.
 
 Finish the caller's Stage through flow-page after publishing its Results and retiring unresolved questions with reasons. Close the Flow with `close` only when the requested End state was reached, every task is settled, no blocker or ticket remains open, and every Stage is finished. Otherwise leave it open. A completed Stage or a green observation does not close it.
 
