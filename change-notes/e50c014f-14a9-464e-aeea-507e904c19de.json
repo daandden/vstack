@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Let clean-wt remove otherwise clean checkouts without reading or comparing listed generated ignored paths."
+  ]
+}

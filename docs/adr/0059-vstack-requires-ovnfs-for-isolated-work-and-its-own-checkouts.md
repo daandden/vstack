@@ -24,6 +24,8 @@ ovnfs hides untracked Python environments by default. Copying one can give false
 
 Before opening the head checkout, the Verifier compares a missing declared input against the Shared checkout using only file existence. It reports where the input is absent without guessing why. Advice about `worktree.clone` applies only to an `omp wt` fallback.
 
+Amended on 2026-11-24. Other sessions create and remove checkouts during a long inventory, and two runs lost their whole scan when one checkout vanished. clean-wt now records each listed checkout separately. When a listed checkout fails or is missing on disk, inventory reads both native listings once more after the scan. It uses that read only to confirm that checkouts it already listed are gone, and never adds a checkout to the run. It marks a checkout `vanished` only when that listing and the disk agree. Keeping a single listing and labelling such checkouts as unconfirmed was rejected because the record would rest on disk evidence alone.
+
 ## Considered Options
 
 - **Support both backends and detect which one each run used**: rejected. The user chose one layout to support over keeping vstack working on machines without ovnfs.

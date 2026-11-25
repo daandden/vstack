@@ -4,7 +4,8 @@
 
 ## Sub-features
 
-- `cwt-inventory` `inventory` prints `base`, `evidence_gaps`, and one record per checkout with `kind`, `verdict`, `state`, `changes`, `unique_history`, `branch`, and `fingerprint`.
+- `cwt-inventory` `inventory` prints `base`, `evidence_gaps`, and one record per checkout. Git-dirty records have `outcome: "contents deferred"`, no usable fingerprint, and Git-reported changes. Targeted inventory supplies the fingerprint for removal of dirty work.
+- `cwt-disposable-ignored` the script skips byte reads and fingerprinting for listed generated paths only when Git reports them as ignored. Tracked edits, non-ignored untracked files, and unlisted ignored files still get the usual content checks.
 - `cwt-session` from a session with a held lease, `evidence_gaps` is `[]` and an unowned clean checkout is `unused`. Without a held lease, the gap names the lease and the checkout is `uncertain`.
 - `cwt-remove-clean` `remove <path>=<fingerprint>` removes an unused clean linked worktree with `git worktree remove` and keeps its branch.
 - `cwt-skip-stale` a fingerprint that no longer matches skips the checkout with `it changed since the inventory`.
@@ -31,9 +32,19 @@
 
 Preconditions:
 
-- The baseline from `README.md`, and Doctor before the drive.
+- The baseline from `README.md`. Run Doctor before each fresh drive.
 - The script reads the running session's lease, so every drive here uses `--session`, except the one that proves the missing lease.
 - Throwaway repo and base: `F="$VERIFY_RUN_DIR/data/cwt"` and `B="$F/wt"`. Never point `--base` at the real omp worktree base. The base does not restrict ovnfs discovery. Remove only this run's explicitly named disposable targets, and preserve unrelated inventory records.
+- Start an owned ovnfs daemon for the removal and lease drives. The throwaway HOME's default `admin.sock` path can exceed the macOS Unix socket limit. Set `SCRATCH_DIR` to the project's Scratch dir from Verify Evidence. Put the daemon directories directly under `$SCRATCH_DIR/verify/`, outside the run entry:
+
+  ```sh
+  O=$(mktemp -d "$SCRATCH_DIR/verify/cwt.XXXXXX")
+  ovnfs --state "$O/s" --mount "$O/m" start
+  ovnfs --state "$O/s" --mount "$O/m" status
+  ovnfs --state "$O/s" --mount "$O/m" --json ls
+  ```
+
+  Save the start, status, and listing output in `$VERIFY_RUN_DIR`. Require status to show the daemon PID from `start`, state at `$O/s`, mount at `$O/m`, and the socket at `$O/s/admin.sock`. Require an empty checkout listing. Stop before driving if the namespace is not isolated.
 
 Step `clean-wt-fixture`: Build the fixture. `g` passes a throwaway identity to git:
 
@@ -45,31 +56,45 @@ g "$F/repo" worktree add -q -b dirty-br "$B/wt-dirty" && echo draft > "$B/wt-dir
 g "$F/repo" worktree add -q --detach "$B/wt-unique" && g "$B/wt-unique" commit -q --allow-empty -m only-here
 ```
 
-The stub model plays the agent: each `{"tool":"bash"}` reply is one command that the session's bash tool runs. Set every call's `cwd` to the disposable source repository for this legacy removal drive. The global CLI proof below also runs from a disposable non-Git directory. Write the replies with `jq`, so the paths are expanded. `fp <name>` expands to a command substitution that reads that checkout's current fingerprint when the tool runs:
+The stub model plays the agent. Each `{"tool":"bash"}` reply runs one command in the disposable source repository. Write the replies with `jq` so paths expand before the drive. `fp` reads a clean checkout's discovery fingerprint. `target_fp` prepares source facts and reads the dirty checkout's targeted fingerprint when the tool runs.
 
 ```sh
-CW="bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts"
+CW="OVNFS_STATE='$O/s' OVNFS_MOUNT='$O/m' bun '$CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts'"
 fp() { echo "\$($CW inventory --base $B | jq -r '.checkouts[] | select(.path==\"$B/$1\") | .fingerprint')"; }
+target_fp() {
+  local facts="$VERIFY_RUN_DIR/data/cwt-source-facts.json"
+  echo "\$($CW inventory --base '$B' --prepare-source '$F/repo/.git' > '$facts' && $CW inventory --base '$B' --target '$B/$1' --source-facts '$facts' | jq -er '.checkouts[0].fingerprint | select(length > 0)')"
+}
 jq -n --arg cwd "$F/repo" --arg inv "$CW inventory --base $B" \
   --arg bad "$CW remove --base $B $B/wt-clean=nothex; echo exit=\$?" \
-  --arg stale "$CW remove --base $B $B/wt-clean=$(printf '0%.0s' $(seq 64))" \
-  --arg mix "$CW remove --base $B $B/wt-clean=$(fp wt-clean) $B/wt-dirty=$(fp wt-dirty) $B/wt-unique=$(fp wt-unique)" \
-  --arg appr "$CW remove --base $B --approve $B/wt-dirty $B/wt-dirty=$(fp wt-dirty)" \
+  --arg stale "$CW remove --base $B $B/wt-clean=v1:discovery:$(printf '%064d' 0)" \
+  --arg mix "$CW remove --base $B $B/wt-clean=$(fp wt-clean) $B/wt-dirty=$(target_fp wt-dirty) $B/wt-unique=$(fp wt-unique)" \
+  --arg appr "$CW remove --base $B --approve $B/wt-dirty $B/wt-dirty=$(target_fp wt-dirty)" \
   '[{tool:"bash",args:{command:$inv,cwd:$cwd}},{tool:"bash",args:{command:$bad,cwd:$cwd}},{tool:"bash",args:{command:$stale,cwd:$cwd}},{tool:"bash",args:{command:$mix,cwd:$cwd}},{tool:"bash",args:{command:$appr,cwd:$cwd}},{text:"done"}]' \
   > "$VERIFY_RUN_DIR/clean-wt-remove-replies.json"
 ```
 
 Step `clean-wt-remove`: Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-wt-remove --session --replies "$VERIFY_RUN_DIR/clean-wt-remove-replies.json" '{"type":"prompt","message":"/skill:clean-wt"}'`. Exit 0 with `model_requests` 6. Save each tool result with `jq -r 'select(.type=="tool_execution_end") | .result.content[0].text' "$VERIFY_RUN_DIR/clean-wt-remove/rpc.jsonl" > "$VERIFY_RUN_DIR/clean-wt-remove-tools.txt"`. The five results, in order:
 
-1. Step `clean-wt-remove-inventory`: Inventory. `evidence_gaps` is `[]`. All three checkouts are `linked-worktree` and `unused`. `wt-clean` is `clean` on `clean-br`. `wt-dirty` is `dirty` with `changes.untracked` `["draft.txt"]`. `wt-unique` is `clean` with `branch` null and one `unique_history` entry with ref `HEAD`.
-2. Step `clean-wt-remove-bad-argument`: Bad argument. `clean-wt: <B>/wt-clean=nothex is not <path>=<fingerprint>`, then `exit=2`.
-3. Step `clean-wt-remove-stale`: Stale fingerprint. `removed` is `[]`, and `skipped` holds `wt-clean` with the reason `it changed since the inventory`.
+1. Step `clean-wt-remove-inventory`: Inventory. `evidence_gaps` is `[]`. All three checkouts are `linked-worktree` and `unused`. `wt-clean` is `clean` on `clean-br`. `wt-dirty` is `dirty`, with `outcome: "contents deferred"`, `fingerprint: ""`, and `changes.untracked: ["draft.txt"]`. `wt-unique` is `clean` with a null branch and one `unique_history` entry for `HEAD`.
+2. Step `clean-wt-remove-bad-argument`: Bad argument. Stderr says `<B>/wt-clean=nothex is not <path>=<fingerprint> with a current fingerprint; run a new inventory`, then the tool prints `exit=2`.
+3. Step `clean-wt-remove-stale`: Pass a version 1 discovery fingerprint with a nonmatching digest. `removed` is `[]`, and `skipped` holds `wt-clean` with the reason `it changed since the inventory`.
 4. Step `clean-wt-remove-mixed`: Mixed removal. `removed` holds `wt-clean` with method `git worktree remove`. `skipped` holds `wt-dirty` with `it holds dirty work, and removing it needs --approve`, and `wt-unique` with `it holds commits or stashes that exist nowhere else (HEAD); push or branch them first`.
 5. Step `clean-wt-remove-approved`: Approved removal. `removed` holds `wt-dirty` with method `git worktree remove --force`.
 
 Step `clean-wt-remove-after`: Then prove the state outside the session. Save `git -C "$F/repo" worktree list --porcelain | grep '^worktree'`, `git -C "$F/repo" branch --list`, and `ls "$B"` as `$VERIFY_RUN_DIR/clean-wt-remove-after.txt`. Only `repo` and `wt-unique` remain registered, `clean-br` and `dirty-br` still exist, and `$B` holds only `wt-unique`.
 
-Step `clean-wt-session-lease`: Session lease. Make a second base `F2="$VERIFY_RUN_DIR/data/fixture"` with one clean linked worktree at `$F2/wt/wt-clean`. Write `[{"tool":"bash","args":{"command":"bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts inventory --base $F2/wt","cwd":"$F2/repo"}},{"text":"done"}]` with the variables expanded to `$VERIFY_RUN_DIR/clean-wt-replies.json`. Drive `'{"type":"prompt","message":"/skill:clean-wt"}'` with `--session --replies "$VERIFY_RUN_DIR/clean-wt-replies.json" --name clean-wt-session`. The `tool_execution_end` text holds `evidence_gaps: []`, and wt-clean is `unused`. Drive it again without `--session`, as `--name clean-wt-no-session`. `evidence_gaps` then names the missing running-session lease and wt-clean is `uncertain`.
+Step `clean-wt-session-lease`: Make a second fixture under `F2="$VERIFY_RUN_DIR/data/fixture"` with one clean linked worktree at `$F2/wt/wt-clean`. Use the same `CW` and isolated daemon:
+
+```sh
+git init -q "$F2/repo" && g "$F2/repo" commit -q --allow-empty -m init
+g "$F2/repo" worktree add -q -b lease-br "$F2/wt/wt-clean"
+jq -n --arg cwd "$F2/repo" --arg inv "$CW inventory --base $F2/wt" \
+  '[{tool:"bash",args:{command:$inv,cwd:$cwd}},{text:"done"}]' \
+  > "$VERIFY_RUN_DIR/clean-wt-replies.json"
+```
+
+Run the same `/skill:clean-wt` prompt with `--session --replies "$VERIFY_RUN_DIR/clean-wt-replies.json" --name clean-wt-session`. The `tool_execution_end` text holds `evidence_gaps: []`, and `wt-clean` is `unused`. Run Doctor again before driving the same prompt and replies without `--session`, as `--name clean-wt-no-session`. The inventory names the missing running-session lease as its only evidence gap, and `wt-clean` is `uncertain`.
 
 ## Drive phased integration
 
@@ -77,7 +102,7 @@ Use disposable inactive checkouts with a real remote whose symbolic HEAD differs
 
 Run these commands through the session's bash tool with the fixture's explicit `--base`. Save each stdout and exit separately.
 
-1. Step `clean-wt-phased-inventory`: Run `inventory`. Only the clean checkout is `automatic`. Dirty records have no `integration` and identify `source_git_dir`.
+1. Step `clean-wt-phased-inventory`: Run `inventory`. Only the clean checkout is `automatic`. Git-dirty records have `outcome: "contents deferred"` and `fingerprint: ""`. They have no `integration` and identify `source_git_dir`.
 2. Step `clean-wt-phased-clean`: Run `remove <clean-path>=<discovery-fingerprint>` without approval. Prove the clean checkout is absent before starting remote preparation.
 3. Step `clean-wt-phased-source-facts`: Run `inventory --prepare-source <source-git-dir>` once per distinct source, or repeat that flag in one call. Save stdout as `$VERIFY_RUN_DIR/source-facts.json`. Its `source_facts` array contains `{source_git_dir,remote,url,ref,sha}` or `{source_git_dir,reason}`.
 4. Step `clean-wt-phased-targeted`: Launch one `inventory --target <path> --source-facts "$VERIFY_RUN_DIR/source-facts.json"` command per remaining checkout separately. Use the same file in all commands. Each returns only its requested checkout and its newly investigated fingerprint. Equivalent tracked drafts and landed untracked copies qualify. Unique or unverified artifacts do not.
@@ -95,8 +120,8 @@ Step `clean-wt-ovnfs-fixture`: Use a disposable source Git repository under `$VE
 
 Drive the checkout's clean-wt CLI through `drive.ts --session` in a new omp process. Give each bash call `cwd` set to the disposable source repository, an explicit `--base`, and `timeout: 0`. Capture `ovnfs --json status` under the calling home. Prefix the CLI commands with its `state` as `OVNFS_STATE` and `mount` as `OVNFS_MOUNT`, so the throwaway HOME uses the same running daemon.
 
-1. Step `clean-wt-ovnfs-inventory`: Run `inventory` and save its JSON. The kept checkout is `kind: ovnfs`, `verdict: unused`, `state: dirty`, and `automatic: false`. Its `changes.untracked` contains `draft.txt`, and its `source_git_dir` identifies the disposable source. Before any removal, save the exact commands, stdout, stderr, and exit codes for `cat "<checkout>/.git"`, `git -C "<checkout>" rev-parse --path-format=absolute --git-dir`, and `test -d "<resolved-private-git-dir>"`. Require a `.git` file, a resolved private Git directory distinct from the disposable source's Git directory, and an existence check that exits 0. Preserve that absolute private Git path outside `data/` for the after-removal check.
-2. Step `clean-wt-ovnfs-skip`: Run `remove <path>=<fingerprint>` without approval. It reports no removal and skips the dirty checkout. Read `draft.txt` separately to prove its bytes remain.
+1. Step `clean-wt-ovnfs-inventory`: Run `inventory` and save its JSON. Require `kind: ovnfs`, `verdict: unused`, `state: dirty`, `automatic: false`, `outcome: "contents deferred"`, and `fingerprint: ""`. Its `changes.untracked` contains `draft.txt`, and its `source_git_dir` identifies the disposable source. Before any removal, save the commands, stdout, stderr, and exit codes for `cat "<checkout>/.git"`, `git -C "<checkout>" rev-parse --path-format=absolute --git-dir`, and `test -d "<resolved-private-git-dir>"`. Require a `.git` file, a resolved private Git directory distinct from the disposable source's Git directory, and an existence check that exits 0. Save that absolute private Git path outside `data/` for the after-removal check.
+2. Step `clean-wt-ovnfs-skip`: Run `inventory --prepare-source <source_git_dir>` and save stdout as source facts. Run `inventory --target <path> --source-facts <saved JSON>` and save the returned fingerprint. Run `remove <path>=<targeted-fingerprint>` without approval. It reports no removal and skips the dirty checkout. Read `draft.txt` separately to prove its bytes remain.
 3. Step `clean-wt-ovnfs-approved`: For this disposable fixture only, run `remove --approve <path> <path>=<fingerprint>` with the same fingerprint. This scripted flag proves the removal command, not human consent or the skill's picker.
 4. Step `clean-wt-ovnfs-final`: Save a final inventory, a real `ovnfs --json ls`, and a directory-existence check. The checkout is absent from all three, and removal reports method `ovnfs rm`. Run `test -d "<resolved-private-git-dir>"` against the exact path captured before removal and retain its command, stdout, stderr, and exit code. Require that private Git directory to be absent after removal. The snapshot saved before step 1 remains in the listing's `snapshots`. Drop that snapshot with `ovnfs drop <id>` after saving the evidence. Leave unrelated checkouts, snapshots, and session archives unchanged.
 
@@ -147,7 +172,13 @@ Step `clean-wt-ovnfs-unsupported-flags`: Run `bun test --timeout 30000 tests/cle
 
 Use disposable fixture repositories and native executable stand-ins for these CLI regressions. They exercise the production scripts and real Git. They do not prove that a model follows the skill or that a human consents.
 
-Step `clean-wt-discovery-coverage`: Run `bun test --timeout 30000 tests/clean-wt.test.ts tests/checkout-locator-cleanup.test.ts`. Inspect the named external saved-session, native exclusion, global Git and non-Git inventory, delayed native-directory visibility, and mid-run ownership cases. Owned and uncertain targets remain, excluded entries have protection reasons, snapshots survive delayed completion, and no real checkout is a fixture.
+Step `clean-wt-discovery-coverage`: Run `bun test --timeout 30000 tests/clean-wt.test.ts tests/checkout-locator-cleanup.test.ts`. Inspect the named external saved-session, native exclusion, global Git and non-Git inventory, delayed native-directory visibility, and mid-run ownership cases. Owned and uncertain targets remain, excluded entries have protection reasons, and snapshots survive delayed completion. A native checkout replaced during listing has no usable fingerprint and survives an attempted removal. A reused ovnfs name is reported as `replaced` without adding the new path. A vanished unrelated Git registration does not block a checkout whose source is known. No real checkout is a fixture.
+
+Also require the listed ignored content, Git-dirty discovery deferral, and tracked or non-ignored build-path cases to pass. Listed ignored dependencies and nested build outputs contribute zero content reads. Editing them does not invalidate the discovery fingerprint or block automatic removal. The separate `.env` control, tracked edits, and non-ignored untracked files stay protected.
+
+In the omp and ovnfs lister-exit tests, each lister writes its row, replaces the checkout, then exits. Discovery reports `replaced` with no usable fingerprint. Confirm that `remove` rejects the discovery fingerprint and leaves the replacement on disk. If the same swap happens during removal's fresh listing, removal skips the target even when the replacement matches the supplied fingerprint.
+
+In `verification distinguishes a replacement between discovery and verification`, confirm that a listed replacement and a checkout with missing discovery identity do not match the saved instance. The unchanged checkout matches.
 
 Step `clean-wt-global-source-guard`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'machine-wide inventory|ovnfs origin follows archived sessions|source stays protected by every ovnfs dependent|cyclic or missing origin evidence'`. Retain stdout, stderr, and the exit code. Require these named CLI cases to pass:
 
@@ -164,9 +195,9 @@ Step `clean-wt-native-completion`: Run `bun test --timeout 30000 tests/clean-wt.
 
 Step `clean-wt-approval-plan`: Run `bun test --timeout 30000 tests/clean-wt-approval.test.ts`. The planner groups 31 targets into two remove batches of 26 and 2, then a keep batch of 3. The real Flow CLI validates and submits each contribution in an isolated home. A scripted empty response leaves the first question open. A scripted second-round `B` pick records target 31's generated label and preserves its original path and fingerprint mapping. These scripted responses are not human consent. Protected, duplicate, noncanonical, or incomplete evidence is rejected without a partial plan. No option is preselected and no target is deleted.
 
-Step `clean-wt-summary`: Run `bun test --timeout 30000 tests/clean-wt-summary.test.ts`. Require the isolated Flow CLI to accept the counts and groups, a whole-Result link from the planner round, and a revision that removes the settled options. The reader host stays off for this check.
+Step `clean-wt-summary`: Run `bun test --timeout 30000 tests/clean-wt-summary.test.ts`. Require the isolated Flow CLI to accept the counts and groups, a whole-Result link from the planner round, and a revision that removes the settled options. The summary refuses version 1 records. It counts neither replacements nor unknown identities as kept. A skip reports its actual verification gap without changing the count. The reader host stays off for this check.
 
-Step `clean-wt-read-budget`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'large ignored trees keep fresh cleanup guards'`. Retain the printed workload and per-operation files, bytes, and elapsed milliseconds. These counters cover script-owned content reads, not Git subprocess I/O. The lifecycle must satisfy the fixture's read budget while retaining final content, ownership, history, and fingerprint checks.
+Step `clean-wt-read-budget`: Run `bun test --timeout 30000 tests/clean-wt.test.ts -t 'large ignored trees keep fresh cleanup guards|content-free commands ignore an invalid reader width'`. Retain the printed workload and per-operation files, bytes, and elapsed milliseconds. These counters cover script-owned content reads, not Git subprocess I/O. The lifecycle must satisfy the fixture's read budget while retaining final content, ownership, history, and fingerprint checks. An invalid reader width must not block verification or source preparation.
 
 Step `clean-wt-parent-vs-head`: Compare the captured red runs with the passing head CLI cases for machine-wide Git and non-Git inventory, native and ovnfs uncertain origins, and full-list source dependency protection. Retain existing comparison evidence for saved external headers, native exclusions, 31-target approval, and the identical ignored-tree workload. Read the base implementation to establish the changed paths. Preserve source revisions and observations separately. A timing sample alone does not establish a general speedup.
 
@@ -212,6 +243,16 @@ This journey uses the real model, real investigators, the ordinary omp picker, a
 
    Require the counts before the outcome lists, one Result id across revisions, no stale pending rows at the end, and no evidence attachments or process notes. Compare the final summary with the actual verification, Scratch files, and disk, Git, and ovnfs after-state. Capture command and session records and the final chat reply.
 5. Step `clean-wt-summary-live-cleanup`: Preserve logs and native session records outside `data/`. Close only the fixture Flow and browser tab. Stop the owned Flow host with `host stop --home "$F/flow-home"`, and stop ovnfs with the same explicit fresh `--state` and `--mount` as launch. Confirm both owned processes exited. Keep failure evidence. Never stop the shared host or daemon.
+
+## Cleanup for removal and lease drives
+
+On success or failure, stop only the owned daemon before the shared Verify Cleanup:
+
+```sh
+ovnfs --state "$O/s" --mount "$O/m" stop
+```
+
+Save the stop output in `$VERIFY_RUN_DIR`. Confirm that the recorded daemon PID and admin socket are gone. Only then remove the temporary directory `$O` and run [Verify Cleanup](../SKILL.md#cleanup).
 
 ## Gotchas
 

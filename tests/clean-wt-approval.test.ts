@@ -23,7 +23,7 @@ function fixture(count: number, names: string[] = []) {
     return {
       checkout: {
         path, entry: path, kind: "linked-worktree", verdict: "unused", owners: [], reasons: [],
-        state: "dirty", automatic: false, unique_history: [], fingerprint: (i + 1).toString(16).padStart(64, "0"),
+        state: "dirty", automatic: false, unique_history: [], fingerprint: `v1:targeted:${(i + 1).toString(16).padStart(64, "0")}`,
       },
       repository: "example-repo",
       verdict: `Unmerged source changes in checkout ${i + 1}.`,
@@ -74,7 +74,7 @@ test("Flow offers one-line remove batches before keep batches without changing w
   });
   expect(output.rounds[1].mapping[1]).toEqual({
     letter: "B", label: `${root}/home-adjacent/checkout-31 · example-repo · Unmerged source changes in checkout 31. · Agent says remove`,
-    path: input.targets[30].checkout.path, fingerprint: "000000000000000000000000000000000000000000000000000000000000001f",
+    path: input.targets[30].checkout.path, fingerprint: "v1:targeted:000000000000000000000000000000000000000000000000000000000000001f",
     recommendation: "remove",
   });
   expect(output.rounds[2].mapping[0]).toEqual({
@@ -198,6 +198,18 @@ test.each([
   expect(result.stderr).toContain(field);
 });
 
+test.each(["old-format", "discovery"])("an approval fingerprint in %s format requires a new inventory", (format) => {
+  const { root, input } = fixture(1);
+  const target = input.targets[0];
+  const digest = "a".repeat(64);
+  target.checkout.fingerprint = format === "discovery" ? `v1:discovery:${digest}` : digest;
+  const result = plan(input, root);
+  expect(result.code).toBe(2);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toContain("run a new inventory");
+  expect(readFileSync(join(target.checkout.path, "remaining.txt"), "utf8")).toBe("unmerged work 1\n");
+});
+
 test("the planner rejects duplicate paths, protected records, and malformed investigation evidence without emitting a partial plan", () => {
   const { root, input } = fixture(1);
   const target = input.targets[0];
@@ -213,7 +225,7 @@ test("the planner rejects duplicate paths, protected records, and malformed inve
       { reasons: ["ownership evidence unavailable"] }, { unique_history: [{ ref: "refs/stash", sha: "a".repeat(40) }] },
       { unique_history: undefined }, { path: "relative/checkout" }, { path: "/" },
       { path: `${root}/checkout/../other` }, { path: `${root}/checkout\nother` },
-      { fingerprint: "a".repeat(63) }, { fingerprint: "A".repeat(64) }, { fingerprint: undefined },
+      { fingerprint: `v1:targeted:${"a".repeat(63)}` }, { fingerprint: `v1:targeted:${"A".repeat(64)}` }, { fingerprint: undefined },
     ].map(withCheckout),
     ...[
       { contents: [] }, { contents: undefined }, { contents: [{ category: "source", detail: " " }] },

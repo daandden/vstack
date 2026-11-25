@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep clean-wt inventory usable when a listed checkout vanishes, is replaced, or fails inspection. Skip vanished removal targets without dropping the rest of the batch."
+  ]
+}

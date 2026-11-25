@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Verify clean-wt outcomes using native listings, ownership, disk presence, Git registration, and retained branches without reading checkout contents or producing fingerprints."
+  ]
+}

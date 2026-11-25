@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Read clean-wt target and source files concurrently with bounded open files and reused buffers. Report reader limits and peaks in progress output without changing fingerprints or removal order."
+  ]
+}

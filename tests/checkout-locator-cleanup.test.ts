@@ -87,11 +87,17 @@ test("every native ovnfs entry is visible while named, verifier, foreign and mis
   });
   for (const location of locations.slice(1)) {
     expect(location.gaps.length).toBeGreaterThan(0);
-    expect(location.gaps.every((gap) => gap.trim().length > 0)).toBe(true);
+    expect(location.gaps.every(({ message }) => message.trim().length > 0)).toBe(true);
   }
-  expect(locations.find((location) => location.name === "personal")!.gaps.join(" ")).toContain("outside");
-  expect(locations.find((location) => location.name === "omp-foreign")!.gaps.join(" ")).toContain("origin");
-  expect(locations.find((location) => location.name === "omp-missing")!.gaps.join(" ")).toContain("missing");
+  expect(locations.find((location) => location.name === "personal")!.gaps).toContainEqual(
+    expect.objectContaining({ kind: "scope", message: expect.stringContaining("outside") }),
+  );
+  expect(locations.find((location) => location.name === "omp-foreign")!.gaps).toContainEqual(
+    expect.objectContaining({ kind: "origin", message: expect.stringContaining("origin") }),
+  );
+  expect(locations.find((location) => location.name === "omp-missing")!.gaps).toContainEqual(
+    expect.objectContaining({ kind: "directory", message: expect.stringContaining("directory is missing") }),
+  );
 });
 
 test("an unavailable native listing retains supported local discovery with an explicit evidence gap", () => {

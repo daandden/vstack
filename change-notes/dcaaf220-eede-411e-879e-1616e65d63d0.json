@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Defer content reads and fingerprints for Git-dirty checkouts until targeted clean-wt inventory."
+  ]
+}

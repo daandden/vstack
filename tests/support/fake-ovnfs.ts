@@ -82,6 +82,8 @@ if (basename(process.argv[1]) === "omp") {
   } else if (rest[0] === "ls") {
     if (process.env.FAKE_OVNFS_LIST_FAIL) { console.error("fixture listing unavailable"); process.exit(1); }
     console.log(process.env.FAKE_OVNFS_LISTING ?? JSON.stringify({ checkouts: entries, snapshots }));
+  } else if (rest[0] === "status") {
+    console.log(JSON.stringify({ mount: root }));
   }
   else if (rest[0] === "diff") console.log(process.env.FAKE_OVNFS_DIFF ?? JSON.stringify({ changes: [] }));
   else process.exit(1);
