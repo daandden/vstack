@@ -16,10 +16,10 @@ function appendLateMention() {
 }
 
 function beforeLeaseScan() {
-  if (fault === "lease" || (fault === "fresh-lease" && ++leaseScans === 2)) {
+  if (fault === "lease" || (fault === "fresh-lease" && ++leaseScans >= 2)) {
     throw new Error("Injected lease scan failure");
   }
-  if (fault === "late-lease-mention") appendLateMention();
+  if (fault === "late-lease-mention" || (fault === "pause-reread" && ++leaseScans === 2)) appendLateMention();
 }
 
 if (process.platform !== "linux") {
@@ -49,6 +49,7 @@ mock.module("node:fs", () => ({
     if (fault === "archive-read" && args[0] === path) appendFileSync(`${path}.opens`, "opened\n");
     if (fault === "late-archive-mention" && args[0] === path) appendLateMention();
     if (fault === "pause-archive" && args[0] === path) pause("Scratch archive read paused");
+    if (fault === "pause-reread" && args[0] === path && mentioned) pause("Archive reread paused");
     return Reflect.apply(openSync, fs, args);
   },
   readFileSync: (...args: Parameters<typeof readFileSync>) => {

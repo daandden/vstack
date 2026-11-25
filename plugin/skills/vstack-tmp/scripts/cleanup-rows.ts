@@ -24,7 +24,8 @@ type OrdinaryEntry = { path: string; kind: string; ancestor: string } & (
   { protection: RowStatus } | { session: string } | { directory: boolean }
 );
 type ArchiveEvidence = { paths: Map<string, boolean>; error?: string } & Partial<Awaited<ReturnType<typeof searchSessionArchives>>>;
-type DeleteEvidence = { archives: ArchiveEvidence; leases?: ReturnType<typeof captureSessionLeases> };
+type LeaseSnapshot = ReturnType<typeof captureSessionLeases>;
+type DeleteEvidence = { archives: ArchiveEvidence; leases?: LeaseSnapshot };
 type BuiltRows = { rows: Row[]; inventoryIssues: string[]; selectionError?: string; archiveTitles?: Map<string, string> };
 type InventoryIssue = { kind?: string; reason: string };
 type ProjectInventory = {
@@ -267,18 +268,28 @@ function rowLeaseStatus(row: OrdinaryRow, leases: ReturnType<typeof readSessionL
   return unavailable === undefined ? offered : withheld(unavailable);
 }
 
-export function recheckRowLeases(ctx: CleanupContext, row: OrdinaryRow, evidence: DeleteEvidence): RowStatus {
+/** Rereads changed archives of live sessions, so the row rebuilt next sees their latest mentions. */
+export async function settleDeleteEvidence(ctx: CleanupContext, key: RowKey, evidence: DeleteEvidence) {
+  if (key[1] !== "session" && key[1] !== "folder") return;
+  const current = captureSessionLeases(ctx.witness, ctx.ompHome);
+  const { archives, leases: early } = evidence;
+  if (archives.settleHeldArchives) {
+    archives.heldArchiveError = await archives.settleHeldArchives(id => current.isHeld(id) || !!early?.isHeld(id));
+  }
+}
+
+/** Reads leases right before removal; `changed` means a live archive changed after the settle, so the row needs a rebuild. */
+export function recheckRowLeases(ctx: CleanupContext, row: OrdinaryRow, evidence: DeleteEvidence): RowStatus | { state: "changed"; reason: string } {
   const [, kind, id] = row.key;
   if (kind !== "session" && kind !== "folder") return offered;
-  const sessions = kind === "session" ? row.linkedSessions ?? [id] : [];
   try {
-    const fresh = captureSessionLeases(ctx.witness, ctx.ompHome);
-    const status = rowLeaseStatus(row, fresh.read(sessions));
+    const final = captureSessionLeases(ctx.witness, ctx.ompHome);
+    const status = rowLeaseStatus(row, final.read(kind === "session" ? row.linkedSessions ?? [id] : []));
     if (status.state !== "offered" || !row.hasLegacy) return status;
-    const early = evidence.leases, compareArchives = evidence.archives.changedHeldArchive;
-    if (!early || !compareArchives) return withheld("Session archive freshness is unavailable");
-    const changed = compareArchives(session => fresh.isHeld(session) && !early.isHeld(session));
-    return changed ? withheld(`Newly held session archive changed since the search or could not be checked: ${changed}`) : offered;
+    const { archives, leases: early } = evidence;
+    if (!early || !archives.changedHeldArchive) return withheld("Session archive freshness is unavailable");
+    const changed = archives.changedHeldArchive(session => final.isHeld(session) || early.isHeld(session));
+    return changed ? { state: "changed", reason: `Held session archive kept changing during the recheck: ${changed}` } : offered;
   } catch (error) {
     return withheld(`Cannot recheck session leases: ${errorMessage(error)}`);
   }

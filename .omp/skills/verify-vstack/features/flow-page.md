@@ -226,7 +226,7 @@ The stub proves delivery and presentation mechanics, not whether a model follows
 
 #### Stock native ask baseline
 
-Pin `omp` to 19.1.1 and `tern` to 0.9.32 on `PATH`. Run `case = "native"` with the [shared Eval launcher](#launch-native-ask-through-eval). Run it once with `tern = True` and once with `tern = False`, each in a new run directory. Inspect `flow-questions-native/summary.json` for assertions and cleanup.
+Pin `omp` to 19.2.1 and `tern` to 0.9.35 on `PATH`. Run `case = "native"` with the [shared Eval launcher](#launch-native-ask-through-eval). Run it once with `tern = True` and once with `tern = False`, each in a new run directory. Inspect `flow-questions-native/summary.json` for assertions and cleanup.
 
 The helper loads the checkout's plugin and copies the candidate Flow runtime into a new HOME outside the real home. The provider listens only on localhost. The Tern case starts its own window and daemon through `tern-verify`. Use the built-in `ask` tool without omp-tools.
 
