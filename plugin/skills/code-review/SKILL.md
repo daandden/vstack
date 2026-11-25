@@ -29,7 +29,7 @@ Otherwise, when the user supplies a PR as a number or URL, pin it through these 
 4. Open one detached checkout at the head SHA through the `skill://vstack-worktree` script, with purpose `code-review-<first 12 characters of the head SHA>` and a record in this run's entry inside the marked `code-review` session folder from `skill://vstack-tmp`. Use the returned `path` and keep the record for cleanup. Only when the backend is `omp-wt` and `cloned` is false, go on with tracked files only, because reviewers only read files. Leave the user's working tree, index, and current branch unchanged.
 5. When the run ends, also when it stops early, remove this checkout through the script's `remove --record <record.json>` command.
 
-Otherwise use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, ask for the fixed point through `ask` under flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow.
+Otherwise use the commit SHA, branch, tag, or merge-base that the user supplied. If missing or ambiguous, check the request, branch history, and available comparison metadata. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before using `ask` for a fixed point the evidence cannot identify. Follow flow-page's "Every ask in a Flow" when enrolled, or use plain `ask` in chat. Do not review a guessed diff.
 
 Make sure that the ref resolves with `git rev-parse <fixed-point>`.
 
@@ -58,7 +58,7 @@ Read the tracker workflow from the vstack configuration above. Look for the orig
 1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, or tracker keys such as Jira `MY_PROJ-12`), fetched with their full body and comments through that workflow. For an MCP tracker, read the named server's current tool list, descriptions, and parameter schemas. Select the issue and comment read tools using the recorded project facts and original issue key, without per-operation config rows or assumed tool names. If discovery fails, the server is unreachable, or a needed capability is missing, name the server and gap in Spec's chat line, then try the next source. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 2. A path the user passed as an argument.
 3. A file under `docs/`, `specs/`, or `.scratch/` matching the branch or feature. In Private mode search `<vstack root>/artifacts/` instead of `.scratch/` too.
-4. If nothing is found, ask for the spec source through that same question route. If the user says there is none, skip Spec and report `no spec available`.
+4. If nothing is found, apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). Use the fixed-point question route only when the user can identify a missing source that matters to the review. If the evidence establishes there is no spec, skip Spec and report `no spec available`. If no source can be established, report Spec as unavailable, not reviewed.
 
 ### 3. Identify the standards sources
 
@@ -117,7 +117,7 @@ The Spec reviewer prompt must include:
 - The path or fetched contents of the spec.
 - The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Give each finding a short title, a label such as `issue` or `suggestion`, whether it blocks the merge, its impact, the suggested change, and its evidence, in that order. Open the impact with what a user or caller sees, such as 'When you run X, Y happens instead of Z', then state the decision the user faces. The impact describes behavior only and names no file path; the file and line go in the evidence, for whoever fixes it. Say whether the spec settles the change, or why it needs the user's judgement, such as a spec line that reads two ways. Under 400 words."
 
-If the user confirms there is no spec, skip the Spec reviewer and record the reason in the review's Spec axis. An unreadable source is unavailable, not a clean review.
+If no spec applies, skip the Spec reviewer and record the reason in the review's Spec axis. An unidentified or unreadable source is unavailable, not a clean review.
 
 The Blast radius reviewer prompt must include:
 

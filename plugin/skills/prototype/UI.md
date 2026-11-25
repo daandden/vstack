@@ -97,6 +97,8 @@ In a Flow, publish the actual route as a `runtime: "local-app"` artifact on a pr
 
 For feedback on a shown variant, apply the [Settle-or-ask rule's correction path](../../rules/vstack-settle-or-ask.md#decisions-the-agent-settles). Show the revised variant through the same handover. A correction does not select a winner for step 6.
 
+Use the parent skill's question policy for any remaining variant choice. Record a choice already settled by the user's instruction or evidence without a second picker.
+
 ### 6. Capture the answer and clean up
 
 Once a variant has won, capture the answer (which variant and why), then capture the prototype the way the [SKILL](SKILL.md) describes. Fold the winner into the real code and move the rest onto the throwaway branch, not into main:

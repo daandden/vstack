@@ -33,7 +33,7 @@ In a Flow, publish a `prototype` Result with a declarative `demo` or a runnable 
 
 In a Flow, put the design question, walkthrough steps, observed evidence, limitations, and throwaway notice in a Document Result beside the prototype. Use Comparison for competing variants and Metrics for measurements. Attach the screenshots and raw script output. Keep the actual source and capture paths required below. The Flow page is the reading document, not a second report page or the canonical implementation.
 
-Put real questions through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never through a prototype button. Demo state remains browser-local and authorizes nothing.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before asking for a prototype choice. Deliver a remaining question through `ask` under skill://flow-page's "Every ask in a Flow" when enrolled, or plain `ask` in chat. Demo state remains browser-local and authorizes nothing.
 
 ## Rules that apply to all three
 

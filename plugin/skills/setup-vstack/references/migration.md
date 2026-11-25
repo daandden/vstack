@@ -8,7 +8,7 @@ Save each later plan JSON unchanged in the run entry from step 2 of SKILL.md, as
 
 ## 1. Ask
 
-Call plain `ask` with one question, "This repo has Matt Pocock config. Migrate it to vstack first?", and the options Migrate first (Recommended) and Set up beside it. Name the Matt files in chat before the picker. On Set up beside it, keep the read-only plan for Done and go back to step 3 of SKILL.md.
+Apply the [Settle-or-ask test](../../../rules/vstack-settle-or-ask.md). Reuse an explicit direction to migrate or set up beside the Matt config. If that choice remains open, name the Matt files in chat and use plain `ask` with Migrate first (Recommended) and Set up beside it. On Set up beside it, keep the read-only plan for Done and go back to step 3 of SKILL.md. This choice does not authorize destructive plan items.
 
 ## 2. Mode
 

@@ -63,13 +63,17 @@ Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` voc
 
 ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `impact` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
 
-Do not propose interfaces yet. Publish the candidate Result, figure attachments, Document, and complete pick round with its Decision brief in one Flow CLI contribution. Ask and record the response under `skill://flow-page`'s "Every ask in a Flow" contract. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured Mermaid attachment references in the question's `figures`, each with `kind: "before-after"`, in candidate order.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to candidate selection. Reuse a selection already settled by the request or evidence. If no question remains, publish the Results without a round and proceed with the selected candidate.
+
+If candidate selection needs a question, publish the candidate Result, figure attachments, Document, and complete pick round with its Decision brief in one Flow CLI contribution. Ask and record the response under `skill://flow-page`'s "Every ask in a Flow". Offer one option per entry in entry order and mark the top recommendation. In `results`, link each candidate entry. The reader needs to compare before and after shapes. Repeat the captured Mermaid references in the question's `figures` in candidate order, with `kind: "before-after"`. Do not propose interfaces yet.
 
 ### 3. Design It Twice
 
-Once the user picks a candidate, read `skill://codebase-design` and run its DESIGN-IT-TWICE.md in this Stage before any other question. Its problem-space Document, screened design Document, and Comparison Result stay on this page. Preserve complete interfaces and usage examples in the Document and compare depth, locality, and seam placement in the Comparison.
+Once a candidate is selected, read `skill://codebase-design` and run its DESIGN-IT-TWICE.md in this Stage before any design question. Its problem-space Document, screened design Document, and Comparison Result stay on this page. Preserve complete interfaces and usage examples in the Document and compare depth, locality, and seam placement in the Comparison.
 
-The design question is the grilling loop's first question: which design, or which hybrid, to keep. Deliver the complete round with its Decision brief through the same Flow publication and `ask` contract after the design Results, with one option per surviving alternative and a hybrid option when proposed. Link the question's `results` to those Results. Its description names each dropped design with its red flag. Its `needs` includes seeing how a caller uses each design. The Results do not satisfy that need, so repeat the actual usage example on each design's option as `preview: { text: "<usage example>", kind: "option-preview" }`. Record the response through the common contract.
+Apply the shared test to the design disposition. If no question remains, record the settled design with its basis and continue the grilling loop at the next open decision.
+
+If the design disposition needs a question, put it first in the grilling loop. Deliver its Decision brief through the same Flow publication and `ask` contract after the design Results. Offer one option per surviving alternative and a hybrid option when proposed. Link the question's `results` to those Results. Name dropped designs and their red flags in its description. Declare the need to see how a caller uses each design, and repeat its actual usage example on each option as `preview: { text: "<usage example>", kind: "option-preview" }`. Record the response through the common contract.
 
 If Design It Twice stops at its Fan-out stop clause, or screening drops every design, publish the failed screening with its limitations rather than a fabricated Comparison. Name each dropped design and red flag in the next question's description, then grill the module's shape without designs.
 
@@ -83,6 +87,6 @@ Side effects happen inline as decisions crystallize. Run the `skill://domain-mod
 
 - Naming a deepened module after a concept not in `GLOSSARY.md`? Add the term to `GLOSSARY.md`. Create the file lazily if it doesn't exist.
 - Sharpening a fuzzy term during the conversation? Update `GLOSSARY.md` right there.
-- User rejects the candidate with a load-bearing reason? Offer recording an ADR through `ask` so future architecture reviews do not re-suggest it. Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing. Skip ephemeral reasons ("not worth it right now") and self-evident ones.
+- If the user rejects a candidate for a lasting trade-off, record it only when it meets skill://domain-modeling's ADR criteria. Recording the decision needs no offer. Apply the shared test to any new policy the rejection leaves open.
 
-Every in-session question, including the pick and ADR offer, goes through flow-page's "Every ask in a Flow" contract. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. A headless run records the recommended assumption honestly, never as the user's answer.
+Deliver any remaining question under flow-page's "Every ask in a Flow" when enrolled, or plain `ask` in chat. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. A headless run records the recommended assumption as such, never as the user's answer.

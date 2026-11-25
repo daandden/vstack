@@ -45,23 +45,23 @@ Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. 
 
 ### Challenge against the glossary
 
-When the user uses a term that conflicts with the existing language in `GLOSSARY.md`, call it out immediately through `ask`: "Your glossary defines 'cancellation' as X, but you seem to mean Y, so which is it?"
+When a term conflicts with `GLOSSARY.md`, check whether the user means the existing concept or is proposing a change. Surface the discrepancy. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before asking about the meaning.
 
 ### Sharpen fuzzy language
 
-When the user uses vague or overloaded terms, propose a precise canonical term through `ask` with the candidates. "You're saying 'account': do you mean the Customer or the User? Those are different things."
+When a term is vague or overloaded, compare the candidate meanings against the glossary and the user's examples. Apply the shared test before putting competing meanings or a new name to the user.
 
 ### Discuss concrete scenarios
 
-When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and put each one to the user through `ask`, so they have to be precise about the boundaries between concepts.
+Stress-test domain relationships with concrete edge cases. Use the existing domain rules to answer the scenarios they cover. Put only unresolved choices that pass the shared test to the user.
 
 ### Cross-reference with code
 
-When the user states how something works, check whether the code agrees. If you find a contradiction, surface it through `ask`: "Your code cancels entire Orders, but you just said partial cancellation is possible, so which is right?"
+When the user states how something works, check the code. Distinguish current behavior from a proposal to change it. Report the observed mismatch and apply the shared test to any unresolved product choice.
 
 ### Update GLOSSARY.md inline
 
-Reuse existing definitions and carry settled terms into `GLOSSARY.md` without asking again. When a term is resolved, update the glossary right there. Don't batch these up: capture them as they happen. Ask about a new product concept or a preferred public name. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
+Reuse existing definitions and carry settled terms into `GLOSSARY.md` without asking again. Apply the shared test to a new concept or preferred public name. Update the glossary when a term is resolved. Use [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
 
 `GLOSSARY.md` should be totally devoid of implementation details. Do not treat `GLOSSARY.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
 
@@ -73,4 +73,4 @@ Record a decision the user already made as an ADR without offering it through `a
 2. **Surprising without context**: a future reader will wonder "why did they do it this way?"
 3. **The result of a real trade-off**: there were genuine alternatives and you picked one for specific reasons
 
-If any of the three is missing, skip the ADR. Record the settled decision, its placement, and any supersession links. Recording never settles a new fallback, guarantee, or policy. Ask about any such open choice before recording it as decided. In a grill, record the bookkeeping as an Assumed pick with its reason under grilling's Bookkeeping list. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+If any of the three is missing, skip the ADR. Record the settled decision, its placement, and any supersession links. Apply the shared test before raising a new fallback, guarantee, or policy choice. Do not record it as an agreed ADR while it is open. In a grill, record the bookkeeping as an Assumed pick with its reason. Use [ADR-FORMAT.md](./ADR-FORMAT.md).

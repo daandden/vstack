@@ -25,7 +25,7 @@ In a Flow, attach redacted repros, captures, raw outputs, and regression evidenc
 
 This skill has you show commands, outputs and captured artifacts. **Redact every secret first**: write `<REDACTED>` in its place. Build loops against env vars, so the credential stays in the environment rather than in what you show. Captured artifacts carry auth headers: quote only the lines that carry the signal.
 
-If the redacted output is not enough to diagnose the bug, say so and ask the user through `ask`.
+If redaction leaves too little evidence, look for safe local observations before treating the missing evidence as a blocker. Follow "When you genuinely cannot build a loop" for any needed question. Never share unredacted evidence.
 
 ## Phase 1: Build a feedback loop
 
@@ -64,7 +64,7 @@ The goal is not a clean repro but a **higher reproduction rate**. Loop the trigg
 
 ### When you genuinely cannot build a loop
 
-Stop and say so explicitly. List what you tried. Ask the user through `ask` for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. A timed-out answer is not the user's. Re-ask once, using `again` in a Flow, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do **not** proceed to hypothesise without a loop.
+Stop and list what you tried. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). Use `ask` only for the missing access or redacted artifact the user can supply, or for permission to add temporary production instrumentation. If no such question can unblock the investigation, report the limit. A timed-out answer is not the user's. Re-ask once, using `again` in a Flow, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do not proceed to hypothesize without a loop.
 
 ### Completion criterion: a tight loop that goes red
 
@@ -113,7 +113,7 @@ If you cannot state the prediction, the hypothesis is a vibe: discard or sharpen
 
 Each probe must map to a specific prediction from Phase 3. **Change one variable at a time.**
 
-If a candidate fix has a lasting cost, such as lost cache reuse, money per use, or latency, first run each cost-free hypothesis alone on the same Phase 1 loop. Before choosing the costly fix, show each cost-free run's measured result beside the costly run's result from that loop. Ask the user through `ask` which fix to keep. A timed-out, cancelled, empty, or unavailable answer is not a pick. Re-ask once through `ask`, using `again` in a Flow. If no user pick follows, stop without choosing and say why.
+If a candidate fix has a lasting cost, such as lost cache reuse, money per use, or latency, first run each cost-free hypothesis alone on the same Phase 1 loop. Compare the measured results from that loop against the agreed guarantees and budget. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to the trade-off. For a choice the user still owns, show the compared results and use `ask`. A timed-out, cancelled, empty, or unavailable answer is not a pick. Re-ask once through `ask`, using `again` in a Flow. If no user pick follows, stop without choosing and say why.
 
 Tool preference:
 

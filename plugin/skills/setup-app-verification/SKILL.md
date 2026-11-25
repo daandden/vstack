@@ -35,7 +35,9 @@ Run the build and launch as found. If the checkout does not build or start as-is
 
 ## 2. Generate the Verify skill
 
-On a committing run, run the dirty check before you write anything. The dirty check runs `commit.ts state --app <app>`, which prints `mode`, `dir`, and `dirty` as JSON. When `dirty` is true, tell the user that `<dir>` has uncommitted changes and that the commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop. Unavailable questioning grants no approval.
+Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md). The dirty check protects changes the run did not make. Preserve the consent to include those changes, without re-asking for an exact inclusion the user already authorized.
+
+For a committing run, run `commit.ts state --app <app>` before writing. It returns `mode`, `dir`, and `dirty`. If `dirty` is true and the user has not authorized including the existing changes, name `<dir>` and explain that the commit would include those changes. Use `ask` with Go on and include them, and Stop so I can commit them first. On Stop, stop. Re-ask a timed-out gate once, with `again` in a Flow. If it times out again or the picker is unavailable, stop without acting.
 
 In Standard mode, write `.omp/skills/verify-<app>/SKILL.md` in this checkout. In Private mode, write `<vstack root>/skills/verify-<app>/SKILL.md`. Create an absolute symlink at this checkout's `.omp/skills/verify-<app>` to that directory. Add the literal line `.omp/skills/verify-*` once to the file returned by `git rev-parse --git-path info/exclude`. Leave shared ignore files unchanged. Never overwrite a conflicting directory or link. Report the conflict instead.
 

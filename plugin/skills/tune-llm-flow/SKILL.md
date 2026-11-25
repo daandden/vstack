@@ -10,7 +10,7 @@ Supply implement with Ratchet's measured loop for an app's LLM flow. hillclimb o
 
 ## Settle setup in the grill
 
-Read the app's real entry point before the grill closes. Record these five decisions as questions and answers on the vstack run's Flow page through skill://flow-page, with a Decision brief and satisfied reader needs in each complete round:
+Read the app's real entry point before the grill closes. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to the five setup decisions below. Record the basis for settled decisions and carry forward supplied answers. Publish any remaining questions through skill://flow-page with a Decision brief and satisfied reader needs, or use plain `ask` in chat. Preserve consent for data use, retention, and spending.
 
 1. The LLM flow and entry point, including what one input carries.
 2. The case input source. Prefer production examples with permission and retention constraints settled, then bug reports, user cases, or synthesis anchored on real examples. Explain that the agreed cases enter git history, including production data they contain.
@@ -18,7 +18,7 @@ Read the app's real entry point before the grill closes. Record these five decis
 4. The editable paths and off-limits paths. Cases and the runner and grader remain separate from the tuned paths.
 5. A checkable stop rule, such as a round limit, plateau, or one round at a time. Settle any target and attempt floor that the user requests.
 
-Keep one contract with the page's question ids, exact paths, metric, guardrails, and stop rule. Pass it through the spec or ticket to implement. Reuse supplied answers instead of asking them again. If implement receives an incomplete contract, report the missing decision and stop tuning rather than inventing setup or starting Ratchet's kickoff.
+Keep one contract with the decision sources, exact paths, metric, guardrails, and stop rule. Include question ids for answers and cite the basis for Assumed picks. Pass the contract through the spec or ticket to implement. If it remains incomplete after checking those sources, report the missing decision and stop tuning rather than inventing setup or starting Ratchet's kickoff.
 
 The contract carries the agreed task facts, not an Addon pointer or pick list. implement reads this Addon when its gathered source intent calls for sustained LLM-flow improvement, while its run-start tool still selects principles.
 
@@ -48,10 +48,11 @@ Bind `r = ratchet("<eval>")` in Python eval. Every method below is async and ret
 
 ## Review on the page, approve through Ratchet
 
-Apply this procedure to `inputs`, `grader`, and `plan`, including every revision and stale approval:
+Apply this procedure to `inputs`, `grader`, and `plan`, including revisions and stale approval. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) before authoring. A gate Ratchet requires is a native approval, not an ordinary question or permission to repeat kickoff. Reuse current applicable approval. Never replace a required native approval with an Assumed pick.
 
 1. Publish the full material as a typed Result in this tune Stage. The inputs table has one row for every case with its complete input, expected answer, tag, and provenance. The grader cards show five complete inputs, outputs, grades, and the grader's reasoning. The plan table covers the fields above. Do not replace review material with file pointers or a sample of the case set.
 2. Prepare a complete round and question with the native labels `Approve`, `Revise`, and `Abort`, without authored option letters. Explain that Revise takes feedback and records no approval, and dismissal is not approval. Write its Decision brief. Use `brief.no_recommendation` because this native approval starts unselected. Declare and fulfill its reader needs. Link the question's `results` to every relevant Result entry by ref. Submit new material and the question atomically. The script owns ids, letters, numbering, and reciprocal links.
+   In each new or re-asked Flow question, set `brief.ask_reason` to `explicit-decision-required` for the native gate. In `brief.evidence_checked`, name the approval identity or freshness evidence checked.
 3. Follow flow-page's native approval exception for current-content checks and the host dialog. Read the assigned Q number and title from the receipt's `ask` payload. Call only Ratchet's existing approval interface:
 
    ```python

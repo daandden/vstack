@@ -6,15 +6,15 @@ disable-model-invocation: true
 
 Turn something the user can't answer alone into a **questionnaire**: a Markdown document they hand to one person to fill in async, or fill out together over a meeting. The recipient holds knowledge the user lacks; the questionnaire pulls it out of them.
 
-**Grill the send, not the subject.** Interview the user through `ask` only about the _send_, which they can always answer: who it goes to, and what they need back. Follow `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. The questions in the document then target the **gap** between what the recipient knows and what the user needs. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the questionnaire and say why. Unavailable questioning leaves the required answers unresolved.
+Grill the send, not the subject. Recover the recipient and requested outcome from the request and earlier decisions. Apply the [Settle-or-ask test](../../rules/vstack-settle-or-ask.md) to gaps. Deliver any remaining questions through `ask` under skill://flow-page's "Every ask in a Flow" when enrolled, or plain `ask` in chat. A timeout is not the user's answer. Re-ask an unanswered gate once, using `again` in a Flow. If it times out again, stop without writing the questionnaire and say why. Unavailable questioning leaves the required answers unresolved.
 
 Follow `skill://flow-page`'s "Stage entry/exit line". The recipient and purpose questions below belong to this run.
 
-1. **Who is it going to?** Through the shared contract, ask one round about the recipient's role, expertise, and relationship to the user. This fixes the questionnaire's tone and how much context it must carry. Done when you know who the recipient is and what they know that the user doesn't.
+1. Identify the recipient's role, expertise, and relationship to the user. Ask only about unresolved details that change the questionnaire's tone or context. Finish when you know who the recipient is and what they know that the user doesn't.
 
-2. **What do you need back?** Through the shared contract, ask one round about the specific decisions or facts the user needs from the recipient. Offer likely answers as options. The user can supply unlisted answers through Other. Done when you have a concrete list of what the user must walk away able to do or decide.
+2. Identify which decisions or facts the user needs from the recipient. For a choice that still needs an answer, offer likely options and allow Other. Finish when you have a concrete list of what the user must walk away able to do or decide.
 
-3. **Write and publish the questionnaire.** Draft questions aimed at the gap from steps 1–2, following the Document structure below. Keep the canonical export at `to-questionnaire-<slug>.md` in the current directory. Submit its headed content as a Document Result with `canonical: { "file": "to-questionnaire-<slug>.md" }` and a captured `file` attachment of the export. Finish the owned Stage after publication. Report the canonical path without a Flow link. Done when the file exists, every item from step 2 has a question, and the Flow page contains the captured questionnaire.
+3. **Write the questionnaire.** Draft questions for the recipient using the gap from steps 1–2 and the Document structure below. Keep the canonical export at `to-questionnaire-<slug>.md` in the current directory. In a Flow, submit a Document Result with `canonical: { "file": "to-questionnaire-<slug>.md" }`, attach the export, and finish the Stage. Report the canonical path without a Flow link. Finish when the file exists and every item from step 2 has a question, with the captured questionnaire on the Flow page when enrolled.
 
 ## Document structure
 
