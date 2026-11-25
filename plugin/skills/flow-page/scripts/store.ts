@@ -1,6 +1,7 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, type Stats } from "node:fs";
+import { constants, copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, type BigIntStats } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { basename, dirname, join, sep } from "node:path";
+import { tmpdir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { repoKey, scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
 import { addAliases, aliasesOf, closedAt, SLUG, upgrade, type State } from "./model.ts";
 import { Refusal } from "./fields.ts";
@@ -263,13 +264,11 @@ export class FlowStore {
       } catch (error) { report(`binding ${basename(path)}`, path, error); }
     }
   }
-  retention(path: string, st: Stats): FlowRetentionEntry {
+  retention(path: string, st: BigIntStats): FlowRetentionEntry {
     const entry = basename(path);
-    if (entry.startsWith(".")) return { path, entry, registry: true, newest: 0, size: 0 };
+    if (entry.startsWith(".")) return { path, entry, registry: true, folderIdentity: "", size: 0, retention: "unreadable" };
     const row = this.db.select({ id: flows.id, closed: flows.closed }).from(flows).where(eq(flows.folder, entry)).get();
-    const source = join(path, "data/state.json");
-    const retention: Retention | undefined = row ? { flow: row.id, ...(row.closed === null ? {} : { closed: row.closed }) } : existsSync(source) ? "unreadable" : undefined;
-    return { path, entry, registry: false, ...measureEntry(path, st), retention };
+    return retentionEntry(path, st, row);
   }
   delete(path: string, recheck: (entry: FlowRetentionEntry) => string | undefined): string | undefined {
     let staged: string | undefined;
@@ -277,7 +276,7 @@ export class FlowStore {
     let deletedId: string | undefined;
     try {
       reason = this.migrating(() => {
-        const reason = recheck(this.retention(path, lstatSync(path)));
+        const reason = recheck(this.retention(path, lstatSync(path, { bigint: true })));
         if (reason) return reason;
         const row = this.db.select({ id: flows.id }).from(flows).where(eq(flows.folder, basename(path))).get();
         deletedId = row?.id;
@@ -316,17 +315,98 @@ export function hostedStore(home: string, key: string): FlowStore | undefined {
   return realpathSync(dir).startsWith(realpathSync(scratchRoot(home)) + sep) ? new FlowStore(dir, true) : undefined;
 }
 
-export type FlowRetentionEntry = { path: string; entry: string; registry: boolean; newest: number; size: number; retention?: Retention };
-export function flowRetentionEntry(path: string, st = lstatSync(path)): FlowRetentionEntry {
-  return new FlowStore(dirname(path)).retention(path, st);
+export type FlowRetentionEntry = { path: string; entry: string; registry: boolean; folderIdentity: string; size: number; retention: Retention };
+type IndexedRetention = { id: string; closed: string | null };
+
+function retentionEntry(path: string, st: BigIntStats, row?: IndexedRetention, allowLegacy = false): FlowRetentionEntry {
+  const base = { path, entry: basename(path), registry: false, folderIdentity: `${st.dev}:${st.ino}:${st.birthtimeNs}`, size: 0 };
+  if (!st.isDirectory()) return { ...base, retention: "unreadable" };
+  try {
+    let retention: Retention = "unreadable";
+    if (row) {
+      retention = { flow: row.id, ...(row.closed === null ? {} : { closed: row.closed }) };
+    } else if (allowLegacy) {
+      const data = join(path, "data");
+      if (lstatSync(data, { throwIfNoEntry: false })?.isDirectory()) {
+        const source = join(data, "state.json");
+        if (lstatSync(source, { throwIfNoEntry: false })?.isFile()) {
+          const state = upgrade(JSON.parse(readFileSync(source, "utf8")));
+          if (SLUG.test(state.flow.id)) retention = { flow: state.flow.id, closed: closedAt(state) };
+        }
+      }
+    }
+    return { ...base, size: retention === "unreadable" ? 0 : measureEntry(path, st).size, retention };
+  } catch {
+    return { ...base, retention: "unreadable" };
+  }
 }
-export function flowRetentionEntries(projectScratch: string): FlowRetentionEntry[] {
-  const dir = join(projectScratch, FLOW_KIND), store = new FlowStore(dir);
-  return readdirSync(dir).sort().flatMap(entry => {
-    const path = join(dir, entry);
-    let st: Stats;
-    try { st = lstatSync(path); } catch { return []; }
-    return [store.retention(path, st)];
+
+// A SQLite read-only connection may still create or write a WAL shared-memory file.
+// Query a private copy of the database and WAL. Reject a copy made during a write or checkpoint.
+function indexedRetention(projectScratch: string): Map<string, IndexedRetention> {
+  const db = join(projectScratch, "flow.db"), wal = `${db}-wal`;
+  const source = [db, wal];
+  function stat(path: string) {
+    const st = lstatSync(path, { bigint: true, throwIfNoEntry: false });
+    if (st && !st.isFile()) throw new Error(`${path} is not a regular file`);
+    return st;
+  }
+  const before = source.map(stat);
+  if (!before[0]) {
+    if (before[1]) throw new Error("Flow WAL is present without its database");
+    return new Map();
+  }
+  const home = realpathSync(resolve(projectScratch, "../../.."));
+  function stagingCopy(base: string): string {
+    const staging = realpathSync(base);
+    const rel = relative(home, staging);
+    if (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`)) {
+      throw new Error("Flow retention cannot copy the database under the Scratch home");
+    }
+    return mkdtempSync(join(staging, "vstack-flow-read-"));
+  }
+  let folder: string;
+  try { folder = stagingCopy(tmpdir()); }
+  catch (error) {
+    const system = process.platform === "win32" ? process.env.SystemRoot : undefined;
+    if (!system || !isAbsolute(system)) throw error;
+    folder = stagingCopy(join(system, "Temp"));
+  }
+  try {
+    const copy = join(folder, "flow.db");
+    for (const [i, path] of source.entries()) if (before[i]) {
+      copyFileSync(path, join(folder, basename(path)), constants.COPYFILE_FICLONE);
+    }
+    for (const [i, path] of source.entries()) {
+      const a = before[i], b = stat(path);
+      if (a?.dev !== b?.dev || a?.ino !== b?.ino || a?.size !== b?.size || a?.mtimeNs !== b?.mtimeNs || a?.ctimeNs !== b?.ctimeNs) {
+        throw new Error("Flow database changed during listing");
+      }
+    }
+    const { db, sqlite } = projectDatabase(copy, true);
+    try {
+      return new Map(db.select({ folder: flows.folder, id: flows.id, closed: flows.closed }).from(flows).all().map(row => [row.folder, row]));
+    } finally { sqlite.close(); }
+  } finally { rmSync(folder, { recursive: true, force: true }); }
+}
+
+export function flowRetentionEntries(projectScratch: string, only?: string): FlowRetentionEntry[] {
+  const dir = join(projectScratch, FLOW_KIND);
+  const names = (only === undefined ? readdirSync(dir).sort() : [only]).filter(name => !name.startsWith("."));
+  if (!names.length) return [];
+  function readIndex(): Map<string, IndexedRetention> | undefined {
+    try { return indexedRetention(projectScratch); }
+    catch { return undefined; }
+  }
+  const indexed = readIndex();
+  return names.flatMap(name => {
+    const path = join(dir, name);
+    try {
+      const st = lstatSync(path, { bigint: true, throwIfNoEntry: false });
+      return st ? [retentionEntry(path, st, indexed?.get(name), indexed !== undefined)] : [];
+    } catch {
+      return [{ path, entry: name, registry: false, folderIdentity: "", size: 0, retention: "unreadable" }];
+    }
   });
 }
 export async function deleteFlowEntry(path: string, recheck: (entry: FlowRetentionEntry) => string | undefined): Promise<string | undefined> {

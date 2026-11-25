@@ -58,7 +58,7 @@ local function tiled_owner(cx, pane)
 	return pane
 end
 
-local function open_popup(cx, caller, home, age)
+local function open_popup(cx, caller, home, age, witness)
 	close_popups(cx, false)
 	local owner = if cx.session:pane(caller) then caller else cx.session:focused()
 	if owner == nil then
@@ -66,7 +66,7 @@ local function open_popup(cx, caller, home, age)
 		return
 	end
 	owner = tiled_owner(cx, owner)
-	local pane = cx.layout:split(owner, "right", { block = KIND, args = { home, age } }, { focus = false })
+	local pane = cx.layout:split(owner, "right", { block = KIND, args = { home, age, witness } }, { focus = false })
 	if pane == nil then
 		cx:toast("error", "Could not open Scratch cleanup", "The vstack-clean plugin is not loaded on this host.")
 		return
@@ -90,11 +90,11 @@ local function open_popup(cx, caller, home, age)
 end
 
 tern.route.open(function(request, cx)
-	local home, caller, age = string.match(request.path, "^(.+)/%.vstack/clean%-popup/(%d+)/(%d+[hdw]?)$")
+	local home, caller, age, witness = string.match(request.path, "^(.+)/%.vstack/clean%-popup/(%d+)/(%d+[hdw]?)/([%w_%-]+)$")
 	if home == nil then
 		return nil
 	end
-	open_popup(cx, tonumber(caller), home, age)
+	open_popup(cx, tonumber(caller), home, age, witness)
 	return { handled = true }
 end)
 

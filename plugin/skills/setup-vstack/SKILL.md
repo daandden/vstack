@@ -76,7 +76,7 @@ Keep `block_file_dirty` from this first read for step 7. Edits that this run's M
 
 ### 2. Matt check
 
-Read `skill://vstack-tmp` and resolve the project Scratch dir once. Every worktree of the repo shares that dir, so this run needs its own entry. Run `mkdir -p <Scratch dir>/setup-vstack && mktemp -d <Scratch dir>/setup-vstack/run-XXXXXX`. Keep the path it prints as the run entry. Run `migrate.ts plan > <run entry>/plan-1.json`. The plan reads this repo and changes nothing. When its `items` list is empty, go on to step 3. Otherwise read [references/migration.md](references/migration.md) and follow it. The Matt files are the `from` paths of the plan's items inside `root` or `common_dir`. A `code-host` item's `from` is a shipped template, not a Matt file. The reference returns here in one of three ways:
+Open the marked `setup-vstack` session folder through `skill://vstack-tmp`. Assign its absolute path to `SESSION_DIR`. Run `mktemp -d "$SESSION_DIR/run-XXXXXX"`. Keep the path it prints as the run entry. Run `migrate.ts plan > <run entry>/plan-1.json`. The plan reads this repo and changes nothing. When its `items` list is empty, go on to step 3. Otherwise read [references/migration.md](references/migration.md) and follow it. The Matt files are the `from` paths of the plan's items inside `root` or `common_dir`. A `code-host` item's `from` is a shipped template, not a Matt file. The reference returns here in one of three ways:
 
 - The user set up beside the Matt files, through the first question or Cancel. Keep the Matt files for step 8 and go on to step 3.
 - The Migration is incomplete. Stop the run after showing the failure.

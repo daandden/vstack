@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Extract omp session lease detection for Scratch cleanup to reuse without changing clean-wt's checkout ownership checks."
+  ]
+}

@@ -10,7 +10,7 @@ Explain what the thing is, how it works, and why it has that shape. The goal is 
 ## Step 1. Orient
 
 Read the conversation to learn why the person asks and what they already know. Skip familiar material and put depth where their question is. Read just enough code to identify the target.
-Use the caller's vstack root and project Scratch dir if supplied. Otherwise resolve the root per the Private-mode rule, read `skill://vstack-tmp`, and obtain the project Scratch dir once. Keep figure sources in a distinct `explain/<run-id>/` entry.
+Use the caller's vstack root if supplied. Otherwise resolve the root per the Private-mode rule. Open the marked `explain` session folder through `skill://vstack-tmp` and keep figure sources inside it, in a distinct run entry.
 
 Check enrollment through `skill://flow-page`'s "Stage entry/exit line" before any Flow discovery or creation. An explanation outside a Flow stays in chat. Read-only investigators return findings to the coordinator.
 
@@ -20,7 +20,7 @@ For a subsystem, run both. A small change can need just one.
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per skill (how, why). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: run `skill://how` or `skill://why` on the target and return its output unedited with citations, inference labels, and any figure points, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report the explanation as not written, because it has no how or why findings.
+Fan-out (skill://vstack-fan-out): parts: one per skill (how, why). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: run `skill://how` or `skill://why` on the target and return its output unedited with citations, inference labels, and any figure points, the vstack root, the Scratch dir and session id. Wait for every result. If they cannot start, stop: report the explanation as not written, because it has no how or why findings.
 
 Wait for both results before blending them. For a single selected skill, read and run it yourself.
 

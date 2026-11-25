@@ -21,15 +21,15 @@ Recon is complete when it records the stack and targets, motion locations, exist
 
 Set a bounded coverage statement with the owner. A quick survey covers high-traffic interactions, a standard survey covers interactive UI, and a deep survey includes marketing and low-priority polish. For each surveyed area, account for all eight categories in the companion. Coverage is complete when each has evidence-backed findings or a recorded reason it is clear, not applicable, or unavailable. Unavailable is a proof gap, not a clean result.
 
-When the owner delegates an audit fact question, its brief includes the relevant companion section, recon facts, source-read-only constraint, absolute vstack root, Scratch, and a request for locations, observations, uncertainty, and open questions. A subagent neither chooses work for the user nor edits source.
+When the owner delegates an audit fact question, its brief includes the relevant companion section, recon facts, source-read-only constraint, absolute vstack root, and a request for locations, observations, uncertainty, and open questions. A subagent neither chooses work for the user nor edits source.
 
 Before a multi-area survey step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per independent audit area identified in recon. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: inspect its area against the companion, return findings and rejected candidates with evidence and open questions without edits, the vstack root and Scratch dir. Do not wait; keep working on vetting available evidence. If they cannot start, stop: the affected audit coverage remains undone.
+Fan-out (skill://vstack-fan-out): parts: one per independent audit area identified in recon. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: inspect its area against the companion, return findings and rejected candidates with evidence and open questions without edits, the vstack root. Do not wait; keep working on vetting available evidence. If they cannot start, stop: the affected audit coverage remains undone.
 
 For one delegated area use the owner's single-subagent contract instead:
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the audit area, companion sections, recon facts, source-read-only constraint, required findings and open questions, the vstack root and Scratch dir. Wait for its result. If it cannot be spawned, stop: that audit area remains undone.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the audit area, companion sections, recon facts, source-read-only constraint, required findings and open questions, the vstack root. Wait for its result. If it cannot be spawned, stop: that audit area remains undone.
 
 ## Vet and prioritize
 

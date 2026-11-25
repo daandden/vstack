@@ -2,13 +2,16 @@
 // The fake home goes in through --home only; nothing touches the real home.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
 
 const PATH_SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "path.ts");
+const PUBLISH_SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "to-tickets", "scripts", "publish.ts");
 const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
+const PAUSE_SCRATCH_MARK = join(import.meta.dir, "support", "pause-scratch-mark.ts");
+const SESSION = "019abcde-1234-7abc-8def-000000000001";
 
 let dir: string;
 let home: string;
@@ -19,9 +22,15 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-function runPath(cwd: string, ...args: string[]) {
-  const r = Bun.spawnSync(["bun", PATH_SCRIPT, "--home", home, ...args], { cwd, env: ENV, stdout: "pipe", stderr: "pipe" });
+function invokePath(cwd: string, isolatedHome: string, id?: string, ...args: string[]) {
+  const r = Bun.spawnSync([process.execPath, PATH_SCRIPT, "--home", isolatedHome, ...args], {
+    cwd, env: { ...ENV, PI_SESSION_ID: id }, stdout: "pipe", stderr: "pipe",
+  });
   return { code: r.exitCode, stdout: r.stdout.toString(), stderr: r.stderr.toString() };
+}
+
+function runPath(cwd: string, ...args: string[]) {
+  return invokePath(cwd, home, undefined, ...args);
 }
 
 /** A repo with one commit at `dir/<name>`. */
@@ -147,13 +156,156 @@ test("a Git spawn failure leaves no temporary files or storage namespace", () =>
   expect(readdirSync(temporary)).toEqual([]);
 });
 
-test("a kind prints and creates that kind's dir under the Scratch dir", () => {
-  const repo = makeRepo(join(dir, "e"), "shop");
-  const scratch = runPath(repo).stdout.trim();
-  const r = runPath(repo, "explain");
-  expect(r.code).toBe(0);
-  expect(r.stdout.trim()).toBe(`${scratch}explain/`);
-  expect(statSync(r.stdout.trim()).isDirectory()).toBe(true);
+test("default mode creates and reopens only a marked session folder for an ordinary kind", () => {
+  const repo = makeRepo(dir, "default-mode");
+  const isolatedHome = join(repo, "scratch-home");
+  const run = (id?: string) => invokePath(repo, isolatedHome, id, "explain");
+  for (const id of [undefined, "", "../escape", `${SESSION}\n`]) {
+    const result = run(id);
+    expect(result.code).toBe(2);
+    expect(result.stderr).toContain("PI_SESSION_ID");
+    expect(result.stdout).toBe("");
+    expect(existsSync(isolatedHome)).toBe(false);
+  }
+  const scratch = invokePath(repo, isolatedHome).stdout.trim();
+  const session = join(scratch, "explain", SESSION);
+  mkdirSync(session, { recursive: true });
+  const emptyInode = statSync(session).ino;
+  expect(run(SESSION)).toMatchObject({ code: 2, stdout: "" });
+  expect(statSync(session).ino).toBe(emptyInode);
+  expect(readdirSync(session)).toEqual([]);
+  writeFileSync(join(session, "keep.txt"), "old scratch");
+  const refused = run(SESSION);
+  expect(refused.code).toBe(2);
+  expect(refused.stderr).toContain("unmarked");
+  expect(readdirSync(session)).toEqual(["keep.txt"]);
+  expect(readFileSync(join(session, "keep.txt"), "utf8")).toBe("old scratch");
+  rmSync(session, { recursive: true });
+
+  expect(run(SESSION)).toMatchObject({ code: 0, stdout: `${session}/\n` });
+  expect(readFileSync(join(session, ".vstack-scratch-session"), "utf8")).toBe(`${SESSION}\n`);
+  writeFileSync(join(session, "notes.md"), "live scratch");
+  expect(run(SESSION)).toMatchObject({ code: 0, stdout: `${session}/\n` });
+  expect(readFileSync(join(session, "notes.md"), "utf8")).toBe("live scratch");
+});
+
+test("subagent mode uses only the supplied Scratch dir and parent session id", () => {
+  const repo = makeRepo(dir, "isolated-clone");
+  const isolatedHome = join(repo, "scratch-home");
+  const scratch = join(dir, "parent-scratch");
+  const bin = join(repo, "bin");
+  const gitLog = join(repo, "git-invoked");
+  mkdirSync(bin);
+  writeFileSync(join(bin, "git"), '#!/bin/sh\nprintf invoked > "$GIT_INVOCATION_LOG"\nexit 73\n', { mode: 0o755 });
+  const run = (id?: string) => {
+    const r = Bun.spawnSync([
+      process.execPath, PATH_SCRIPT, "--home", isolatedHome, "--scratch-dir", scratch, "verify",
+      ...(id === undefined ? [] : ["--session-id", id]),
+    ], {
+      cwd: repo, env: { ...ENV, PI_SESSION_ID: "019abcde-1234-7abc-8def-000000000002", PATH: bin, GIT_INVOCATION_LOG: gitLog },
+      stdout: "pipe", stderr: "pipe",
+    });
+    return { code: r.exitCode, stdout: r.stdout.toString(), stderr: r.stderr.toString() };
+  };
+  for (const id of [undefined, "", "../escape", `${SESSION}\n`]) {
+    const result = run(id);
+    expect(result).toMatchObject({ code: 2, stdout: "" });
+    expect(result.stderr).toContain("parent session id");
+    expect(existsSync(scratch)).toBe(false);
+  }
+
+  const session = join(scratch, "verify", SESSION);
+  mkdirSync(session, { recursive: true });
+  writeFileSync(join(session, "keep.txt"), "old scratch");
+  const refused = run(SESSION);
+  expect(refused.code).toBe(2);
+  expect(refused.stderr).toContain("unmarked");
+  expect(readdirSync(session)).toEqual(["keep.txt"]);
+  expect(readFileSync(join(session, "keep.txt"), "utf8")).toBe("old scratch");
+  rmSync(session, { recursive: true });
+
+  expect(run(SESSION)).toMatchObject({ code: 0, stdout: `${session}/\n` });
+  expect(readFileSync(join(session, ".vstack-scratch-session"), "utf8")).toBe(`${SESSION}\n`);
+  expect(existsSync(isolatedHome)).toBe(false);
+  expect(existsSync(gitLog)).toBe(false);
+});
+
+test("overlapping writers publish and reuse one fully marked session folder", async () => {
+  const repo = makeRepo(dir, "concurrent-writers");
+  const isolatedHome = join(dir, "concurrent-home");
+  const scratch = invokePath(repo, isolatedHome).stdout.trim();
+  const session = join(scratch, "explain", SESSION);
+  const release = join(dir, "release-mark");
+  const first = Bun.spawn([process.execPath, "--preload", PAUSE_SCRATCH_MARK, PATH_SCRIPT, "--home", isolatedHome, "explain"], {
+    cwd: repo, env: { ...ENV, PI_SESSION_ID: SESSION, VSTACK_MARK_RELEASE: release }, stdout: "pipe", stderr: "pipe",
+  });
+  const stderr = first.stderr.getReader();
+  try {
+    const paused = await stderr.read();
+    expect(new TextDecoder().decode(paused.value)).toBe("Scratch mark paused\n");
+    expect(invokePath(repo, isolatedHome, undefined, "--scratch-dir", scratch, "--session-id", SESSION, "explain"))
+      .toMatchObject({ code: 0, stdout: `${session}/\n` });
+  } finally {
+    writeFileSync(release, "");
+    await first.exited;
+  }
+  expect(first.exitCode).toBe(0);
+  expect(await new Response(first.stdout).text()).toBe(`${session}/\n`);
+  expect(readFileSync(join(session, ".vstack-scratch-session"), "utf8")).toBe(`${SESSION}\n`);
+  expect(readdirSync(join(scratch, "explain"))).toEqual([SESSION]);
+});
+
+test.skipIf(process.platform !== "darwin" && process.platform !== "linux")("publishing never replaces an empty unmarked folder that arrives at rename time", () => {
+  const scratch = join(dir, "competing-scratch");
+  const kind = join(scratch, "verify");
+  const destination = join(kind, SESSION);
+  const result = Bun.spawnSync([
+    process.execPath, "--preload", PAUSE_SCRATCH_MARK, PATH_SCRIPT,
+    "--scratch-dir", scratch, "--session-id", SESSION, "verify",
+  ], {
+    cwd: dir, env: { ...ENV, VSTACK_COMPETING_SCRATCH: destination }, stdout: "pipe", stderr: "pipe",
+  });
+  expect(result.exitCode).toBe(2);
+  expect(result.stderr.toString()).toContain("unmarked");
+  expect(result.stdout.toString()).toBe("");
+  expect(readdirSync(destination)).toEqual([]);
+  expect(readdirSync(kind)).toEqual([SESSION]);
+});
+
+test("to-tickets resume derives the same reserved record path in another session", () => {
+  const repo = makeRepo(dir, "publication-repo");
+  const isolatedHome = join(repo, "scratch-home");
+  const project = invokePath(repo, isolatedHome).stdout;
+  expect(project).toEndWith("/\n");
+  const ticketsDir = `${project.trim()}to-tickets/`;
+  const recordDir = (sessionId?: string) => {
+    const path = invokePath(repo, isolatedHome, sessionId, "to-tickets");
+    expect(path).toMatchObject({ code: 0, stdout: `${ticketsDir}\n` });
+    return join(path.stdout.trim(), "feature", "publication.json");
+  };
+
+  const record = recordDir(SESSION);
+  mkdirSync(join(ticketsDir, "feature"));
+  const input = join(ticketsDir, "feature", "approved.json");
+  writeFileSync(input, JSON.stringify({
+    version: 1,
+    tracker: { mode: "local", directory: join(repo, "issues"), readiness: "available" },
+    tickets: [{ key: "the-ticket", title: "Test publication", body: "Approved content.", labels: ["task"] }],
+  }));
+  const run = (sessionId: string, ...args: string[]) => {
+    const r = Bun.spawnSync([process.execPath, PUBLISH_SCRIPT, ...args], {
+      cwd: repo, env: { ...ENV, PI_SESSION_ID: sessionId }, stdout: "pipe", stderr: "pipe",
+    });
+    expect(r.stderr.toString()).toBe("");
+    expect(r.exitCode).toBe(0);
+    return JSON.parse(r.stdout.toString());
+  };
+  const published = run(SESSION, "publish", "--input", input, "--record", record);
+  const nextSession = "019abcde-1234-7abc-8def-000000000003";
+  const resumed = run(nextSession, "resume", "--record", recordDir(nextSession));
+  expect(resumed).toMatchObject({ status: "complete", tickets: published.tickets });
+  expect(recordDir()).toBe(record);
+  expect(readdirSync(ticketsDir)).toEqual(["feature"]);
 });
 
 test("a kind that is not one lowercase path segment exits 2 and creates nothing", () => {

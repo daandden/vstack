@@ -10,7 +10,7 @@ Typing `/skill:clean-adr` authorizes judging, archiving, rewriting, citation rep
 
 ## Flow page and diagnostics
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before discovery. Resolve the vstack root by the Private-mode rule once. Use the supplied Scratch dir, or resolve it through skill://vstack-tmp. Keep this run's inventory, scout briefs and raw results, verdict table, rewrite plan, provision coverage, link map, command diagnostics, and final report in one `clean-adr` entry under that Scratch dir. The parent writes these records. Scouts write no Scratch.
+Follow `skill://flow-page`'s "Stage entry/exit line" before discovery. Resolve the vstack root by the Private-mode rule once. Open the marked `clean-adr` session folder through `skill://vstack-tmp`. Keep this run's inventory, scout briefs and raw results, verdict table, rewrite plan, provision coverage, link map, command diagnostics, and final report in one entry inside the marked folder. The parent writes these records. Scouts write no Scratch.
 
 In a Flow, publish the report as Results with captured diagnostics before every exit. Outside a Flow, return the full report in chat. Private-mode publication restrictions still apply. Without prior permission to publish private contents, report aggregate outcomes and evidence locations without disclosing those contents. Do not ask a publication question during this run.
 

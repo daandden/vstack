@@ -12,7 +12,7 @@ omp owns isolated subagent checkouts and PR checkouts created by its GitHub tool
 
 ## Open a checkout
 
-Choose a purpose slug and a new absolute record path in the run's Scratch entry, outside the checkout. A prototype that must survive sessions keeps the record with its artifacts instead. Run the script from the source repo with one revision selection:
+Choose a purpose slug and a new absolute record path in the caller's marked Scratch session folder, outside the checkout. A prototype that must survive sessions keeps the record with its artifacts instead. Run the script from the source repo with one revision selection:
 
 ```sh
 bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <source-repo> --purpose <slug> --commit <commit> --record <record.json>

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 A Verify skill drives the app as a user and captures proof. Write it for an agent reading it cold, mid-task.
 
-Use the vstack root and mode from the Private-mode rule. A subagent uses the root from its prompt. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the Scratch dir from the parent.
+Use the vstack root and mode from the Private-mode rule. A subagent uses the root from its prompt. Open the marked `verify` session folder through `skill://vstack-tmp` when a check needs Scratch.
 
 Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `ask`, including Flow CLI publication and separate answer recording. Follow skill://implement/END-STATE.md's "Publish delivery progress". Track the steps below as tasks. Preserve the caller's requested End state. Standalone uncommitted setup uses `none`. Keep the generated Verify skill and feature map as real deliverables.
 
@@ -54,7 +54,7 @@ Ground every section in the repo. Leave no placeholders:
 - Cleanup tears down only instances the run created, never processes selected by name. For a long-lived server, stop it with `write` to `proc://<name>/kill`, using the exact service name recorded at Launch. Keep concurrent runs' service names, ports, and data separate. Never restart or stop another run's service. Remove run residue, but keep proof evidence and run notes.
 - Helpers names executable scripts relative to the skill's own directory, the directory its SKILL.md was read from. Show each invocation in the body. Do not bake checkout paths into helper calls.
 
-The generated Evidence section resolves a fresh run entry at `<Scratch dir>/verify/<app>-<run-id>/`. Evidence and notes go at its top level. Throwaway app data goes in `data/`. Both modes use this Scratch path, never committed. Cleanup can remove disposable data, but must preserve evidence and notes at the named paths.
+The generated Evidence section opens the marked `verify` session folder through `skill://vstack-tmp` and creates a fresh `<app>-<run-id>/` entry inside it. Evidence and notes go at its top level. Throwaway app data goes in `data/`. Both modes use this Scratch path, never committed. Cleanup can remove disposable data, but must preserve evidence and notes at the named paths.
 
 Give each mandatory proof action a stable step ID, its required preconditions, and its passing observation. Distinguish optional observations from required journeys and negative probes before execution. Callers and Verifiers use these IDs under `skill://ship/references/verdict-record.md`.
 

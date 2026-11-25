@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { ENV, REPO_RULES, git, writeFiles, type Files } from "./fixture.ts";
 
 export const UPDATE_SCRIPT = join(import.meta.dir, "..", "..", "scripts", "vstack-maintain.ts");
+export const MAINTAIN_SESSION_ID = "019abcde-1234-7abc-8def-000000000001";
 
 const skill = (name: string, body: string) => `---\nname: ${name}\ndescription: ${name}\n---\n${body}`;
 const DRIFT_STEPS = Array.from({ length: 20 }, (_, i) => `Step ${i + 1}: check part ${i + 1} of the drift and write it down.\n`).join("");
@@ -253,7 +254,7 @@ export function makeUpdateFixture(): UpdateFixture {
       const cmd = ["bun", UPDATE_SCRIPT, "--root", root, "--upstreams", cache, "--remote", `file://${join(dir, "remote")}`, ...args];
       const p = Bun.spawn(cmd, {
         cwd: root,
-        env: { ...ENV, HOME: home, VSTACK_OMP: omp, FAKE_OMP_LOG: log, ...env },
+        env: { ...ENV, HOME: home, VSTACK_OMP: omp, FAKE_OMP_LOG: log, PI_SESSION_ID: MAINTAIN_SESSION_ID, ...env },
         stdout: "pipe",
         stderr: "pipe",
       });

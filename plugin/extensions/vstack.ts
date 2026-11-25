@@ -500,14 +500,14 @@ const AGE = /^\d+[hdw]?$/;
 
 /**
  * Opens the vstack-clean Tern plugin's popup over the calling pane, or says why it cannot. The plugin claims the
- * trigger path `<home>/.vstack/clean-popup/<pane>/<age>`; the path never exists. `tern open --json` exits 0 either way
- * and lists the file blocks it opened: none when a plugin handled the open, an empty file block when none claimed it.
- * So readiness comes from the plugin list first, and only an empty block list counts as opened.
+ * trigger path `<home>/.vstack/clean-popup/<pane>/<age>/<witness>`, which never exists. `tern open --json`
+ * reports the file blocks it opened. After the readiness check, only exit 0 with no file blocks counts as handled.
  */
-async function openCleanPopup(pi: ExtensionAPI, age: string): Promise<string | undefined> {
+async function openCleanPopup(pi: ExtensionAPI, age: string, witness: string): Promise<string | undefined> {
   if (!AGE.test(age)) return `age must look like 15d, 15, 36h, or 2w, got "${age}"`;
   const pane = process.env.TERN_PANE;
   if (!pane || !/^\d+$/.test(pane)) return "it needs Tern with the vstack-clean plugin; run it in a Tern pane";
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(witness)) return "the omp session id cannot be sent to the Scratch cleanup popup";
   // A Tern update can remove the binary an older daemon put in TERN_EXE; the PATH `tern` still reaches the daemon.
   const exe = process.env.TERN_EXE;
   const tern = exe && fs.existsSync(exe) ? exe : "tern";
@@ -516,7 +516,7 @@ async function openCleanPopup(pi: ExtensionAPI, age: string): Promise<string | u
   const ready = (JSON.parse(list.stdout) as TernPlugins).plugins.some(plugin =>
     plugin.id === "vstack-clean" && plugin.status === "ready" && plugin.window && plugin.blocks.some(block => block.id === "popup"));
   if (!ready) return "the vstack-clean Tern plugin is not ready in this Tern; run /skill:setup-vstack to link it";
-  const trigger = `${process.env.HOME || homedir()}/.vstack/clean-popup/${pane}/${age}`;
+  const trigger = `${process.env.HOME || homedir()}/.vstack/clean-popup/${pane}/${age}/${witness}`;
   const open = await pi.exec(tern, ["open", "--json", trigger]);
   if (open.code !== 0) return `could not open the Scratch cleanup popup: ${open.stderr.trim() || `tern open exited ${open.code}`}`;
   if ((JSON.parse(open.stdout) as TernOpened).blocks.length === 0) return undefined;
@@ -537,7 +537,7 @@ function registerCleanCommand(pi: ExtensionAPI): void {
       }
       let refusal: string | undefined;
       try {
-        refusal = await openCleanPopup(pi, age.trim() || "15d");
+        refusal = await openCleanPopup(pi, age.trim() || "15d", ctx.sessionManager.getSessionId());
       } catch (error) {
         refusal = error instanceof Error ? error.message : String(error);
       }

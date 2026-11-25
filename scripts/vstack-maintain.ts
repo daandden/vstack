@@ -10,7 +10,7 @@ import { GateReport } from "./lib/gate-report.ts";
 import { applyRows, findRow, parseHouseStyle, selectRows, type MatchKind, type Replacement, type TextDisposition } from "./lib/house-style.ts";
 import { asText, cloneSource, githubSource, defaultUpstreamRemote, defaultUpstreamsDir, fetchRefs, readBlobs, writeEntry, syncClone, newestTag, newestCommit, compareSemverTags, hasTag, resolveRef, isAncestor, gitBlobSha, type UpstreamSource, type UpstreamTree } from "./lib/upstreams.ts";
 import { artifactFiles, loadPins, loadRegister, loadHouseStyle, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
-import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
+import { createScratchSession, isScratchSessionId, repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { yamlBookkeeping } from "./lib/bookkeeping.ts";
 import { CHANGE_NOTES, PLUGIN_RELEASE, foldNotes, highestLevel, noteText, pendingNotes, releaseVersion, type PluginRelease, type VersionLevel } from "./lib/change-notes.ts";
 
@@ -272,11 +272,14 @@ function targetPin(pin: Pin, clone: string, ref: string | undefined): { new: str
   return moved ? { new: sha, moved } : { new: pin.pin, moved };
 }
 
-/** Returns a fresh maintain entry under the supplied Scratch dir, or under this checkout's Scratch dir when none is given. */
-const maintainEntry = (root: string, scratch: string | undefined) =>
-  join(scratch ?? join(scratchRoot(homedir()), repoKey(root)), "maintain", `${Date.now()}-${randomUUID()}`);
+function maintainEntry(root: string, scratch: string | undefined, sessionId: string): string {
+  const projectDir = scratch ?? join(scratchRoot(homedir()), repoKey(root));
+  const dir = createScratchSession(projectDir, "maintain", sessionId);
+  if (!dir) throw new Error(`Will not adopt unmarked Scratch at ${join(projectDir, "maintain", sessionId)}; move the existing entry before retrying`);
+  return join(dir, `${Date.now()}-${randomUUID()}`);
+}
 
-async function plan(root: string, refs: string[], opts: UpstreamOptions, scratch: string | undefined) {
+async function plan(root: string, refs: string[], opts: UpstreamOptions, scratch: string | undefined, sessionId: string) {
   const pins = loadPins(root), register = loadRegister(root);
   const { houseStyle, problems } = loadHouseStyle(root, new Set(pins.keys()));
   if (problems.length) throw new Error(problems.map(p => `${p.id}: ${p.message}`).join("; "));
@@ -287,7 +290,7 @@ async function plan(root: string, refs: string[], opts: UpstreamOptions, scratch
     const { clone } = syncClone(dir, pin, opts.remote ?? defaultUpstreamRemote());
     runs.push({ pin, clone, ...targetPin(pin, clone, ref) });
   }
-  const out = maintainEntry(root, scratch);
+  const out = maintainEntry(root, scratch, sessionId);
   mkdirSync(out, { recursive: true });
   const body = await buildPlan({ runs, register, replacements: houseStyle.replacements, source: cloneSource(dir), out });
   const p: Plan = { schema: PLAN_SCHEMA, root, out, moved: runs.some(r => r.moved), ...body };
@@ -717,9 +720,9 @@ function changedSkills(root: string): string[] {
   const files = [...git(root, "diff", "--name-only", defaultBase(root), "--", "plugin/skills").split("\n"), ...git(root, "ls-files", "--others", "--exclude-standard", "--", "plugin/skills").split("\n")];
   return [...new Set(files.filter(Boolean).map(f => f.split("/").slice(0, 3).join("/")))].filter(p => existsSync(join(root, p))).sort();
 }
-async function gates(root: string, opts: UpstreamOptions, scratch: string | undefined) {
+async function gates(root: string, opts: UpstreamOptions, scratch: string | undefined, sessionId: string) {
   const commands: Record<string, string[]> = JSON.parse(process.env.VSTACK_MAINTAIN_COMMANDS ?? "{}");
-  const retained = maintainEntry(root, scratch);
+  const retained = maintainEntry(root, scratch, sessionId);
   const report = new GateReport(root, join(retained, "report.json"), defaultBase(root), false, opts.upstreams);
   try {
     for (const skill of changedSkills(root)) {
@@ -782,14 +785,15 @@ const USAGE = `Usage: bun scripts/vstack-maintain.ts <command> [options]
   prepare --decisions <file> [--plan <path>]  Write bookkeeping from HEAD.
   release                                Fold HEAD's Change notes into a Plugin release.
   gates                                  Run validation, checks, tests, and load smoke.
-  --scratch <dir>                        Absolute Scratch dir for plan and gates entries.
+  --scratch <dir>                        Absolute project Scratch dir for plan and gates.
+  --session-id <id>                      Parent session id. Requires --scratch. Defaults to PI_SESSION_ID when omitted.
   --root <dir> --upstreams <cache> --remote <url> --source clones|github
   -h, --help                            Show this text.
 Tests may inject command arrays for validate, check, test, and smoke through
 VSTACK_MAINTAIN_COMMANDS (a JSON object). Smoke commands receive the plugin and output directories.`;
 try {
   const args = parseArgs({ allowPositionals: true, options: {
-    root: { type: "string" }, plan: { type: "string" }, decisions: { type: "string" }, upstreams: { type: "string" }, remote: { type: "string" }, source: { type: "string" }, scratch: { type: "string" },
+    root: { type: "string" }, plan: { type: "string" }, decisions: { type: "string" }, upstreams: { type: "string" }, remote: { type: "string" }, source: { type: "string" }, scratch: { type: "string" }, "session-id": { type: "string" },
     take: { type: "string", multiple: true }, rename: { type: "string", multiple: true }, remove: { type: "string", multiple: true }, help: { type: "boolean", short: "h" }
   } });
   if (args.values.help) console.log(USAGE);
@@ -799,14 +803,19 @@ try {
     const scratch = opts.scratch === undefined ? undefined : outsideCheckout(opts.scratch, "Scratch");
     const p = opts.plan ? planAt(opts.plan) : undefined, root = resolve(opts.root ?? p?.root ?? scriptRoot);
     let result: unknown;
-    if (command === "plan") result = await plan(root, positionals, opts, scratch);
-    else if (command === "merge") { if (!p) throw new Error("merge needs --plan"); result = mergePreview(p, root, opts.decisions ? readJson(opts.decisions).file_maps : undefined); }
+    if (command === "plan" || command === "gates") {
+      const suppliedId = opts["session-id"];
+      if (suppliedId !== undefined && scratch === undefined) throw new Error("--session-id needs --scratch with the parent's absolute project Scratch dir");
+      const sessionId = suppliedId ?? process.env.PI_SESSION_ID;
+      if (!isScratchSessionId(sessionId)) throw new Error("Run from an omp session with a valid PI_SESSION_ID, or pass the parent's id with --session-id and --scratch");
+      result = command === "plan" ? await plan(root, positionals, opts, scratch, sessionId) : await gates(root, opts, scratch, sessionId);
+      if (command === "gates" && !(result as { ok: boolean }).ok) process.exitCode = 2;
+    } else if (command === "merge") { if (!p) throw new Error("merge needs --plan"); result = mergePreview(p, root, opts.decisions ? readJson(opts.decisions).file_maps : undefined); }
     else if (command === "check") {
       const artifacts = [...new Set([...positionals, ...(p?.rows.flatMap(r => r.artifacts) ?? [])])];
       result = await checkTargets(root, artifacts, opts.take ?? [], opts.rename ?? [], opts.remove ?? [], opts);
     } else if (command === "prepare") { if (!opts.decisions) throw new Error("prepare needs --decisions"); result = await prepare(root, opts.decisions, p, opts); }
     else if (command === "release") result = release(root);
-    else if (command === "gates") { result = await gates(root, opts, scratch); if (!(result as any).ok) process.exitCode = 2; }
     else throw new Error(USAGE);
     console.log(typeof result === "string" ? result : JSON.stringify(result, null, 2));
   }

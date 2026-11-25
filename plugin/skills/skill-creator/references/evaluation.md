@@ -15,7 +15,7 @@ Run the full loop below when these checks pass but confidence still matters, or 
 
 ## Workspace
 
-Resolve Scratch through skill://vstack-tmp, then create `<Scratch dir>/skill-creator/<skill-name>-workspace/`, unless the user names a place. A subagent uses the Scratch dir its parent passed; it never runs the path script. Keep the workspace outside any git repo and outside `plugin/`. Print its absolute path in the reply. All runs keep the real `HOME`.
+Unless the user names a place, open the marked `skill-creator` session folder through `skill://vstack-tmp` and create `<skill-name>-workspace/` inside it. Keep the workspace outside any git repo and outside `plugin/`. Print its absolute path in the reply. All runs keep the real `HOME`.
 
 ```text
 <skill-name>-workspace/

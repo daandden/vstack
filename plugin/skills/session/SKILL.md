@@ -136,7 +136,7 @@ If the session's correction named a rule that the table already holds and nothin
 
 Before each in-place edit, implement records any earlier uncommitted change on the target. Edit the target even when it already has uncommitted changes. Preserve that earlier work and name it in the reply.
 
-Before changing any target file, copy it to Scratch through `skill://vstack-tmp`: the entire skill folder for a skill, or the file for a global AGENTS.md. Use a separate copy for each target under `<Scratch dir>/session/<run-id>/`. The copy includes the target's earlier uncommitted changes. Retain the copy's absolute path and the target's real path.
+Before changing any target file, copy it to Scratch through `skill://vstack-tmp`: the entire skill folder for a skill, or the file for a global AGENTS.md. Open the marked `session` session folder. Put a separate copy for each target in this run's entry inside that folder. The copy includes the target's earlier uncommitted changes. Retain the copy's absolute path and the target's real path.
 
 In implement's one code-review pass, review `git diff --no-index <copy> <target>` for each in-place target. Review these diffs in the same pass as any repo diff. A no-index diff's exit code 1 means that they differ. Do not treat it as a failed review. The snapshot makes the approved lesson's edit distinct from the earlier changes.
 

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Recheck session leases before deleting each Scratch row so sessions that resume during cleanup keep their files."
+  ]
+}

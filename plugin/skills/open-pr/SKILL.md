@@ -15,7 +15,7 @@ Accept the chain facts and any closing references: the issues or tickets the PR 
 - Step 4: Verify discovery and link repair.
 - Step 5: the Blast radius hand-off.
 
-Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
+Keep PR body files beside the proof they describe, in a run entry inside the marked `verify` session folder from `skill://vstack-tmp`.
 
 Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress". Publish tasks for the steps below and retain stopped or skipped work.
 

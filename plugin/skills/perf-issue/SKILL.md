@@ -12,7 +12,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line" for an investigation run.
 
 ## Exact-operation baseline and comparison
 
-Use an agent-runnable measurement that prints one number with its unit for the exact slow operation. Record the command, workload, environment, baseline number, and before trace. Keep the artifacts under the resolved Scratch dir. Freeze inputs and measurement conditions for the comparison. A synthetic result on another operation is not a baseline.
+Use an agent-runnable measurement that prints one number with its unit for the exact slow operation. Record the command, workload, environment, baseline number, and before trace. Open the marked `perf-issue` session folder through `skill://vstack-tmp`. Keep the artifacts there. Freeze inputs and measurement conditions for the comparison. A synthetic result on another operation is not a baseline.
 
 Vet the baseline with skill://benchmark-checklist before you plan a fix from it. Vet each later number the same way.
 

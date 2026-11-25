@@ -46,7 +46,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Publish the candidates and
 
 If exploration finds no evidence-backed candidate, publish that outcome as a Document Result with the searched scope, evidence, and limitations. Finish the Stage without an empty candidate Result or pick question.
 
-Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Open the marked `improve-codebase-architecture` session folder through `skill://vstack-tmp`. Keep sources in a distinct entry inside it, with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
 
 Write one `result` item with `shape: "cards"`. Give each candidate one entry with a stable `ref`:
 

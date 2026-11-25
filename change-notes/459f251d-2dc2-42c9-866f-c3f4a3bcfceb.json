@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Create and mark ordinary Scratch folders by omp session, keep the to-tickets record path stable across sessions, and protect marked folders from entry-based cleanup."
+  ]
+}
