@@ -49,25 +49,6 @@ export function withToolApprovalScope<T>(run: () => T): T {
 mock.module("@oh-my-pi/pi-coding-agent/tools/approval-scope", () => ({
   toolApprovalScopeToken: () => approvalScope.getStore(),
 }));
-mock.module("@oh-my-pi/pi-tui", () => ({
-  Markdown: class {
-    constructor(readonly source: string) {}
-    render() { return [this.source]; }
-    describe() { return { kind: "md", text: this.source }; }
-    invalidate() {}
-  },
-}));
-mock.module("@oh-my-pi/pi-tui/theme", () => ({ getMarkdownTheme: () => ({}) }));
-mock.module("@oh-my-pi/pi-tui/chrome", () => ({
-  OverlayPanel: class {
-    children: any[] = [];
-    constructor(readonly title: string, readonly nativeRole: string) {}
-    addChild(child: any) { this.children.push(child); }
-    render(width: number) { return [`╭ ${this.title} ╮`, ...this.children.flatMap(child => child.render(width - 4)), "╰╯"]; }
-    describe(cx: unknown) { return { kind: "card", head: this.title, children: this.children.map(child => child.describe(cx)) }; }
-    invalidate() {}
-  },
-}));
 mock.module("@oh-my-pi/pi-coding-agent/judgment", () => ({
   hasNativeJudge: (_settings: unknown, registry: any) => registry.nativeJudge,
   journalJudgmentUsage: (sessionManager: unknown) => {

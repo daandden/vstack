@@ -3,8 +3,8 @@ import type { ExtensionAPI, ExtensionContext, ToolCallEvent } from "@oh-my-pi/pi
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
 import { toolApprovalScopeToken } from "@oh-my-pi/pi-coding-agent/tools/approval-scope";
-import { parseHtmlForm } from "@oh-my-pi/pi-tui/html-form/parse";
-import { parseHTML } from "@oh-my-pi/pi-utils/dom";
+import { jsx } from "@oh-my-pi/pi-tui";
+import { type Document, type Element, parseHTML } from "@oh-my-pi/pi-utils/dom";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
@@ -55,21 +55,75 @@ function registerFlowContext(pi: ExtensionAPI): void {
   });
 }
 
+// The rules omp's ask parser uses to turn a form's controls into fields.
+const CONTROLS = "input, select, textarea";
+const IGNORED_INPUTS = new Set(["button", "file", "image", "reset", "submit"]);
+const SKIPPED = new Set(["button", "head", "iframe", "link", "meta", "noscript", "script", "style", "template", "title"]);
+const OPAQUE = new Set(["img", "pre", "svg"]);
+
+/** The controls omp's ask renders as fields, in its order. */
+function fieldControls(form: Document | Element): Element[] {
+  const controls: Element[] = [];
+  const ids = new Set(form.querySelectorAll(CONTROLS).map(control => control.id).filter(Boolean));
+  const labelFor = new Map<string, Element>();
+  for (const label of form.querySelectorAll("label")) {
+    const target = label.getAttribute("for");
+    if (target && ids.has(target) && !labelFor.has(target)) labelFor.set(target, label);
+  }
+  const walk = (node: Element, fieldsets: number): void => {
+    const tag = node.localName;
+    if (SKIPPED.has(tag) || OPAQUE.has(tag)) return;
+    if (tag === "input" || tag === "select" || tag === "textarea") {
+      controls.push(node);
+    } else if (tag === "label") {
+      const target = node.getAttribute("for");
+      if (target && labelFor.get(target) === node) return;
+      const inner = node.querySelectorAll(CONTROLS);
+      if (inner.length) controls.push(...inner);
+      else for (const child of node.children) walk(child, fieldsets);
+    } else if (tag === "fieldset") {
+      // The picker shows an outer fieldset's legend as its title, so its controls are no fields.
+      const legend = node.children.find(child => child.localName === "legend");
+      if (legend && fieldsets > 0) walk(legend, fieldsets);
+      for (const child of node.children) if (child !== legend) walk(child, fieldsets + 1);
+    } else if (tag === "ul" || tag === "ol") {
+      if (node.querySelector(CONTROLS)) for (const child of node.children) walk(child, fieldsets);
+    } else if (tag === "table") {
+      for (const row of node.querySelectorAll("tr").filter(row => row.closest("table") === node)) {
+        const cells = row.children.filter(cell => cell.localName === "td" || cell.localName === "th");
+        if (cells.every(cell => cell.localName === "th") && !row.querySelector(CONTROLS)) continue;
+        for (const cell of cells) controls.push(...cell.querySelectorAll(CONTROLS));
+      }
+    } else {
+      for (const child of node.children) walk(child, fieldsets);
+    }
+  };
+  for (const child of form.children) walk(child, 0);
+  return controls;
+}
+
 function askControlNames(html: unknown): { names: string[]; duplicates: Set<string>; hidden: Set<string> } {
   const names = new Set<string>();
   const duplicates = new Set<string>();
   const hidden = new Set<string>();
   if (typeof html !== "string") return { names: [], duplicates, hidden };
-  const { fields } = parseHtmlForm(html);
-  for (const { name } of fields) {
-    if (names.has(name)) duplicates.add(name);
-    else names.add(name);
-  }
-  // parseHtmlForm drops nameless hidden inputs.
   const { document } = parseHTML(html);
   const form = document.querySelector("form") ?? document;
   for (const input of form.querySelectorAll("input")) {
     if (input.getAttribute("type")?.toLowerCase() === "hidden") hidden.add(input.getAttribute("name") ?? "");
+  }
+  const groups = new Set<string>();
+  for (const control of fieldControls(form)) {
+    const name = control.getAttribute("name") ?? "";
+    const type = control.localName === "input" ? (control.getAttribute("type") ?? "text").toLowerCase() : control.localName;
+    if (type === "hidden" || IGNORED_INPUTS.has(type)) continue;
+    if (type === "radio" || type === "checkbox") {
+      const group = `${type}\0${name}`;
+      if (groups.has(group)) continue;
+      groups.add(group);
+    }
+    if (names.has(name)) duplicates.add(name);
+    else names.add(name);
   }
   return { names: [...names], duplicates, hidden };
 }
@@ -137,16 +191,11 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
         text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
       }
     }
-    const { Markdown } = await import("@oh-my-pi/pi-tui");
-    const { OverlayPanel } = await import("@oh-my-pi/pi-tui/chrome");
-    const { getMarkdownTheme } = await import("@oh-my-pi/pi-tui/theme");
     if (firstDialog() !== dialog) return;
     shownIn = ctx;
-    ctx.ui.setWidget(panelKey, () => {
-      const panel = new OverlayPanel("Flow page", "vstack.flow-panel");
-      panel.addChild(new Markdown(text, 0, 0, getMarkdownTheme()));
-      return panel;
-    }, { placement: "aboveEditor" });
+    ctx.ui.setWidget(panelKey, () => jsx("card", {
+      role: "vstack.flow-panel", head: "Flow page", children: jsx("md", { text }),
+    }), { placement: "aboveEditor" });
   };
   const hidePanel = () => {
     clearPresence?.();
