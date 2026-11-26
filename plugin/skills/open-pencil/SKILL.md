@@ -14,7 +14,9 @@ Use the user's existing OpenPencil MCP server for live design work. This Utility
 3. Pass `document_id` and `page_id` wherever the live schema accepts them. Use the resolved frame or child node IDs, and set the parent explicitly when creating layers in a frame. Do not substitute the active tab, a session's remembered document, or the current selection for named targets. If the exposed tools cannot target the named design reliably, stop.
 4. Keep inspection read-only. Change only the designs, comments, or statuses the user asked to change. A design edit does not authorize comment resolution or status changes. Read the named frames back with the same IDs to check the result.
 
-If discovery or transport cannot reach the OpenPencil MCP server, report the unavailable server and the observed error. If a reachable server reports that it cannot connect to the OpenPencil desktop app, report the unavailable app and that evidence. If the evidence does not distinguish the two, report what failed and what remains unknown. Pause live design work rather than switching tools or targets.
+If this session's configured OpenPencil MCP connection is missing or fails discovery or transport, report the unavailable server and the observed error, if any. Stop live design work and wait for a working connection. Let the MCP client handle discovery and retries. Do not retry the connection yourself or probe the endpoint with `curl`, raw HTTP, another MCP server, or any other tool.
+
+If a reachable server reports that it cannot connect to the OpenPencil desktop app, report the unavailable app and that evidence. If the evidence does not distinguish the two, report what failed and what remains unknown. Pause live design work rather than switching tools or targets.
 
 ## Save an authorized edit
 
