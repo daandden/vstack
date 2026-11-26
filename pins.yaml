@@ -42,6 +42,13 @@ upstreams:
     pin: 64eb3deb9a5fbfa041faf783e0bc3fd635872e9c
     items:
       - { match: "skills/*", type: tree, kind: skill }
+  ui-sdk:
+    repo: vercel-labs/ui
+    path: packages/core/skills
+    pin_kind: commit
+    pin: d5c6249e1a0b1df47334d3012180bfba9b9374ec
+    items:
+      - { match: "packages/core/skills/ui-sdk", type: tree, kind: skill }
 
   cloudflare:
     role: Cloudflare

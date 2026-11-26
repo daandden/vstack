@@ -31,7 +31,7 @@ Read [curated choices](references/choices.md) for the requested task. These are 
 
 Recommendation-only requests are read-only. State the choice, why it fits this app, and any compatibility prerequisite. Do not install, configure, scaffold, or migrate from a request for advice.
 
-For explicitly requested setup, read [project setup](references/setup.md). Install only task-required packages. Before wiring integrations, consult current compatible APIs and framework documentation. Read [UnoCSS and copied controls](references/unocss-controls.md) when setting up shadcn-vue or UnoCSS icons. Read [forms and schemas](references/forms.md) when integrating TanStack Form with omptype.
+For explicitly requested setup, read [project setup](references/setup.md). Install only task-required packages. Before wiring integrations, consult current compatible APIs and framework documentation. Read [UnoCSS controls and icons](references/unocss-controls.md) when styling UI SDK controls or setting up UnoCSS icons. Read [forms and schemas](references/forms.md) when integrating TanStack Form with omptype.
 
 For server routes or persistent data, read [server and data setup](references/server-data.md). For Cloudflare hosting or an explicit deploy request, read [the Cloudflare boundary and confirmed deploy procedure](references/cloudflare-deploy.md), including static-only sites. These references apply to advice without granting setup permission. Setup stays local and makes no Cloudflare account request. It ends with local runtime proof and a written deploy checklist, never an implicit deploy. An explicit deploy request confirms the target account before account discovery, then confirms each remote step through the shared question contract.
 

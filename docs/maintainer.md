@@ -174,14 +174,14 @@ Published main's release notes through 9.0.4 remain intact. The architecture fea
 
 ## Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`, `cloudflare`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
+`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`, `ui-sdk`, `cloudflare`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin
 ```
 
-`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement, CSS, UI, and Cloudflare selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
+`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
@@ -212,6 +212,12 @@ The Update moves pstack to `0b46ec399d55f2829e88822998f53b84944837d3` and emil t
 `interrogate` is an answer-only Utility skill, not a review axis or End state step. It uses three isolated Session-model adversaries by default, independently reruns findings, merges shared root causes, reports dropped counts, and applies no fix. Failed starts or missing isolation stop its review; only started failures drop out, with at least two substantive candidates required. Existing review and final Verifier ownership remains unchanged.
 
 Selection-only trigger evals across the twelve UI descriptions and interrogate, and live Addon judge checks, remain optional Costly seam tests requiring explicit approval. Unrun evals leave selection overlap unproven without blocking the mechanical Update gates. Do not infer native instruction following from a load smoke.
+
+### UI SDK Upstream
+
+The `ui-sdk` Upstream is `vercel-labs/ui`. Its commit Pin tracks `packages/core/skills`, with only `packages/core/skills/ui-sdk` registered as an item. Row `ui-sdk/ui-sdk` adapts the skill as the visible [ui-sdk Utility skill](../plugin/skills/ui-sdk/SKILL.md), with its Apache-2.0 license. It loads by description or by `/skill:ui-sdk` and has no Addon catalog key.
+
+The skill uses the installed package docs for API facts. It keeps the agent bridge and its agent test for every UI SDK interface. The running workflow owns all other test seams and proof. See the [UI SDK ADR](adr/20261126-web-fullstack-recommends-ui-sdk-and-the-reader-keeps-reka-for-now.md) for the adaptation decision and the [frontend guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md#native-utility-discovery) for loadability proof.
 
 ### Cloudflare upstream
 
@@ -250,15 +256,23 @@ git -C "$cache" grep -h '^description: ' "$pin" -- "${paths[@]/%//SKILL.md}" |
 
 ### Web stack Utility
 
-`web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader follows its frontend choices under [ADR 20261119](adr/20261119-the-flow-reader-uses-web-fullstack-frontend-choices-and-the-doop-compact-design.md); its local server does not use the Cloudflare recipe.
+`web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader keeps its copied Reka controls and Doop compact design under the [UI SDK ADR](adr/20261126-web-fullstack-recommends-ui-sdk-and-the-reader-keeps-reka-for-now.md). Its local server does not use the Cloudflare recipe.
 
-The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. Its conditional recipes cover framework and manager choice, copied shadcn-vue controls adapted to UnoCSS, UnoCSS icons, and TanStack Form with omptype. Optional state and query tools stay conditional.
+The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. For controls that native or installed components cannot cover, it recommends UI SDK. The app's manager installs `@ui-sdk/core` and its framework package, `@ui-sdk/vue` for Vue, and only Nuxt registers the module. The [UnoCSS recipe](../plugin/skills/web-fullstack/references/unocss-controls.md) keeps the app's tokens and local icon collection without importing `@ui-sdk/core/web.css`. web-fullstack owns stack choice and setup proof. The [ui-sdk Utility skill](../plugin/skills/ui-sdk/SKILL.md) owns library usage, not stack selection. Forms still use TanStack Form with omptype when needed. State and query tools stay optional.
 
 Fullstack work curates Nuxt server routes on Cloudflare Workers with Static Assets, NuxtHub D1, and conditional Better Auth through `@nuxtjs/better-auth`. KV and R2 stay task-dependent. Setup ends with local D1 and browser proof in Nuxt dev and built workerd, plus a written deploy checklist. It makes no Cloudflare account request.
 
 Only an explicit deploy request enters the [confirmed Cloudflare procedure](../plugin/skills/web-fullstack/references/cloudflare-deploy.md#deploy-only-on-explicit-request). It confirms the account before account discovery, then confirms each remote step. Deployment runs from the user's machine to one production Worker, without Workers Builds, CI, staging, or previews. The procedure owns the deploy steps and checks. The [fullstack ADR](adr/20261113-web-fullstack-curates-nuxt-on-cloudflare.md) records the stack and deploy boundary.
 
-Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native consumers, generated frontend and fullstack apps, browser behavior, accountless confirmation stops, and public packaging. Its optional throwaway Worker and D1 deploy requires approval for that verification and confirmed teardown. Without approval, name the account-side proof gap. Prose wording assertions are not a substitute for those observations.
+Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native consumers, generated apps, and public packaging. The controls steps check Select and Switch in Nuxt and Vue with Vite, including Nuxt hydration, with separate proof for keyboard and form behavior and for the agent bridge. The recipe also covers accountless confirmation stops. Its optional throwaway Worker and D1 deploy requires approval for that verification and confirmed teardown. Without approval, name the account-side proof gap. Prose wording assertions are not a substitute for those observations.
+
+### OpenPencil Utility
+
+[`open-pencil`](../plugin/skills/open-pencil/SKILL.md) is a visible vstack original listed under `originals:` and `utility:`. It has no Addon catalog key. It discovers the user's OpenPencil MCP tools and targets named documents, pages, and frames by ID. It neither configures the server nor adds project design-tool configuration. It maps annotated behavior and design tokens to the project's UI SDK components and tokens without changing the project's stack.
+
+Under the [OpenPencil ADR](adr/20261126-the-open-pencil-utility-hands-over-a-design-baseline-kept-in-pikpak.md), the Design baseline is the agreed `.fig`, not the live document or a PNG. The Utility creates or reuses the SHA-256-named file in the user's PikPak folder after explicit agreement to the saved bytes. It checks the bytes downloaded by exact file ID before handing the ID, SHA-256, agreed frame node IDs, and mapped requirements to the spec. Handoff, implementation, and Verify use one PikPak `Read & write files` Personal Access Token. vstack stores no token. Verify fetches the recorded ID and renders the exact nodes with strict font resolution without the editor.
+
+The [OpenPencil Verify recipe](../.omp/skills/verify-vstack/features/open-pencil.md) covers explicit targeting, the unreachable-server branch, and an approved live-account Design baseline round trip. Native model and live-account use need explicit approval.
 
 
 ## Decision register

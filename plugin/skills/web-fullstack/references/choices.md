@@ -5,7 +5,7 @@ Use the row for the task, after checking built-ins and suitable installed altern
 | Task | Default and boundary |
 | --- | --- |
 | New application | Nuxt by default. Vue with Vite stays curated for frontend-only requests, embedded widgets, and component libraries. Apply the [shared framework rules](../SKILL.md#inspect-the-target-application). |
-| UI controls | shadcn-vue copied components, owned by the project. Adapt their styling with the [UnoCSS recipe](unocss-controls.md). Native controls or existing components may be enough. |
+| UI controls | Use native controls or suitable installed components when they cover the task. Otherwise choose UI SDK for unstyled controls with keyboard, focus, and ARIA behavior built in. Use the [UnoCSS controls recipe](unocss-controls.md). |
 | Styling | UnoCSS. Use `@unocss/nuxt` for Nuxt and `unocss/vite` for Vite. Preserve an existing suitable CSS system. |
 | Icons | UnoCSS `presetIcons` and the required local Iconify collection package, retaining the project's artwork. `@nuxt/icon` is a conditional Nuxt alternative for its component integration, not a second default renderer. |
 | Form management | `@tanstack/vue-form`. Keep suitable installed form management. Do not introduce Nuxt UI Form or vee-validate alongside it for the same job. |

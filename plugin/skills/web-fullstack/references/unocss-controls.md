@@ -1,65 +1,58 @@
-# Adapt copied controls to UnoCSS
+# Style UI SDK controls with UnoCSS
 
-shadcn-vue's [official setup](https://www.shadcn-vue.com/docs/installation/manual) uses Tailwind. UnoCSS is not a drop-in replacement. Own the copied source and adapt the components actually needed, including their popup states. Check the current registry and dependencies before copying. Preserve applicable component-source notices.
+Use the project's existing CSS system when it fits. In the curated UnoCSS setup, use the app's tokens for presentation and UI SDK for behavior. Use one CSS pipeline.
 
-## Install one CSS pipeline
+## Set up UnoCSS
 
-For a new UnoCSS project, use compatible `unocss` and the required Iconify collection as development dependencies. In Nuxt, add and register `@unocss/nuxt`. In Vite, add `UnoCSS()` from `unocss/vite` to the existing Vite plugins and import `virtual:uno.css` once in the app entry. Keep the Vue plugin.
+For a new UnoCSS setup, add `unocss` as a development dependency with the app's package manager. In Nuxt, add and register `@unocss/nuxt`. In Vite, keep the Vue plugin, add `UnoCSS()` from `unocss/vite`, and import `virtual:uno.css` once in the app entry.
 
-Copy the required controls from the official shadcn-vue registry. Manual registry copying avoids a Tailwind-oriented initializer rewriting the app. Install only the copied components' actual runtime dependencies, such as `reka-ui`, `class-variance-authority`, and `@vueuse/core` where imported. Do not keep unused registry components or install every registry dependency blindly.
+Keep the project's UnoCSS preset. For a fresh setup, check which preset supports the utilities the app uses. Map utility colors to existing CSS custom properties under `theme.colors`. Select opens in the browser's top layer without a portal by default. If the app's `container` setting moves a popup, make its theme tokens available in that container.
 
-A conservative compatibility starting point is `presetWind3`, with explicit token mapping. Wind4 is another version-specific option, not permission to paste Tailwind directives unchanged:
+Include the app's templates and any TypeScript files that hold utility names in extraction. Use complete literal utility and icon names, or safelist the finite set chosen dynamically.
 
-```ts
-import { defineConfig, presetIcons, presetWind3 } from 'unocss'
+## Style the rendered parts
 
-export default defineConfig({
-	presets: [presetWind3(), presetIcons()],
-	content: {
-		pipeline: {
-			include: [/\.(vue|[jt]sx?|html)($|\?)/],
-		},
-		filesystem: ['components/**/*.{vue,ts}', 'app/**/*.{vue,ts}', 'src/**/*.{vue,ts}'],
-	},
-	theme: {
-		colors: {
-			background: 'var(--background)',
-			foreground: 'var(--foreground)',
-			primary: { DEFAULT: 'var(--primary)', foreground: 'var(--primary-foreground)' },
-			secondary: { DEFAULT: 'var(--secondary)', foreground: 'var(--secondary-foreground)' },
-			muted: { DEFAULT: 'var(--muted)', foreground: 'var(--muted-foreground)' },
-			accent: { DEFAULT: 'var(--accent)', foreground: 'var(--accent-foreground)' },
-			popover: { DEFAULT: 'var(--popover)', foreground: 'var(--popover-foreground)' },
-			destructive: { DEFAULT: 'var(--destructive)', foreground: 'var(--destructive-foreground)' },
-			border: 'var(--border)', input: 'var(--input)', ring: 'var(--ring)',
-		},
-	},
-})
+Declare `@layer ui-sdk;` at the top of the global stylesheet so the app controls the cascade relative to UI SDK's behavior styles. Keep `@ui-sdk/core/web.css` out of the stylesheet, app imports, and Nuxt CSS configuration. The app provides the presentation and icon artwork.
+
+Read the installed component's Styling and Data Attributes sections. Match the rendered `data-slot` and the state attributes that part documents. Use UnoCSS attribute variants or ordinary CSS for those selectors. Use `[data-open]` or `[data-pressed]` only where the part exposes them. Use a value selector for an attribute such as `[data-side="top"]`.
+
+For example, map `control-active` to `var(--control-active)` in UnoCSS `theme.colors`. Put the literal utility `data-[checked]:bg-control-active` on the Switch root, which renders `data-slot="switch"` and exposes `data-checked`. For Select, size the documented content part using its placement variables:
+
+```css
+@layer ui-sdk;
+
+[data-slot="select-content"] {
+	inline-size: min(var(--anchor-width), var(--available-width));
+	max-block-size: var(--available-height);
+	overflow-y: auto;
+	background: var(--control-popover);
+}
 ```
 
-Adjust extraction paths to the actual app. Include TypeScript variant files, not only `.vue` templates. Keep complete literal utility and icon names in source, or safelist the finite names used dynamically. Do not construct names such as `i-${collection}-${name}` and expect extraction to discover them.
+Define the example's tokens in the project theme or substitute existing tokens. Apply Select's non-inherited available dimensions on the content part itself. Use the documented placeholder and highlighted states to distinguish the trigger and items where needed.
 
-## Translate the copied styling
+If app display styles would reveal a hidden, server-rendered part before hydration, add the behavior layer's hidden rule to the global stylesheet. Leave `hidden="until-found"` available to find-in-page:
 
-1. Replace Tailwind imports, plugins, `@theme`, `@custom-variant`, and Tailwind `@apply` with UnoCSS configuration or ordinary CSS. Remove the Tailwind pipeline and unused animation dependencies in a new UnoCSS setup. Preserve an existing CSS system unless its migration was requested.
-2. Define every token referenced by the selected controls. Use complete CSS colors for the mapping above, not bare HSL channels. A light and dark pair can use `light-dark(oklch(...), oklch(...))` with `color-scheme` switched by the app's theme attribute. Include background, foreground, popover, accent, border, input, ring, and variant foreground tokens. Adapt the theme hook if using Nuxt color mode. Theme tokens must apply to portalled content too.
-3. Audit every variant actually used: `data-[state=open]`, disabled, highlighted, side, responsive, arbitrary selectors, and focus. Wind3 supports data-attribute utilities, but does not supply every Tailwind plugin rule. Replace unsupported rules with named component CSS or an explicit UnoCSS rule. Check generated CSS and computed styles in production, including variants in `.ts` files.
-4. Replace `animate-in`, `animate-out`, `fade-in-*`, `zoom-*`, and `slide-*` plugin utilities with explicit CSS or remove motion deliberately. Do not leave inert class names. Frequent keyboard dialogs and menus can open instantly. If occasional pointer motion is useful, use component-owned state selectors, short keyframes, and a reduced-motion branch. Preserve Reka's mounting and exit behavior. A duration utility alone creates no animation.
-5. Adapt class composition. Tailwind merge utilities understand Tailwind conflicts, not arbitrary UnoCSS shortcuts. For a controlled copied component, use Vue class arrays or `clsx`, with explicit variant choices that avoid conflicting utilities. If retaining a merger, verify the actual UnoCSS classes it removes or keeps. Preserve props, emits, slots, Reka focus handling, portal, title, and description semantics.
-6. Apply skill://good-css to copied styles too. Replace removed focus outlines with visible outlines, use logical spacing, provide press states, and gate hover. Adapt copied no-wrap and nonshrinking button styles so action labels fit at narrow widths and with enlarged text. Resize dialogs against available inline size and keep their body scrollable rather than clipping actions.
-
-## Replace copied icon code
-
-Install the local collection, for example `@iconify-json/lucide`. Replace copied Lucide component imports with literal UnoCSS icon spans:
-
-```vue
-<button type="button" aria-label="Close">
-	<span class="i-lucide-x inline-block size-4 shrink-0" aria-hidden="true" />
-</button>
+```css
+@layer ui-sdk {
+	:where([data-slot][hidden]:not([hidden="until-found"])) {
+		display: none !important;
+	}
+}
 ```
 
-Keep the original icon artwork when an app has a chosen set. An informative icon needs accessible text. Decorative icons stay hidden from assistive technology. Update copied selectors that style only `svg` so they also size the new icon spans. Verify an actual CSS mask or background and dimensions, not merely the presence of a class. Do not add `@nuxt/icon` automatically alongside this renderer.
+If the app limits inline styles, read the installed UI SDK Styling and Animation guide's Content Security Policy section. Follow its instructions for the app's nonce or for constructed stylesheets when the policy has no style nonce. Keep the app's policy intact. Verify that behavior styles and popup placement work under that policy.
+
+Use skill://good-css for focus, press, and reduced-motion styling. Check those states without replacing UI SDK's keyboard or focus behavior.
+
+Let the trigger's parent flex item or grid track shrink at narrow widths. Let control labels wrap and move a Switch to the next line if its row runs out of room. Measure the open popup and the page's scroll width with enlarged text. Fix the layout rather than hiding horizontal overflow.
+
+## Keep the project's icons
+
+Use UnoCSS `presetIcons()` with the local `@iconify-json/<collection>` development dependency for the artwork the app uses. Keep existing artwork. Use a complete class such as `i-lucide-chevron-down` with the Lucide collection. Hide decorative indicators from assistive technology and give icon-only controls accessible names. Check the icon's computed mask or background and dimensions in the built app, not just its class name.
 
 ## Observe the controls
 
-Build and typecheck the real application. Open the copied dialog and menu with keyboard input, navigate menu items, press Escape, and observe focus return. Observe light and dark portalled content, disabled and invalid states, a 320px viewport, and long realistic content. Keep screenshots and ARIA evidence through the existing Verify owner. A styled button alone proves neither popup behavior nor the other copied components.
+Exercise the actual controls in the built app. For Select, open and navigate by keyboard, dismiss with Escape, observe focus return, then make a selection. For Switch, toggle with Space. Submit named controls and inspect the form values the consumer receives. In Nuxt, check the initial server HTML and the hydrated interaction.
+
+Check visible focus, disabled and invalid states where used, themes, narrow layouts, and realistic content. For the repository proof recipe, see Verify's `frontend-stack` feature, `stack-controls`. Its browser checks and the UI SDK agent-ready test prove different paths.
