@@ -7,7 +7,7 @@ vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's ski
 ### Sources
 
 **Upstream**:
-An external skills repository that vstack derives content from. Each one has its own kind, named below.
+An external skills repository that vstack derives content from.
 _Avoid_: source repo, origin, vendor
 
 **Base upstream**:
@@ -35,7 +35,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, and a full commit SHA for the Enhancement upstream, CSS upstream, and UI upstream.
+The exact Upstream version vstack was last reconciled with. Use a release tag or a full commit SHA according to the Upstream's configured pin kind.
 _Avoid_: lock, version (unqualified)
 
 ### Skills

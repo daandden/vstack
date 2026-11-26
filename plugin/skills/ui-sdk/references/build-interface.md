@@ -186,4 +186,4 @@ Check each part name against the component pages; they're the source of truth.
 
 ## 8. Make it agent-ready
 
-Connect the bridge and write the required [agent test](agent-ready.md#prove-it-with-a-test).
+Follow [Make it agent-ready](agent-ready.md) for the resulting interface.

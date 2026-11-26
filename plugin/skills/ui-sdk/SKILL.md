@@ -22,7 +22,7 @@ Use [the online docs](https://ui-sdk.dev/docs) when the installed docs are unava
 
 For a page without a build step, read [the no-bundler instructions](references/web-components.md#without-a-bundler) and https://ui-sdk.dev/web.md instead of `llms.txt`. It needs no package installation.
 
-When the task explicitly calls for UI SDK setup in an app with a build step, install missing `@ui-sdk/core` and framework packages with the project's package manager. Match the framework package version to core. In a Nuxt 4 or newer app using `@ui-sdk/vue`, add `"@ui-sdk/vue"` to `modules` in `nuxt.config.ts`.
+When the task explicitly calls for UI SDK setup with a build step for Vue or Nuxt, follow [web-fullstack's UI SDK package setup](../web-fullstack/references/setup.md#wire-ui-sdk-for-vue). For other frameworks, install missing `@ui-sdk/core` and the framework package with the project's package manager. Match the framework package version to core.
 
 ## Pick your path
 
@@ -31,7 +31,7 @@ When the task explicitly calls for UI SDK setup in an app with a build step, ins
 
 Use path 1 for the interface and path 2 only for parts that need a custom component.
 
-On every path, [make the interface agent-ready](references/agent-ready.md). Connect the bridge and write the agent test in that reference. The running workflow, such as `skill://implement` or the project's Verify skill, owns general test seams and proof. Read [the UI SDK testing reference](references/testing.md) when it calls for UI SDK checks.
+Both paths lead to the same [agent-ready requirements](references/agent-ready.md). The running workflow, such as `skill://implement` or the project's Verify skill, owns general test seams and proof. Read [the UI SDK testing reference](references/testing.md) when it calls for UI SDK checks.
 
 ## Rules for every path
 

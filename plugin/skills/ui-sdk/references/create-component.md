@@ -61,7 +61,7 @@ When the same interaction repeats across components, like press-and-hold or drag
 
 ### 5. Make it agent-ready
 
-For the resulting interface, connect the bridge and write the [agent test](agent-ready.md#prove-it-with-a-test).
+Follow [Make it agent-ready](agent-ready.md) for the resulting interface.
 
 ## Compose ours
 

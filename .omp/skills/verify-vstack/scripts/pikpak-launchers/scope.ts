@@ -11,6 +11,7 @@ const runtime = join(root, "runtime");
 const journal = join(runtime, "state.jsonl");
 const archive = join(root, "last-state.jsonl");
 const rwHome = join(runtime, "rw-home");
+const downloadHome = join(runtime, "download-home");
 const privateDir = join(root, "private");
 const rwToken = join(privateDir, "rw-token");
 const ownerRequest = join(runtime, "owner-request.json");
@@ -30,6 +31,8 @@ type Start = { type: "start"; folder: string; name: string; fixture: string };
 type RecordEntry = Start | { type: "file" | "cursor"; value: string };
 type State = Start & { files: Set<string>; cursors: Set<string>; downloadOnly?: string };
 type Result = { status: number; out: string; err: string };
+type ListedItem = { id: string; kind: string; name?: string; parent: string };
+type Listing = { files: ListedItem[]; next: string };
 type FolderReceipt = { id: string; name: string; parent: "" };
 type DriverRequest = { action: "create"; value: string } | { action: "remove" | "preflight"; value?: never } |
   { action: "parent"; value?: string };
@@ -39,14 +42,16 @@ function refuse(reason: string): never { throw new Refusal(reason); }
 function matches(re: RegExp, value: unknown): value is string {
   return typeof value === "string" && re.test(value);
 }
+function isObject(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
 function parse(text: string, reason: string): Record<string, unknown> {
   let value: unknown;
   try { value = JSON.parse(text); } catch { refuse(reason); }
-  if (!value || typeof value !== "object" || Array.isArray(value)) refuse(reason);
-  return value as Record<string, unknown>;
+  if (!isObject(value)) refuse(reason);
+  return value;
 }
-function record(entry: RecordEntry) {
-  // A bounded record in one O_APPEND write lets independent launcher processes register results.
+function appendJournalEntry(entry: RecordEntry) {
   const fd = openSync(journal, constants.O_WRONLY | constants.O_APPEND);
   try { appendFileSync(fd, JSON.stringify(entry) + "\n"); } finally { closeSync(fd); }
 }
@@ -140,27 +145,36 @@ function guard(s: State, a: string[]) {
     default: refuse("subcommand not allowed");
   }
 }
-function listing(value: Record<string, unknown>) {
-  const files = value.files;
-  const next = value.next_page_token;
-  if (!Array.isArray(files) || (next !== undefined && next !== null && next !== "" &&
-      (!matches(cursor, next) || next.startsWith("-")))) refuse("unexpected listing response");
-  return { files, next: (next || "") as string };
+function listing(text: string, reason: string): Listing {
+  const value = parse(text, reason);
+  const rows: unknown = value.files;
+  const next = value.next_page_token ?? "";
+  if (!Array.isArray(rows) || (next !== "" && (!matches(cursor, next) || next.startsWith("-")))) refuse(reason);
+  const files: ListedItem[] = [];
+  for (const row of rows as unknown[]) {
+    if (!isObject(row)) refuse(reason);
+    const { id: itemId, kind, name } = row;
+    const parent = normalizeRootParent(row.parent_id);
+    if (!matches(id, itemId) || typeof kind !== "string" || !kind ||
+        (name !== undefined && typeof name !== "string") || (parent !== "" && !matches(id, parent))) refuse(reason);
+    files.push({ id: itemId, kind, name, parent });
+  }
+  return { files, next };
 }
 function register(s: State, args: string[], out: string) {
   if (args[0] === "upload") {
     const file = parse(out, "unexpected upload response");
     if (file.phase !== "PHASE_TYPE_COMPLETE" || !matches(id, file.file_id) || file.file_id === s.folder ||
         (file.parent_id !== undefined && file.parent_id !== s.folder)) refuse("upload response does not prove an in-scope file ID");
-    if (!s.files.has(file.file_id)) record({ type: "file", value: file.file_id });
+    if (!s.files.has(file.file_id)) appendJournalEntry({ type: "file", value: file.file_id });
   } else if (args[0] === "ls") {
-    const { files, next } = listing(parse(out, "unexpected listing response"));
+    const { files, next } = listing(out, "unexpected listing response");
     for (const f of files) {
-      if (f?.kind === "file" && f.parent_id === s.folder && matches(id, f.id) && f.id !== s.folder && !s.files.has(f.id)) {
-        record({ type: "file", value: f.id });
+      if (f.kind === "file" && f.parent === s.folder && f.id !== s.folder && !s.files.has(f.id)) {
+        appendJournalEntry({ type: "file", value: f.id });
       }
     }
-    if (next && !s.cursors.has(next)) record({ type: "cursor", value: next });
+    if (next && !s.cursors.has(next)) appendJournalEntry({ type: "cursor", value: next });
   }
 }
 function cleanEnvironment() {
@@ -175,7 +189,7 @@ async function captured(cmd: string[], options: { env?: Record<string, string | 
   ]);
   return { status, out, err };
 }
-async function callCli(args: string[]): Promise<Result> {
+async function callCli(args: string[], home = rwHome): Promise<Result> {
   let token: string;
   try {
     const st = statSync(rwToken);
@@ -187,10 +201,10 @@ async function callCli(args: string[]): Promise<Result> {
     refuse("token file unavailable");
   }
   if (args.some((arg) => arg.includes(token)) || binary.includes(token)) refuse("credential in CLI arguments");
-  const result = await captured([binary, ...args], { cwd: rwHome, env: {
-    PATH: "/usr/bin:/bin", HOME: rwHome, XDG_CONFIG_HOME: rwHome, TMPDIR: rwHome,
-    PIKPAK_DIR: rwHome, PIKPAK_PAT_PATH: join(rwHome, ".pat.json"),
-    PIKPAK_CREDENTIALS: join(rwHome, ".credentials.json"), PIKPAK_TOKEN: token,
+  const result = await captured([binary, ...args], { cwd: home, env: {
+    PATH: "/usr/bin:/bin", HOME: home, XDG_CONFIG_HOME: home, TMPDIR: home,
+    PIKPAK_DIR: home, PIKPAK_PAT_PATH: join(home, ".pat.json"),
+    PIKPAK_CREDENTIALS: join(home, ".credentials.json"), PIKPAK_TOKEN: token,
     PIKPAK_NO_LOG: "1", PIKPAK_NO_UPDATE_NOTIFIER: "1", PIKPAK_NO_SKILL_SYNC: "1",
   } });
   const hide = (value: string) => value.split(token).join("[redacted]".includes(token) ? "" : "[redacted]");
@@ -204,7 +218,7 @@ function emit(result: Result) {
 async function launch(args: string[]) {
   const s = state();
   const safe = guard(s, args);
-  const result = await callCli(safe);
+  const result = await callCli(safe, s.downloadOnly ? downloadHome : rwHome);
   if (result.status === 0) register(s, safe, result.out);
   return emit(result);
 }
@@ -213,20 +227,22 @@ function restrictToDownload([file, ...rest]: string[]) {
   if (s.downloadOnly) refuse("launcher is already download-only");
   if (!file || rest.length || !s.files.has(file)) refuse("download-only needs one in-scope file ID");
   try {
+    mkdirSync(downloadHome, { mode: 0o700 });
+    const entries = readdirSync(downloadHome);
+    if (entries.length) refuse("download-only CLI home is not empty");
     writeFileSync(downloadOnlyPath, file, { flag: "wx", mode: 0o600 });
+    console.log(JSON.stringify({ download_only: file, initial_home: { name: basename(downloadHome), entries } }));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "EEXIST") refuse("launcher is already download-only");
     throw error;
   }
-  console.log(JSON.stringify({ download_only: file }));
   return 0;
 }
 function commandAfterSeparator(args: string[]) {
   if (args[0] !== "--" || !args[1]) refuse("expected -- followed by a command");
   return args.slice(1);
 }
-// The controller calls these in separate processes so no credential enters its environment or heap.
-async function callDriver(request: DriverRequest) {
+async function runDriverCliInChild(request: DriverRequest) {
   writeFileSync(ownerRequest, JSON.stringify(request), { flag: "wx", mode: 0o600 });
   try { return await captured([...inner, "driver-cli"]); }
   finally { rmSync(ownerRequest, { force: true }); }
@@ -243,6 +259,9 @@ function readFolderReceipt(): FolderReceipt {
   }
   return { id: receipt.id, name: receipt.name, parent: receipt.parent };
 }
+function normalizeRootParent(parent: unknown) {
+  return parent ?? "";
+}
 async function driverCli(args: string[]) {
   if (args.length || !exists(ownerRequest)) refuse("missing owner request");
   const request = parse(readFileSync(ownerRequest, "utf8"), "invalid owner request");
@@ -252,8 +271,7 @@ async function driverCli(args: string[]) {
     const created = await callCli(["mkdir", value, ...jsonFlags]);
     if (created.status !== 0) return emit(created);
     const item = parse(created.out, "unexpected mkdir response");
-    // The root mkdir response can omit parent_id.
-    const parent = item.parent_id ?? "";
+    const parent = normalizeRootParent(item.parent_id);
     if (!matches(id, item.id) || item.name !== value || parent !== "") {
       refuse("mkdir did not identify the unique root run folder");
     }
@@ -269,7 +287,7 @@ async function driverCli(args: string[]) {
     if (Object.keys(request).length !== 1) refuse("remove request must contain only the action");
     const receipt = readFolderReceipt();
     const item = await findInParent(receipt.id, (next) => callCli(parentArgs(next)));
-    if (item?.kind !== "folder" || item.name !== receipt.name || (item.parent_id ?? "") !== receipt.parent) {
+    if (item?.kind !== "folder" || item.name !== receipt.name || item.parent !== receipt.parent) {
       refuse("run-folder receipt does not match the parent listing");
     }
     return emit(await callCli(["rm", receipt.id, ...jsonFlags]));
@@ -285,8 +303,8 @@ async function findInParent(folder: string, loadPage: (next: string) => Promise<
   do {
     const p = await loadPage(next);
     if (p.status !== 0) refuse("parent listing failed during cleanup");
-    const page = listing(parse(p.out, "unexpected parent listing response"));
-    const item = page.files.find((f) => f?.id === folder);
+    const page = listing(p.out, "unexpected parent listing response");
+    const item = page.files.find((f) => f.id === folder);
     if (item) return item;
     next = page.next;
     if (next && seen.has(next)) refuse("parent listing repeated a cursor");
@@ -302,7 +320,7 @@ async function preflight() {
   const page = async (args: string[]) => {
     const result = await callCli(args);
     if (result.status !== 0) { emit(result); refuse("preflight listing failed"); }
-    return listing(parse(result.out, "unexpected preflight listing response"));
+    return listing(result.out, "unexpected preflight listing response");
   };
   const first = await page(["ls", "-l", "1", ...jsonFlags]);
   if (first.next) {
@@ -339,7 +357,7 @@ async function drive(args: string[]) {
     mkdirSync(rwHome, { mode: 0o700 });
     console.log(JSON.stringify({ initial_home: basename(rwHome), entries: readdirSync(rwHome) }));
     console.log(JSON.stringify({ creating: name }));
-    const created = await callDriver({ action: "create", value: name });
+    const created = await runDriverCliInChild({ action: "create", value: name });
     if (created.status !== 0) { emit(created); refuse("run-folder creation failed"); }
     const item = parse(created.out, "unexpected mkdir response");
     if (!matches(id, item.id) || item.name !== name) refuse("mkdir did not identify the unique run folder");
@@ -349,11 +367,11 @@ async function drive(args: string[]) {
     if (signal) refuse("interrupted before the proof command");
     const initial = await captured([rwLauncher, "ls", folder, ...jsonFlags], { env: cleanEnvironment() });
     if (initial.status !== 0) { emit(initial); refuse("initial run-folder listing failed"); }
-    const page = listing(parse(initial.out, "unexpected initial listing response"));
+    const page = listing(initial.out, "unexpected initial listing response");
     if (page.files.length || page.next) refuse("new run folder is not empty");
     console.log(JSON.stringify({ initial_folder: folder, files: [] }));
     if (checkCli) {
-      const result = await callDriver({ action: "preflight" });
+      const result = await runDriverCliInChild({ action: "preflight" });
       emit(result);
       if (result.status !== 0) refuse("live preflight did not complete");
     }
@@ -367,12 +385,19 @@ async function drive(args: string[]) {
     if (signal) status = signal === "SIGINT" ? 130 : 143;
   } finally {
     try {
-      if (exists(journal)) renameSync(journal, archive);
+      try {
+        const hasJournal = exists(journal);
+        if (hasJournal) renameSync(journal, archive);
+        console.log(JSON.stringify({ journal_archive: hasJournal ? "saved" : "no-journal" }));
+      } catch (error) {
+        status = 1;
+        console.error(JSON.stringify({ journal_archive: "failed", code: (error as NodeJS.ErrnoException).code }));
+      }
       if (folder) {
-        const removed = await callDriver({ action: "remove" });
+        const removed = await runDriverCliInChild({ action: "remove" });
         emit(removed);
         if (removed.status !== 0) refuse("run folder removal did not succeed");
-        if (await findInParent(folder, (next) => callDriver({ action: "parent", value: next || undefined }))) {
+        if (await findInParent(folder, (next) => runDriverCliInChild({ action: "parent", value: next || undefined }))) {
           refuse("run folder still appears in its parent");
         }
         requireRemovalAccepted(removed.out);

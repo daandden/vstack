@@ -7,6 +7,8 @@ description: "Design or inspect in OpenPencil via MCP, or build or verify agains
 
 Use the user's existing OpenPencil MCP server for live design work. This Utility gives the current workflow design guidance. The current owner keeps the stack choice, execution, and proof. A Design baseline is the agreed `.fig` file identified by its SHA-256, not the live document or a PNG export. The live document can change independently.
 
+For standalone result-producing work, follow `skill://flow-page`'s "Stage entry/exit line" before discovery. When another workflow reads this skill as a reference, keep design work and handoff in that owner's Stage. Open no separate Stage.
+
 - To save and agree frames before handoff, or to hand over the exact saved file the user agreed to in the grill, follow [Create a Design baseline](references/create-design-baseline.md).
 - To build or verify against an existing Design baseline, follow [Fetch and verify a Design baseline](references/fetch-design-baseline.md). Start there even when the editor or MCP server is unavailable.
 

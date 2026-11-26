@@ -4,7 +4,7 @@ set -eu
 private=$(cd -- "${BASH_SOURCE[0]%/*}" && pwd -P)
 mock=${private%/*}
 sub=${1-}
-[[ $HOME == "$mock/runtime/rw-home" ]] || exit 97
+[[ $HOME == "$mock/runtime/rw-home" || ( $sub == download && $HOME == "$mock/runtime/download-home" ) ]] || exit 97
 IFS= read -r expected < "$private/rw-token"
 correct=no
 if [[ -n ${PIKPAK_TOKEN-} && $expected == "$PIKPAK_TOKEN" ]]; then correct=yes; fi
@@ -17,8 +17,8 @@ ps_check=clean
 case "$ps_args" in ''|*"$expected"*) ps_check=failed;; esac
 shopt -s nullglob dotglob
 entries=("$HOME"/*)
-printf 'command=%s correct_token=%s isolated_config=%s ps_check=%s entries=%s pid=%s argv=' \
-  "$sub" "$correct" "$config" "$ps_check" "${#entries[@]}" "$$" >> "$mock/cli.log"
+printf 'command=%s correct_token=%s isolated_config=%s ps_check=%s entries=%s pid=%s home=%s argv=' \
+  "$sub" "$correct" "$config" "$ps_check" "${#entries[@]}" "$$" "${HOME##*/}" >> "$mock/cli.log"
 printf '%q ' "$@" >> "$mock/cli.log"
 printf '\n' >> "$mock/cli.log"
 [[ $correct == yes && $config == yes && $ps_check == clean ]] || exit 98
@@ -33,7 +33,9 @@ case "$sub" in
     ;;
   ls)
     if [[ $2 == "$folder" ]]; then
-      if [[ ! -f $mock/upload-1 ]]; then printf '{"files":[]}\n'
+      if [[ -f $mock/malformed-listing ]]; then
+        printf '{"files":[{"kind":"file","id":"unverified_621","parent_id":"%s"},null],"next_page_token":"unverified-page"}\n' "$folder"
+      elif [[ ! -f $mock/upload-1 ]]; then printf '{"files":[]}\n'
       elif [[ $3 == -t ]]; then
         printf '{"files":[{"kind":"file","id":"listed_621","parent_id":"%s"},{"kind":"file","id":"foreign_621","parent_id":"other_folder"},{"kind":"folder","id":"subfolder_621","parent_id":"%s"}]}\n' "$folder" "$folder"
       else
@@ -43,7 +45,7 @@ case "$sub" in
       if [[ ${4-} == -t && $5 == root-page-621 ]]; then
         printf '{"files":[]}\n'
       else
-        printf '{"files":[{"name":"unrelated_parent_name"}],"next_page_token":"root-page-621"}\n'
+        printf '{"files":[{"kind":"folder","id":"unrelated_parent_id","name":"unrelated_parent_name"}],"next_page_token":"root-page-621"}\n'
       fi
     elif [[ $2 == -F ]]; then
       printf '{"files":[{"kind":"folder","id":"unrelated_parent_id","name":"unrelated_parent_name","parent_id":""}],"next_page_token":"root-page-621"}\n'
@@ -65,7 +67,6 @@ case "$sub" in
     printf '{"file_id":"%s","name":"%s","phase":"PHASE_TYPE_COMPLETE"}\n' "$result" "$6"
     ;;
   get)
-    # Simulate a provider echo on both streams, never in the argv log.
     printf '{"id":"%s","unsafe_provider_hint":"%s"}\n' "$2" "$PIKPAK_TOKEN"
     printf 'provider diagnostic %s\n' "$PIKPAK_TOKEN" >&2
     ;;

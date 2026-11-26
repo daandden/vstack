@@ -119,6 +119,16 @@ function proof() {
   } finally {
     chmodSync(dummyTokenPath, 0o600);
   }
+  writeFileSync(source("malformed-listing"), "");
+  try {
+    const result = exec([rw, "ls", folder, ...flags]);
+    event("malformed provider listing is refused before exposing any rows", result,
+      result.status === 1 && result.stdout === "" && result.stderr.includes("unexpected listing response"));
+    deny("unverified listing registers no file ID", download("unverified_621", local("unverified.fig")), "file ID not in run scope");
+    deny("unverified listing registers no cursor", [rw, "ls", folder, "-t", "unverified-page", ...flags], "unknown listing cursor");
+  } finally {
+    rmSync(source("malformed-listing"));
+  }
   allow("RW allowed get redacts token on stdout and stderr", [rw, "get", file, ...flags],
     ({ stdout, stderr }) => stdout.includes("[redacted]") && stderr.includes("[redacted]"));
   allow("RW scoped ls returns the cursor", [rw, "ls", folder, ...flags], ({ stdout }) => JSON.parse(stdout).next_page_token === "page-621");
@@ -138,13 +148,18 @@ function proof() {
   const sealed = exec([driver, "download-only", file]);
   event("driver binds the launcher to exactly one file ID", sealed,
     sealed.status === 0 && JSON.parse(sealed.stdout).download_only === file);
+  const initial = JSON.parse(sealed.stdout).initial_home;
+  event("download-only receipt records a separate empty CLI home", { initial },
+    initial?.name === "download-home" && Array.isArray(initial.entries) && initial.entries.length === 0);
   deny("download-only scope cannot change IDs", [driver, "download-only", planted], "already download-only");
   deny("sealed launcher refuses listing", [rw, "ls", folder, ...flags], "only the bound file");
   deny("sealed launcher refuses metadata lookups", [rw, "get", file, ...flags], "only the bound file");
   deny("sealed launcher refuses uploads", upload(fig), "only the bound file");
   deny("sealed launcher refuses a different known ID", download(planted, local("wrong-id.fig")), "only the bound file");
   deny("sealed launcher refuses download outside fixtures", download(file, join(evidence, "outside-download.fig")), "outside the fixture directory");
-  allow("sealed launcher downloads the exact file", download(file, local("offline.fig")), () => readFileSync(local("offline.fig"), "utf8") === bytes);
+  allow("sealed launcher downloads the exact file with the fresh CLI home", download(file, local("offline.fig")),
+    () => readFileSync(local("offline.fig"), "utf8") === bytes &&
+      /\bentries=0\b.*\bhome=download-home\b/.test(trace().at(-1) ?? ""));
 }
 
 function verifyRun(label: string, result: ReturnType<typeof exec>, status: number) {
@@ -217,6 +232,18 @@ function suite() {
     event("only the driver created and removed the folder; no trash listing", {},
       calls.filter((line) => line.startsWith("command=mkdir ")).length === 4 && calls.filter((line) => line.startsWith("command=rm ")).length === 4 &&
       !calls.some((line) => line.startsWith("command=trash ")));
+    const archivePath = source("last-state.jsonl");
+    rmSync(archivePath);
+    mkdirSync(archivePath);
+    try {
+      const observed = exec([driver, "run", fixture, "--", "/usr/bin/true"], env);
+      event("archive failure still removes the receipt-bound folder", observed,
+        observed.status === 1 && observed.stderr.includes('"journal_archive":"failed"') &&
+        observed.stdout.includes('"removed":"folder_621","absent_from_parent":true') &&
+        !existsSync(source("runtime")) && !existsSync(source("folder-record")));
+    } finally {
+      rmSync(archivePath, { recursive: true });
+    }
     for (const [mode, diagnostic] of [["nonzero", "removal did not succeed"], ["still-listed", "still appears in its parent"],
       ["wrong-count", "did not accept exactly one item"]]) {
       writeFileSync(source("rm-mode"), mode + "\n");

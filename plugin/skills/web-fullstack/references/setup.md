@@ -24,15 +24,17 @@ Use only the chosen branch. Inspect scaffold output before adding modules or too
 
 Use the [curated task row](choices.md), not the whole list. Verify current framework integrations before editing configuration. For Nuxt, register needed modules in `nuxt.config.ts`. For Vue, register needed plugins before mounting the application. Keep browser globals and browser-only libraries behind appropriate client boundaries and preserve hydration-safe initial state.
 
-If the task needs UI SDK, install compatible `@ui-sdk/core` and `@ui-sdk/vue` together with the app's package manager. Check their peer requirements against the app's Vue and Nuxt versions. In Nuxt, add `@ui-sdk/vue` to `modules` in `nuxt.config.ts`. In standalone Vue with Vite, import the components from their entries, such as `@ui-sdk/vue/select`. Add no Nuxt module or dependency to that app.
-
-Use skill://ui-sdk for library usage, component composition, missing components, and the agent-ready step. Use [UnoCSS controls and icons](unocss-controls.md) for the styling integration. This setup guide still owns package selection and completion proof.
-
 For managed forms and runtime schemas, follow [the forms recipe](forms.md). Optional state, query, chart, table, motion, and 3D packages remain absent unless their task requires them.
 
 For server routes or data, follow [server and data setup](server-data.md). For a Cloudflare target, also follow [the local boundary and deploy checklist](cloudflare-deploy.md). Frontend-only setup does not load either reference unless the task needs it.
 
 For sign-in, also follow [Better Auth setup](auth.md). Keep auth absent for tasks without sign-in.
+
+### Wire UI SDK for Vue
+
+When the task needs UI SDK, install compatible `@ui-sdk/core` and `@ui-sdk/vue` at the same version with the app's package manager. Check their peer requirements against the app's Vue and Nuxt versions. In Nuxt 4 or newer, add `@ui-sdk/vue` to `modules` in `nuxt.config.ts`. Report an incompatible Nuxt version rather than changing the framework. In standalone Vue with Vite, import components from their entries, such as `@ui-sdk/vue/select`. Add no Nuxt module or dependency to that app.
+
+Use skill://ui-sdk for library usage, component composition, missing components, and the agent-ready step. Use [UnoCSS controls and icons](unocss-controls.md) for the styling integration. This setup guide still owns package selection and completion proof.
 
 ## Set up component tests
 
