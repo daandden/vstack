@@ -1,6 +1,6 @@
 # vstack
 
-A personal omp plugin built on Matt Pocock's skills, with selected additions from pstack, good-css, Emil Kowalski's UI guidance, and Vercel Labs' UI SDK.
+A personal omp plugin built on Matt Pocock's skills, with selected additions from pstack, good-css, Emil Kowalski's UI guidance, Vercel Labs' UI SDK, and Cloudflare's platform skills.
 
 `/skill:grill-with-docs` traces the systems each change touches and sketches two shapes at the level of owners, modules, and contracts. For a large or contested design, it starts `compare-attempts` automatically and brings the synthesis to the design question. If only one shape is viable, the second sketch shows why and is not offered as a choice.
 
@@ -48,6 +48,8 @@ In Tern, run `/vstack-clean [age]` to open the Scratch cleanup popup over your p
 Use `/skill:web-fullstack <task>` for frontend library choice or requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare Workers with Static Assets. It checks the target app and keeps suitable installed solutions. Advice is read-only. Frontend-only Vue with Vite stays supported. Fullstack uses Nuxt server routes and NuxtHub D1, with KV or R2 only when needed. Apps needing sign-in use Better Auth through `@nuxtjs/better-auth`; other apps get no auth library. Bun applies only without an existing or requested manager. Setup proves local D1 in Nuxt dev and built `wrangler dev`, including the requested sign-in flow, then writes a deploy checklist. It makes no Cloudflare account request. Deploys run only on explicit request, from your machine to one production Worker, with account and per-step confirmation. Auth apps require the live origin as Worker runtime `NUXT_PUBLIC_SITE_URL`, followed by a read-only live auth check. Secret values go directly into your private Wrangler terminal prompt, never chat or the Flow. Cloudflare is the only curated host. The [curated choices](plugin/skills/web-fullstack/references/choices.md), [auth recipe](plugin/skills/web-fullstack/references/auth.md), and [Cloudflare deploy procedure](plugin/skills/web-fullstack/references/cloudflare-deploy.md) describe the scope.
 
 When native or installed controls are not enough, web-fullstack recommends UI SDK for keyboard, focus, and ARIA behavior. The [UnoCSS recipe](plugin/skills/web-fullstack/references/unocss-controls.md) styles those controls with the app's tokens and keeps its local icon artwork.
+
+Sixteen [Cloudflare platform skills](docs/maintainer.md#cloudflare-upstream) are visible Utility skills. They load by description in any session or by name, for example `/skill:cloudflare`, `/skill:wrangler`, or `/skill:durable-objects`. `web-fullstack` still owns the curated Nuxt setup and confirmed deploy procedure.
 
 The twelve Emil-derived skills are visible Utility skills. They can load by description in any session or by name, without Addon judge selection. Their guidance takes precedence over good-css for CSS and animation under [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](docs/adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). [Choreograph](plugin/skills/choreograph/SKILL.md) coordinates several moving elements; [gestures](plugin/skills/gestures/SKILL.md) covers direct manipulation and suggests Vaul only when the project already depends on it.
 

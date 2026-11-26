@@ -49,3 +49,12 @@ upstreams:
     pin: d5c6249e1a0b1df47334d3012180bfba9b9374ec
     items:
       - { match: "packages/core/skills/ui-sdk", type: tree, kind: skill }
+
+  cloudflare:
+    role: Cloudflare
+    repo: cloudflare/skills
+    path: skills
+    pin_kind: commit
+    pin: ff191de7d903788eceaf516a514ae7d3b56b924a
+    items:
+      - { match: "skills/*", type: tree, kind: skill }
