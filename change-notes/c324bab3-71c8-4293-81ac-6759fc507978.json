@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add 16 Cloudflare platform skills as visible Utility skills, available by name or description in any omp session. The 16 descriptions total 3,155 authored characters. Their adapted feedback and approval prompts use omp's `ask`."
+  ]
+}

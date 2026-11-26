@@ -2,7 +2,8 @@
 # Row fields: id, upstream (a pins.yaml key), kind (skill|principle|playbook|agent), path and tree (the item
 # at the current Pin), disposition (adopt|adapt|merge|reject), artifacts (plugin paths; empty only for
 # reject), reason (one line), optional adr, and on a held row held_at plus
-# held_path. originals: lists vstack-only artifacts. utility: lists Utility skills.
+# held_path. originals: lists vstack-only artifacts and third-party license files that belong to no
+# Upstream item. utility: lists Utility skills.
 # scripts/check-register.ts checks this file; see README.md.
 items:
   - id: matt/ask-matt
@@ -1146,6 +1147,215 @@ items:
     artifacts:
       - plugin/skills/session
     reason: Its design-correction signals join session's single pass. Session's asks and implement routing replace its DESIGN.md writes.
+  - id: cloudflare/agents-sdk
+    upstream: cloudflare
+    kind: skill
+    path: skills/agents-sdk
+    tree: c17a787898e9606bdb07ab6e69c650c2387e0fb4
+    disposition: adapt
+    artifacts:
+      - plugin/skills/agents-sdk
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/artifacts
+    upstream: cloudflare
+    kind: skill
+    path: skills/artifacts
+    tree: a5556e70a7784e0341378c1dc50eee99f2a55f8b
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/basin
+    upstream: cloudflare
+    kind: skill
+    path: skills/basin
+    tree: a13cdd24fc442c6c522fc41a1f5ee8f9642fd7c0
+    disposition: adapt
+    artifacts:
+      - plugin/skills/basin
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/cf-cli
+    upstream: cloudflare
+    kind: skill
+    path: skills/cf-cli
+    tree: 8fc54810c8299bd9926eb86b7ba08f95ad7f1202
+    disposition: adapt
+    artifacts:
+      - plugin/skills/cf-cli
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/cloudflare-app-bootstrap
+    upstream: cloudflare
+    kind: skill
+    path: skills/cloudflare-app-bootstrap
+    tree: d4aa8e9b65f11fb57fc553530be846bc283c018c
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/cloudflare-email-service
+    upstream: cloudflare
+    kind: skill
+    path: skills/cloudflare-email-service
+    tree: 1ac66e9f133725e72cd1bef2bc2b5e75e802fc91
+    disposition: adapt
+    artifacts:
+      - plugin/skills/cloudflare-email-service
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/cloudflare-one-migrations
+    upstream: cloudflare
+    kind: skill
+    path: skills/cloudflare-one-migrations
+    tree: c273db61b4290755f6a4c31b01c63d8e0a991a86
+    disposition: adapt
+    artifacts:
+      - plugin/skills/cloudflare-one-migrations
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/cloudflare-one
+    upstream: cloudflare
+    kind: skill
+    path: skills/cloudflare-one
+    tree: 55ec81e0b6e4c26906b03c763270ee7367f2d612
+    disposition: adapt
+    artifacts:
+      - plugin/skills/cloudflare-one
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/cloudflare
+    upstream: cloudflare
+    kind: skill
+    path: skills/cloudflare
+    tree: 6eb1e83fc674d5e52e56b61cf2873aa32eb44317
+    disposition: adapt
+    artifacts:
+      - plugin/skills/cloudflare
+    reason: "Rewrite the flagged ask-tool wording, route skill and feedback questions through omp's ask with the Flow contract, and replace the broken nextjs-on-cloudflare link with an optional skill reference (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/durable-objects
+    upstream: cloudflare
+    kind: skill
+    path: skills/durable-objects
+    tree: d6a4d7ccb05288d44da0cfc27ce13976bdf44df9
+    disposition: adapt
+    artifacts:
+      - plugin/skills/durable-objects
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/flagship
+    upstream: cloudflare
+    kind: skill
+    path: skills/flagship
+    tree: ba24f1815e225dd90aeeb32e5f1eac8378d667df
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/frameworks-on-cloudflare
+    upstream: cloudflare
+    kind: skill
+    path: skills/frameworks-on-cloudflare
+    tree: 1da6d86ef39cbdbb9be887c7bb178222262996f1
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/gateway-workers
+    upstream: cloudflare
+    kind: skill
+    path: skills/gateway-workers
+    tree: 6681de825f02298be8650c632bbe0ebe88648868
+    disposition: adapt
+    artifacts:
+      - plugin/skills/gateway-workers
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/k2
+    upstream: cloudflare
+    kind: skill
+    path: skills/k2
+    tree: 2b53e7f1213b9c722b6919db291ffe6e209262a3
+    disposition: adapt
+    artifacts:
+      - plugin/skills/k2
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/nextjs-on-cloudflare
+    upstream: cloudflare
+    kind: skill
+    path: skills/nextjs-on-cloudflare
+    tree: 0b869493e493e9abf87ebaeffb6408293bbea8ae
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/sandbox-migrate-to-next
+    upstream: cloudflare
+    kind: skill
+    path: skills/sandbox-migrate-to-next
+    tree: 8e7817b0fb40dbfadcfabd5580d2fafd72cddf74
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/sandbox-next
+    upstream: cloudflare
+    kind: skill
+    path: skills/sandbox-next
+    tree: 9ec0d4a11e188ca3f296d8b7e2944ac5b1bb153f
+    disposition: adapt
+    artifacts:
+      - plugin/skills/sandbox-next
+    reason: "Rewrite the flagged ask-tool wording and route feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/sandbox-stable
+    upstream: cloudflare
+    kind: skill
+    path: skills/sandbox-stable
+    tree: e29af782c357094dcdd063792b7ed7ae354620a6
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/turnstile-spin
+    upstream: cloudflare
+    kind: skill
+    path: skills/turnstile-spin
+    tree: 9f5565017c4cecc4067c0dd60567655e87a30ca6
+    disposition: adapt
+    artifacts:
+      - plugin/skills/turnstile-spin
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/web-perf
+    upstream: cloudflare
+    kind: skill
+    path: skills/web-perf
+    tree: f50f5e7f34021937059dbda12e8f990006ab0fd1
+    disposition: adapt
+    artifacts:
+      - plugin/skills/web-perf
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/workers-best-practices
+    upstream: cloudflare
+    kind: skill
+    path: skills/workers-best-practices
+    tree: 82b367b39fd2b7fe77bd2859bd09b3cff80907c9
+    disposition: adapt
+    artifacts:
+      - plugin/skills/workers-best-practices
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/workers-development
+    upstream: cloudflare
+    kind: skill
+    path: skills/workers-development
+    tree: 67f8d95d40b832dc8c6f30ccc2d5de94b2b84936
+    disposition: reject
+    artifacts: []
+    reason: side, the only consumer, does not use this skill.
+  - id: cloudflare/workers-profiling
+    upstream: cloudflare
+    kind: skill
+    path: skills/workers-profiling
+    tree: 346f96080018b14eb96cf5904ac414210ced23b9
+    disposition: adapt
+    artifacts:
+      - plugin/skills/workers-profiling
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+  - id: cloudflare/wrangler
+    upstream: cloudflare
+    kind: skill
+    path: skills/wrangler
+    tree: a008bb54eab6653272b18ee0f74ba656bb19ac8d
+    disposition: adapt
+    artifacts:
+      - plugin/skills/wrangler
+    reason: "Rewrite the flagged ask-tool wording and route skill and feedback questions through omp's ask with the Flow contract (#614; ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills)."
+    adr: docs/adr/20261126-cloudflare-platform-skills-are-adapted-utility-skills.md
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -1177,6 +1387,7 @@ originals:
   - plugin/rules/vstack-dependencies.md
   - plugin/agents/vstack-merger.md
   - plugin/rules/vstack-settle-or-ask.md
+  - plugin/LICENSE-cloudflare-skills
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1209,3 +1420,19 @@ utility:
   - plugin/skills/choreograph
   - plugin/skills/gestures
   - plugin/skills/web-fullstack
+  - plugin/skills/agents-sdk
+  - plugin/skills/basin
+  - plugin/skills/cf-cli
+  - plugin/skills/cloudflare
+  - plugin/skills/cloudflare-email-service
+  - plugin/skills/cloudflare-one
+  - plugin/skills/cloudflare-one-migrations
+  - plugin/skills/durable-objects
+  - plugin/skills/gateway-workers
+  - plugin/skills/k2
+  - plugin/skills/sandbox-next
+  - plugin/skills/turnstile-spin
+  - plugin/skills/web-perf
+  - plugin/skills/workers-best-practices
+  - plugin/skills/workers-profiling
+  - plugin/skills/wrangler

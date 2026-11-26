@@ -188,6 +188,7 @@ rules:
       In markdown outside frontmatter and code fences, a line that holds `Fan-out (` or `Fan-out gate (` reads `Fan-out (skill://vstack-fan-out): parts: one per ….` It is one `task` call with `tasks[]`, or one eval cell of `agent(…, isolated=True, apply=False, merge=False)` calls that says `wait()` or no `wait()`. It names only vstack agents (agents the plugin ships), passes the vstack root, and ends with `If they cannot start, stop: …` or `If they cannot start or isolation is off, stop: …`. The removed judge-gated forms fail: a `Fan-out gate (` line, a `Fan-out (always` line, and a `- fan-out →` or `- inline →` branch line (adapt, merge, and original text).
   - id: single-spawn
     scope: adapted
+    allowlist: [agents-sdk]
     text: |
       One subagent uses a single-spawn line from plugin/skills/vstack-fan-out/FORMS.md: the `task` form, or the isolated eval form for a role that runs in its own clone. An isolated role uses the eval form in a Fan-out line and in a single spawn. If isolation is off, the skill stops and points at setup-vstack (ADR 0007). The line ends `If it cannot be spawned, stop: …`. Only compare-attempts' cross-judge ends `If it cannot be spawned, skip it: …` instead and records `cross-judge: not run`. In both cases the caller leaves the subagent's work undone.
 
@@ -212,7 +213,7 @@ rules:
     lint: A bare `/<vstack skill name>` token in markdown fails (adapt, merge, and original text). vstack skill names are the shipped skill directories plus the Upstream names of every skill and principle row that is not reject.
   - id: spawn-vocab
     scope: adapted
-    allowlist: [writing-for-agents]
+    allowlist: [writing-for-agents, cloudflare]
     text: |
       Spawn wording appears only in a single-spawn line (`Spawn one …`) or a Fan-out line (`Fan-out (skill://vstack-fan-out)…`). Cursor's spawn terms (`subagent_type`, `generalPurpose`, `Task` in backticks) never appear.
     lint: In markdown outside code fences, `subagent_type`, `generalPurpose`, or `Task` in backticks fails, and spawn or spin up outside inline code fails on a line that holds no `Spawn one `, `Fan-out (skill://vstack-fan-out)`, or `Headless batch (` (adapt, merge, and original text). The `fan-out` lint reads every line that holds `Fan-out (` or `Fan-out gate (` instead. Dispatch fails only when the same sentence names an agent, subagent, helper, worker, explorer, reviewer, designer, verifier, investigator, or runner; reducer and request dispatch are not delegation. A `spawns:` frontmatter key and words inside inline code are names, not wording, and a code fence quotes text instead of instructing. Allowlisted skills only describe spawning and are not linted.
