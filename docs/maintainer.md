@@ -231,6 +231,12 @@ Only an explicit deploy request enters the [confirmed Cloudflare procedure](../p
 
 Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native consumers, generated frontend and fullstack apps, browser behavior, accountless confirmation stops, and public packaging. Its optional throwaway Worker and D1 deploy requires approval for that verification and confirmed teardown. Without approval, name the account-side proof gap. Prose wording assertions are not a substitute for those observations.
 
+### OpenPencil Utility
+
+[`open-pencil`](../plugin/skills/open-pencil/SKILL.md) is a visible vstack original listed under `originals:` and `utility:`. It has no Addon catalog key. It discovers the user's OpenPencil MCP tools and targets named documents, pages, and frames by ID. It neither configures the server nor adds project design-tool configuration. It maps annotated behavior and design tokens to the project's UI SDK components and tokens without changing the project's stack.
+
+The [OpenPencil ADR](adr/20261126-the-open-pencil-utility-hands-over-a-design-baseline-kept-in-pikpak.md) distinguishes live editing from the agreed `.fig` Design baseline. Use the [OpenPencil Verify recipe](../.omp/skills/verify-vstack/features/open-pencil.md) for native targeting and unreachable-server cases. Native model use needs explicit approval.
+
 
 ## Decision register
 

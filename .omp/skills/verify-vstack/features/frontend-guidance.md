@@ -10,7 +10,7 @@ The twelve Emil-derived Utility skills expose UI guidance through their visible 
 - `frontend-review`: a fresh native code-review and its delegated Standards reviewer block an observed motion defect while preserving a supported browser-specific exception.
 - `frontend-source`: public register and maintenance commands account for every discovered source item and retain adapted classification through future-source planning.
 - `frontend-distribution`: a real package contains the MIT notice and excludes rejected source skills.
-- `frontend-utility-discovery`: a fresh omp session lists `ui-sdk` by description and command, outside the Addon catalog.
+- `frontend-utility-discovery`: a fresh omp session lists `ui-sdk` and `open-pencil` by description and command, outside the Addon catalog.
 - [Content robustness](frontend-robustness.md) adds realistic adverse-data, collection-boundary, and narrow-container proof through the same native and browser interfaces.
 - `frontend-motion`: [motion construction and diagnosis](frontend-motion.md) cover native main and worker edits, measured stutter, interruption, reduced motion, and a browser-qualified clip-path reveal.
 - `frontend-mobile`: the [mobile-web recipe](frontend-mobile.md) exercises Apple-derived interaction judgment and touch, viewport, safe-area, hover, and input behavior through the existing main and worker paths.
@@ -113,10 +113,10 @@ SMOKE_DIR="$(readlink "$VERIFY_RUN_DIR/data/outside")/load"
 cp "$SMOKE_DIR/rpc.jsonl" "$VERIFY_RUN_DIR/utility-discovery-rpc.jsonl"
 cp "$SMOKE_DIR/skills.json" "$VERIFY_RUN_DIR/utility-discovery-skills.json"
 jq -r 'select(.id == "s" and .type == "response") | .data.systemPrompt[]' "$SMOKE_DIR/rpc.jsonl" > "$VERIFY_RUN_DIR/utility-discovery-prompt.txt"
-jq -e '.questions | has("ui-sdk") | not' "$CHECKOUT/addon-questions.json"
+jq -e '.questions | has("ui-sdk") or has("open-pencil") | not' "$CHECKOUT/addon-questions.json"
 ```
 
-In the native prompt's `<skills>` section, require `ui-sdk` with a nonempty description. In `plugin-load-summary.json`, require `ui-sdk` in `listedSkills` and `skillCommands`, not in `hiddenSkills`. The command comes from the native `get_available_commands` response. In `utility-discovery-skills.json`, resolve the `ui-sdk` entry's `filePath` to `$CHECKOUT/plugin/skills/ui-sdk/SKILL.md` before Cleanup. The catalog check must return `true`. Retain these observations.
+In the native prompt's `<skills>` section, require `ui-sdk` and `open-pencil` with nonempty descriptions. In `plugin-load-summary.json`, require both in `listedSkills` and `skillCommands`, and neither in `hiddenSkills`. The commands come from the native `get_available_commands` response. In `utility-discovery-skills.json`, resolve each entry's `filePath` to its `SKILL.md` in `$CHECKOUT/plugin/skills` before Cleanup. The catalog check must return `true`. Retain these observations.
 
 This inventory proves loadability, not description-driven selection or instruction following in a real session.
 

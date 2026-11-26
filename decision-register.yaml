@@ -1186,6 +1186,7 @@ originals:
   - plugin/rules/vstack-dependencies.md
   - plugin/agents/vstack-merger.md
   - plugin/rules/vstack-settle-or-ask.md
+  - plugin/skills/open-pencil
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1219,3 +1220,4 @@ utility:
   - plugin/skills/gestures
   - plugin/skills/web-fullstack
   - plugin/skills/ui-sdk
+  - plugin/skills/open-pencil

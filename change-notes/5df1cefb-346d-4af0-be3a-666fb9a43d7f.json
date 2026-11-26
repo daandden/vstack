@@ -3,6 +3,7 @@
   "level": "patch",
   "entries": [
     "Skip already-ignored runtime inputs when constructing landing evidence exclusion pathspecs.",
-    "Ship the adapted UI SDK Utility skill and its Apache-2.0 license. Keep its agent bridge and interface test while leaving general test and proof decisions to the running workflow."
+    "Ship the adapted UI SDK Utility skill and its Apache-2.0 license. Keep its agent bridge and interface test while leaving general test and proof decisions to the running workflow.",
+    "Add the open-pencil Utility skill for explicitly targeted OpenPencil design work and mapping design intent to UI SDK."
   ]
 }
