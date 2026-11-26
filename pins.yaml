@@ -42,3 +42,12 @@ upstreams:
     pin: 64eb3deb9a5fbfa041faf783e0bc3fd635872e9c
     items:
       - { match: "skills/*", type: tree, kind: skill }
+
+  cloudflare:
+    role: Cloudflare
+    repo: cloudflare/skills
+    path: skills
+    pin_kind: commit
+    pin: ff191de7d903788eceaf516a514ae7d3b56b924a
+    items:
+      - { match: "skills/*", type: tree, kind: skill }

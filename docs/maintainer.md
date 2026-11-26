@@ -10,7 +10,7 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 |---|---|---|
 | `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep; a skill's page templates sit in its `templates/`), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, how the next Pin is found, and which tree entries count as Upstream items. |
-| `decision-register.yaml` | no | One row per Upstream item, `originals:` for vstack-only artifacts, and `utility:` for Utility skills. |
+| `decision-register.yaml` | no | One row per Upstream item, `originals:` for vstack-only artifacts and third-party licenses that belong to no Upstream item, and `utility:` for Utility skills. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
 | `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
 | `addon-questions.json`, `sample-prompts.json`, `sample-briefs.json` | no | The Addon judge catalog and its two sample corpora, read from the linked clone. |
@@ -174,14 +174,14 @@ Published main's release notes through 9.0.4 remain intact. The architecture fea
 
 ## Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
+`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`, `cloudflare`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin
 ```
 
-`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement, CSS, and UI selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
+`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement, CSS, UI, and Cloudflare selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
@@ -213,6 +213,41 @@ The Update moves pstack to `0b46ec399d55f2829e88822998f53b84944837d3` and emil t
 
 Selection-only trigger evals across the twelve UI descriptions and interrogate, and live Addon judge checks, remain optional Costly seam tests requiring explicit approval. Unrun evals leave selection overlap unproven without blocking the mechanical Update gates. Do not infer native instruction following from a load smoke.
 
+### Cloudflare upstream
+
+The Cloudflare upstream is `cloudflare/skills`, keyed as `cloudflare` and pinned at `ff191de7d903788eceaf516a514ae7d3b56b924a`. Its `skills/*` pattern discovers 24 items. The first registration is one direct Hand edit with a patch Change note. As with the UI bootstrap, do not run `prepare` against the pre-bootstrap HEAD.
+
+Sixteen ship as adapted visible Utility skills: `agents-sdk`, `basin`, `cf-cli`, `cloudflare`, `cloudflare-email-service`, `cloudflare-one`, `cloudflare-one-migrations`, `durable-objects`, `gateway-workers`, `k2`, `sandbox-next`, `turnstile-spin`, `web-perf`, `workers-best-practices`, `workers-profiling`, and `wrangler`. They load by description or by name in any session and have no Addon catalog keys.
+
+The adaptations rewrite sentences flagged by `ask-tool` with omp `ask` instructions in each `references/skill-feedback.md` and in `turnstile-spin/SKILL.md`. Each `SKILL.md` that puts questions to the user adds one sentence routing them through `ask`, including confirmations and approval waits. The same rule applies to every feedback reference: use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow. Feedback still requires approval of the exact title and body before posting. In `cloudflare/SKILL.md`, the broken relative link to the unshipped `nextjs-on-cloudflare` skill becomes an optional reference by name. The official Next.js docs link stays. Each changed file has a notice required by Apache-2.0 section 4(b). The Pin's root `LICENSE` ships byte for byte as [`plugin/LICENSE-cloudflare-skills`](../plugin/LICENSE-cloudflare-skills) under `originals:`. The Pin has no `NOTICE` file.
+
+The eight rejected skills are `artifacts`, `cloudflare-app-bootstrap`, `flagship`, `frameworks-on-cloudflare`, `nextjs-on-cloudflare`, `sandbox-migrate-to-next`, `sandbox-stable`, and `workers-development`. Side is the only consumer and does not use them.
+
+The other hand-offs in `cloudflare/SKILL.md` and `sandbox-next/SKILL.md` stay unchanged, so use the linked public docs when rejected skills such as `sandbox-stable` and the framework skills are unavailable.
+
+When Cloudflare skills are also installed in `~/.agents/skills`, omp 19.0.0 keeps vstack's bare names, lists a differing `cloudflare` as `agents/cloudflare` with one warning, and deduplicates an identical `wrangler` without warning.
+
+House style allowlists `agents-sdk` under `single-spawn` for its `useAgent` argument and `cloudflare` under `spawn-vocab` for Miniflare request and event dispatch. Neither is subagent wording. `ask-tool` has no exemption.
+
+The deploy-confirmation conflict with `web-fullstack` is accepted. `wrangler` and `cf-cli` keep the Upstream deploy, rollback, secret, and resource-creation guidance, while `web-fullstack` keeps its explicit deploy request and per-step confirmations for Nuxt. A Nuxt-on-Cloudflare request can match both. See [ADR 20261126-cloudflare-platform-skills-are-adapted-utility-skills](adr/20261126-cloudflare-platform-skills-are-adapted-utility-skills.md).
+
+At the Pin, the 16 skills contain 220 files totaling 703,678 bytes. The adapted plugin copies contain 220 files totaling 710,617 bytes. The 16 descriptions total 3,155 authored characters in both trees. The locked omp 19.0.0 put 1,427 characters of description hints for these skills into the prompt because it bounds and compresses descriptions.
+
+Recount the selected skills at the Pin with Bash:
+
+```bash
+cache=~/.cache/vstack/upstreams/cloudflare
+pin=ff191de7d903788eceaf516a514ae7d3b56b924a
+skills=(agents-sdk basin cf-cli cloudflare cloudflare-email-service cloudflare-one
+	cloudflare-one-migrations durable-objects gateway-workers k2 sandbox-next
+	turnstile-spin web-perf workers-best-practices workers-profiling wrangler)
+paths=("${skills[@]/#/skills/}")
+git -C "$cache" ls-tree -lr "$pin" -- "${paths[@]}" |
+	awk '$2 == "blob" { files++; bytes += $4 } END { print files, "files,", bytes, "bytes" }'
+git -C "$cache" grep -h '^description: ' "$pin" -- "${paths[@]/%//SKILL.md}" |
+	bun -e 'const lines = (await Bun.stdin.text()).trimEnd().split("\n"); console.log(lines.length, "descriptions,", lines.reduce((n, line) => n + [...Bun.YAML.parse(line).description].length, 0), "characters");'
+```
+
 ### Web stack Utility
 
 `web-fullstack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose frontend library choice and requested Vue and Nuxt setup and deployment, including fullstack Nuxt on Cloudflare. It adds no Addon catalog key or automatic judge selection. The Flow reader follows its frontend choices under [ADR 20261119](adr/20261119-the-flow-reader-uses-web-fullstack-frontend-choices-and-the-doop-compact-design.md); its local server does not use the Cloudflare recipe.
@@ -230,7 +265,7 @@ Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/fro
 
 Every row has `id`, `upstream`, `kind` (skill, principle, playbook, agent), `path` and `tree` (the item at the current Pin; `tree` is the git object SHA, a blob SHA for a single file), `disposition` (adopt, adapt, merge, reject), `artifacts` (paths under `plugin/`), and a one-line `reason`. `adr` is optional. A held row also has `held_at` (the Upstream ref its artifact is reconciled with) and `held_path` (the item's path at that ref); the two are set and cleared together, and `path` may be absent only on a held row whose item Upstream removed.
 
-An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, or another child of a top-level plugin directory. Several rows can name one artifact. Artifacts with no Upstream item go under `originals:`. Every non-reject row names at least one artifact. Only reject rows have `artifacts: []`.
+An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, another child of a top-level plugin directory, or a top-level file other than the manifest. Several rows can name one artifact. Artifacts with no Upstream item go under `originals:`, including third-party license files. Every non-reject row names at least one artifact. Only reject rows have `artifacts: []`.
 
 The top-level `utility:` list names Utility skills as paths such as `plugin/skills/explain`. Each entry must name a shipped skill with no non-reject Base upstream row. A shipped skill with a key in the `questions` map of `addon-questions.json` is an Addon, whatever its rows (ADR 0019). Other shipped skills with a non-reject Base row are Matt skills. Every other shipped skill outside `utility:` is an Addon and needs a catalog key.
 
@@ -350,7 +385,7 @@ Templates hold no authored figure. The caller writes Mermaid through vstack-figu
 `house-style.yaml` (ADR 0008) has two lists. Its header comment documents every field.
 
 - `replacements:` are blind substitutions, applied in list order. `match` is `literal` (an exact substring), `name` (no `[\w-]` character on either side), or `ref` (only `/x`, `` `x` ``, `**x**`, and `skill://x`). The `glossary` row rewrites `CONTEXT.md` and leaves `CONTEXT-FORMAT.md` alone. `upstream` picks the artifacts a row applies to. `scope: required` binds every artifact, adopt included. `scope: adapted` binds adapt, merge, and original text. `uses` selects the Update (`update`), setup-vstack's Migration (`migration`), or both. A row that an earlier row rewrites fails `invalid-house-style`, so put the longer phrase first.
-- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them. It limits `headless-run` to skill-creator and lets writing-for-agents describe a subagent dispatch under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
+- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them. For example, it limits `headless-run` to skill-creator and lets writing-for-agents describe a subagent dispatch under `spawn-vocab`. See [Cloudflare upstream](#cloudflare-upstream) for the two spawn-lint false positives. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
 - The spawn and Fan-out lines themselves live in one place, `plugin/skills/vstack-fan-out/FORMS.md`: the Fan-out line (the `task` batch or the isolated eval batch) and the single-subagent lines. Copy a form from there, fill its slots, and keep it on one line. A vstack agent is an agent the plugin ships under `plugin/agents/`. The spawn lints read markdown outside frontmatter and code fences, so quoting a form in a fence is safe.
 
 `scripts/lib/house-style.ts` is the one module that reads both lists and applies rows. It has no file access: `parseHouseStyle(doc, upstreamKeys)` validates a parsed file, `selectRows(rows, { use, upstreams, disposition, shippedNames })` picks the rows for one text, `applyRows(text, rows)` rewrites it, and `findRow(text, row)` finds leftovers. `loadHouseStyle(root, upstreamKeys)` in `scripts/lib/vstack-repo.ts` reads the file from a checkout.
@@ -359,7 +394,8 @@ To write an adapt item, start from the Upstream text at the Pin with the rows ap
 
 ```sh
 bun -e 'import { applyRows, parseHouseStyle, selectRows } from "./scripts/lib/house-style.ts";
-const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "css"]));
+const pins = Bun.YAML.parse(await Bun.file("pins.yaml").text());
+const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(Object.keys(pins.upstreams)));
 const rows = selectRows(houseStyle.replacements, { use: "update", upstreams: ["matt"], disposition: "adapt" });
 process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
   < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md
