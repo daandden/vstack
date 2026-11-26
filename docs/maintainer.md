@@ -235,7 +235,9 @@ Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/fro
 
 [`open-pencil`](../plugin/skills/open-pencil/SKILL.md) is a visible vstack original listed under `originals:` and `utility:`. It has no Addon catalog key. It discovers the user's OpenPencil MCP tools and targets named documents, pages, and frames by ID. It neither configures the server nor adds project design-tool configuration. It maps annotated behavior and design tokens to the project's UI SDK components and tokens without changing the project's stack.
 
-The [OpenPencil ADR](adr/20261126-the-open-pencil-utility-hands-over-a-design-baseline-kept-in-pikpak.md) distinguishes live editing from the agreed `.fig` Design baseline. Use the [OpenPencil Verify recipe](../.omp/skills/verify-vstack/features/open-pencil.md) for native targeting and unreachable-server cases. Native model use needs explicit approval.
+Under the [OpenPencil ADR](adr/20261126-the-open-pencil-utility-hands-over-a-design-baseline-kept-in-pikpak.md), the Design baseline is the agreed `.fig`, not the live document or a PNG. The Utility creates or reuses the SHA-256-named file in the user's PikPak folder after explicit agreement to the saved bytes. It checks the bytes downloaded by exact file ID before handing the ID, SHA-256, agreed frame node IDs, and mapped requirements to the spec. Handoff, implementation, and Verify use one PikPak `Read & write files` Personal Access Token. vstack stores no token. Verify fetches the recorded ID and renders the exact nodes with strict font resolution without the editor.
+
+The [OpenPencil Verify recipe](../.omp/skills/verify-vstack/features/open-pencil.md) covers explicit targeting, the unreachable-server branch, and an approved live-account Design baseline round trip. Native model and live-account use need explicit approval.
 
 
 ## Decision register

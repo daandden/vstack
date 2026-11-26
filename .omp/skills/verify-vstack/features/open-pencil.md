@@ -1,21 +1,23 @@
-# OpenPencil design work
+# OpenPencil design work and Design baselines
 
-The visible `open-pencil` Utility uses the user's existing OpenPencil MCP server to work on named designs. It leaves unnamed documents and unrequested changes alone. If the server is unavailable, live work stops without a fallback.
+The visible `open-pencil` Utility works on named designs through the user's existing OpenPencil MCP server. It leaves unnamed documents and unrequested changes alone. New Design baselines require the editor. Implement and Verify can fetch an existing Design baseline, check its bytes, and render its frames without the editor or MCP connection.
 
 ## Sub-features
 
 - `open-pencil-targeting`: a fresh consumer edits only the named frame, even with a different document active.
 - `open-pencil-server-unavailable`: a fresh consumer reports an unreachable MCP server and stops live design work.
+- `open-pencil-baseline`: agreed bytes are stored once in PikPak, reused by exact file ID, refused on a byte mismatch, and consumed in file mode.
 - [Native Utility discovery](frontend-guidance.md#native-utility-discovery) proves description and command visibility, not actual selection.
 
 ## How to get to it (user POV)
 
 - Ask a fresh omp session with OpenPencil MCP access to edit a named frame. Name the document, page, frame, and change.
 - Type `/skill:open-pencil` to load the Utility directly.
+- After agreeing to specific frames, name the PikPak folder for the Design baseline. In a later implementation or verification session, give the recorded Design baseline from the spec.
 
 ## Driving it with native omp and OpenPencil MCP
 
-Preconditions: Follow [Native Utility discovery](frontend-guidance.md#native-utility-discovery) for the offline portion. Before the native behavioral cases, obtain explicit approval for real-model sessions and any fixture dependency installs. Use the [real-model isolation recipe](flow-page.md#real-model-enrollment-flow-enrollment), including the checkout's package and skill path, Session model and thinking level, a new session directory per case, raw RPC output, and saved history. Use the user's available OpenPencil desktop app, but only a run-owned MCP connection and disposable documents. No external design store or token is needed.
+Preconditions: Follow [Native Utility discovery](frontend-guidance.md#native-utility-discovery) for the offline portion. Before the native behavioral cases, obtain explicit approval for real-model sessions and any fixture dependency installs. Use the [real-model isolation recipe](flow-page.md#real-model-enrollment-flow-enrollment), including the checkout's package and skill path, Session model and thinking level, a new session directory per case, raw RPC output, and saved history. Use the user's available OpenPencil desktop app, but only a run-owned MCP connection and disposable documents. The targeting and unreachable-connection cases need no external design store or token.
 
 ### Scope the fixtures
 
@@ -55,8 +57,37 @@ In another fresh native process with the same overlay and distinct evidence, req
 
 Retain the expanded skill invocation and connection diagnostic. Require the consumer to identify the unavailable OpenPencil MCP server, leave the app's availability undiagnosed, and stop without design edits or another connection, CLI, or app automation. Independently read both fixture documents over the original working connection after the case. Confirm that no document changed during the unavailable-connection case and that the desktop app still responds. Retain launch, diagnostic, before and after observations, and teardown evidence. Close only the run's own tabs and connections, and delete only its disposable fixture files.
 
+### Scope the Design baseline account drive
+
+Preconditions: The Design baseline drive is a Costly seam. Before writing a real-account test or running the drive, record the maintainer's approval and allowance for the account operations and fresh real-model sessions. Require the official `pikpak` and `openpencil` CLIs, PikPak access, the fixture fonts, and one `Read & write files` Personal Access Token. Check that the privately supplied token file is present and mode `0600` without reading it in the model session. Missing approval or the token file leaves the real-account test unrun. Do not use a cached login.
+
+Stage the [PikPak proof launcher](../scripts/pikpak-launchers/README.md). Run the stub suite and live preflight. The driver alone creates the run folder. Give native consumers the absolute launcher path, never a token, account profile, or bare PikPak CLI. Keep captured output redacted.
+
+The live proof showed that PikPak accepted an upload with a `Read files` token. The maintainer retired the upload-denial probe and chose one writable token for every case, including offline consumption. The launcher restricts commands, not the consumer process. A process running as the same user can access the token file and the launcher's scope file. Integrity rests on the exact file ID and the agreed SHA-256. A fetch does not authorize a remote write.
+
+If the desktop has unrelated tabs, put the [fixture privacy relay](../scripts/open-pencil-fixture-relay.ts) in the baseline consumer's run-owned connection. Use `command: "bun"` and pass `--no-env-file`, the relay's absolute path, the installed `openpencil-mcp` path, and the fixture directory as `args`. Keep `OPENPENCIL_MCP_ROOT` set to the fixture directory. The relay drops non-fixture rows from `list_documents`, keeps the fixture IDs and true active flags, and forwards other calls and results unchanged. This is a Verify-only deviation to keep unrelated tabs out of the model's context. Record only the number of dropped rows. Keep the independent fixture reads on the unmodified connection.
+
+Step `open-pencil-baseline-fixtures`: Start the drive with the driver's creation receipt and empty listing. Create fresh `Target.fig` and `Decoy.fig` as in [Scope the fixtures](#scope-the-fixtures). Choose a small, named viewport and theme and a known available font. A fresh native consumer designs and saves the named `Checkout` frame while `Decoy.fig` is active. Read both documents independently. Preserve the saved file hash and frame node ID, and export that node to PNG from the saved file. Show the PNG, paths, ID, and hash to the maintainer. Stop before a handoff prompt until the maintainer explicitly agrees to that saved revision through `ask` under the owning Flow's question contract. Preserve the answer separately from the native transcript. A scripted picker response is not agreement.
+
+### Drive the Design baseline
+
+Use `{"type":"prompt","message":"..."}` in each native turn. Supply the design names or the recorded baseline fields as the user would. Give the native consumer only the scoped launcher path. Record the requested action and the actual tools and arguments. Do not substitute the verifier's own successful upload or render for native behavior.
+
+Step `open-pencil-baseline-upload`: Ask the native consumer to hand over the agreed `Checkout` frame in `Target.fig` to the run's PikPak folder, while `Decoy.fig` is still active. Require the consumer to use the saved file that the maintainer agreed to, with the agreed SHA-256 and no new save. Require one upload via the writable launcher and an exact-ID download before the consumer returns a spec-ready record. Confirm that the decoy and other frames or pages were unchanged. Use the writable launcher to list all folder pages and download the returned file ID to an independent path. Compare `shasum -a 256` on the download and the saved target. Require one exact `<sha256>.fig` with that ID, the agreed frame node IDs, and the mapped behavior and token requirements. Retain the source check, CLI results, and before and after inventories.
+
+Step `open-pencil-baseline-reuse`: Hand over the same agreed saved file again. Require its original SHA-256, the original file ID, another exact-ID byte check, no upload or save call, and an unchanged remote inventory.
+
+Step `open-pencil-baseline-mismatch`: Have a fresh native consumer save a different revision and independently confirm its SHA-256. Export the new frame and obtain the maintainer's explicit agreement as in the fixture step. Stop before planting or prompting for handoff until that agreement is recorded. Via the writable launcher, plant a file named for the new digest but containing different bytes, such as the decoy `.fig`. Independently download the planted ID and confirm the mismatch. Ask the fresh consumer to hand over the agreed saved file without saving again. Require the consumer to download that exact ID, report the mismatch and ID, and return no baseline record. Require no upload, overwrite, deletion, or switch to another design. Check that both remote IDs and their bytes are unchanged.
+
+Step `open-pencil-baseline-offline`: Finish the writable cases, then run `"$PIKPAK_DRIVER" download-only "$file_id"` and retain the receipt. Run a fresh native consumer with the unreachable run-owned connection above. Keep the desktop app running. Pass only the launcher path, file ID, SHA-256, and agreed node IDs. Check that the launcher refuses non-download calls and downloads for other IDs. Require the native trace to show an exact-ID fetch, a matching digest, and a strict file-mode render of the agreed nodes. Keep the render command, node IDs, and output dimensions. Require no remote writes, alternate MCP connection, active-tab fallback, or regenerated baseline.
+
+Step `open-pencil-baseline-cleanup`: End the drive after success, refusal, or failure. Only the driver can remove the folder. It binds deletion to its `mkdir` receipt and a fresh parent listing. Require exit 0, the v0.6.0 acceptance line for one item for the single ID passed to `rm`, and a fresh paginated parent listing without that ID. Never query account-wide trash. The driver removes the CLI home. Remove the private launcher installation, close only the run's OpenPencil tabs and connections, and remove their disposable files. Use the shared Cleanup for native processes and fixture data. Keep redacted output, inventories, receipts, and teardown results. If cleanup is unverified, report the exact folder ID and what failed.
+
+When the change also builds a user interface, compare each strict render with its browser capture at the same viewport and theme. Record visual mismatches separately from keyboard, focus, and form behavior. The storage drive alone proves neither visual parity with a build nor UI behavior.
+
 ## Gotchas
 
 - Keep the running app and maintainer connections untouched. A run-owned unreachable endpoint tests server failure, not desktop app failure. Report the unexercised app branch separately.
 - Starting a fresh process or printing the description does not prove instruction following. A stub provides inventory proof only. Missing approval, missing capabilities, or an unavailable fixture is a named proof gap.
 - The native trace must match the two documents' observed state. An agent's reply cannot prove isolation, and an independent script must not perform the requested edit on its behalf.
+- For skipped and failed baseline steps, name the exact missing precondition or contradicted guarantee. An image without a matching digest does not count.

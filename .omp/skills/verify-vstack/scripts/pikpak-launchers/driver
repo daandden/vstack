@@ -1,0 +1,7 @@
+#!/bin/bash
+set +x
+set -eu
+unset PIKPAK_TOKEN
+ROOT=$(cd -- "${BASH_SOURCE[0]%/*}" && pwd -P)
+
+exec bun --no-env-file "$ROOT/scope.ts" "$@"

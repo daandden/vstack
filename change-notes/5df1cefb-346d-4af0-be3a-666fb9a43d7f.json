@@ -5,6 +5,7 @@
     "Skip already-ignored runtime inputs when constructing landing evidence exclusion pathspecs.",
     "Ship the adapted UI SDK Utility skill and its Apache-2.0 license. Keep its agent bridge and interface test while leaving general test and proof decisions to the running workflow.",
     "Add the open-pencil Utility skill for explicitly targeted OpenPencil design work and mapping design intent to UI SDK.",
-    "Recommend UI SDK controls with UnoCSS in web-fullstack. Keep native or installed controls where they fit, and keep the Flow reader on Reka."
+    "Recommend UI SDK controls with UnoCSS in web-fullstack. Keep native or installed controls where they fit, and keep the Flow reader on Reka.",
+    "Record agreed OpenPencil frames as a byte-checked Design baseline in PikPak. Let implement and Verify fetch the exact file ID with the same PikPak token, without the editor."
   ]
 }

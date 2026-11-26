@@ -1,0 +1,94 @@
+#!/bin/bash
+set +x
+set -eu
+private=$(cd -- "${BASH_SOURCE[0]%/*}" && pwd -P)
+mock=${private%/*}
+sub=${1-}
+[[ $HOME == "$mock/runtime/rw-home" ]] || exit 97
+IFS= read -r expected < "$private/rw-token"
+correct=no
+if [[ -n ${PIKPAK_TOKEN-} && $expected == "$PIKPAK_TOKEN" ]]; then correct=yes; fi
+config=no
+if [[ $PWD == "$HOME" && $HOME == "$XDG_CONFIG_HOME" && $HOME == "$PIKPAK_DIR" && $HOME == "$TMPDIR" &&
+      $PIKPAK_PAT_PATH == "$HOME/.pat.json" && $PIKPAK_CREDENTIALS == "$HOME/.credentials.json" &&
+      $PIKPAK_NO_LOG == 1 && ${PIKPAK_PROFILE-unset} == unset ]]; then config=yes; fi
+ps_args=$(/bin/ps -ww -p "$$" -o command=)
+ps_check=clean
+case "$ps_args" in ''|*"$expected"*) ps_check=failed;; esac
+shopt -s nullglob dotglob
+entries=("$HOME"/*)
+printf 'command=%s correct_token=%s isolated_config=%s ps_check=%s entries=%s pid=%s argv=' \
+  "$sub" "$correct" "$config" "$ps_check" "${#entries[@]}" "$$" >> "$mock/cli.log"
+printf '%q ' "$@" >> "$mock/cli.log"
+printf '\n' >> "$mock/cli.log"
+[[ $correct == yes && $config == yes && $ps_check == clean ]] || exit 98
+: > "$HOME/mock-device"
+folder=folder_621
+file=baseline_621
+planted=planted_621
+case "$sub" in
+  mkdir)
+    printf '%s\n' "$2" > "$mock/folder-record"
+    printf '{"id":"%s","name":"%s"}\n' "$folder" "$2"
+    ;;
+  ls)
+    if [[ $2 == "$folder" ]]; then
+      if [[ ! -f $mock/upload-1 ]]; then printf '{"files":[]}\n'
+      elif [[ $3 == -t ]]; then
+        printf '{"files":[{"kind":"file","id":"listed_621","parent_id":"%s"},{"kind":"file","id":"foreign_621","parent_id":"other_folder"},{"kind":"folder","id":"subfolder_621","parent_id":"%s"}]}\n' "$folder" "$folder"
+      else
+        printf '{"files":[{"kind":"file","id":"%s","parent_id":"%s"}],"next_page_token":"page-621"}\n' "$file" "$folder"
+      fi
+    elif [[ $2 == -l && $3 == 1 ]]; then
+      if [[ ${4-} == -t && $5 == root-page-621 ]]; then
+        printf '{"files":[]}\n'
+      else
+        printf '{"files":[{"name":"unrelated_parent_name"}],"next_page_token":"root-page-621"}\n'
+      fi
+    elif [[ $2 == -F ]]; then
+      printf '{"files":[{"kind":"folder","id":"unrelated_parent_id","name":"unrelated_parent_name","parent_id":""}],"next_page_token":"root-page-621"}\n'
+    elif [[ $2 == -t && $3 == root-page-621 ]]; then
+      if [[ -f $mock/folder-record ]]; then
+        IFS= read -r run_name < "$mock/folder-record"
+        printf '{"files":[{"kind":"folder","id":"%s","name":"%s","parent_id":""}]}\n' "$folder" "$run_name"
+      else printf '{"files":[]}\n'; fi
+    else exit 99; fi
+    ;;
+  upload)
+    if [[ ! -f $mock/upload-1 ]]; then
+      /bin/cp "$2" "$mock/upload-1"
+      result=$file
+    else
+      /bin/cp "$2" "$mock/upload-2"
+      result=$planted
+    fi
+    printf '{"file_id":"%s","name":"%s","phase":"PHASE_TYPE_COMPLETE"}\n' "$result" "$6"
+    ;;
+  get)
+    # Simulate a provider echo on both streams, never in the argv log.
+    printf '{"id":"%s","unsafe_provider_hint":"%s"}\n' "$2" "$PIKPAK_TOKEN"
+    printf 'provider diagnostic %s\n' "$PIKPAK_TOKEN" >&2
+    ;;
+  download)
+    case "$2" in
+      "$file"|listed_621) /bin/cp "$mock/upload-1" "$4" ;;
+      "$planted") /bin/cp "$mock/upload-2" "$4" ;;
+      *) exit 99 ;;
+    esac
+    printf 'Downloaded.\n'
+    ;;
+  rm)
+    [[ $2 == "$folder" && -f $mock/folder-record ]] || exit 99
+    mode=ok
+    if [[ -f $mock/rm-mode ]]; then IFS= read -r mode < "$mock/rm-mode"; fi
+    [[ $mode != nonzero ]] || exit 45
+    if [[ $mode != still-listed ]]; then
+      /bin/rm -f "$mock/folder-record" "$mock/upload-1" "$mock/upload-2"
+    fi
+    count=1
+    if [[ $mode == wrong-count ]]; then count=2; fi
+    printf "Move-to-trash request accepted for %s items; use 'pikpak trash ls' and 'pikpak trash restore <fileID>' to recover them before they expire\n" "$count"
+    printf 'provider remove diagnostic %s\n' "$PIKPAK_TOKEN" >&2
+    ;;
+  *) exit 99 ;;
+esac

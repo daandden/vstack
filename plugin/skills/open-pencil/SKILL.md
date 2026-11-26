@@ -7,6 +7,9 @@ description: "Design or inspect in OpenPencil via MCP, or build or verify agains
 
 Use the user's existing OpenPencil MCP server for live design work. This Utility gives the current workflow design guidance. The current owner keeps the stack choice, execution, and proof. A Design baseline is the agreed `.fig` file identified by its SHA-256, not the live document or a PNG export. The live document can change independently.
 
+- To save and agree frames before handoff, or to hand over the exact saved file the user agreed to in the grill, follow [Create a Design baseline](references/create-design-baseline.md).
+- To build or verify against an existing Design baseline, follow [Fetch and verify a Design baseline](references/fetch-design-baseline.md). Start there even when the editor or MCP server is unavailable.
+
 ## Locate the live target
 
 1. Discover the connected OpenPencil server's current tools and argument schemas before acting. Use the tools it actually exposes. Do not install or configure the server, add project config, or widen a restricted connection.
@@ -16,7 +19,9 @@ Use the user's existing OpenPencil MCP server for live design work. This Utility
 
 If this session's configured OpenPencil MCP connection is missing or fails discovery or transport, report the unavailable server and the observed error, if any. Stop live design work and wait for a working connection. Let the MCP client handle discovery and retries. Do not retry the connection yourself or probe the endpoint with `curl`, raw HTTP, another MCP server, or any other tool.
 
-If a reachable server reports that it cannot connect to the OpenPencil desktop app, report the unavailable app and that evidence. If the evidence does not distinguish the two, report what failed and what remains unknown. Pause live design work rather than switching tools or targets.
+If a reachable server reports that it cannot connect to the OpenPencil desktop app, report the unavailable app and that evidence. If the evidence does not distinguish the two, report what failed and what remains unknown.
+
+Without the app or MCP server, pause live design work and new Design baselines. Work against an existing Design baseline can continue in file mode.
 
 ## Save an authorized edit
 
