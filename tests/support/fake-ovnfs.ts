@@ -1,5 +1,6 @@
-import { appendFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { appendFileSync, existsSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
+import { copyTree } from "./copy-tree.ts";
 
 const args = process.argv.slice(2);
 const root = process.env.FAKE_OVNFS_ROOT!;
@@ -41,8 +42,7 @@ if (basename(process.argv[1]) === "omp") {
       const others = Bun.spawnSync([process.env.FAKE_GIT!, "ls-files", "--others", "-z"], { cwd: process.cwd() });
       if (others.exitCode) throw new Error(others.stderr.toString());
       for (const name of others.stdout.toString().split("\0").filter(Boolean)) {
-        mkdirSync(dirname(join(path, name)), { recursive: true });
-        cpSync(join(process.cwd(), name), join(path, name), { recursive: true, dereference: false });
+        copyTree(join(process.cwd(), name), join(path, name), { dereference: false });
       }
       console.log(`Cloned from ${process.cwd()} via fixture`);
     }
@@ -60,11 +60,14 @@ if (basename(process.argv[1]) === "omp") {
     }
     const path = join(root, name);
     git(root, "clone", "--no-hardlinks", source, path);
-    if (rest.includes("--rev")) git(path, "checkout", "--detach", rest[rest.indexOf("--rev") + 1]);
-    else for (const entry of readdirSync(source)) {
-      if (entry !== ".git") cpSync(join(source, entry), join(path, entry), { recursive: true });
+    if (rest.includes("--rev")) {
+      git(path, "checkout", "--detach", rest[rest.indexOf("--rev") + 1]);
+      if (existsSync(join(source, "node_modules"))) copyTree(join(source, "node_modules"), join(path, "node_modules"));
+    } else {
+      for (const entry of readdirSync(source)) {
+        if (entry !== ".git") copyTree(join(source, entry), join(path, entry));
+      }
     }
-    if (existsSync(join(source, "node_modules"))) cpSync(join(source, "node_modules"), join(path, "node_modules"), { recursive: true });
     const checkout = { name, path, source, dirty: false }; entries.push(checkout); save();
     console.log(JSON.stringify({ checkout }));
   } else if (rest[0] === "rm") {

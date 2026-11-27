@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { cpSync, existsSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { copyTree } from "./support/copy-tree.ts";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 import { writeFiles } from "./support/fixture.ts";
 
@@ -21,8 +22,8 @@ const fixtures: ReturnType<typeof lifecycleFixture>[] = [];
 afterEach(() => { for (const f of fixtures.splice(0)) rmSync(f.dir, { recursive: true, force: true }); });
 function fixture(dependencies = true) {
   const f = lifecycleFixture(); fixtures.push(f);
-  cpSync(join(repo, "plugin"), join(f.root, "plugin"), { recursive: true });
-  cpSync(join(repo, "reader/server"), join(f.root, "reader/server"), { recursive: true });
+  copyTree(join(repo, "plugin"), join(f.root, "plugin"));
+  copyTree(join(repo, "reader/server"), join(f.root, "reader/server"));
   const manifest: { scripts: { test: string } } = JSON.parse(readFileSync(join(repo, "package.json"), "utf8"));
   const script = manifest.scripts.test.replace("scripts/test.ts", join(repo, "scripts/test.ts"));
   writeFiles(f.root, {

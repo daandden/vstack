@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
-import { appendFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
+import { copyTree } from "./support/copy-tree.ts";
 import { ENV, git } from "./support/fixture.ts";
 import { decisionBrief } from "./support/decision-brief.ts";
 import type { ReaderComment } from "../plugin/skills/flow-page/scripts/comments.ts";
@@ -14,14 +15,14 @@ test("served generation swaps refresh unchanged content and reload readers witho
   const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-reload-")));
   const home = join(root, "home"), project = join(root, "project"), skills = join(root, "plugin/skills");
   mkdirSync(project, { recursive: true });
-  for (const name of ["flow-page", "vstack-tmp", "vstack-figures"]) cpSync(join(import.meta.dir, "../plugin/skills", name), join(skills, name), { recursive: true });
+  for (const name of ["flow-page", "vstack-tmp", "vstack-figures"]) copyTree(join(import.meta.dir, "../plugin/skills", name), join(skills, name));
   if (process.env.FLOW_READER_ASSETS) {
     rmSync(join(skills, "flow-page/reader"), { recursive: true });
-    cpSync(process.env.FLOW_READER_ASSETS, join(skills, "flow-page/reader"), { recursive: true });
+    copyTree(process.env.FLOW_READER_ASSETS, join(skills, "flow-page/reader"));
   }
   if (process.env.FLOW_READER_SERVER) {
     mkdirSync(join(skills, "flow-page/reader/server"), { recursive: true });
-    cpSync(process.env.FLOW_READER_SERVER, join(skills, "flow-page/reader/server/index.mjs"));
+    copyFileSync(process.env.FLOW_READER_SERVER, join(skills, "flow-page/reader/server/index.mjs"));
   }
   symlinkSync(join(import.meta.dir, "../node_modules"), join(root, "plugin/node_modules"));
   const installed = join(home, ".omp/plugins/node_modules");

@@ -1,5 +1,5 @@
 import { palette } from "#figures/palette";
-import { DIAGRAM_CONFIG, readabilityRules } from "../../../plugin/skills/vstack-figures/scripts/presentation.ts";
+import { DIAGRAM_CONFIG, readabilityRules } from "#figures/presentation";
 
 /** The font Pele measures each label in, and the font the label is drawn in. */
 export const DIAGRAM_FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace";

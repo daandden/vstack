@@ -1,8 +1,9 @@
 import { expect, test } from "bun:test";
-import { copyFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { chromium, type Response as BrowserResponse } from "playwright-core";
+import { copyTree } from "./support/copy-tree.ts";
 import { ENV } from "./support/fixture.ts";
 
 const SOURCE = resolve(import.meta.dir, "..");
@@ -49,7 +50,7 @@ test("nested Standard Schema errors and parsed output survive omptype compilatio
   const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-omptype-")));
   const candidate = join(root, "reader");
   try {
-    cpSync(join(SOURCE, "reader"), candidate, { recursive: true, filter: path => !OMIT.has(basename(path)) });
+    copyTree(join(SOURCE, "reader"), candidate, { filter: path => !OMIT.has(basename(path)) });
     symlinkSync(join(SOURCE, "node_modules"), join(candidate, "node_modules"), "dir");
     copyFileSync(join(import.meta.dir, "fixtures/flow-reader-omptype/app.vue"), join(candidate, "app/app.vue"));
     const build = Bun.spawn([process.execPath, join(SOURCE, "reader/build.ts"), candidate], {

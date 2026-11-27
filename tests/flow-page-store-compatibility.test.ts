@@ -1,7 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { copyTree } from "./support/copy-tree.ts";
 import { ENV, git } from "./support/fixture.ts";
 
 const checkout = join(import.meta.dir, "..");
@@ -32,7 +33,7 @@ test("previous-release JSON imports once and pre-SQLite code refuses the renamed
     return JSON.parse(proc.stdout.toString());
   };
   const dir = old(`store.flowsDir(${JSON.stringify(home)}, ${JSON.stringify(project)})`);
-  cpSync(join(fixture, "flow"), dir, { recursive: true });
+  copyTree(join(fixture, "flow"), dir);
   const cli = (args: string[], input?: unknown) => {
     const proc = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "fixture-session", "--agent", "fixture-agent"], { cwd: project, env, stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe" });
     expect(proc.stderr.toString()).toBe("");

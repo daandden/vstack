@@ -20,7 +20,7 @@ A subagent at its own Fan-out step runs its line the same way. Each subagent ret
 
 ## Account for Isolated clones
 
-For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-LIFECYCLE.md) before starting it. Require ovnfs before starting an isolated role. Stop without it and point at `/skill:setup-vstack`. omp owns checkout creation and fails an isolated task if ovnfs fails; vstack adds no fallback. The parent saves the checkout and run-record identity, preserves useful work, releases its own settled child, then proves both items gone. Apply the contract on normal and early exits. Each caller supplies its role-specific safe trigger. The FORMS.md isolated arguments stay unchanged.
+For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-LIFECYCLE.md) before starting it. Require ovnfs before starting an isolated role. Stop without it and point at `/skill:setup-vstack`. omp owns checkout creation and fails an isolated task if ovnfs fails; vstack adds no fallback. The parent preserves useful work, saves the checkout and run-record identity, and checks for leftover processes before releasing its own settled child. After release, prove both items gone. Apply the contract on normal and early exits. Each caller supplies its role-specific safe trigger. The FORMS.md isolated arguments stay unchanged.
 
 ## When a subagent cannot start
 
