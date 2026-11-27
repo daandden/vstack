@@ -2,7 +2,7 @@
 
 > Amended by [ADR 20261126-web-fullstack-recommends-ui-sdk-and-the-reader-keeps-reka-for-now](20261126-web-fullstack-recommends-ui-sdk-and-the-reader-keeps-reka-for-now.md). web-fullstack now recommends UI SDK; the reader keeps its copied reka-ui controls as a named exception until a later spec migrates it.
 
-> Amended by [ADR 20261127-vstack-drops-doop-and-the-reader-theme-holds-the-compact-design](20261127-vstack-drops-doop-and-the-reader-theme-holds-the-compact-design.md). vstack no longer uses Doop. `reader/app/assets/theme.css` and the reader's components define the compact design, and the Doop canvas is no longer a reference.
+> Amended by [ADR 20261127-vstack-designs-with-openpencil-and-the-reader-theme-holds-the-compact-design](20261127-vstack-designs-with-openpencil-and-the-reader-theme-holds-the-compact-design.md). vstack no longer uses Doop. `reader/app/assets/theme.css` and the reader's components define the compact design, and the Doop canvas is no longer a reference.
 
 The user chose this while triaging and grilling daandden/vstack#532 on 2026-11-19. It replaces the component and styling choices of [ADR 0072](0072-the-flow-reader-uses-nuxt-ui-tailwind-and-vueuse-in-the-catppuccin-look.md) and keeps its Catppuccin Latte and Mocha look, IosevkaTerm type, local assets, and CSP rules. These are accepted design decisions, not a claim that the implementation is complete.
 

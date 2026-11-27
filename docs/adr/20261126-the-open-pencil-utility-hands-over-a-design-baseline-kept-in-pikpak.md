@@ -1,6 +1,6 @@
 # The open-pencil Utility hands over a Design baseline kept in PikPak
 
-> Amended by [ADR 20261127-vstack-drops-doop-and-the-reader-theme-holds-the-compact-design](20261127-vstack-drops-doop-and-the-reader-theme-holds-the-compact-design.md). vstack no longer uses Doop, and a later change to the Flow reader's design goes through this Utility.
+> Amended by [ADR 20261127-vstack-designs-with-openpencil-and-the-reader-theme-holds-the-compact-design](20261127-vstack-designs-with-openpencil-and-the-reader-theme-holds-the-compact-design.md). vstack no longer uses Doop, and a later change to the Flow reader's design goes through this Utility.
 
 The user chose this in the grill of the Flow `ui-sdk-openpencil-design` on 2026-11-26, after three independent architecture attempts and a prototype on the user's machine. vstack adds a vstack-original visible Utility skill, `open-pencil`, that owns every use of the OpenPencil MCP server. It works on an explicit document, page, and frames. The Design baseline is the agreed saved `.fig` file, not a PNG export. The skill creates or reuses the file in the user's PikPak storage with the official CLI, named by its SHA-256. The spec records the PikPak file ID, SHA-256, and agreed frame node IDs. Implement and Verify download it by file ID and check the SHA-256. Verify renders the frames with the OpenPencil CLI. Neither needs the desktop app nor the MCP server.
 
