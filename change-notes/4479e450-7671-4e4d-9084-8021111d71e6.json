@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Stop an isolated worker's leftover processes before release, and hold the release when a process's owner is unproven."
+  ]
+}
