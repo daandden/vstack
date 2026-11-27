@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { copyTree } from "./copy-tree.ts";
 
@@ -8,7 +8,12 @@ const stateFile = join(root, "checkouts.json");
 const entries: { name: string; path: string; source: string; dirty: boolean; git?: string }[] = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, "utf8")) : [];
 const snapshotFile = join(root, "snapshots.json");
 const snapshots: { id: string; checkout: string }[] = existsSync(snapshotFile) ? JSON.parse(readFileSync(snapshotFile, "utf8")) : [];
-const save = () => { writeFileSync(stateFile, JSON.stringify(entries)); writeFileSync(snapshotFile, JSON.stringify(snapshots)); };
+const save = () => {
+  const tempState = `${stateFile}.${process.pid}.tmp`;
+  writeFileSync(tempState, JSON.stringify(entries));
+  renameSync(tempState, stateFile);
+  writeFileSync(snapshotFile, JSON.stringify(snapshots));
+};
 const remove = (name: string, sticky: boolean) => {
   const i = entries.findIndex(e => e.name === name);
   if (i < 0) process.exit(1);

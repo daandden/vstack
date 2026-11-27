@@ -7,7 +7,7 @@ vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's ski
 ### Sources
 
 **Upstream**:
-An external skills repository that vstack derives content from. Each one has its own kind, named below.
+An external skills repository that vstack derives content from.
 _Avoid_: source repo, origin, vendor
 
 **Base upstream**:
@@ -26,6 +26,10 @@ _Avoid_: good-css upstream, style upstream
 The Upstream that vstack selects UI and interaction guidance from: `emilkowalski/skills`.
 _Avoid_: Design upstream, animation upstream, Emil upstream
 
+**Cloudflare upstream**:
+The Upstream that vstack takes Cloudflare platform skills from: `cloudflare/skills`.
+_Avoid_: Workers upstream, Wrangler upstream
+
 **Upstream item**:
 One skill, principle, or playbook published by an Upstream.
 _Avoid_: upstream skill (when principles or playbooks are meant too)
@@ -35,7 +39,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, and a full commit SHA for the Enhancement upstream, CSS upstream, and UI upstream.
+The exact Upstream version vstack was last reconciled with. Use a release tag or a full commit SHA according to the Upstream's configured pin kind.
 _Avoid_: lock, version (unqualified)
 
 ### Skills
@@ -61,7 +65,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, the skills derived from the UI upstream, and skill-creator set how text, styles, interfaces, and skills are made. explain, how, why, and forensics answer questions about existing work. interrogate reports only adversarial findings that the coordinator reproduces, without fixes. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. clean-adr archives ADRs that no longer fully hold and restates what holds. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, the skills derived from the UI upstream, and skill-creator set how text, styles, interfaces, and skills are made. The Cloudflare skills cover Cloudflare platform work. explain, how, why, and forensics answer questions about existing work. interrogate reports only adversarial findings that the coordinator reproduces, without fixes. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. clean-adr archives ADRs that no longer fully hold and restates what holds. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -247,6 +251,10 @@ _Avoid_: architecture gate, complexity score
 **Architecture brief**:
 The agreed visual account of a change's architecture, including responsibilities, interactions, relevant guarantees, constraints, and trade-offs.
 _Avoid_: code scaffold, implementation plan
+
+**Design baseline**:
+The OpenPencil .fig file that one change agreed on, identified by its recorded SHA-256. implement and Verify build and check against it, while the live design document can keep changing.
+_Avoid_: design handoff, mockup, PNG export
 
 **Blast radius**:
 The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.

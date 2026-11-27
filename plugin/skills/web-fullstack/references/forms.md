@@ -1,6 +1,6 @@
 # Integrate forms and runtime schemas
 
-Use compatible `@tanstack/vue-form` and `@oh-my-pi/omptype` only when the task needs managed forms and runtime schemas. Preserve suitable existing libraries. TanStack Form owns state and validation timing. Copied controls own presentation. The server still validates submitted data.
+Use compatible `@tanstack/vue-form` and `@oh-my-pi/omptype` only when the task needs managed forms and runtime schemas. Preserve suitable existing libraries. TanStack Form owns state and validation timing. The controls own presentation and interaction. The server still validates submitted data.
 
 ## Connect Standard Schema V1
 
