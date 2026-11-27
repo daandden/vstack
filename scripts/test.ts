@@ -1,13 +1,14 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { GateReport } from "./lib/gate-report.ts";
 import { browserPhase, browserTests, NON_BROWSER, READER_PREPARATION } from "./lib/test-phases.ts";
 import { walkFiles } from "../plugin/skills/flow-page/scripts/files.ts";
+import { copyTree } from "../tests/support/copy-tree.ts";
 
 const root = process.cwd();
 const selected = process.argv.slice(2);
@@ -56,7 +57,7 @@ try {
     await phase(READER_PREPARATION[0], [process.execPath, "--eval", `try { const { chromium } = await import(${JSON.stringify(pathToFileURL(playwright).href)}); const browser = await chromium.launch({ headless: true }); console.log(JSON.stringify({ chromium: chromium.executablePath(), version: browser.version() })); await browser.close(); } catch (error) { console.error('Reader proof requires working Playwright Chromium: ' + error.message); process.exit(1); }`]);
     out = mkdtempSync(join(tmpdir(), "vstack-reader-proof-"));
     const candidateReader = join(out, "reader");
-    cpSync(join(root, "reader"), candidateReader, { recursive: true, dereference: true, filter: path => !BUILD_DIRS.includes(path.split("/").at(-1)!) });
+    copyTree(join(root, "reader"), candidateReader, { dereference: true, filter: path => !BUILD_DIRS.includes(basename(path)) });
     symlinkSync(join(root, "node_modules"), join(candidateReader, "node_modules"), "dir");
     const sourcePaths = ["reader", "plugin/skills/flow-page/scripts", "plugin/skills/vstack-figures/scripts", "package.json", "bun.lock"];
     const source = { root: join(root, "reader"), paths: sourcePaths, sha256: digest(sourcePaths) };

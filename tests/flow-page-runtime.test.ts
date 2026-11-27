@@ -1,8 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
+import { copyTree } from "./support/copy-tree.ts";
 import { ENV, git } from "./support/fixture.ts";
 import type { Connection } from "../plugin/skills/flow-page/scripts/live.ts";
 import type { Stage, State, View } from "../plugin/skills/flow-page/scripts/model.ts";
@@ -24,7 +25,7 @@ const port = () => {
 };
 function copy(name: string) {
   const plugin = join(root, name);
-  for (const skill of ["flow-page", "vstack-tmp", "vstack-figures"]) cpSync(join(skills, skill), join(plugin, "skills", skill), { recursive: true });
+  for (const skill of ["flow-page", "vstack-tmp", "vstack-figures"]) copyTree(join(skills, skill), join(plugin, "skills", skill));
   symlinkSync(join(import.meta.dir, "../node_modules"), join(plugin, "node_modules"));
   return join(plugin, "skills/flow-page/scripts/flow-page.ts");
 }
@@ -293,7 +294,7 @@ test("the pinned previous-release supervisor swaps its JSON router to self-conta
   const before = await generations(url);
   const status = ok<HostReceipt>(await cli(w.script, w.home, w.cwd, w.port, ["host", "status"])).host;
   const credentials = readFileSync(join(w.home, ".vstack/host/secrets.json"));
-  for (const skill of ["flow-page", "vstack-tmp", "vstack-figures"]) cpSync(join(skills, skill), join(w.script, "../../..", skill), { recursive: true });
+  for (const skill of ["flow-page", "vstack-tmp", "vstack-figures"]) copyTree(join(skills, skill), join(w.script, "../../..", skill));
   seal(w.script);
   const after = await changed(url, before);
   expect((await content(url)).flow.id).toBe(opened.flow);

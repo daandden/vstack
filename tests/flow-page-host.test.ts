@@ -1,8 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
 import { decisionBrief } from "./support/decision-brief.ts";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { copyTree } from "./support/copy-tree.ts";
 import { ENV, git } from "./support/fixture.ts";
 import { storedFolder } from "./support/flow-store.ts";
 
@@ -498,9 +499,9 @@ test("a host another user home started on the port is reported and left running"
 
 function copiedPlugin(): string {
   const skills = join(root, `copy-${n++}`, "skills");
-  cpSync(join(SKILLS, "flow-page"), join(skills, "flow-page"), { recursive: true });
-  cpSync(join(SKILLS, "vstack-tmp"), join(skills, "vstack-tmp"), { recursive: true });
-  cpSync(join(SKILLS, "vstack-figures"), join(skills, "vstack-figures"), { recursive: true });
+  copyTree(join(SKILLS, "flow-page"), join(skills, "flow-page"));
+  copyTree(join(SKILLS, "vstack-tmp"), join(skills, "vstack-tmp"));
+  copyTree(join(SKILLS, "vstack-figures"), join(skills, "vstack-figures"));
   return skills;
 }
 

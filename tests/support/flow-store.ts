@@ -1,10 +1,11 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, utimesSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { State } from "../../plugin/skills/flow-page/scripts/model.ts";
 import { Database } from "bun:sqlite";
 import { closedAt } from "../../plugin/skills/flow-page/scripts/model.ts";
 import { repoKey } from "../../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { createHash } from "node:crypto";
+import { copyTree } from "./copy-tree.ts";
 
 export function projectStorage(home: string, cwd: string): string {
   return join(home, ".vstack/tmp", repoKey(cwd));
@@ -12,7 +13,7 @@ export function projectStorage(home: string, cwd: string): string {
 
 export function legacyFlowFixture(home: string, cwd: string, id = "previous-release-ca075c"): { source: string; state: State; folder: string } {
   const dir = join(projectStorage(home, cwd), "flow");
-  cpSync(join(import.meta.dir, "../fixtures/flow-store-previous/flow"), dir, { recursive: true });
+  copyTree(join(import.meta.dir, "../fixtures/flow-store-previous/flow"), dir);
   const folder = join(dir, id), source = join(folder, "data/state.json");
   return { source, state: JSON.parse(readFileSync(source, "utf8")), folder };
 }

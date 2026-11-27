@@ -1,7 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { copyTree } from "./support/copy-tree.ts";
 import { ENV, git } from "./support/fixture.ts";
 import { futureDatabase, legacyBackup, legacyBytes, legacyCompanion, legacyExists, legacySources, storageSnapshot } from "./support/flow-store.ts";
 
@@ -14,7 +15,7 @@ function world(): World {
   const base = join(root, String(homes.length)), home = join(base, "home"), cwd = join(base, "project"), plugin = join(base, "installed");
   mkdirSync(cwd, { recursive: true });
   git(cwd, "init", "-q");
-  for (const name of ["flow-page", "vstack-tmp", "vstack-figures"]) cpSync(join(skills, name), join(plugin, "skills", name), { recursive: true });
+  for (const name of ["flow-page", "vstack-tmp", "vstack-figures"]) copyTree(join(skills, name), join(plugin, "skills", name));
   symlinkSync(join(import.meta.dir, "../node_modules"), join(plugin, "node_modules"));
   mkdirSync(join(home, ".omp/plugins/node_modules"), { recursive: true });
   symlinkSync(plugin, join(home, ".omp/plugins/node_modules/vstack"));
@@ -32,7 +33,7 @@ function previous(w: ReturnType<typeof world>) {
   seal(w);
 }
 function current(w: ReturnType<typeof world>, broken = false) {
-  cpSync(join(skills, "flow-page/scripts"), join(w.script, ".."), { recursive: true });
+  copyTree(join(skills, "flow-page/scripts"), join(w.script, ".."));
   if (broken) writeFileSync(join(w.script, "../host.ts"), "throw new Error('broken SQLite candidate');\n");
   seal(w);
 }
